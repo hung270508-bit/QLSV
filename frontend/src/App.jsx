@@ -153,7 +153,7 @@ function App() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 }}
                 >
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Tên đăng nhập</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã số tài khoản</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-orange-500 transition-colors">
                       <User className="w-5 h-5" />

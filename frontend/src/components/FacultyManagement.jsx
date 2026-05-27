@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Plus, Edit, Trash2, Search, X } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Search, X, Users, GraduationCap, BookOpen } from 'lucide-react';
 import axios from 'axios';
 
 function FacultyManagement() {
@@ -10,8 +10,9 @@ function FacultyManagement() {
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFaculty, setExpandedFaculty] = useState(null);
-  const [teachers, setTeachers] = useState([]);
-  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [filterType, setFilterType] = useState('teachers'); // 'teachers', 'students', 'classes'
+  const [filteredData, setFilteredData] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
   const [formData, setFormData] = useState({
     MaKhoa: '',
     TenKhoa: ''
@@ -81,18 +82,50 @@ function FacultyManagement() {
   const handleExpandFaculty = async (maKhoa) => {
     if (expandedFaculty === maKhoa) {
       setExpandedFaculty(null);
-      setTeachers([]);
+      setFilteredData([]);
     } else {
       setExpandedFaculty(maKhoa);
-      setLoadingTeachers(true);
+      setLoadingData(true);
       try {
-        const response = await axios.get(`http://localhost:5000/api/faculties/${maKhoa}/teachers`);
-        setTeachers(response.data);
+        let endpoint;
+        if (filterType === 'teachers') {
+          endpoint = `http://localhost:5000/api/faculties/${maKhoa}/teachers`;
+        } else if (filterType === 'students') {
+          endpoint = `http://localhost:5000/api/faculties/${maKhoa}/students`;
+        } else if (filterType === 'classes') {
+          endpoint = `http://localhost:5000/api/faculties/${maKhoa}/classes`;
+        }
+        const response = await axios.get(endpoint);
+        setFilteredData(response.data);
       } catch (error) {
-        console.error('Error fetching teachers:', error);
-        alert('Lỗi khi lấy danh sách giảng viên!');
+        console.error('Error fetching data:', error);
+        alert('Lỗi khi lấy dữ liệu!');
       } finally {
-        setLoadingTeachers(false);
+        setLoadingData(false);
+      }
+    }
+  };
+
+  const handleFilterChange = async (newFilterType) => {
+    setFilterType(newFilterType);
+    if (expandedFaculty) {
+      setLoadingData(true);
+      try {
+        let endpoint;
+        if (newFilterType === 'teachers') {
+          endpoint = `http://localhost:5000/api/faculties/${expandedFaculty}/teachers`;
+        } else if (newFilterType === 'students') {
+          endpoint = `http://localhost:5000/api/faculties/${expandedFaculty}/students`;
+        } else if (newFilterType === 'classes') {
+          endpoint = `http://localhost:5000/api/faculties/${expandedFaculty}/classes`;
+        }
+        const response = await axios.get(endpoint);
+        setFilteredData(response.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        alert('Lỗi khi lấy dữ liệu!');
+      } finally {
+        setLoadingData(false);
       }
     }
   };
@@ -199,25 +232,118 @@ function FacultyManagement() {
                         className="bg-orange-50"
                       >
                         <td colSpan="3" className="py-4 px-6">
-                          {loadingTeachers ? (
+                          {/* Filter Tabs */}
+                          <div className="flex gap-2 mb-4">
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handleFilterChange('teachers')}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                filterType === 'teachers'
+                                  ? 'bg-orange-500 text-white'
+                                  : 'bg-white text-gray-600 hover:bg-orange-100'
+                              }`}
+                            >
+                              <Users className="w-4 h-4" />
+                              Giảng viên
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handleFilterChange('students')}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                filterType === 'students'
+                                  ? 'bg-orange-500 text-white'
+                                  : 'bg-white text-gray-600 hover:bg-orange-100'
+                              }`}
+                            >
+                              <GraduationCap className="w-4 h-4" />
+                              Sinh viên
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handleFilterChange('classes')}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                filterType === 'classes'
+                                  ? 'bg-orange-500 text-white'
+                                  : 'bg-white text-gray-600 hover:bg-orange-100'
+                              }`}
+                            >
+                              <BookOpen className="w-4 h-4" />
+                              Lớp học
+                            </motion.button>
+                          </div>
+
+                          {loadingData ? (
                             <div className="flex items-center justify-center py-4">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                             </div>
-                          ) : teachers.length > 0 ? (
-                            <div className="space-y-2">
-                              <h4 className="font-semibold text-gray-700 mb-3">Danh sách giảng viên ({teachers.length})</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {teachers.map((teacher) => (
-                                  <div key={teacher.MaGiangVien} className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-                                    <p className="font-medium text-gray-800">{teacher.HoTen}</p>
-                                    <p className="text-sm text-gray-500">Mã GV: {teacher.MaGiangVien}</p>
-                                    <p className="text-sm text-gray-500">{teacher.Email}</p>
-                                  </div>
-                                ))}
-                              </div>
+                          ) : filteredData.length > 0 ? (
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                              <table className="w-full">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    {filterType === 'teachers' && (
+                                      <>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã GV</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">SĐT</th>
+                                      </>
+                                    )}
+                                    {filterType === 'students' && (
+                                      <>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Lớp</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                                      </>
+                                    )}
+                                    {filterType === 'classes' && (
+                                      <>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã lớp</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tên lớp</th>
+                                      </>
+                                    )}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {filteredData.map((item, index) => (
+                                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                                      {filterType === 'teachers' && (
+                                        <>
+                                          <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.MaGiangVien}</td>
+                                          <td className="py-3 px-4 text-sm text-gray-600">{item.HoTen}</td>
+                                          <td className="py-3 px-4 text-sm text-gray-600">{item.Email}</td>
+                                          <td className="py-3 px-4 text-sm text-gray-600">{item.SoDienThoai}</td>
+                                        </>
+                                      )}
+                                      {filterType === 'students' && (
+                                        <>
+                                          <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.MSSV}</td>
+                                          <td className="py-3 px-4 text-sm text-gray-600">{item.HoTen}</td>
+                                          <td className="py-3 px-4 text-sm text-gray-600">{item.TenLop}</td>
+                                          <td className="py-3 px-4 text-sm text-gray-600">{item.Email}</td>
+                                        </>
+                                      )}
+                                      {filterType === 'classes' && (
+                                        <>
+                                          <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.MaLop}</td>
+                                          <td className="py-3 px-4 text-sm text-gray-600">{item.TenLop}</td>
+                                        </>
+                                      )}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
                           ) : (
-                            <p className="text-gray-500 text-center py-4">Không có giảng viên nào trong khoa này</p>
+                            <p className="text-gray-500 text-center py-4">
+                              {filterType === 'teachers' && 'Không có giảng viên nào trong khoa này'}
+                              {filterType === 'students' && 'Không có sinh viên nào trong khoa này'}
+                              {filterType === 'classes' && 'Không có lớp nào trong khoa này'}
+                            </p>
                           )}
                         </td>
                       </motion.tr>

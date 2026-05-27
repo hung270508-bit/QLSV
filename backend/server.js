@@ -313,6 +313,27 @@ app.get('/api/faculties/:maKhoa/teachers', (req, res) => {
     executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy danh sách giảng viên theo khoa!');
 });
 
+app.get('/api/faculties/:maKhoa/students', (req, res) => {
+    const query = `
+        SELECT s.MSSV, s.HoTen, s.NgaySinh, s.GioiTinh, s.Email, s.SoDienThoai, s.MaLop, l.TenLop, l.MaKhoa, k.TenKhoa 
+        FROM sinhvien s 
+        INNER JOIN lophoc l ON s.MaLop = l.MaLop
+        INNER JOIN khoa k ON l.MaKhoa = k.MaKhoa
+        WHERE l.MaKhoa = ?
+    `;
+    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy danh sách sinh viên theo khoa!');
+});
+
+app.get('/api/faculties/:maKhoa/classes', (req, res) => {
+    const query = `
+        SELECT l.MaLop, l.TenLop, l.MaKhoa, k.TenKhoa 
+        FROM lophoc l 
+        INNER JOIN khoa k ON l.MaKhoa = k.MaKhoa
+        WHERE l.MaKhoa = ?
+    `;
+    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy danh sách lớp theo khoa!');
+});
+
 // ==================== SUBJECTS (MONHOC) ====================
 app.get('/api/subjects', (req, res) => {
     executeQuery('SELECT * FROM monhoc', [], res, 'Lỗi lấy môn học!');
