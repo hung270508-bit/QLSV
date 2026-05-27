@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle } from 'lucide-react';
+import { Bell, Plus, Edit, Trash2, Search, X, Filter, XCircle } from 'lucide-react';
 import axios from 'axios';
 
-function TeacherManagement() {
-  const [teachers, setTeachers] = useState([]);
-  const [faculties, setFaculties] = useState([]);
+function AnnouncementManagement() {
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    facultyFilter: ''
+    typeFilter: ''
   });
   const [formData, setFormData] = useState({
-    MaGiangVien: '',
-    HoTen: '',
-    Email: '',
-    SoDienThoai: '',
-    MaKhoa: ''
+    TieuDe: '',
+    NoiDung: '',
+    LoaiThongBao: 'Chung',
+    NgayDang: ''
   });
 
   useEffect(() => {
@@ -28,12 +26,8 @@ function TeacherManagement() {
 
   const fetchData = async () => {
     try {
-      const [teachersRes, facultiesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/teachers'),
-        axios.get('http://localhost:5000/api/faculties')
-      ]);
-      setTeachers(teachersRes.data);
-      setFaculties(facultiesRes.data);
+      const response = await axios.get('http://localhost:5000/api/announcements');
+      setAnnouncements(response.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -44,71 +38,78 @@ function TeacherManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingTeacher) {
-        await axios.put(`http://localhost:5000/api/teachers/${editingTeacher.MaGiangVien}`, formData);
+      if (editingAnnouncement) {
+        await axios.put(`http://localhost:5000/api/announcements/${editingAnnouncement.MaThongBao}`, formData);
       } else {
-        await axios.post('http://localhost:5000/api/teachers', formData);
+        await axios.post('http://localhost:5000/api/announcements', formData);
       }
       fetchData();
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving teacher:', error);
-      alert('Lỗi khi lưu giảng viên!');
+      console.error('Error saving announcement:', error);
+      alert('Lỗi khi lưu thông báo!');
     }
   };
 
-  const handleEdit = (teacher) => {
-    setEditingTeacher(teacher);
+  const handleEdit = (announcement) => {
+    setEditingAnnouncement(announcement);
     setFormData({
-      MaGiangVien: teacher.MaGiangVien,
-      HoTen: teacher.HoTen,
-      Email: teacher.Email || '',
-      SoDienThoai: teacher.SoDienThoai || '',
-      MaKhoa: teacher.MaKhoa || ''
+      TieuDe: announcement.TieuDe,
+      NoiDung: announcement.NoiDung,
+      LoaiThongBao: announcement.LoaiThongBao || 'Chung',
+      NgayDang: announcement.NgayDang ? announcement.NgayDang.split('T')[0] : ''
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (maGV) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa giảng viên này?')) {
+  const handleDelete = async (maThongBao) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa thông báo này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/teachers/${maGV}`);
+        await axios.delete(`http://localhost:5000/api/announcements/${maThongBao}`);
         fetchData();
       } catch (error) {
-        console.error('Error deleting teacher:', error);
-        alert('Lỗi khi xóa giảng viên!');
+        console.error('Error deleting announcement:', error);
+        alert('Lỗi khi xóa thông báo!');
       }
     }
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setEditingTeacher(null);
+    setEditingAnnouncement(null);
     setFormData({
-      MaGiangVien: '',
-      HoTen: '',
-      Email: '',
-      SoDienThoai: '',
-      MaKhoa: ''
+      TieuDe: '',
+      NoiDung: '',
+      LoaiThongBao: 'Chung',
+      NgayDang: ''
     });
   };
 
-  const filteredTeachers = teachers.filter(teacher => {
+  const filteredAnnouncements = announcements.filter(announcement => {
     const matchesSearch = 
-      teacher.HoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      teacher.MaGiangVien.toLowerCase().includes(searchTerm.toLowerCase());
+      announcement.TieuDe?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      announcement.NoiDung?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesFaculty = !filters.facultyFilter || teacher.MaKhoa === filters.facultyFilter;
+    const matchesType = !filters.typeFilter || announcement.LoaiThongBao === filters.typeFilter;
     
-    return matchesSearch && matchesFaculty;
+    return matchesSearch && matchesType;
   });
 
   const clearFilters = () => {
-    setFilters({ facultyFilter: '' });
+    setFilters({ typeFilter: '' });
     setSearchTerm('');
   };
 
-  const hasActiveFilters = filters.facultyFilter || searchTerm;
+  const hasActiveFilters = filters.typeFilter || searchTerm;
+
+  const getTypeColor = (type) => {
+    switch(type) {
+      case 'Quan trọng': return 'bg-red-100 text-red-600';
+      case 'Sinh viên': return 'bg-blue-100 text-blue-600';
+      case 'Giảng viên': return 'bg-green-100 text-green-600';
+      default: return 'bg-orange-100 text-orange-600';
+    }
+  };
 
   if (loading) {
     return (
@@ -122,8 +123,8 @@ function TeacherManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý giảng viên</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa thông tin giảng viên</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý thông báo</h2>
+          <p className="text-gray-500">Thêm, sửa, xóa thông báo</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -132,7 +133,7 @@ function TeacherManagement() {
           className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
         >
           <Plus className="w-5 h-5" />
-          Thêm giảng viên
+          Thêm thông báo
         </motion.button>
       </div>
 
@@ -143,7 +144,7 @@ function TeacherManagement() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm giảng viên..."
+              placeholder="Tìm kiếm thông báo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
@@ -181,18 +182,17 @@ function TeacherManagement() {
             className="bg-orange-50 rounded-xl p-4 space-y-4"
           >
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo khoa</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo loại</label>
               <select
-                value={filters.facultyFilter}
-                onChange={(e) => setFilters({ ...filters, facultyFilter: e.target.value })}
+                value={filters.typeFilter}
+                onChange={(e) => setFilters({ ...filters, typeFilter: e.target.value })}
                 className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
               >
-                <option value="">Tất cả khoa</option>
-                {faculties.map((faculty) => (
-                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                    {faculty.TenKhoa}
-                  </option>
-                ))}
+                <option value="">Tất cả loại</option>
+                <option value="Chung">Chung</option>
+                <option value="Quan trọng">Quan trọng</option>
+                <option value="Sinh viên">Sinh viên</option>
+                <option value="Giảng viên">Giảng viên</option>
               </select>
             </div>
           </motion.div>
@@ -205,35 +205,37 @@ function TeacherManagement() {
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Mã GV</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Họ tên</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Khoa</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Email</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">SĐT</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Tiêu đề</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Loại</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Ngày đăng</th>
                 <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTeachers.length > 0 ? (
-                filteredTeachers.map((teacher, index) => (
+              {filteredAnnouncements.length > 0 ? (
+                filteredAnnouncements.map((announcement, index) => (
                   <motion.tr
-                    key={teacher.MaGiangVien}
+                    key={announcement.MaThongBao}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
                   >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{teacher.MaGiangVien}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.HoTen}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.TenKhoa || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.Email || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.SoDienThoai || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{announcement.TieuDe}</td>
+                    <td className="py-4 px-6 text-sm">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(announcement.LoaiThongBao)}`}>
+                        {announcement.LoaiThongBao || 'Chung'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-sm text-gray-600">
+                      {announcement.NgayDang ? new Date(announcement.NgayDang).toLocaleDateString('vi-VN') : 'N/A'}
+                    </td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(teacher)}
+                          onClick={() => handleEdit(announcement)}
                           className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
                         >
                           <Edit className="w-4 h-4" />
@@ -241,7 +243,7 @@ function TeacherManagement() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(teacher.MaGiangVien)}
+                          onClick={() => handleDelete(announcement.MaThongBao)}
                           className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -252,8 +254,8 @@ function TeacherManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-gray-500">
-                    Không tìm thấy giảng viên nào
+                  <td colSpan="4" className="py-12 text-center text-gray-500">
+                    Không tìm thấy thông báo nào
                   </td>
                 </tr>
               )}
@@ -272,7 +274,7 @@ function TeacherManagement() {
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">
-                {editingTeacher ? 'Cập nhật giảng viên' : 'Thêm giảng viên mới'}
+                {editingAnnouncement ? 'Cập nhật thông báo' : 'Thêm thông báo mới'}
               </h3>
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -285,61 +287,47 @@ function TeacherManagement() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Tiêu đề</label>
+                <input
+                  type="text"
+                  value={formData.TieuDe}
+                  onChange={(e) => setFormData({ ...formData, TieuDe: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nội dung</label>
+                <textarea
+                  value={formData.NoiDung}
+                  onChange={(e) => setFormData({ ...formData, NoiDung: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors h-32 resize-none"
+                  required
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã giảng viên</label>
-                  <input
-                    type="text"
-                    value={formData.MaGiangVien}
-                    onChange={(e) => setFormData({ ...formData, MaGiangVien: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                    required
-                    disabled={!!editingTeacher}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
-                  <input
-                    type="text"
-                    value={formData.HoTen}
-                    onChange={(e) => setFormData({ ...formData, HoTen: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={formData.Email}
-                    onChange={(e) => setFormData({ ...formData, Email: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
-                  <input
-                    type="text"
-                    value={formData.SoDienThoai}
-                    onChange={(e) => setFormData({ ...formData, SoDienThoai: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Loại thông báo</label>
                   <select
-                    value={formData.MaKhoa}
-                    onChange={(e) => setFormData({ ...formData, MaKhoa: e.target.value })}
+                    value={formData.LoaiThongBao}
+                    onChange={(e) => setFormData({ ...formData, LoaiThongBao: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                    required
                   >
-                    <option value="">Chọn khoa</option>
-                    {faculties.map((faculty) => (
-                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                        {faculty.TenKhoa}
-                      </option>
-                    ))}
+                    <option value="Chung">Chung</option>
+                    <option value="Quan trọng">Quan trọng</option>
+                    <option value="Sinh viên">Sinh viên</option>
+                    <option value="Giảng viên">Giảng viên</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày đăng</label>
+                  <input
+                    type="date"
+                    value={formData.NgayDang}
+                    onChange={(e) => setFormData({ ...formData, NgayDang: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  />
                 </div>
               </div>
 
@@ -350,7 +338,7 @@ function TeacherManagement() {
                   type="submit"
                   className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
                 >
-                  {editingTeacher ? 'Cập nhật' : 'Thêm mới'}
+                  {editingAnnouncement ? 'Cập nhật' : 'Thêm mới'}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -370,4 +358,4 @@ function TeacherManagement() {
   );
 }
 
-export default TeacherManagement;
+export default AnnouncementManagement;

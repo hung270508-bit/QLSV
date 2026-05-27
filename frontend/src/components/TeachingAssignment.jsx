@@ -1,25 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Plus, Edit, Trash2, Search, X, Filter, XCircle } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Search, X, Filter, XCircle } from 'lucide-react';
 import axios from 'axios';
 
-function ScheduleManagement() {
-  const [schedules, setSchedules] = useState([]);
-  const [teachingAssignments, setTeachingAssignments] = useState([]);
+function TeachingAssignment() {
+  const [assignments, setAssignments] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState(null);
+  const [editingAssignment, setEditingAssignment] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    dayFilter: '',
-    periodFilter: ''
+    subjectFilter: '',
+    classFilter: '',
+    semesterFilter: ''
   });
   const [formData, setFormData] = useState({
-    MaPhanCong: '',
-    Thu: '',
-    CaHoc: '',
-    PhongHoc: ''
+    MaGiangVien: '',
+    MaMonHoc: '',
+    MaLop: '',
+    HocKy: ''
   });
 
   useEffect(() => {
@@ -28,12 +31,16 @@ function ScheduleManagement() {
 
   const fetchData = async () => {
     try {
-      const [schedulesRes, assignmentsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/schedules'),
-        axios.get('http://localhost:5000/api/teaching-assignments')
+      const [assignmentsRes, teachersRes, subjectsRes, classesRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/teaching-assignments'),
+        axios.get('http://localhost:5000/api/teachers'),
+        axios.get('http://localhost:5000/api/subjects'),
+        axios.get('http://localhost:5000/api/classes')
       ]);
-      setSchedules(schedulesRes.data);
-      setTeachingAssignments(assignmentsRes.data);
+      setAssignments(assignmentsRes.data);
+      setTeachers(teachersRes.data);
+      setSubjects(subjectsRes.data);
+      setClasses(classesRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -44,87 +51,72 @@ function ScheduleManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingSchedule) {
-        await axios.put(`http://localhost:5000/api/schedules/${editingSchedule.MaLichHoc}`, formData);
+      if (editingAssignment) {
+        await axios.put(`http://localhost:5000/api/teaching-assignments/${editingAssignment.MaPhanCong}`, formData);
       } else {
-        await axios.post('http://localhost:5000/api/schedules', formData);
+        await axios.post('http://localhost:5000/api/teaching-assignments', formData);
       }
       fetchData();
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving schedule:', error);
-      alert('Lỗi khi lưu lịch học!');
+      console.error('Error saving assignment:', error);
+      alert('Lỗi khi lưu phân công!');
     }
   };
 
-  const handleEdit = (schedule) => {
-    setEditingSchedule(schedule);
+  const handleEdit = (assignment) => {
+    setEditingAssignment(assignment);
     setFormData({
-      MaPhanCong: schedule.MaPhanCong,
-      Thu: schedule.Thu,
-      CaHoc: schedule.CaHoc,
-      PhongHoc: schedule.PhongHoc
+      MaGiangVien: assignment.MaGiangVien,
+      MaMonHoc: assignment.MaMonHoc,
+      MaLop: assignment.MaLop,
+      HocKy: assignment.HocKy
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (maLichHoc) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa lịch học này?')) {
+  const handleDelete = async (maPhanCong) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa phân công này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/schedules/${maLichHoc}`);
+        await axios.delete(`http://localhost:5000/api/teaching-assignments/${maPhanCong}`);
         fetchData();
       } catch (error) {
-        console.error('Error deleting schedule:', error);
-        alert('Lỗi khi xóa lịch học!');
+        console.error('Error deleting assignment:', error);
+        alert('Lỗi khi xóa phân công!');
       }
     }
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setEditingSchedule(null);
+    setEditingAssignment(null);
     setFormData({
-      MaPhanCong: '',
-      Thu: '',
-      CaHoc: '',
-      PhongHoc: ''
+      MaGiangVien: '',
+      MaMonHoc: '',
+      MaLop: '',
+      HocKy: ''
     });
   };
 
-  const getDayName = (day) => {
-    const days = {
-      2: 'Thứ 2',
-      3: 'Thứ 3',
-      4: 'Thứ 4',
-      5: 'Thứ 5',
-      6: 'Thứ 6',
-      7: 'Thứ 7'
-    };
-    return days[day] || 'N/A';
-  };
-
-  const getPeriodName = (period) => {
-    return `Ca ${period}`;
-  };
-
-  const filteredSchedules = schedules.filter(schedule => {
+  const filteredAssignments = assignments.filter(assignment => {
     const matchesSearch = 
-      schedule.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      schedule.TenLop?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      schedule.PhongHoc?.toLowerCase().includes(searchTerm.toLowerCase());
+      assignment.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      assignment.TenLop?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      assignment.TenGiangVien?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDay = !filters.dayFilter || schedule.Thu === parseInt(filters.dayFilter);
-    const matchesPeriod = !filters.periodFilter || schedule.CaHoc === parseInt(filters.periodFilter);
+    const matchesSubject = !filters.subjectFilter || assignment.MaMonHoc === filters.subjectFilter;
+    const matchesClass = !filters.classFilter || assignment.MaLop === filters.classFilter;
+    const matchesSemester = !filters.semesterFilter || assignment.HocKy === filters.semesterFilter;
     
-    return matchesSearch && matchesDay && matchesPeriod;
+    return matchesSearch && matchesSubject && matchesClass && matchesSemester;
   });
 
   const clearFilters = () => {
-    setFilters({ dayFilter: '', periodFilter: '' });
+    setFilters({ subjectFilter: '', classFilter: '', semesterFilter: '' });
     setSearchTerm('');
   };
 
-  const hasActiveFilters = filters.dayFilter || filters.periodFilter || searchTerm;
+  const hasActiveFilters = filters.subjectFilter || filters.classFilter || filters.semesterFilter || searchTerm;
 
   if (loading) {
     return (
@@ -138,8 +130,8 @@ function ScheduleManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý lịch học</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa lịch học</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Phân công giảng dạy</h2>
+          <p className="text-gray-500">Thêm, sửa, xóa phân công giảng dạy</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -148,7 +140,7 @@ function ScheduleManagement() {
           className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
         >
           <Plus className="w-5 h-5" />
-          Thêm lịch học
+          Thêm phân công
         </motion.button>
       </div>
 
@@ -159,7 +151,7 @@ function ScheduleManagement() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm lịch học..."
+              placeholder="Tìm kiếm phân công..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
@@ -196,37 +188,47 @@ function ScheduleManagement() {
             animate={{ opacity: 1, height: 'auto' }}
             className="bg-orange-50 rounded-xl p-4 space-y-4"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo ngày</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo môn học</label>
                 <select
-                  value={filters.dayFilter}
-                  onChange={(e) => setFilters({ ...filters, dayFilter: e.target.value })}
+                  value={filters.subjectFilter}
+                  onChange={(e) => setFilters({ ...filters, subjectFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
-                  <option value="">Tất cả ngày</option>
-                  <option value="2">Thứ 2</option>
-                  <option value="3">Thứ 3</option>
-                  <option value="4">Thứ 4</option>
-                  <option value="5">Thứ 5</option>
-                  <option value="6">Thứ 6</option>
-                  <option value="7">Thứ 7</option>
+                  <option value="">Tất cả môn</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
+                      {subject.TenMonHoc}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo ca</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo lớp</label>
                 <select
-                  value={filters.periodFilter}
-                  onChange={(e) => setFilters({ ...filters, periodFilter: e.target.value })}
+                  value={filters.classFilter}
+                  onChange={(e) => setFilters({ ...filters, classFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
-                  <option value="">Tất cả ca</option>
-                  <option value="1">Ca 1</option>
-                  <option value="2">Ca 2</option>
-                  <option value="3">Ca 3</option>
-                  <option value="4">Ca 4</option>
-                  <option value="5">Ca 5</option>
-                  <option value="6">Ca 6</option>
+                  <option value="">Tất cả lớp</option>
+                  {classes.map((cls) => (
+                    <option key={cls.MaLop} value={cls.MaLop}>
+                      {cls.TenLop}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo học kỳ</label>
+                <select
+                  value={filters.semesterFilter}
+                  onChange={(e) => setFilters({ ...filters, semesterFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                >
+                  <option value="">Tất cả học kỳ</option>
+                  <option value="HK1_2025_2026">HK1 2025-2026</option>
+                  <option value="HK2_2025_2026">HK2 2025-2026</option>
                 </select>
               </div>
             </div>
@@ -240,9 +242,6 @@ function ScheduleManagement() {
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Thứ</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Ca</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Phòng</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Môn học</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Lớp</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giảng viên</th>
@@ -251,28 +250,25 @@ function ScheduleManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredSchedules.length > 0 ? (
-                filteredSchedules.map((schedule, index) => (
+              {filteredAssignments.length > 0 ? (
+                filteredAssignments.map((assignment, index) => (
                   <motion.tr
-                    key={schedule.MaLichHoc}
+                    key={assignment.MaPhanCong}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
                   >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{getDayName(schedule.Thu)}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{getPeriodName(schedule.CaHoc)}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.PhongHoc || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenMonHoc || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenLop || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenGiangVien || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.HocKy || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.TenMonHoc || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.TenLop || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.TenGiangVien || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.HocKy || 'N/A'}</td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(schedule)}
+                          onClick={() => handleEdit(assignment)}
                           className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
                         >
                           <Edit className="w-4 h-4" />
@@ -280,7 +276,7 @@ function ScheduleManagement() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(schedule.MaLichHoc)}
+                          onClick={() => handleDelete(assignment.MaPhanCong)}
                           className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -291,8 +287,8 @@ function ScheduleManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-gray-500">
-                    Không tìm thấy lịch học nào
+                  <td colSpan="5" className="py-12 text-center text-gray-500">
+                    Không tìm thấy phân công nào
                   </td>
                 </tr>
               )}
@@ -311,7 +307,7 @@ function ScheduleManagement() {
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">
-                {editingSchedule ? 'Cập nhật lịch học' : 'Thêm lịch học mới'}
+                {editingAssignment ? 'Cập nhật phân công' : 'Thêm phân công mới'}
               </h3>
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -325,64 +321,65 @@ function ScheduleManagement() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Phân công giảng dạy</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Giảng viên</label>
                 <select
-                  value={formData.MaPhanCong}
-                  onChange={(e) => setFormData({ ...formData, MaPhanCong: e.target.value })}
+                  value={formData.MaGiangVien}
+                  onChange={(e) => setFormData({ ...formData, MaGiangVien: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
                 >
-                  <option value="">Chọn phân công</option>
-                  {teachingAssignments.map((assignment) => (
-                    <option key={assignment.MaPhanCong} value={assignment.MaPhanCong}>
-                      {assignment.TenMonHoc} - {assignment.TenLop} - {assignment.HocKy}
+                  <option value="">Chọn giảng viên</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.MaGiangVien} value={teacher.MaGiangVien}>
+                      {teacher.HoTen}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Thứ</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học</label>
                 <select
-                  value={formData.Thu}
-                  onChange={(e) => setFormData({ ...formData, Thu: e.target.value })}
+                  value={formData.MaMonHoc}
+                  onChange={(e) => setFormData({ ...formData, MaMonHoc: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
                 >
-                  <option value="">Chọn thứ</option>
-                  <option value="2">Thứ 2</option>
-                  <option value="3">Thứ 3</option>
-                  <option value="4">Thứ 4</option>
-                  <option value="5">Thứ 5</option>
-                  <option value="6">Thứ 6</option>
-                  <option value="7">Thứ 7</option>
+                  <option value="">Chọn môn học</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
+                      {subject.TenMonHoc}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Ca học</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
                 <select
-                  value={formData.CaHoc}
-                  onChange={(e) => setFormData({ ...formData, CaHoc: e.target.value })}
+                  value={formData.MaLop}
+                  onChange={(e) => setFormData({ ...formData, MaLop: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
                 >
-                  <option value="">Chọn ca</option>
-                  <option value="1">Ca 1</option>
-                  <option value="2">Ca 2</option>
-                  <option value="3">Ca 3</option>
-                  <option value="4">Ca 4</option>
-                  <option value="5">Ca 5</option>
-                  <option value="6">Ca 6</option>
+                  <option value="">Chọn lớp</option>
+                  {classes.map((cls) => (
+                    <option key={cls.MaLop} value={cls.MaLop}>
+                      {cls.TenLop}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Phòng học</label>
-                <input
-                  type="text"
-                  value={formData.PhongHoc}
-                  onChange={(e) => setFormData({ ...formData, PhongHoc: e.target.value })}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Học kỳ</label>
+                <select
+                  value={formData.HocKy}
+                  onChange={(e) => setFormData({ ...formData, HocKy: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
-                />
+                >
+                  <option value="">Chọn học kỳ</option>
+                  <option value="HK1_2025_2026">HK1 2025-2026</option>
+                  <option value="HK2_2025_2026">HK2 2025-2026</option>
+                </select>
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -392,7 +389,7 @@ function ScheduleManagement() {
                   type="submit"
                   className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
                 >
-                  {editingSchedule ? 'Cập nhật' : 'Thêm mới'}
+                  {editingAssignment ? 'Cập nhật' : 'Thêm mới'}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -412,4 +409,4 @@ function ScheduleManagement() {
   );
 }
 
-export default ScheduleManagement;
+export default TeachingAssignment;

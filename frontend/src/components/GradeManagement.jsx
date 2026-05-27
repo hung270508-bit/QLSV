@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle } from 'lucide-react';
+import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle } from 'lucide-react';
 import axios from 'axios';
 
-function StudentManagement() {
+function GradeManagement() {
+  const [grades, setGrades] = useState([]);
   const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null);
+  const [editingGrade, setEditingGrade] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    classFilter: '',
-    genderFilter: ''
+    subjectFilter: '',
+    semesterFilter: ''
   });
   const [formData, setFormData] = useState({
     MSSV: '',
-    HoTen: '',
-    NgaySinh: '',
-    GioiTinh: 'Nam',
-    Email: '',
-    SoDienThoai: '',
-    MaLop: ''
+    MaMonHoc: '',
+    HocKy: '',
+    DiemQuaTrinh: '',
+    DiemGiuaKy: '',
+    DiemCuoiKy: ''
   });
 
   useEffect(() => {
@@ -31,12 +31,14 @@ function StudentManagement() {
 
   const fetchData = async () => {
     try {
-      const [studentsRes, classesRes] = await Promise.all([
+      const [gradesRes, studentsRes, subjectsRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/grades'),
         axios.get('http://localhost:5000/api/students'),
-        axios.get('http://localhost:5000/api/classes')
+        axios.get('http://localhost:5000/api/subjects')
       ]);
+      setGrades(gradesRes.data);
       setStudents(studentsRes.data);
-      setClasses(classesRes.data);
+      setSubjects(subjectsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -47,76 +49,82 @@ function StudentManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingStudent) {
-        await axios.put(`http://localhost:5000/api/students/${editingStudent.MSSV}`, formData);
+      if (editingGrade) {
+        await axios.put(`http://localhost:5000/api/grades/${editingGrade.MaDiem}`, formData);
       } else {
-        await axios.post('http://localhost:5000/api/students', formData);
+        await axios.post('http://localhost:5000/api/grades', formData);
       }
       fetchData();
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving student:', error);
-      alert('Lỗi khi lưu sinh viên!');
+      console.error('Error saving grade:', error);
+      alert('Lỗi khi lưu điểm!');
     }
   };
 
-  const handleEdit = (student) => {
-    setEditingStudent(student);
+  const handleEdit = (grade) => {
+    setEditingGrade(grade);
     setFormData({
-      MSSV: student.MSSV,
-      HoTen: student.HoTen,
-      NgaySinh: student.NgaySinh ? student.NgaySinh.split('T')[0] : '',
-      GioiTinh: student.GioiTinh || 'Nam',
-      Email: student.Email || '',
-      SoDienThoai: student.SoDienThoai || '',
-      MaLop: student.MaLop || ''
+      MSSV: grade.MSSV,
+      MaMonHoc: grade.MaMonHoc,
+      HocKy: grade.HocKy,
+      DiemQuaTrinh: grade.DiemQuaTrinh || '',
+      DiemGiuaKy: grade.DiemGiuaKy || '',
+      DiemCuoiKy: grade.DiemCuoiKy || ''
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (mssv) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa sinh viên này?')) {
+  const handleDelete = async (maDiem) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa điểm này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/students/${mssv}`);
+        await axios.delete(`http://localhost:5000/api/grades/${maDiem}`);
         fetchData();
       } catch (error) {
-        console.error('Error deleting student:', error);
-        alert('Lỗi khi xóa sinh viên!');
+        console.error('Error deleting grade:', error);
+        alert('Lỗi khi xóa điểm!');
       }
     }
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setEditingStudent(null);
+    setEditingGrade(null);
     setFormData({
       MSSV: '',
-      HoTen: '',
-      NgaySinh: '',
-      GioiTinh: 'Nam',
-      Email: '',
-      SoDienThoai: '',
-      MaLop: ''
+      MaMonHoc: '',
+      HocKy: '',
+      DiemQuaTrinh: '',
+      DiemGiuaKy: '',
+      DiemCuoiKy: ''
     });
   };
 
-  const filteredStudents = students.filter(student => {
+  const filteredGrades = grades.filter(grade => {
     const matchesSearch = 
-      student.HoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.MSSV.toLowerCase().includes(searchTerm.toLowerCase());
+      grade.TenSinhVien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      grade.MSSV?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      grade.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
-    const matchesGender = !filters.genderFilter || student.GioiTinh === filters.genderFilter;
+    const matchesSubject = !filters.subjectFilter || grade.MaMonHoc === filters.subjectFilter;
+    const matchesSemester = !filters.semesterFilter || grade.HocKy === filters.semesterFilter;
     
-    return matchesSearch && matchesClass && matchesGender;
+    return matchesSearch && matchesSubject && matchesSemester;
   });
 
   const clearFilters = () => {
-    setFilters({ classFilter: '', genderFilter: '' });
+    setFilters({ subjectFilter: '', semesterFilter: '' });
     setSearchTerm('');
   };
 
-  const hasActiveFilters = filters.classFilter || filters.genderFilter || searchTerm;
+  const hasActiveFilters = filters.subjectFilter || filters.semesterFilter || searchTerm;
+
+  const calculateAverage = (grade) => {
+    const qt = parseFloat(grade.DiemQuaTrinh) || 0;
+    const gk = parseFloat(grade.DiemGiuaKy) || 0;
+    const ck = parseFloat(grade.DiemCuoiKy) || 0;
+    return ((qt * 0.2) + (gk * 0.3) + (ck * 0.5)).toFixed(2);
+  };
 
   if (loading) {
     return (
@@ -130,8 +138,8 @@ function StudentManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý sinh viên</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa thông tin sinh viên</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý điểm sinh viên</h2>
+          <p className="text-gray-500">Thêm, sửa, xóa điểm sinh viên</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -140,7 +148,7 @@ function StudentManagement() {
           className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
         >
           <Plus className="w-5 h-5" />
-          Thêm sinh viên
+          Thêm điểm
         </motion.button>
       </div>
 
@@ -151,7 +159,7 @@ function StudentManagement() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm sinh viên..."
+              placeholder="Tìm kiếm điểm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
@@ -190,30 +198,30 @@ function StudentManagement() {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo lớp</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo môn học</label>
                 <select
-                  value={filters.classFilter}
-                  onChange={(e) => setFilters({ ...filters, classFilter: e.target.value })}
+                  value={filters.subjectFilter}
+                  onChange={(e) => setFilters({ ...filters, subjectFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
-                  <option value="">Tất cả lớp</option>
-                  {classes.map((cls) => (
-                    <option key={cls.MaLop} value={cls.MaLop}>
-                      {cls.TenLop}
+                  <option value="">Tất cả môn</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
+                      {subject.TenMonHoc}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo giới tính</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo học kỳ</label>
                 <select
-                  value={filters.genderFilter}
-                  onChange={(e) => setFilters({ ...filters, genderFilter: e.target.value })}
+                  value={filters.semesterFilter}
+                  onChange={(e) => setFilters({ ...filters, semesterFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
-                  <option value="">Tất cả</option>
-                  <option value="Nam">Nam</option>
-                  <option value="Nữ">Nữ</option>
+                  <option value="">Tất cả học kỳ</option>
+                  <option value="HK1_2025_2026">HK1 2025-2026</option>
+                  <option value="HK2_2025_2026">HK2 2025-2026</option>
                 </select>
               </div>
             </div>
@@ -228,36 +236,40 @@ function StudentManagement() {
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">MSSV</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Họ tên</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giới tính</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Lớp</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Email</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">SĐT</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Sinh viên</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Môn học</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Học kỳ</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">QT</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">GK</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">CK</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">TB</th>
                 <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student, index) => (
+              {filteredGrades.length > 0 ? (
+                filteredGrades.map((grade, index) => (
                   <motion.tr
-                    key={student.MSSV}
+                    key={grade.MaDiem}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
                   >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{student.MSSV}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.HoTen}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.GioiTinh || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.TenLop || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.Email || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{grade.MSSV}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{grade.TenSinhVien || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{grade.TenMonHoc || 'N/A'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{grade.HocKy}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemQuaTrinh || '-'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
+                    <td className="py-4 px-6 text-sm font-bold text-orange-600">{calculateAverage(grade)}</td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(student)}
+                          onClick={() => handleEdit(grade)}
                           className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
                         >
                           <Edit className="w-4 h-4" />
@@ -265,7 +277,7 @@ function StudentManagement() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(student.MSSV)}
+                          onClick={() => handleDelete(grade.MaDiem)}
                           className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -276,8 +288,8 @@ function StudentManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-gray-500">
-                    Không tìm thấy sinh viên nào
+                  <td colSpan="9" className="py-12 text-center text-gray-500">
+                    Không tìm thấy điểm nào
                   </td>
                 </tr>
               )}
@@ -296,7 +308,7 @@ function StudentManagement() {
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">
-                {editingStudent ? 'Cập nhật sinh viên' : 'Thêm sinh viên mới'}
+                {editingGrade ? 'Cập nhật điểm' : 'Thêm điểm mới'}
               </h3>
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -311,79 +323,85 @@ function StudentManagement() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">MSSV</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Sinh viên</label>
+                  <select
                     value={formData.MSSV}
                     onChange={(e) => setFormData({ ...formData, MSSV: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                     required
-                    disabled={!!editingStudent}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
-                  <input
-                    type="text"
-                    value={formData.HoTen}
-                    onChange={(e) => setFormData({ ...formData, HoTen: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
-                  <input
-                    type="date"
-                    value={formData.NgaySinh}
-                    onChange={(e) => setFormData({ ...formData, NgaySinh: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
-                  <select
-                    value={formData.GioiTinh}
-                    onChange={(e) => setFormData({ ...formData, GioiTinh: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   >
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
+                    <option value="">Chọn sinh viên</option>
+                    {students.map((student) => (
+                      <option key={student.MSSV} value={student.MSSV}>
+                        {student.MSSV} - {student.HoTen}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học</label>
+                  <select
+                    value={formData.MaMonHoc}
+                    onChange={(e) => setFormData({ ...formData, MaMonHoc: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    required
+                  >
+                    <option value="">Chọn môn học</option>
+                    {subjects.map((subject) => (
+                      <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
+                        {subject.TenMonHoc}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Học kỳ</label>
+                  <select
+                    value={formData.HocKy}
+                    onChange={(e) => setFormData({ ...formData, HocKy: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    required
+                  >
+                    <option value="">Chọn học kỳ</option>
+                    <option value="HK1_2025_2026">HK1 2025-2026</option>
+                    <option value="HK2_2025_2026">HK2 2025-2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Điểm quá trình (20%)</label>
                   <input
-                    type="email"
-                    value={formData.Email}
-                    onChange={(e) => setFormData({ ...formData, Email: e.target.value })}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={formData.DiemQuaTrinh}
+                    onChange={(e) => setFormData({ ...formData, DiemQuaTrinh: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Điểm giữa kỳ (30%)</label>
                   <input
-                    type="text"
-                    value={formData.SoDienThoai}
-                    onChange={(e) => setFormData({ ...formData, SoDienThoai: e.target.value })}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={formData.DiemGiuaKy}
+                    onChange={(e) => setFormData({ ...formData, DiemGiuaKy: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
-                  <select
-                    value={formData.MaLop}
-                    onChange={(e) => setFormData({ ...formData, MaLop: e.target.value })}
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Điểm cuối kỳ (50%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={formData.DiemCuoiKy}
+                    onChange={(e) => setFormData({ ...formData, DiemCuoiKy: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                    required
-                  >
-                    <option value="">Chọn lớp</option>
-                    {classes.map((cls) => (
-                      <option key={cls.MaLop} value={cls.MaLop}>
-                        {cls.TenLop}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
 
@@ -394,7 +412,7 @@ function StudentManagement() {
                   type="submit"
                   className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
                 >
-                  {editingStudent ? 'Cập nhật' : 'Thêm mới'}
+                  {editingGrade ? 'Cập nhật' : 'Thêm mới'}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -414,4 +432,4 @@ function StudentManagement() {
   );
 }
 
-export default StudentManagement;
+export default GradeManagement;

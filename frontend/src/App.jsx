@@ -28,6 +28,7 @@ function App() {
 
       if (response.data.success) {
         setMessage({ type: 'success', text: response.data.message });
+        // Set user với format mới từ Backend: { id, username, role, tenQuyen }
         setLoggedInUser(response.data.user);
       }
     } catch (error) {
@@ -162,7 +163,7 @@ function App() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
-                      placeholder="admin, giaovien, sinhvien..."
+                      placeholder="Nhập MSSV hoặc Mã GV..."
                       required
                     />
                   </div>
@@ -325,19 +326,19 @@ function App() {
             </div>
             
             <h1 className="text-2xl font-bold text-gray-800">
-              Xin chào, {loggedInUser.username || loggedInUser.TenDangNhap}!
+              Xin chào, {loggedInUser.username}!
             </h1>
             <p className="text-gray-400 text-sm mt-1">Bạn đã đăng nhập thành công vào hệ thống.</p>
             
             <div className="my-6 inline-block">
               <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${renderRoleBadge(loggedInUser.role).color}`}>
-                Quyền: {renderRoleBadge(loggedInUser.role).label}
+                Quyền: {loggedInUser.tenQuyen || renderRoleBadge(loggedInUser.role).label}
               </span>
             </div>
 
             <div className="p-4 bg-orange-50 rounded-xl text-left text-sm text-gray-600 space-y-2 mb-6">
-              <p><strong>Mã tài khoản:</strong> {loggedInUser.id || loggedInUser.MaTaiKhoan}</p>
-              <p><strong>Trạng thái phân trang:</strong> Giao diện dành riêng cho <span className="font-semibold text-orange-600">{renderRoleBadge(loggedInUser.role).label}</span> đã sẵn sàng tải.</p>
+              <p><strong>Mã tài khoản:</strong> {loggedInUser.id}</p>
+              <p><strong>Trạng thái phân trang:</strong> Giao diện dành riêng cho <span className="font-semibold text-orange-600">{loggedInUser.tenQuyen || renderRoleBadge(loggedInUser.role).label}</span> đã sẵn sàng tải.</p>
             </div>
 
             <button

@@ -13,8 +13,8 @@ app.use(express.json());
 const db = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'quanlysv'
+    password: process.env.DB_PASSWORD || '1234',
+    database: process.env.DB_NAME || 'qlsv'
 });
 
 // Kiểm tra kết nối DB
@@ -26,11 +26,39 @@ db.connect((err) => {
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
 });
 
-// API Đăng nhập
+// Helper functions để giảm lặp code
+const executeQuery = (query, params, res, errorMessage) => {
+    db.query(query, params, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: errorMessage });
+        res.json(results);
+    });
+};
+
+const executeInsert = (query, params, res, successMessage, errorMessage) => {
+    db.query(query, params, (err) => {
+        if (err) return res.status(500).json({ success: false, message: errorMessage });
+        res.json({ success: true, message: successMessage });
+    });
+};
+
+const executeUpdate = (query, params, res, successMessage, errorMessage) => {
+    db.query(query, params, (err) => {
+        if (err) return res.status(500).json({ success: false, message: errorMessage });
+        res.json({ success: true, message: successMessage });
+    });
+};
+
+const executeDelete = (query, params, res, successMessage, errorMessage) => {
+    db.query(query, params, (err) => {
+        if (err) return res.status(500).json({ success: false, message: errorMessage });
+        res.json({ success: true, message: successMessage });
+    });
+};
+
+// ==================== API ĐĂNG NHẬP ====================
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
 
-    // Kiểm tra đầu vào dữ liệu trống
     if (!username || !password) {
         return res.status(400).json({
             success: false,
@@ -38,53 +66,84 @@ app.post('/api/login', (req, res) => {
         });
     }
 
-    // Truy vấn kiểm tra tài khoản từ bảng users
-    const query = 'SELECT MaTaiKhoan, TenDangNhap, role FROM users WHERE TenDangNhap = ? AND password = ?';
-    
+    const query = `
+        SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen,
+               s.HoTen as TenSinhVien, s.NgaySinh, s.GioiTinh, s.Email as EmailSV, s.SoDienThoai as SDTSV, s.MaLop,
+               g.HoTen as TenGiangVien, g.Email as EmailGV, g.SoDienThoai as SDTGV, g.MaKhoa,
+               l.TenLop, k.TenKhoa
+        FROM users u
+        INNER JOIN phanquyen p ON u.MaQuyen = p.MaQuyen
+        LEFT JOIN sinhvien s ON u.TaiKhoan = s.MSSV
+        LEFT JOIN giangvien g ON u.TaiKhoan = g.MaGiangVien
+        LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+        LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa
+        WHERE u.TaiKhoan = ? AND u.password = ?
+    `;
+
+    console.log('Login attempt for username:', username);
     db.query(query, [username, password], (err, results) => {
         if (err) {
-            console.error('Lỗi truy vấn: ', err);
-            return res.status(500).json({
-                success: false,
-                message: 'Có lỗi xảy ra tại hệ thống server!'
-            });
+            console.error('Lỗi truy vấn SQL: ', err);
+            console.error('SQL Error Code:', err.code);
+            console.error('SQL Error Message:', err.message);
+            return res.status(500).json({ success: false, message: 'Có lỗi xảy ra tại hệ thống server!' });
         }
+        console.log('Query results:', results.length, 'rows found');
 
-        // Nếu tìm thấy tài khoản trùng khớp
         if (results.length > 0) {
             const user = results[0];
+
+            // Map MaQuyen sang string để FE xử lý giao diện
+            let roleString = 'student';
+            if (user.MaQuyen === 1) roleString = 'admin';
+            else if (user.MaQuyen === 2) roleString = 'teacher';
+
+            // Xây dựng user object với thông tin đầy đủ theo role
+            const userResponse = {
+                id: user.TaiKhoan,
+                username: user.TaiKhoan,
+                role: roleString,
+                tenQuyen: user.TenQuyen
+            };
+
+            // Thêm thông tin chi tiết theo role
+            if (user.MaQuyen === 3) {
+                // Sinh viên
+                userResponse.hoTen = user.TenSinhVien;
+                userResponse.ngaySinh = user.NgaySinh;
+                userResponse.gioiTinh = user.GioiTinh;
+                userResponse.email = user.EmailSV;
+                userResponse.soDienThoai = user.SDTSV;
+                userResponse.maLop = user.MaLop;
+                userResponse.tenLop = user.TenLop;
+            } else if (user.MaQuyen === 2) {
+                // Giảng viên
+                userResponse.hoTen = user.TenGiangVien;
+                userResponse.email = user.EmailGV;
+                userResponse.soDienThoai = user.SDTGV;
+                userResponse.maKhoa = user.MaKhoa;
+                userResponse.tenKhoa = user.TenKhoa;
+            }
+
             return res.json({
                 success: true,
                 message: 'Đăng nhập thành công!',
-                user: {
-                    id: user.MaTaiKhoan,       // Map lại thành id cho trùng khớp frontend
-                    username: user.TenDangNhap, // Map lại thành username cho trùng khớp frontend
-                    role: user.role
-                }
+                user: userResponse
             });
         } else {
-            // Nếu không khớp tài khoản hoặc mật khẩu
-            return res.status(401).json({
-                success: false,
-                message: 'Tên đăng nhập hoặc mật khẩu không chính xác!'
-            });
+            return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác!' });
         }
     });
 });
 
-// API Quên mật khẩu
+// ==================== API QUÊN MẬT KHẨU ====================
 app.post('/api/forgot-password', (req, res) => {
     const { email } = req.body;
 
-    // Kiểm tra đầu vào dữ liệu trống
     if (!email) {
-        return res.status(400).json({
-            success: false,
-            message: 'Vui lòng nhập email!'
-        });
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập email!' });
     }
 
-    // Truy vấn kiểm tra email trong bảng sinhvien và giangvien
     const query = `
         SELECT 'sinhvien' as userType, MSSV as id, HoTen as name, Email as email 
         FROM sinhvien WHERE Email = ?
@@ -94,29 +153,15 @@ app.post('/api/forgot-password', (req, res) => {
     `;
     
     db.query(query, [email, email], (err, results) => {
-        if (err) {
-            console.error('Lỗi truy vấn: ', err);
-            return res.status(500).json({
-                success: false,
-                message: 'Có lỗi xảy ra tại hệ thống server!'
-            });
-        }
+        if (err) return res.status(500).json({ success: false, message: 'Có lỗi xảy ra tại hệ thống server!' });
 
-        // Nếu tìm thấy email
         if (results.length > 0) {
-            const user = results[0];
-            // Trong thực tế, ở đây sẽ gửi email với link reset mật khẩu
-            // Hiện tại chỉ trả về thông báo thành công
             return res.json({
                 success: true,
-                message: `Đã gửi liên kết đặt lại mật khẩu đến email ${email}. Vui lòng kiểm tra hộp thư của bạn!`
+                message: `Đã gửi liên kết đặt lại mật khẩu đến email ${email}. Vui lòng kiểm tra hộp thư!`
             });
         } else {
-            // Nếu không tìm thấy email
-            return res.status(404).json({
-                success: false,
-                message: 'Email không tồn tại trong hệ thống!'
-            });
+            return res.status(404).json({ success: false, message: 'Email không tồn tại trong hệ thống!' });
         }
     });
 });
@@ -137,12 +182,7 @@ app.get('/api/dashboard/stats', (req, res) => {
         });
     })))
     .then(([students, subjects, classes, teachers]) => {
-        res.json({
-            totalStudents: students,
-            totalSubjects: subjects,
-            totalClasses: classes,
-            totalTeachers: teachers
-        });
+        res.json({ totalStudents: students, totalSubjects: subjects, totalClasses: classes, totalTeachers: teachers });
     })
     .catch(err => {
         console.error('Error fetching dashboard stats:', err);
@@ -154,17 +194,13 @@ app.get('/api/dashboard/recent-students', (req, res) => {
     const query = `
         SELECT s.MSSV, s.HoTen, l.TenLop, u.NgayTao 
         FROM sinhvien s 
-        JOIN lophoc l ON s.MaLop = l.MaLop 
-        JOIN users u ON s.MaTaiKhoan = u.MaTaiKhoan 
+        LEFT JOIN lophoc l ON s.MaLop = l.MaLop 
+        JOIN users u ON s.MSSV = u.TaiKhoan 
         ORDER BY u.NgayTao DESC 
         LIMIT 5
     `;
-    
     db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching recent students:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách sinh viên mới!' });
-        }
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách sinh viên mới!' });
         res.json(results);
     });
 });
@@ -176,35 +212,20 @@ app.get('/api/students', (req, res) => {
         FROM sinhvien s 
         LEFT JOIN lophoc l ON s.MaLop = l.MaLop
     `;
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching students:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách sinh viên!' });
-        }
-        res.json(results);
-    });
+    executeQuery(query, [], res, 'Lỗi khi lấy danh sách sinh viên!');
 });
 
 app.post('/api/students', (req, res) => {
     const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop } = req.body;
     
-    // First create user account
-    const userQuery = 'INSERT INTO users (TenDangNhap, password, role) VALUES (?, ?, ?)';
-    db.query(userQuery, [MSSV, '123', 'student'], (err, userResult) => {
-        if (err) {
-            console.error('Error creating user:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi tạo tài khoản!' });
-        }
+    // MaQuyen = 3 (Sinh viên)
+    const userQuery = 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)';
+    db.query(userQuery, [MSSV, '123456aA@'], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi tạo tài khoản! Có thể MSSV đã tồn tại.' });
         
-        const MaTaiKhoan = userResult.insertId;
-        const studentQuery = 'INSERT INTO sinhvien (MSSV, MaTaiKhoan, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-        
-        db.query(studentQuery, [MSSV, MaTaiKhoan, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop], (err) => {
-            if (err) {
-                console.error('Error creating student:', err);
-                return res.status(500).json({ success: false, message: 'Lỗi khi thêm sinh viên!' });
-            }
+        const studentQuery = 'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        db.query(studentQuery, [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi khi thêm sinh viên!' });
             res.json({ success: true, message: 'Thêm sinh viên thành công!' });
         });
     });
@@ -213,30 +234,15 @@ app.post('/api/students', (req, res) => {
 app.put('/api/students/:mssv', (req, res) => {
     const { mssv } = req.params;
     const { HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop } = req.body;
-    
     const query = 'UPDATE sinhvien SET HoTen = ?, NgaySinh = ?, GioiTinh = ?, Email = ?, SoDienThoai = ?, MaLop = ? WHERE MSSV = ?';
-    
-    db.query(query, [HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, mssv], (err) => {
-        if (err) {
-            console.error('Error updating student:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật sinh viên!' });
-        }
-        res.json({ success: true, message: 'Cập nhật sinh viên thành công!' });
-    });
+    executeUpdate(query, [HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, mssv], res, 'Cập nhật thành công!', 'Lỗi khi cập nhật!');
 });
 
 app.delete('/api/students/:mssv', (req, res) => {
     const { mssv } = req.params;
-    
-    const query = 'DELETE FROM sinhvien WHERE MSSV = ?';
-    
-    db.query(query, [mssv], (err) => {
-        if (err) {
-            console.error('Error deleting student:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa sinh viên!' });
-        }
-        res.json({ success: true, message: 'Xóa sinh viên thành công!' });
-    });
+    // Bảng users đã cấu hình ON DELETE CASCADE nên chỉ cần xóa tài khoản là thông tin sv bay theo
+    const query = 'DELETE FROM users WHERE TaiKhoan = ?'; 
+    executeDelete(query, [mssv], res, 'Xóa thành công!', 'Lỗi khi xóa!');
 });
 
 // ==================== TEACHERS (GIANGVIEN) ====================
@@ -246,35 +252,20 @@ app.get('/api/teachers', (req, res) => {
         FROM giangvien g 
         LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa
     `;
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching teachers:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách giảng viên!' });
-        }
-        res.json(results);
-    });
+    executeQuery(query, [], res, 'Lỗi lấy giảng viên!');
 });
 
 app.post('/api/teachers', (req, res) => {
     const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa } = req.body;
     
-    // First create user account
-    const userQuery = 'INSERT INTO users (TenDangNhap, password, role) VALUES (?, ?, ?)';
-    db.query(userQuery, [MaGiangVien, '123', 'teacher'], (err, userResult) => {
-        if (err) {
-            console.error('Error creating user:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi tạo tài khoản!' });
-        }
+    // MaQuyen = 2 (Giảng viên)
+    const userQuery = 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 2)';
+    db.query(userQuery, [MaGiangVien, 'gv@2025'], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo tài khoản GV!' });
         
-        const MaTaiKhoan = userResult.insertId;
-        const teacherQuery = 'INSERT INTO giangvien (MaGiangVien, MaTaiKhoan, HoTen, Email, SoDienThoai, MaKhoa) VALUES (?, ?, ?, ?, ?, ?)';
-        
-        db.query(teacherQuery, [MaGiangVien, MaTaiKhoan, HoTen, Email, SoDienThoai, MaKhoa], (err) => {
-            if (err) {
-                console.error('Error creating teacher:', err);
-                return res.status(500).json({ success: false, message: 'Lỗi khi thêm giảng viên!' });
-            }
+        const teacherQuery = 'INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa) VALUES (?, ?, ?, ?, ?)';
+        db.query(teacherQuery, [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi khi thêm giảng viên!' });
             res.json({ success: true, message: 'Thêm giảng viên thành công!' });
         });
     });
@@ -283,440 +274,343 @@ app.post('/api/teachers', (req, res) => {
 app.put('/api/teachers/:maGV', (req, res) => {
     const { maGV } = req.params;
     const { HoTen, Email, SoDienThoai, MaKhoa } = req.body;
-    
     const query = 'UPDATE giangvien SET HoTen = ?, Email = ?, SoDienThoai = ?, MaKhoa = ? WHERE MaGiangVien = ?';
-    
-    db.query(query, [HoTen, Email, SoDienThoai, MaKhoa, maGV], (err) => {
-        if (err) {
-            console.error('Error updating teacher:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật giảng viên!' });
-        }
-        res.json({ success: true, message: 'Cập nhật giảng viên thành công!' });
-    });
+    executeUpdate(query, [HoTen, Email, SoDienThoai, MaKhoa, maGV], res, 'Cập nhật giảng viên thành công!', 'Lỗi cập nhật giảng viên!');
 });
 
 app.delete('/api/teachers/:maGV', (req, res) => {
     const { maGV } = req.params;
-    
-    const query = 'DELETE FROM giangvien WHERE MaGiangVien = ?';
-    
-    db.query(query, [maGV], (err) => {
-        if (err) {
-            console.error('Error deleting teacher:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa giảng viên!' });
-        }
-        res.json({ success: true, message: 'Xóa giảng viên thành công!' });
-    });
+    const query = 'DELETE FROM users WHERE TaiKhoan = ?';
+    executeDelete(query, [maGV], res, 'Xóa giảng viên thành công!', 'Lỗi xóa giảng viên!');
 });
 
 // ==================== FACULTIES (KHOA) ====================
 app.get('/api/faculties', (req, res) => {
-    const query = 'SELECT * FROM khoa';
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching faculties:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách khoa!' });
-        }
-        res.json(results);
-    });
+    executeQuery('SELECT * FROM khoa', [], res, 'Lỗi lấy danh sách khoa!');
 });
 
 app.post('/api/faculties', (req, res) => {
     const { MaKhoa, TenKhoa } = req.body;
-    
-    const query = 'INSERT INTO khoa (MaKhoa, TenKhoa) VALUES (?, ?)';
-    
-    db.query(query, [MaKhoa, TenKhoa], (err) => {
-        if (err) {
-            console.error('Error creating faculty:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi thêm khoa!' });
-        }
-        res.json({ success: true, message: 'Thêm khoa thành công!' });
-    });
+    executeInsert('INSERT INTO khoa (MaKhoa, TenKhoa) VALUES (?, ?)', [MaKhoa, TenKhoa], res, 'Thêm khoa thành công!', 'Lỗi thêm khoa!');
 });
 
 app.put('/api/faculties/:maKhoa', (req, res) => {
-    const { maKhoa } = req.params;
     const { TenKhoa } = req.body;
-    
-    const query = 'UPDATE khoa SET TenKhoa = ? WHERE MaKhoa = ?';
-    
-    db.query(query, [TenKhoa, maKhoa], (err) => {
-        if (err) {
-            console.error('Error updating faculty:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật khoa!' });
-        }
-        res.json({ success: true, message: 'Cập nhật khoa thành công!' });
-    });
+    executeUpdate('UPDATE khoa SET TenKhoa = ? WHERE MaKhoa = ?', [TenKhoa, req.params.maKhoa], res, 'Cập nhật khoa thành công!', 'Lỗi cập nhật khoa!');
 });
 
 app.delete('/api/faculties/:maKhoa', (req, res) => {
-    const { maKhoa } = req.params;
-    
-    const query = 'DELETE FROM khoa WHERE MaKhoa = ?';
-    
-    db.query(query, [maKhoa], (err) => {
-        if (err) {
-            console.error('Error deleting faculty:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa khoa!' });
-        }
-        res.json({ success: true, message: 'Xóa khoa thành công!' });
-    });
+    executeDelete('DELETE FROM khoa WHERE MaKhoa = ?', [req.params.maKhoa], res, 'Xóa khoa thành công!', 'Lỗi xóa khoa!');
+});
+
+app.get('/api/faculties/:maKhoa/teachers', (req, res) => {
+    const query = `
+        SELECT g.MaGiangVien, g.HoTen, g.Email, g.SoDienThoai, g.MaKhoa, k.TenKhoa 
+        FROM giangvien g 
+        LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa
+        WHERE g.MaKhoa = ?
+    `;
+    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy danh sách giảng viên theo khoa!');
 });
 
 // ==================== SUBJECTS (MONHOC) ====================
 app.get('/api/subjects', (req, res) => {
-    const query = 'SELECT * FROM monhoc';
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching subjects:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách môn học!' });
-        }
-        res.json(results);
-    });
+    executeQuery('SELECT * FROM monhoc', [], res, 'Lỗi lấy môn học!');
 });
 
 app.post('/api/subjects', (req, res) => {
     const { MaMonHoc, TenMonHoc, SoTinChi } = req.body;
-    
-    const query = 'INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi) VALUES (?, ?, ?)';
-    
-    db.query(query, [MaMonHoc, TenMonHoc, SoTinChi], (err) => {
-        if (err) {
-            console.error('Error creating subject:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi thêm môn học!' });
-        }
-        res.json({ success: true, message: 'Thêm môn học thành công!' });
-    });
+    executeInsert('INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi) VALUES (?, ?, ?)', [MaMonHoc, TenMonHoc, SoTinChi], res, 'Thêm môn học thành công!', 'Lỗi thêm môn học!');
 });
 
 app.put('/api/subjects/:maMH', (req, res) => {
-    const { maMH } = req.params;
     const { TenMonHoc, SoTinChi } = req.body;
-    
-    const query = 'UPDATE monhoc SET TenMonHoc = ?, SoTinChi = ? WHERE MaMonHoc = ?';
-    
-    db.query(query, [TenMonHoc, SoTinChi, maMH], (err) => {
-        if (err) {
-            console.error('Error updating subject:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật môn học!' });
-        }
-        res.json({ success: true, message: 'Cập nhật môn học thành công!' });
-    });
+    executeUpdate('UPDATE monhoc SET TenMonHoc = ?, SoTinChi = ? WHERE MaMonHoc = ?', [TenMonHoc, SoTinChi, req.params.maMH], res, 'Cập nhật môn học thành công!', 'Lỗi cập nhật môn học!');
 });
 
 app.delete('/api/subjects/:maMH', (req, res) => {
-    const { maMH } = req.params;
-    
-    const query = 'DELETE FROM monhoc WHERE MaMonHoc = ?';
-    
-    db.query(query, [maMH], (err) => {
-        if (err) {
-            console.error('Error deleting subject:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa môn học!' });
-        }
-        res.json({ success: true, message: 'Xóa môn học thành công!' });
-    });
+    executeDelete('DELETE FROM monhoc WHERE MaMonHoc = ?', [req.params.maMH], res, 'Xóa môn học thành công!', 'Lỗi xóa môn học!');
 });
 
 // ==================== CLASSES (LOPHOC) ====================
 app.get('/api/classes', (req, res) => {
     const query = `
         SELECT l.MaLop, l.TenLop, l.MaKhoa, k.TenKhoa 
-        FROM lophoc l 
-        LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa
+        FROM lophoc l LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa
     `;
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching classes:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách lớp!' });
-        }
-        res.json(results);
-    });
+    executeQuery(query, [], res, 'Lỗi lấy lớp học!');
 });
 
 app.post('/api/classes', (req, res) => {
     const { MaLop, TenLop, MaKhoa } = req.body;
-    
-    const query = 'INSERT INTO lophoc (MaLop, TenLop, MaKhoa) VALUES (?, ?, ?)';
-    
-    db.query(query, [MaLop, TenLop, MaKhoa], (err) => {
-        if (err) {
-            console.error('Error creating class:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi thêm lớp!' });
-        }
-        res.json({ success: true, message: 'Thêm lớp thành công!' });
-    });
+    executeInsert('INSERT INTO lophoc (MaLop, TenLop, MaKhoa) VALUES (?, ?, ?)', [MaLop, TenLop, MaKhoa], res, 'Thêm lớp thành công!', 'Lỗi thêm lớp!');
 });
 
 app.put('/api/classes/:maLop', (req, res) => {
-    const { maLop } = req.params;
     const { TenLop, MaKhoa } = req.body;
-    
-    const query = 'UPDATE lophoc SET TenLop = ?, MaKhoa = ? WHERE MaLop = ?';
-    
-    db.query(query, [TenLop, MaKhoa, maLop], (err) => {
-        if (err) {
-            console.error('Error updating class:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật lớp!' });
-        }
-        res.json({ success: true, message: 'Cập nhật lớp thành công!' });
-    });
+    executeUpdate('UPDATE lophoc SET TenLop = ?, MaKhoa = ? WHERE MaLop = ?', [TenLop, MaKhoa, req.params.maLop], res, 'Cập nhật lớp thành công!', 'Lỗi cập nhật lớp!');
 });
 
 app.delete('/api/classes/:maLop', (req, res) => {
-    const { maLop } = req.params;
-    
-    const query = 'DELETE FROM lophoc WHERE MaLop = ?';
-    
-    db.query(query, [maLop], (err) => {
-        if (err) {
-            console.error('Error deleting class:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa lớp!' });
-        }
-        res.json({ success: true, message: 'Xóa lớp thành công!' });
-    });
+    executeDelete('DELETE FROM lophoc WHERE MaLop = ?', [req.params.maLop], res, 'Xóa lớp thành công!', 'Lỗi xóa lớp!');
 });
 
-// ==================== GRADES (DIEM) ====================
-app.get('/api/grades', (req, res) => {
-    const { MaLop, MaMonHoc, HocKy } = req.query;
-    let query = `
-        SELECT d.*, s.HoTen, s.MSSV, m.TenMonHoc 
-        FROM diem d 
-        JOIN sinhvien s ON d.MSSV = s.MSSV
-        JOIN monhoc m ON d.MaMonHoc = m.MaMonHoc
-    `;
-    const params = [];
-    
-    if (MaLop) {
-        query += ' JOIN lophoc l ON s.MaLop = l.MaLop WHERE l.MaLop = ?';
-        params.push(MaLop);
-    }
-    if (MaMonHoc) {
-        query += params.length ? ' AND d.MaMonHoc = ?' : ' WHERE d.MaMonHoc = ?';
-        params.push(MaMonHoc);
-    }
-    if (HocKy) {
-        query += params.length ? ' AND d.HocKy = ?' : ' WHERE d.HocKy = ?';
-        params.push(HocKy);
-    }
-    
-    db.query(query, params, (err, results) => {
-        if (err) {
-            console.error('Error fetching grades:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách điểm!' });
-        }
-        res.json(results);
-    });
-});
-
-app.post('/api/grades', (req, res) => {
-    const grades = req.body.grades;
-    
-    const promises = grades.map(grade => {
-        return new Promise((resolve, reject) => {
-            const query = `
-                INSERT INTO diem (MSSV, MaMonHoc, HocKy, DiemGiuaKy, DiemCuoiKy) 
-                VALUES (?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE DiemGiuaKy = VALUES(DiemGiuaKy), DiemCuoiKy = VALUES(DiemCuoiKy)
-            `;
-            db.query(query, [grade.MSSV, grade.MaMonHoc, grade.HocKy, grade.DiemGiuaKy, grade.DiemCuoiKy], (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
-    });
-    
-    Promise.all(promises)
-        .then(() => res.json({ success: true, message: 'Lưu điểm thành công!' }))
-        .catch(err => {
-            console.error('Error saving grades:', err);
-            res.status(500).json({ success: false, message: 'Lỗi khi lưu điểm!' });
-        });
-});
-
-// ==================== COURSE SECTIONS (PHANCONG GIANG DAY) ====================
-app.get('/api/course-sections', (req, res) => {
+// ==================== USERS (TAI KHOAN TONG HOP) ====================
+app.get('/api/users', (req, res) => {
     const query = `
-        SELECT pc.*, g.HoTen as TenGiangVien, m.TenMonHoc, l.TenLop
+        SELECT u.TaiKhoan, u.password, u.NgayTao, p.TenQuyen 
+        FROM users u JOIN phanquyen p ON u.MaQuyen = p.MaQuyen
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy danh sách tài khoản!');
+});
+
+app.delete('/api/users/:taiKhoan', (req, res) => {
+    executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.taiKhoan], res, 'Xóa tài khoản thành công!', 'Lỗi xóa tài khoản!');
+});
+
+// ==================== TEACHING ASSIGNMENTS (PHANCONGGIANGDAY) ====================
+app.get('/api/teaching-assignments', (req, res) => {
+    const query = `
+        SELECT pc.*, gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop
         FROM phanconggiangday pc
-        LEFT JOIN giangvien g ON pc.MaGiangVien = g.MaGiangVien
-        LEFT JOIN monhoc m ON pc.MaMonHoc = m.MaMonHoc
+        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
+        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
         LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
     `;
-
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching course sections:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách học phần!' });
-        }
-        res.json(results);
-    });
+    executeQuery(query, [], res, 'Lỗi lấy phân công giảng dạy!');
 });
 
-app.post('/api/course-sections', (req, res) => {
+app.post('/api/teaching-assignments', (req, res) => {
     const { MaGiangVien, MaMonHoc, MaLop, HocKy } = req.body;
-
     const query = 'INSERT INTO phanconggiangday (MaGiangVien, MaMonHoc, MaLop, HocKy) VALUES (?, ?, ?, ?)';
-
-    db.query(query, [MaGiangVien, MaMonHoc, MaLop, HocKy], (err) => {
-        if (err) {
-            console.error('Error creating course section:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi thêm học phần!' });
-        }
-        res.json({ success: true, message: 'Thêm học phần thành công!' });
-    });
+    executeInsert(query, [MaGiangVien, MaMonHoc, MaLop, HocKy], res, 'Thêm phân công giảng dạy thành công!', 'Lỗi thêm phân công giảng dạy!');
 });
 
-app.put('/api/course-sections/:maPC', (req, res) => {
-    const { maPC } = req.params;
+app.put('/api/teaching-assignments/:maPhanCong', (req, res) => {
+    const { maPhanCong } = req.params;
     const { MaGiangVien, MaMonHoc, MaLop, HocKy } = req.body;
-
     const query = 'UPDATE phanconggiangday SET MaGiangVien = ?, MaMonHoc = ?, MaLop = ?, HocKy = ? WHERE MaPhanCong = ?';
-
-    db.query(query, [MaGiangVien, MaMonHoc, MaLop, HocKy, maPC], (err) => {
-        if (err) {
-            console.error('Error updating course section:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật học phần!' });
-        }
-        res.json({ success: true, message: 'Cập nhật học phần thành công!' });
-    });
+    executeUpdate(query, [MaGiangVien, MaMonHoc, MaLop, HocKy, maPhanCong], res, 'Cập nhật phân công giảng dạy thành công!', 'Lỗi cập nhật phân công giảng dạy!');
 });
 
-app.delete('/api/course-sections/:maPC', (req, res) => {
-    const { maPC } = req.params;
-
-    const query = 'DELETE FROM phanconggiangday WHERE MaPhanCong = ?';
-
-    db.query(query, [maPC], (err) => {
-        if (err) {
-            console.error('Error deleting course section:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa học phần!' });
-        }
-        res.json({ success: true, message: 'Xóa học phần thành công!' });
-    });
-});
-
-// ==================== USERS (TAI KHOAN) ====================
-app.get('/api/users', (req, res) => {
-    const query = 'SELECT MaTaiKhoan, TenDangNhap, role, NgayTao FROM users';
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching users:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách tài khoản!' });
-        }
-        res.json(results);
-    });
-});
-
-app.post('/api/users', (req, res) => {
-    const { TenDangNhap, password, role } = req.body;
-    
-    const query = 'INSERT INTO users (TenDangNhap, password, role) VALUES (?, ?, ?)';
-    
-    db.query(query, [TenDangNhap, password, role], (err) => {
-        if (err) {
-            console.error('Error creating user:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi thêm tài khoản!' });
-        }
-        res.json({ success: true, message: 'Thêm tài khoản thành công!' });
-    });
-});
-
-app.put('/api/users/:maTaiKhoan', (req, res) => {
-    const { maTaiKhoan } = req.params;
-    const { TenDangNhap, password, role } = req.body;
-    
-    const query = 'UPDATE users SET TenDangNhap = ?, password = ?, role = ? WHERE MaTaiKhoan = ?';
-    
-    db.query(query, [TenDangNhap, password, role, maTaiKhoan], (err) => {
-        if (err) {
-            console.error('Error updating user:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật tài khoản!' });
-        }
-        res.json({ success: true, message: 'Cập nhật tài khoản thành công!' });
-    });
-});
-
-app.delete('/api/users/:maTaiKhoan', (req, res) => {
-    const { maTaiKhoan } = req.params;
-    
-    const query = 'DELETE FROM users WHERE MaTaiKhoan = ?';
-    
-    db.query(query, [maTaiKhoan], (err) => {
-        if (err) {
-            console.error('Error deleting user:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa tài khoản!' });
-        }
-        res.json({ success: true, message: 'Xóa tài khoản thành công!' });
-    });
+app.delete('/api/teaching-assignments/:maPhanCong', (req, res) => {
+    executeDelete('DELETE FROM phanconggiangday WHERE MaPhanCong = ?', [req.params.maPhanCong], res, 'Xóa phân công giảng dạy thành công!', 'Lỗi xóa phân công giảng dạy!');
 });
 
 // ==================== SCHEDULES (LICHHOC) ====================
 app.get('/api/schedules', (req, res) => {
     const query = `
-        SELECT l.*, pc.MaPhanCong, m.TenMonHoc, lop.TenLop
-        FROM lichhoc l
-        LEFT JOIN phanconggiangday pc ON l.MaPhanCong = pc.MaPhanCong
-        LEFT JOIN monhoc m ON pc.MaMonHoc = m.MaMonHoc
-        LEFT JOIN lophoc lop ON pc.MaLop = lop.MaLop
+        SELECT lh.*, pc.MaGiangVien, pc.MaMonHoc, pc.MaLop, pc.HocKy,
+               gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop
+        FROM lichhoc lh
+        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
+        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
+        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
     `;
-
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching schedules:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách lịch học!' });
-        }
-        res.json(results);
-    });
+    executeQuery(query, [], res, 'Lỗi lấy lịch học!');
 });
 
 app.post('/api/schedules', (req, res) => {
     const { MaPhanCong, Thu, CaHoc, PhongHoc } = req.body;
-
     const query = 'INSERT INTO lichhoc (MaPhanCong, Thu, CaHoc, PhongHoc) VALUES (?, ?, ?, ?)';
-
-    db.query(query, [MaPhanCong, Thu, CaHoc, PhongHoc], (err) => {
-        if (err) {
-            console.error('Error creating schedule:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi thêm lịch học!' });
-        }
-        res.json({ success: true, message: 'Thêm lịch học thành công!' });
-    });
+    executeInsert(query, [MaPhanCong, Thu, CaHoc, PhongHoc], res, 'Thêm lịch học thành công!', 'Lỗi thêm lịch học!');
 });
 
 app.put('/api/schedules/:maLichHoc', (req, res) => {
     const { maLichHoc } = req.params;
     const { MaPhanCong, Thu, CaHoc, PhongHoc } = req.body;
-
     const query = 'UPDATE lichhoc SET MaPhanCong = ?, Thu = ?, CaHoc = ?, PhongHoc = ? WHERE MaLichHoc = ?';
-
-    db.query(query, [MaPhanCong, Thu, CaHoc, PhongHoc, maLichHoc], (err) => {
-        if (err) {
-            console.error('Error updating schedule:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật lịch học!' });
-        }
-        res.json({ success: true, message: 'Cập nhật lịch học thành công!' });
-    });
+    executeUpdate(query, [MaPhanCong, Thu, CaHoc, PhongHoc, maLichHoc], res, 'Cập nhật lịch học thành công!', 'Lỗi cập nhật lịch học!');
 });
 
 app.delete('/api/schedules/:maLichHoc', (req, res) => {
-    const { maLichHoc } = req.params;
+    executeDelete('DELETE FROM lichhoc WHERE MaLichHoc = ?', [req.params.maLichHoc], res, 'Xóa lịch học thành công!', 'Lỗi xóa lịch học!');
+});
 
-    const query = 'DELETE FROM lichhoc WHERE MaLichHoc = ?';
+// ==================== GRADES (DIEM) ====================
+app.get('/api/grades', (req, res) => {
+    const query = `
+        SELECT d.*, s.HoTen as TenSinhVien, mh.TenMonHoc
+        FROM diem d
+        LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
+        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy điểm!');
+});
 
-    db.query(query, [maLichHoc], (err) => {
-        if (err) {
-            console.error('Error deleting schedule:', err);
-            return res.status(500).json({ success: false, message: 'Lỗi khi xóa lịch học!' });
-        }
-        res.json({ success: true, message: 'Xóa lịch học thành công!' });
-    });
+app.get('/api/grades/student/:mssv', (req, res) => {
+    const query = `
+        SELECT d.*, mh.TenMonHoc, mh.SoTinChi
+        FROM diem d
+        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        WHERE d.MSSV = ?
+    `;
+    executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm sinh viên!');
+});
+
+app.post('/api/grades', (req, res) => {
+    const { MSSV, MaMonHoc, HocKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy } = req.body;
+    const query = 'INSERT INTO diem (MSSV, MaMonHoc, HocKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy) VALUES (?, ?, ?, ?, ?, ?)';
+    executeInsert(query, [MSSV, MaMonHoc, HocKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy], res, 'Thêm điểm thành công!', 'Lỗi thêm điểm!');
+});
+
+app.put('/api/grades/:maDiem', (req, res) => {
+    const { maDiem } = req.params;
+    const { MSSV, MaMonHoc, HocKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy } = req.body;
+    const query = 'UPDATE diem SET MSSV = ?, MaMonHoc = ?, HocKy = ?, DiemQuaTrinh = ?, DiemGiuaKy = ?, DiemCuoiKy = ? WHERE MaDiem = ?';
+    executeUpdate(query, [MSSV, MaMonHoc, HocKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy, maDiem], res, 'Cập nhật điểm thành công!', 'Lỗi cập nhật điểm!');
+});
+
+app.delete('/api/grades/:maDiem', (req, res) => {
+    executeDelete('DELETE FROM diem WHERE MaDiem = ?', [req.params.maDiem], res, 'Xóa điểm thành công!', 'Lỗi xóa điểm!');
+});
+
+// ==================== ATTENDANCE (DIEMDANH) ====================
+app.get('/api/attendance', (req, res) => {
+    const query = `
+        SELECT dd.*, s.HoTen as TenSinhVien, lh.PhongHoc, lh.Thu, lh.CaHoc
+        FROM diemdanh dd
+        LEFT JOIN sinhvien s ON dd.MSSV = s.MSSV
+        LEFT JOIN lichhoc lh ON dd.MaLichHoc = lh.MaLichHoc
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy điểm danh!');
+});
+
+app.get('/api/attendance/student/:mssv', (req, res) => {
+    const query = `
+        SELECT dd.*, lh.PhongHoc, lh.Thu, lh.CaHoc
+        FROM diemdanh dd
+        LEFT JOIN lichhoc lh ON dd.MaLichHoc = lh.MaLichHoc
+        WHERE dd.MSSV = ?
+    `;
+    executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm danh sinh viên!');
+});
+
+app.post('/api/attendance', (req, res) => {
+    const { MaLichHoc, MSSV, NgayDiemDanh, TrangThai } = req.body;
+    const query = 'INSERT INTO diemdanh (MaLichHoc, MSSV, NgayDiemDanh, TrangThai) VALUES (?, ?, ?, ?)';
+    executeInsert(query, [MaLichHoc, MSSV, NgayDiemDanh, TrangThai], res, 'Thêm điểm danh thành công!', 'Lỗi thêm điểm danh!');
+});
+
+app.put('/api/attendance/:maDiemDanh', (req, res) => {
+    const { maDiemDanh } = req.params;
+    const { MaLichHoc, MSSV, NgayDiemDanh, TrangThai } = req.body;
+    const query = 'UPDATE diemdanh SET MaLichHoc = ?, MSSV = ?, NgayDiemDanh = ?, TrangThai = ? WHERE MaDiemDanh = ?';
+    executeUpdate(query, [MaLichHoc, MSSV, NgayDiemDanh, TrangThai, maDiemDanh], res, 'Cập nhật điểm danh thành công!', 'Lỗi cập nhật điểm danh!');
+});
+
+app.delete('/api/attendance/:maDiemDanh', (req, res) => {
+    executeDelete('DELETE FROM diemdanh WHERE MaDiemDanh = ?', [req.params.maDiemDanh], res, 'Xóa điểm danh thành công!', 'Lỗi xóa điểm danh!');
+});
+
+// ==================== MATERIALS/ASSIGNMENTS (TAILIEU_BAITAP) ====================
+app.get('/api/materials', (req, res) => {
+    const query = `
+        SELECT tl.*, pc.MaGiangVien, pc.MaMonHoc, pc.MaLop, pc.HocKy,
+               gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop
+        FROM tailieu_baitap tl
+        LEFT JOIN phanconggiangday pc ON tl.MaPhanCong = pc.MaPhanCong
+        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
+        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy tài liệu/bài tập!');
+});
+
+app.post('/api/materials', (req, res) => {
+    const { MaPhanCong, TieuDe, Loai, FileUrl, HanNop } = req.body;
+    const query = 'INSERT INTO tailieu_baitap (MaPhanCong, TieuDe, Loai, FileUrl, HanNop) VALUES (?, ?, ?, ?, ?)';
+    executeInsert(query, [MaPhanCong, TieuDe, Loai, FileUrl, HanNop], res, 'Thêm tài liệu/bài tập thành công!', 'Lỗi thêm tài liệu/bài tập!');
+});
+
+app.put('/api/materials/:maTaiLieu', (req, res) => {
+    const { maTaiLieu } = req.params;
+    const { MaPhanCong, TieuDe, Loai, FileUrl, HanNop } = req.body;
+    const query = 'UPDATE tailieu_baitap SET MaPhanCong = ?, TieuDe = ?, Loai = ?, FileUrl = ?, HanNop = ? WHERE MaTaiLieu = ?';
+    executeUpdate(query, [MaPhanCong, TieuDe, Loai, FileUrl, HanNop, maTaiLieu], res, 'Cập nhật tài liệu/bài tập thành công!', 'Lỗi cập nhật tài liệu/bài tập!');
+});
+
+app.delete('/api/materials/:maTaiLieu', (req, res) => {
+    executeDelete('DELETE FROM tailieu_baitap WHERE MaTaiLieu = ?', [req.params.maTaiLieu], res, 'Xóa tài liệu/bài tập thành công!', 'Lỗi xóa tài liệu/bài tập!');
+});
+
+// ==================== SUBMISSIONS (NOPBAI) ====================
+app.get('/api/submissions', (req, res) => {
+    const query = `
+        SELECT nb.*, s.HoTen as TenSinhVien, tl.TieuDe, tl.Loai
+        FROM nopbai nb
+        LEFT JOIN sinhvien s ON nb.MSSV = s.MSSV
+        LEFT JOIN tailieu_baitap tl ON nb.MaTaiLieu = tl.MaTaiLieu
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy bài nộp!');
+});
+
+app.get('/api/submissions/student/:mssv', (req, res) => {
+    const query = `
+        SELECT nb.*, tl.TieuDe, tl.Loai, tl.HanNop
+        FROM nopbai nb
+        LEFT JOIN tailieu_baitap tl ON nb.MaTaiLieu = tl.MaTaiLieu
+        WHERE nb.MSSV = ?
+    `;
+    executeQuery(query, [req.params.mssv], res, 'Lỗi lấy bài nộp sinh viên!');
+});
+
+app.post('/api/submissions', (req, res) => {
+    const { MaTaiLieu, MSSV, FileUrl, Diem } = req.body;
+    const query = 'INSERT INTO nopbai (MaTaiLieu, MSSV, FileUrl, Diem) VALUES (?, ?, ?, ?)';
+    executeInsert(query, [MaTaiLieu, MSSV, FileUrl, Diem], res, 'Thêm bài nộp thành công!', 'Lỗi thêm bài nộp!');
+});
+
+app.put('/api/submissions/:maNopBai', (req, res) => {
+    const { maNopBai } = req.params;
+    const { MaTaiLieu, MSSV, FileUrl, Diem } = req.body;
+    const query = 'UPDATE nopbai SET MaTaiLieu = ?, MSSV = ?, FileUrl = ?, Diem = ? WHERE MaNopBai = ?';
+    executeUpdate(query, [MaTaiLieu, MSSV, FileUrl, Diem, maNopBai], res, 'Cập nhật bài nộp thành công!', 'Lỗi cập nhật bài nộp!');
+});
+
+app.delete('/api/submissions/:maNopBai', (req, res) => {
+    executeDelete('DELETE FROM nopbai WHERE MaNopBai = ?', [req.params.maNopBai], res, 'Xóa bài nộp thành công!', 'Lỗi xóa bài nộp!');
+});
+
+// ==================== ANNOUNCEMENTS (THONGBAO) ====================
+app.get('/api/announcements', (req, res) => {
+    const query = `
+        SELECT tb.*, u.TaiKhoan as NguoiTaoTen, l.TenLop
+        FROM thongbao tb
+        LEFT JOIN users u ON tb.NguoiTao = u.TaiKhoan
+        LEFT JOIN lophoc l ON tb.MaLop_Nhan = l.MaLop
+        ORDER BY tb.NgayTao DESC
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy thông báo!');
+});
+
+app.get('/api/announcements/class/:maLop', (req, res) => {
+    const query = `
+        SELECT tb.*, u.TaiKhoan as NguoiTaoTen
+        FROM thongbao tb
+        LEFT JOIN users u ON tb.NguoiTao = u.TaiKhoan
+        WHERE tb.MaLop_Nhan = ? OR tb.MaLop_Nhan IS NULL
+        ORDER BY tb.NgayTao DESC
+    `;
+    executeQuery(query, [req.params.maLop], res, 'Lỗi lấy thông báo lớp!');
+});
+
+app.post('/api/announcements', (req, res) => {
+    const { TieuDe, NoiDung, NguoiTao, MaLop_Nhan } = req.body;
+    const query = 'INSERT INTO thongbao (TieuDe, NoiDung, NguoiTao, MaLop_Nhan) VALUES (?, ?, ?, ?)';
+    executeInsert(query, [TieuDe, NoiDung, NguoiTao, MaLop_Nhan], res, 'Thêm thông báo thành công!', 'Lỗi thêm thông báo!');
+});
+
+app.put('/api/announcements/:maThongBao', (req, res) => {
+    const { maThongBao } = req.params;
+    const { TieuDe, NoiDung, NguoiTao, MaLop_Nhan } = req.body;
+    const query = 'UPDATE thongbao SET TieuDe = ?, NoiDung = ?, NguoiTao = ?, MaLop_Nhan = ? WHERE MaThongBao = ?';
+    executeUpdate(query, [TieuDe, NoiDung, NguoiTao, MaLop_Nhan, maThongBao], res, 'Cập nhật thông báo thành công!', 'Lỗi cập nhật thông báo!');
+});
+
+app.delete('/api/announcements/:maThongBao', (req, res) => {
+    executeDelete('DELETE FROM thongbao WHERE MaThongBao = ?', [req.params.maThongBao], res, 'Xóa thông báo thành công!', 'Lỗi xóa thông báo!');
 });
 
 // Khởi chạy server backend
