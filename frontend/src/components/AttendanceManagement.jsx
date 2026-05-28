@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardCheck, Plus, Edit, Trash2, Search, X, Filter, XCircle } from 'lucide-react';
+import { ClipboardCheck, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 
 function AttendanceManagement() {
@@ -14,6 +14,10 @@ function AttendanceManagement() {
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
+    statusFilter: '',
+    dateFilter: ''
+  });
+  const [displayFilters, setDisplayFilters] = useState({
     statusFilter: '',
     dateFilter: ''
   });
@@ -111,11 +115,23 @@ function AttendanceManagement() {
     setSearchTerm(displaySearchTerm);
   };
 
-  const clearFilters = () => {
-    setFilters({ statusFilter: '', dateFilter: '' });
-    setSearchTerm('');
+  const handleApplyFilters = () => {
+    setFilters({ ...displayFilters });
+    setShowFilters(false);
   };
 
+  const handleRefresh = () => {
+    fetchData();
+  };
+
+  const clearFilters = () => {
+    setFilters({ statusFilter: '', dateFilter: '' });
+    setDisplayFilters({ statusFilter: '', dateFilter: '' });
+    setSearchTerm('');
+    setDisplaySearchTerm('');
+  };
+
+  const activeFilterCount = (filters.statusFilter ? 1 : 0) + (filters.dateFilter ? 1 : 0) + (searchTerm ? 1 : 0);
   const hasActiveFilters = filters.statusFilter || filters.dateFilter || searchTerm;
 
   const getStatusColor = (status) => {
@@ -156,23 +172,29 @@ function AttendanceManagement() {
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative flex-1">
+          <div className="relative w-2/3">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Tìm kiếm điểm danh..."
               value={displaySearchTerm}
               onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-24 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
             />
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+            <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${
+                hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
+              }`}
             >
               <Filter className="w-5 h-5" />
-            </motion.button>
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -182,6 +204,15 @@ function AttendanceManagement() {
           >
             <Search className="w-5 h-5" />
             Tìm kiếm
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleRefresh}
+            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <RefreshCw className="w-5 h-5" />
+            Làm mới
           </motion.button>
           {hasActiveFilters && (
             <motion.button
@@ -200,14 +231,14 @@ function AttendanceManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo trạng thái</label>
                 <select
-                  value={filters.statusFilter}
-                  onChange={(e) => setFilters({ ...filters, statusFilter: e.target.value })}
+                  value={displayFilters.statusFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, statusFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
                   <option value="">Tất cả trạng thái</option>
@@ -220,11 +251,29 @@ function AttendanceManagement() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo ngày</label>
                 <input
                   type="date"
-                  value={filters.dateFilter}
-                  onChange={(e) => setFilters({ ...filters, dateFilter: e.target.value })}
+                  value={displayFilters.dateFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, dateFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 />
               </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleApplyFilters}
+                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+              >
+                Áp dụng lọc
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setDisplayFilters({ statusFilter: '', dateFilter: '' })}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Đặt lại
+              </motion.button>
             </div>
           </motion.div>
         )}
@@ -301,11 +350,11 @@ function AttendanceManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">
