@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+<<<<<<< HEAD
 import { Building2, Plus, Edit, Trash2, Search, X, Eye, Users, BookOpen, BarChart3 } from 'lucide-react';
+=======
+>>>>>>> 12aad3335e62d3479eed304ff98fbd292670be42
 import axios from 'axios';
+import { Building2, Plus, Edit, Trash2, Search, X, Users, GraduationCap, BookOpen, Filter, RotateCcw } from 'lucide-react';
+
 
 function FacultyManagement() {
   const [faculties, setFaculties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
+  const [loadingData, setLoadingData] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     MaKhoa: '',
     TenKhoa: ''
@@ -67,6 +74,14 @@ function FacultyManagement() {
     setShowModal(true);
   };
 
+  const handleRefresh = async () => {
+  setLoadingData(true); // Nếu bạn có state này để báo đang tải
+  setSearchTerm('');       // Reset ô input
+  setAppliedSearchTerm(''); // Reset bộ lọc trên bảng
+  await fetchData();       // Tải lại dữ liệu từ API
+  setLoadingData(false);
+};
+  
   const handleDelete = async (maKhoa) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa khoa này?')) {
       try {
@@ -130,14 +145,14 @@ function FacultyManagement() {
   };
 
 
-  const filteredFaculties = faculties.filter(faculty =>
-    faculty.TenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    faculty.MaKhoa.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const filteredFaculties = faculties.filter(faculty =>
+  faculty.TenKhoa.toLowerCase().includes(appliedSearchTerm.toLowerCase()) ||
+  faculty.MaKhoa.toLowerCase().includes(appliedSearchTerm.toLowerCase())
+);
 
-  const handleSearch = () => {
-    setSearchTerm(displaySearchTerm);
-  };
+const handleSearch = () => {
+  setAppliedSearchTerm(searchTerm); // Chỉ khi nhấn nút thì mới cập nhật appliedSearchTerm
+};
 
 
   if (loading) {
@@ -167,6 +182,7 @@ function FacultyManagement() {
       </div>
 
       {/* Search */}
+<<<<<<< HEAD
       <div className="flex gap-3">
         <div className="relative w-1/2">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -181,13 +197,37 @@ function FacultyManagement() {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+=======
+      <div className="flex gap-2 mb-6">
+        <input
+          type="text"
+          placeholder="Nhập tên khoa/mã khoa cần tìm..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="border border-gray-300 rounded px-4 py-2 w-full max-w-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+>>>>>>> 12aad3335e62d3479eed304ff98fbd292670be42
           onClick={handleSearch}
-          className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-400 transition"
         >
+<<<<<<< HEAD
           <Search className="w-5 h-5" />
           Tìm kiếm
         </motion.button>
       </div>
+=======
+          Search
+        </button>
+        <button
+    onClick={handleRefresh}
+    className="bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-400 transition"
+  >
+     Refresh
+  </button>
+        </div>
+        
+>>>>>>> 12aad3335e62d3479eed304ff98fbd292670be42
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
