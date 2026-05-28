@@ -17,7 +17,8 @@ const db = mysql.createConnection({
     database: process.env.DB_NAME || 'qlsv'
 });
 
-// Kiểm tra kết nối DB
+const jwt = require('jsonwebtoken');
+
 db.connect((err) => {
     if (err) {
         console.error('Lỗi kết nối MySQL: ' + err.stack);
@@ -124,10 +125,18 @@ app.post('/api/login', (req, res) => {
                 userResponse.maKhoa = user.MaKhoa;
                 userResponse.tenKhoa = user.TenKhoa;
             }
-
+            const token = jwt.sign(
+                {
+                    id: user.TaiKhoan,
+                    role: roleString
+                },
+                'SECRET_KEY',
+                { expiresIn: '24h' }
+            );
             return res.json({
                 success: true,
                 message: 'Đăng nhập thành công!',
+                token, 
                 user: userResponse
             });
         } else {

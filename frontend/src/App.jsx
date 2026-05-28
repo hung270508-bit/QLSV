@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, GraduationCap, School, ShieldAlert, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import axios from 'axios';
@@ -9,11 +9,15 @@ function App() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [loggedInUser, setLoggedInUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  const [loggedInUser, setLoggedInUser] = useState(() => {
+  const savedUser = localStorage.getItem('user');
+  return savedUser ? JSON.parse(savedUser) : null;
+});
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -27,8 +31,19 @@ function App() {
       });
 
       if (response.data.success) {
-        setMessage({ type: 'success', text: response.data.message });
-        // Set user với format mới từ Backend: { id, username, role, tenQuyen }
+
+        localStorage.setItem('token', response.data.token);
+
+        localStorage.setItem(
+          'user',
+          JSON.stringify(response.data.user)
+        );
+
+        setMessage({
+          type: 'success',
+          text: response.data.message
+        });
+
         setLoggedInUser(response.data.user);
       }
     } catch (error) {
@@ -49,11 +64,14 @@ function App() {
   };
 
   const handleLogout = () => {
-    setLoggedInUser(null);
-    setUsername('');
-    setPassword('');
-    setMessage({ type: '', text: '' });
-  };
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+
+  setLoggedInUser(null);
+  setUsername('');
+  setPassword('');
+  setMessage({ type: '', text: '' });
+};
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
@@ -66,8 +84,12 @@ function App() {
       });
 
       if (response.data.success) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+
         setMessage({ type: 'success', text: response.data.message });
-        setForgotEmail('');
+
+        setLoggedInUser(response.data.user);
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Không thể kết nối đến server!';

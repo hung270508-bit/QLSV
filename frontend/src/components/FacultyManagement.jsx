@@ -140,7 +140,7 @@ const handleSearch = () => {
         </button>
         <button
     onClick={handleRefresh}
-    className="bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-400 transition"
+    className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-400 transition"
   >
      Refresh
   </button>
@@ -149,7 +149,7 @@ const handleSearch = () => {
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>

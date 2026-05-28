@@ -14,7 +14,8 @@
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "react-select": "^5.10.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

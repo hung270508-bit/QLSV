@@ -94,7 +94,7 @@ function AdminDashboard({ user, onLogout }) {
           </div>
 
           {/* Menu Items */}
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeMenu === item.id;
@@ -107,7 +107,7 @@ function AdminDashboard({ user, onLogout }) {
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.97 }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                  className={`w-full flex items-center gap-3 px-2 py-3 rounded-xl transition-all duration-200 ${
                     isActive
                       ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
                       : 'text-gray-600 hover:bg-orange-50 hover:text-orange-500'

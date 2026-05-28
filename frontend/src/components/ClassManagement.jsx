@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+<<<<<<< Updated upstream
 import { Users, Plus, Edit, Trash2, Search, X, Filter } from 'lucide-react';
+=======
+import Select from 'react-select';
+
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw ,RotateCcw} from 'lucide-react';
+>>>>>>> Stashed changes
 import axios from 'axios';
 
 function ClassManagement() {
@@ -11,6 +17,17 @@ function ClassManagement() {
   const [editingClass, setEditingClass] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
+<<<<<<< Updated upstream
+=======
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedFaculty, setSelectedFaculty] = useState(''); 
+  const [filters, setFilters] = useState({
+    facultyFilter: ''
+  });
+  const [displayFilters, setDisplayFilters] = useState({
+    facultyFilter: ''
+  });
+>>>>>>> Stashed changes
   const [formData, setFormData] = useState({
     MaLop: '',
     TenLop: '',
@@ -83,16 +100,58 @@ function ClassManagement() {
       MaKhoa: ''
     });
   };
+<<<<<<< Updated upstream
 
   const filteredClasses = classes.filter(cls =>
     cls.TenLop.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cls.MaLop.toLowerCase().includes(searchTerm.toLowerCase())
   );
+=======
+  
+  const filteredClasses = classes.filter(cls => {
+  const matchesSearch = 
+    cls.TenLop.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cls.MaLop.toLowerCase().includes(searchTerm.toLowerCase());
+  
+  const matchesFaculty = !filters.facultyFilter || cls.MaKhoa === filters.facultyFilter;
+  
+  return matchesSearch && matchesFaculty;
+});
+>>>>>>> Stashed changes
 
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
   };
 
+<<<<<<< Updated upstream
+=======
+  const handleApplyFilters = () => {
+    setFilters({ ...displayFilters });
+    setShowFilters(false);
+  };
+
+  const handleRefresh = () => {
+  setDisplaySearchTerm('');
+  setSearchTerm('');
+
+  setFilters({
+    facultyFilter: ''
+  });
+
+  fetchData();
+  };
+
+  const clearFilters = () => {
+    setFilters({ facultyFilter: '' });
+    setDisplayFilters({ facultyFilter: '' });
+    setSearchTerm('');
+    setDisplaySearchTerm('');
+  };
+
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || searchTerm;
+
+>>>>>>> Stashed changes
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -119,6 +178,7 @@ function ClassManagement() {
         </motion.button>
       </div>
 
+<<<<<<< Updated upstream
       {/* Search */}
       <div className="flex gap-3">
         <div className="relative flex-1">
@@ -148,6 +208,104 @@ function ClassManagement() {
           Tìm kiếm
         </motion.button>
       </div>
+=======
+      {/* Chỉ giữ lại Search và Refresh */}
+<div className="flex gap-3 mb-6">
+  {/* Ô tìm kiếm */}
+  <div className="relative flex-1">
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+    <input
+      type="text"
+      placeholder="Tìm kiếm lớp học..."
+      value={displaySearchTerm}
+      onChange={(e) => setDisplaySearchTerm(e.target.value)}
+      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all"
+    />
+  </div>
+  <div className="w-64">
+  <Select
+    options={[
+      { value: '', label: 'Tất cả khoa' },
+      ...faculties.map((f) => ({
+        value: f.MaKhoa,
+        label: f.TenKhoa
+      }))
+    ]}
+    value={
+      filters.facultyFilter
+        ? {
+            value: filters.facultyFilter,
+            label:
+              faculties.find(
+                (f) => f.MaKhoa === filters.facultyFilter
+              )?.TenKhoa
+          }
+        : { value: '', label: 'Tất cả khoa' }
+    }
+    onChange={(selected) =>
+      setFilters({
+        ...filters,
+        facultyFilter: selected.value
+      })
+    }
+    placeholder="Chọn khoa..."
+    maxMenuHeight={180}
+    styles={{
+  control: (base, state) => ({
+    ...base,
+    minHeight: 48,
+    borderRadius: 14,
+    borderColor: state.isFocused
+      ? '#f97316'
+      : '#d1d5db',
+    boxShadow: state.isFocused
+      ? '0 0 0 2px rgba(249,115,22,0.2)'
+      : 'none'
+  }),
+
+  menu: (base) => ({
+    ...base,
+    borderRadius: 14,
+    overflow: 'hidden'
+  }),
+
+  menuList: (base) => ({
+    ...base,
+    maxHeight: 180,
+    padding: 0
+  }),
+
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: 'white',
+    color: '#111827',
+
+    ':active': {
+      backgroundColor: '#f3f4f6'
+    }
+  })
+}}
+  />
+</div>
+  {/* Nút Tìm kiếm */}
+  <button
+    onClick={handleSearch}
+    className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl hover:bg-orange-600 transition-all font-semibold"
+  >
+    <Search className="w-5 h-5" />
+    Tìm kiếm
+  </button>
+
+  {/* Nút Làm mới */}
+  <button
+    onClick={handleRefresh}
+    className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 transition-all font-semibold"
+  >
+    <RotateCcw className="w-5 h-5" />
+    Làm mới
+  </button>
+</div>
+>>>>>>> Stashed changes
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">

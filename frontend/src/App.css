@@ -182,3 +182,22 @@
     border-right-color: var(--border);
   }
 }
+
+.faculty-select {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Scrollbar */
+.faculty-select::-webkit-scrollbar {
+  width: 6px;
+}
+
+.faculty-select::-webkit-scrollbar-thumb {
+  background: #f97316;
+  border-radius: 10px;
+}
+
+.faculty-select::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
