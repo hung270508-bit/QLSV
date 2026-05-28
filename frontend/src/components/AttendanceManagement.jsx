@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardCheck, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { ClipboardCheck, Plus, Edit, Trash2, Search, X, Filter, XCircle, Download, CheckCircle, BarChart3 } from 'lucide-react';
 import axios from 'axios';
 
 function AttendanceManagement() {
@@ -20,6 +20,18 @@ function AttendanceManagement() {
   const [displayFilters, setDisplayFilters] = useState({
     statusFilter: '',
     dateFilter: ''
+  });
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [bulkAttendance, setBulkAttendance] = useState([]);
+  const [showStats, setShowStats] = useState(false);
+  const [attendanceStats, setAttendanceStats] = useState({
+    total: 0,
+    present: 0,
+    absent: 0,
+    excused: 0,
+    attendanceRate: 0
   });
   const [formData, setFormData] = useState({
     MSSV: '',
@@ -120,9 +132,6 @@ function AttendanceManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ statusFilter: '', dateFilter: '' });
@@ -143,6 +152,94 @@ function AttendanceManagement() {
     }
   };
 
+  const handleBulkCheckIn = () => {
+    setShowBulkModal(true);
+    setBulkAttendance(students.map(student => ({
+      MSSV: student.MSSV,
+      HoTen: student.HoTen,
+      TrangThai: 'Có mặt'
+    })));
+  };
+
+  const handleCloseBulkModal = () => {
+    setShowBulkModal(false);
+    setSelectedSchedule('');
+    setSelectedDate('');
+    setBulkAttendance([]);
+  };
+
+  const handleBulkAttendanceChange = (mssv, status) => {
+    setBulkAttendance(prev => 
+      prev.map(item => 
+        item.MSSV === mssv ? { ...item, TrangThai: status } : item
+      )
+    );
+  };
+
+  const handleBulkSubmit = async () => {
+    if (!selectedSchedule || !selectedDate) {
+      alert('Vui lòng chọn lịch học và ngày điểm danh!');
+      return;
+    }
+
+    try {
+      const attendanceData = bulkAttendance.map(item => ({
+        MSSV: item.MSSV,
+        MaLichHoc: selectedSchedule,
+        NgayDiemDanh: selectedDate,
+        TrangThai: item.TrangThai
+      }));
+
+      await axios.post('http://localhost:5000/api/attendance/bulk', { attendance: attendanceData });
+      fetchData();
+      handleCloseBulkModal();
+      alert('Điểm danh thành công!');
+    } catch (error) {
+      console.error('Error saving bulk attendance:', error);
+      alert('Lỗi khi lưu điểm danh!');
+    }
+  };
+
+  const handleCalculateStats = () => {
+    const total = attendance.length;
+    const present = attendance.filter(a => a.TrangThai === 'Có mặt').length;
+    const absent = attendance.filter(a => a.TrangThai === 'Vắng mặt').length;
+    const excused = attendance.filter(a => a.TrangThai === 'Có phép').length;
+    const attendanceRate = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+
+    setAttendanceStats({
+      total,
+      present,
+      absent,
+      excused,
+      attendanceRate
+    });
+    setShowStats(true);
+  };
+
+  const handleExport = () => {
+    const csvContent = [
+      ['MSSV', 'Sinh viên', 'Môn học', 'Ngày điểm danh', 'Trạng thái'],
+      ...filteredAttendance.map(att => [
+        att.MSSV,
+        att.TenSinhVien || 'N/A',
+        att.TenMonHoc || 'N/A',
+        att.NgayDiemDanh ? new Date(att.NgayDiemDanh).toLocaleDateString('vi-VN') : 'N/A',
+        att.TrangThai || 'N/A'
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'diem_danh.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -158,21 +255,50 @@ function AttendanceManagement() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý điểm danh</h2>
           <p className="text-gray-500">Thêm, sửa, xóa điểm danh sinh viên</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm điểm danh
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleBulkCheckIn}
+            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <CheckCircle className="w-5 h-5" />
+            Điểm danh hàng loạt
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleCalculateStats}
+            className="flex items-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <BarChart3 className="w-5 h-5" />
+            Thống kê
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Download className="w-5 h-5" />
+            Xuất CSV
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm điểm danh
+          </motion.button>
+        </div>
       </div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -205,15 +331,6 @@ function AttendanceManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -231,7 +348,7 @@ function AttendanceManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -447,6 +564,155 @@ function AttendanceManagement() {
                 </motion.button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Bulk Check-in Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Điểm danh hàng loạt</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCloseBulkModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Lịch học</label>
+                  <select
+                    value={selectedSchedule}
+                    onChange={(e) => setSelectedSchedule(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  >
+                    <option value="">Chọn lịch học</option>
+                    {schedules.map((schedule) => (
+                      <option key={schedule.MaLichHoc} value={schedule.MaLichHoc}>
+                        {schedule.TenMonHoc} - {schedule.TenLop}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày điểm danh</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkAttendance.map((student) => (
+                    <tr key={student.MSSV} className="border-b border-gray-100">
+                      <td className="py-3 px-4 text-sm text-gray-800">{student.MSSV}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600">{student.HoTen}</td>
+                      <td className="py-3 px-4 text-sm">
+                        <select
+                          value={student.TrangThai}
+                          onChange={(e) => handleBulkAttendanceChange(student.MSSV, e.target.value)}
+                          className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors"
+                        >
+                          <option value="Có mặt">Có mặt</option>
+                          <option value="Vắng mặt">Vắng mặt</option>
+                          <option value="Có phép">Có phép</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleBulkSubmit}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
+              >
+                Lưu điểm danh
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleCloseBulkModal}
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Hủy
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Statistics Modal */}
+      {showStats && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Thống kê điểm danh</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowStats(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-blue-50 p-6 rounded-xl text-center">
+                <div className="text-3xl font-bold text-blue-600">{attendanceStats.total}</div>
+                <div className="text-sm text-gray-600">Tổng điểm danh</div>
+              </div>
+              <div className="bg-green-50 p-6 rounded-xl text-center">
+                <div className="text-3xl font-bold text-green-600">{attendanceStats.present}</div>
+                <div className="text-sm text-gray-600">Có mặt</div>
+              </div>
+              <div className="bg-red-50 p-6 rounded-xl text-center">
+                <div className="text-3xl font-bold text-red-600">{attendanceStats.absent}</div>
+                <div className="text-sm text-gray-600">Vắng mặt</div>
+              </div>
+              <div className="bg-yellow-50 p-6 rounded-xl text-center">
+                <div className="text-3xl font-bold text-yellow-600">{attendanceStats.excused}</div>
+                <div className="text-sm text-gray-600">Có phép</div>
+              </div>
+            </div>
+
+            <div className="mt-6 bg-purple-50 p-6 rounded-xl text-center">
+              <div className="text-4xl font-bold text-purple-600">{attendanceStats.attendanceRate}%</div>
+              <div className="text-sm text-gray-600">Tỷ lệ đi học</div>
+            </div>
           </motion.div>
         </div>
       )}

@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -32,6 +34,46 @@ const executeQuery = (query, params, res, errorMessage) => {
         if (err) return res.status(500).json({ success: false, message: errorMessage });
         res.json(results);
     });
+};
+
+// Validation helper functions
+const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+};
+
+const validatePhone = (phone) => {
+    const re = /^[0-9]{10,15}$/;
+    return re.test(phone);
+};
+
+const validateMSSV = (mssv) => {
+    const re = /^[0-9]{6,20}$/;
+    return re.test(mssv);
+};
+
+// Academic calculation functions
+const calculateGPA = (diemTB) => {
+    if (diemTB >= 8.5) return 4.0;
+    if (diemTB >= 7.0) return 3.0;
+    if (diemTB >= 5.5) return 2.0;
+    if (diemTB >= 4.0) return 1.0;
+    return 0.0;
+};
+
+const calculateAcademicStanding = (gpa) => {
+    if (gpa >= 3.6) return 'Giỏi';
+    if (gpa >= 3.2) return 'Khá';
+    if (gpa >= 2.5) return 'Trung bình';
+    if (gpa >= 2.0) return 'Đạt';
+    return 'Cảnh báo học vụ';
+};
+
+const calculateGradeAverage = (diemQuaTrinh, diemGiuaKy, diemCuoiKy) => {
+    const qt = parseFloat(diemQuaTrinh) || 0;
+    const gk = parseFloat(diemGiuaKy) || 0;
+    const ck = parseFloat(diemCuoiKy) || 0;
+    return ((qt * 0.2) + (gk * 0.3) + (ck * 0.5)).toFixed(2);
 };
 
 const executeInsert = (query, params, res, successMessage, errorMessage) => {
@@ -77,11 +119,11 @@ app.post('/api/login', (req, res) => {
         LEFT JOIN giangvien g ON u.TaiKhoan = g.MaGiangVien
         LEFT JOIN lophoc l ON s.MaLop = l.MaLop
         LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa
-        WHERE u.TaiKhoan = ? AND u.password = ?
+        WHERE u.TaiKhoan = ?
     `;
 
     console.log('Login attempt for username:', username);
-    db.query(query, [username, password], (err, results) => {
+    db.query(query, [username], async (err, results) => {
         if (err) {
             console.error('Lỗi truy vấn SQL: ', err);
             console.error('SQL Error Code:', err.code);
@@ -92,44 +134,58 @@ app.post('/api/login', (req, res) => {
 
         if (results.length > 0) {
             const user = results[0];
-
-            // Map MaQuyen sang string để FE xử lý giao diện
-            let roleString = 'student';
-            if (user.MaQuyen === 1) roleString = 'admin';
-            else if (user.MaQuyen === 2) roleString = 'teacher';
-
-            // Xây dựng user object với thông tin đầy đủ theo role
-            const userResponse = {
-                id: user.TaiKhoan,
-                username: user.TaiKhoan,
-                role: roleString,
-                tenQuyen: user.TenQuyen
-            };
-
-            // Thêm thông tin chi tiết theo role
-            if (user.MaQuyen === 3) {
-                // Sinh viên
-                userResponse.hoTen = user.TenSinhVien;
-                userResponse.ngaySinh = user.NgaySinh;
-                userResponse.gioiTinh = user.GioiTinh;
-                userResponse.email = user.EmailSV;
-                userResponse.soDienThoai = user.SDTSV;
-                userResponse.maLop = user.MaLop;
-                userResponse.tenLop = user.TenLop;
-            } else if (user.MaQuyen === 2) {
-                // Giảng viên
-                userResponse.hoTen = user.TenGiangVien;
-                userResponse.email = user.EmailGV;
-                userResponse.soDienThoai = user.SDTGV;
-                userResponse.maKhoa = user.MaKhoa;
-                userResponse.tenKhoa = user.TenKhoa;
+            
+            // Check if password is hashed (bcrypt) or plain text (for backward compatibility)
+            let passwordMatch = false;
+            if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+                // Hashed password - use bcrypt compare
+                passwordMatch = await bcrypt.compare(password, user.password);
+            } else {
+                // Plain text password - direct comparison (for existing users)
+                passwordMatch = (password === user.password);
             }
 
-            return res.json({
-                success: true,
-                message: 'Đăng nhập thành công!',
-                user: userResponse
-            });
+            if (passwordMatch) {
+                // Map MaQuyen sang string để FE xử lý giao diện
+                let roleString = 'student';
+                if (user.MaQuyen === 1) roleString = 'admin';
+                else if (user.MaQuyen === 2) roleString = 'teacher';
+
+                // Xây dựng user object với thông tin đầy đủ theo role
+                const userResponse = {
+                    id: user.TaiKhoan,
+                    username: user.TaiKhoan,
+                    role: roleString,
+                    tenQuyen: user.TenQuyen
+                };
+
+                // Thêm thông tin chi tiết theo role
+                if (user.MaQuyen === 3) {
+                    // Sinh viên
+                    userResponse.hoTen = user.TenSinhVien;
+                    userResponse.ngaySinh = user.NgaySinh;
+                    userResponse.gioiTinh = user.GioiTinh;
+                    userResponse.email = user.EmailSV;
+                    userResponse.soDienThoai = user.SDTSV;
+                    userResponse.maLop = user.MaLop;
+                    userResponse.tenLop = user.TenLop;
+                } else if (user.MaQuyen === 2) {
+                    // Giảng viên
+                    userResponse.hoTen = user.TenGiangVien;
+                    userResponse.email = user.EmailGV;
+                    userResponse.soDienThoai = user.SDTGV;
+                    userResponse.maKhoa = user.MaKhoa;
+                    userResponse.tenKhoa = user.TenKhoa;
+                }
+
+                return res.json({
+                    success: true,
+                    message: 'Đăng nhập thành công!',
+                    user: userResponse
+                });
+            } else {
+                return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác!' });
+            }
         } else {
             return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác!' });
         }
@@ -190,6 +246,65 @@ app.get('/api/dashboard/stats', (req, res) => {
     });
 });
 
+// Dashboard statistics by faculty
+app.get('/api/dashboard/stats-by-faculty', (req, res) => {
+    const query = `
+        SELECT k.MaKhoa, k.TenKhoa,
+               (SELECT COUNT(*) FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE l.MaKhoa = k.MaKhoa) as studentCount,
+               (SELECT COUNT(*) FROM giangvien WHERE MaKhoa = k.MaKhoa) as teacherCount,
+               (SELECT COUNT(*) FROM lophoc WHERE MaKhoa = k.MaKhoa) as classCount
+        FROM khoa k
+    `;
+    executeQuery(query, [], res, 'Lỗi khi lấy thống kê theo khoa!');
+});
+
+// Academic standing statistics
+app.get('/api/dashboard/academic-standing', (req, res) => {
+    const query = `
+        SELECT 
+            COUNT(*) as totalStudents,
+            SUM(CASE WHEN gpa >= 3.6 THEN 1 ELSE 0 END) as excellent,
+            SUM(CASE WHEN gpa >= 3.2 AND gpa < 3.6 THEN 1 ELSE 0 END) as veryGood,
+            SUM(CASE WHEN gpa >= 2.5 AND gpa < 3.2 THEN 1 ELSE 0 END) as good,
+            SUM(CASE WHEN gpa >= 2.0 AND gpa < 2.5 THEN 1 ELSE 0 END) as average,
+            SUM(CASE WHEN gpa < 2.0 THEN 1 ELSE 0 END) as warning
+        FROM (
+            SELECT 
+                s.MSSV,
+                ((SUM((d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) * mh.SoTinChi)) / 
+                 SUM(mh.SoTinChi)) as gpa
+            FROM sinhvien s
+            LEFT JOIN diem d ON s.MSSV = d.MSSV
+            LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+            GROUP BY s.MSSV
+        ) as student_gpa
+    `;
+    
+    db.query(query, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi lấy thống kê học vụ!' });
+        res.json(results[0] || { totalStudents: 0, excellent: 0, veryGood: 0, good: 0, average: 0, warning: 0 });
+    });
+});
+
+// Attendance statistics
+app.get('/api/dashboard/attendance-stats', (req, res) => {
+    const query = `
+        SELECT 
+            COUNT(*) as totalRecords,
+            SUM(CASE WHEN TrangThai = 'Có mặt' THEN 1 ELSE 0 END) as present,
+            SUM(CASE WHEN TrangThai = 'Vắng mặt' THEN 1 ELSE 0 END) as absent,
+            SUM(CASE WHEN TrangThai = 'Có phép' THEN 1 ELSE 0 END) as excused
+        FROM diemdanh
+    `;
+    
+    db.query(query, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi lấy thống kê điểm danh!' });
+        const data = results[0] || { totalRecords: 0, present: 0, absent: 0, excused: 0 };
+        const percentage = data.totalRecords > 0 ? ((data.present / data.totalRecords) * 100).toFixed(2) : 0;
+        res.json({ ...data, attendanceRate: parseFloat(percentage) });
+    });
+});
+
 app.get('/api/dashboard/recent-students', (req, res) => {
     const query = `
         SELECT s.MSSV, s.HoTen, l.TenLop, u.NgayTao 
@@ -215,20 +330,44 @@ app.get('/api/students', (req, res) => {
     executeQuery(query, [], res, 'Lỗi khi lấy danh sách sinh viên!');
 });
 
-app.post('/api/students', (req, res) => {
+app.post('/api/students', async (req, res) => {
     const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop } = req.body;
-                                                                                                                                                                                                                
-    // MaQuyen = 3 (Sinh viên)
-    const userQuery = 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)';
-    db.query(userQuery, [MSSV, '123456aA@'], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi tạo tài khoản! Có thể MSSV đã tồn tại.' });
+
+    // Validation
+    if (!validateMSSV(MSSV)) {
+        return res.status(400).json({ success: false, message: 'MSSV không hợp lệ! Phải là 6-20 chữ số.' });
+    }
+    if (Email && !validateEmail(Email)) {
+        return res.status(400).json({ success: false, message: 'Email không hợp lệ!' });
+    }
+    if (SoDienThoai && !validatePhone(SoDienThoai)) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ! Phải là 10-15 chữ số.' });
+    }
+    if (!HoTen || HoTen.trim().length < 2) {
+        return res.status(400).json({ success: false, message: 'Họ tên không được để trống!' });
+    }
+    if (!MaLop) {
+        return res.status(400).json({ success: false, message: 'Vui lòng chọn lớp!' });
+    }
+
+    try {
+        // Hash password
+        const hashedPassword = await bcrypt.hash('123456aA@', saltRounds);
         
-        const studentQuery = 'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop) VALUES (?, ?, ?, ?, ?, ?, ?)';
-        db.query(studentQuery, [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi khi thêm sinh viên!' });
-            res.json({ success: true, message: 'Thêm sinh viên thành công!' });
+        // MaQuyen = 3 (Sinh viên)
+        const userQuery = 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)';
+        db.query(userQuery, [MSSV, hashedPassword], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi khi tạo tài khoản! Có thể MSSV đã tồn tại.' });
+            
+            const studentQuery = 'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop) VALUES (?, ?, ?, ?, ?, ?, ?)';
+            db.query(studentQuery, [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Lỗi khi thêm sinh viên!' });
+                res.json({ success: true, message: 'Thêm sinh viên thành công!' });
+            });
         });
-    });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Lỗi khi mã hóa mật khẩu!' });
+    }
 });
 
 app.put('/api/students/:mssv', (req, res) => {
@@ -255,20 +394,41 @@ app.get('/api/teachers', (req, res) => {
     executeQuery(query, [], res, 'Lỗi lấy giảng viên!');
 });
 
-app.post('/api/teachers', (req, res) => {
+app.post('/api/teachers', async (req, res) => {
     const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa } = req.body;
-    
-    // MaQuyen = 2 (Giảng viên)
-    const userQuery = 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 2)';
-    db.query(userQuery, [MaGiangVien, 'gv@2025'], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo tài khoản GV!' });
+
+    // Validation
+    if (!MaGiangVien || MaGiangVien.trim().length < 2) {
+        return res.status(400).json({ success: false, message: 'Mã giảng viên không được để trống!' });
+    }
+    if (Email && !validateEmail(Email)) {
+        return res.status(400).json({ success: false, message: 'Email không hợp lệ!' });
+    }
+    if (SoDienThoai && !validatePhone(SoDienThoai)) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ! Phải là 10-15 chữ số.' });
+    }
+    if (!HoTen || HoTen.trim().length < 2) {
+        return res.status(400).json({ success: false, message: 'Họ tên không được để trống!' });
+    }
+
+    try {
+        // Hash password
+        const hashedPassword = await bcrypt.hash('gv@2025', saltRounds);
         
-        const teacherQuery = 'INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa) VALUES (?, ?, ?, ?, ?)';
-        db.query(teacherQuery, [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi khi thêm giảng viên!' });
-            res.json({ success: true, message: 'Thêm giảng viên thành công!' });
+        // MaQuyen = 2 (Giảng viên)
+        const userQuery = 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 2)';
+        db.query(userQuery, [MaGiangVien, hashedPassword], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo tài khoản GV!' });
+            
+            const teacherQuery = 'INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa) VALUES (?, ?, ?, ?, ?)';
+            db.query(teacherQuery, [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Lỗi khi thêm giảng viên!' });
+                res.json({ success: true, message: 'Thêm giảng viên thành công!' });
+            });
         });
-    });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Lỗi khi mã hóa mật khẩu!' });
+    }
 });
 
 app.put('/api/teachers/:maGV', (req, res) => {
@@ -303,14 +463,33 @@ app.delete('/api/faculties/:maKhoa', (req, res) => {
     executeDelete('DELETE FROM khoa WHERE MaKhoa = ?', [req.params.maKhoa], res, 'Xóa khoa thành công!', 'Lỗi xóa khoa!');
 });
 
+// Faculty details APIs
 app.get('/api/faculties/:maKhoa/teachers', (req, res) => {
     const query = `
-        SELECT g.MaGiangVien, g.HoTen, g.Email, g.SoDienThoai, g.MaKhoa, k.TenKhoa 
-        FROM giangvien g 
-        LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa
-        WHERE g.MaKhoa = ?
+        SELECT gv.*
+        FROM giangvien gv
+        WHERE gv.MaKhoa = ?
     `;
-    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy danh sách giảng viên theo khoa!');
+    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy giảng viên của khoa!');
+});
+
+app.get('/api/faculties/:maKhoa/students', (req, res) => {
+    const query = `
+        SELECT sv.*, l.TenLop
+        FROM sinhvien sv
+        LEFT JOIN lophoc l ON sv.MaLop = l.MaLop
+        WHERE l.MaKhoa = ?
+    `;
+    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy sinh viên của khoa!');
+});
+
+app.get('/api/faculties/:maKhoa/classes', (req, res) => {
+    const query = `
+        SELECT l.*, (SELECT COUNT(*) FROM sinhvien sv WHERE sv.MaLop = l.MaLop) as SoSinhVien
+        FROM lophoc l
+        WHERE l.MaKhoa = ?
+    `;
+    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy lớp của khoa!');
 });
 
 app.get('/api/faculties/:maKhoa/students', (req, res) => {
@@ -353,6 +532,28 @@ app.delete('/api/subjects/:maMH', (req, res) => {
     executeDelete('DELETE FROM monhoc WHERE MaMonHoc = ?', [req.params.maMH], res, 'Xóa môn học thành công!', 'Lỗi xóa môn học!');
 });
 
+// Subject details APIs
+app.get('/api/subjects/:maMH/classes', (req, res) => {
+    const query = `
+        SELECT l.*, (SELECT COUNT(*) FROM sinhvien sv WHERE sv.MaLop = l.MaLop) as SoSinhVien
+        FROM lophoc l
+        INNER JOIN phanconggiangday pc ON l.MaLop = pc.MaLop
+        WHERE pc.MaMonHoc = ?
+        GROUP BY l.MaLop
+    `;
+    executeQuery(query, [req.params.maMH], res, 'Lỗi lấy lớp của môn học!');
+});
+
+app.get('/api/subjects/:maMH/teachers', (req, res) => {
+    const query = `
+        SELECT DISTINCT gv.*
+        FROM giangvien gv
+        INNER JOIN phanconggiangday pc ON gv.MaGiangVien = pc.MaGiangVien
+        WHERE pc.MaMonHoc = ?
+    `;
+    executeQuery(query, [req.params.maMH], res, 'Lỗi lấy giảng viên của môn học!');
+});
+
 // ==================== CLASSES (LOPHOC) ====================
 app.get('/api/classes', (req, res) => {
     const query = `
@@ -387,6 +588,186 @@ app.get('/api/users', (req, res) => {
 
 app.delete('/api/users/:taiKhoan', (req, res) => {
     executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.taiKhoan], res, 'Xóa tài khoản thành công!', 'Lỗi xóa tài khoản!');
+});
+
+// Reset password
+app.post('/api/users/:taiKhoan/reset-password', async (req, res) => {
+    const { taiKhoan } = req.params;
+    const { newPassword } = req.body;
+    
+    if (!newPassword) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập mật khẩu mới!' });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        const query = 'UPDATE users SET password = ? WHERE TaiKhoan = ?';
+        executeUpdate(query, [hashedPassword, taiKhoan], res, 'Đặt lại mật khẩu thành công!', 'Lỗi khi đặt lại mật khẩu!');
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Lỗi khi mã hóa mật khẩu!' });
+    }
+});
+
+// ==================== STUDENT DETAILS ====================
+app.get('/api/students/:mssv/details', (req, res) => {
+    const { mssv } = req.params;
+    const query = `
+        SELECT s.*, l.TenLop, k.TenKhoa
+        FROM sinhvien s
+        LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+        LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa
+        WHERE s.MSSV = ?
+    `;
+    executeQuery(query, [mssv], res, 'Lỗi khi lấy chi tiết sinh viên!');
+});
+
+app.get('/api/students/:mssv/schedule', (req, res) => {
+    const { mssv } = req.params;
+    const query = `
+        SELECT lh.*, pc.MaMonHoc, pc.MaLop, pc.HocKy, mh.TenMonHoc, gv.HoTen as TenGiangVien
+        FROM lichhoc lh
+        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
+        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
+        WHERE pc.MaLop = (SELECT MaLop FROM sinhvien WHERE MSSV = ?)
+    `;
+    executeQuery(query, [mssv], res, 'Lỗi khi lấy lịch học sinh viên!');
+});
+
+// ==================== TEACHER DETAILS ====================
+app.get('/api/teachers/:maGV/details', (req, res) => {
+    const { maGV } = req.params;
+    const query = `
+        SELECT g.*, k.TenKhoa
+        FROM giangvien g
+        LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa
+        WHERE g.MaGiangVien = ?
+    `;
+    executeQuery(query, [maGV], res, 'Lỗi khi lấy chi tiết giảng viên!');
+});
+
+app.get('/api/teachers/:maGV/teaching-schedule', (req, res) => {
+    const { maGV } = req.params;
+    const query = `
+        SELECT lh.*, pc.MaMonHoc, pc.MaLop, pc.HocKy, mh.TenMonHoc, l.TenLop
+        FROM lichhoc lh
+        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
+        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
+        WHERE pc.MaGiangVien = ?
+    `;
+    executeQuery(query, [maGV], res, 'Lỗi khi lấy lịch giảng dạy!');
+});
+
+app.get('/api/teachers/:maGV/teaching-load', (req, res) => {
+    const { maGV } = req.params;
+    const query = `
+        SELECT pc.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, pc.MaLop, l.TenLop, pc.HocKy
+        FROM phanconggiangday pc
+        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
+        WHERE pc.MaGiangVien = ?
+    `;
+    executeQuery(query, [maGV], res, 'Lỗi khi lấy tải giảng dạy!');
+});
+
+// ==================== BULK OPERATIONS ====================
+// Bulk insert grades
+app.post('/api/grades/bulk', (req, res) => {
+    const { grades } = req.body; // Array of grade objects
+    
+    if (!Array.isArray(grades) || grades.length === 0) {
+        return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ!' });
+    }
+
+    const query = 'INSERT INTO diem (MSSV, MaMonHoc, HocKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy) VALUES (?, ?, ?, ?, ?, ?)';
+    
+    let completed = 0;
+    let errors = [];
+
+    grades.forEach((grade, index) => {
+        db.query(query, [grade.MSSV, grade.MaMonHoc, grade.HocKy, grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy], (err) => {
+            if (err) errors.push({ index, error: err.message });
+            completed++;
+
+            if (completed === grades.length) {
+                if (errors.length > 0) {
+                    res.status(207).json({ success: true, message: 'Nhập điểm thành công với một số lỗi!', errors });
+                } else {
+                    res.json({ success: true, message: 'Nhập điểm hàng loạt thành công!' });
+                }
+            }
+        });
+    });
+});
+
+// Bulk insert attendance
+app.post('/api/attendance/bulk', (req, res) => {
+    const { attendance } = req.body; // Array of attendance objects
+    
+    if (!Array.isArray(attendance) || attendance.length === 0) {
+        return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ!' });
+    }
+
+    const query = 'INSERT INTO diemdanh (MaLichHoc, MSSV, NgayDiemDanh, TrangThai) VALUES (?, ?, ?, ?)';
+    
+    let completed = 0;
+    let errors = [];
+
+    attendance.forEach((att, index) => {
+        db.query(query, [att.MaLichHoc, att.MSSV, att.NgayDiemDanh, att.TrangThai], (err) => {
+            if (err) errors.push({ index, error: err.message });
+            completed++;
+
+            if (completed === attendance.length) {
+                if (errors.length > 0) {
+                    res.status(207).json({ success: true, message: 'Điểm danh thành công với một số lỗi!', errors });
+                } else {
+                    res.json({ success: true, message: 'Điểm danh hàng loạt thành công!' });
+                }
+            }
+        });
+    });
+});
+
+// ==================== CLASS DETAILS ====================
+app.get('/api/classes/:maLop/students', (req, res) => {
+    const { maLop } = req.params;
+    const query = `
+        SELECT s.*, l.TenLop
+        FROM sinhvien s
+        LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+        WHERE s.MaLop = ?
+    `;
+    executeQuery(query, [maLop], res, 'Lỗi khi lấy danh sách sinh viên lớp!');
+});
+
+app.get('/api/classes/:maLop/schedule', (req, res) => {
+    const { maLop } = req.params;
+    const query = `
+        SELECT lh.*, pc.MaMonHoc, pc.HocKy, mh.TenMonHoc, gv.HoTen as TenGiangVien
+        FROM lichhoc lh
+        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
+        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
+        WHERE pc.MaLop = ?
+    `;
+    executeQuery(query, [maLop], res, 'Lỗi khi lấy lịch học lớp!');
+});
+
+app.get('/api/classes/:maLop/grade-stats', (req, res) => {
+    const { maLop } = req.params;
+    const query = `
+        SELECT d.MaMonHoc, mh.TenMonHoc, 
+               AVG((d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5)) as average,
+               COUNT(*) as studentCount
+        FROM diem d
+        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
+        WHERE s.MaLop = ?
+        GROUP BY d.MaMonHoc, mh.TenMonHoc
+    `;
+    executeQuery(query, [maLop], res, 'Lỗi khi lấy thống kê điểm lớp!');
 });
 
 // ==================== TEACHING ASSIGNMENTS (PHANCONGGIANGDAY) ====================
@@ -487,6 +868,231 @@ app.delete('/api/grades/:maDiem', (req, res) => {
     executeDelete('DELETE FROM diem WHERE MaDiem = ?', [req.params.maDiem], res, 'Xóa điểm thành công!', 'Lỗi xóa điểm!');
 });
 
+// ==================== GRADE STATISTICS ====================
+app.get('/api/grades/statistics/:maMonHoc', (req, res) => {
+    const { maMonHoc } = req.params;
+    const query = `
+        SELECT d.DiemQuaTrinh, d.DiemGiuaKy, d.DiemCuoiKy
+        FROM diem d
+        WHERE d.MaMonHoc = ?
+    `;
+    
+    db.query(query, [maMonHoc], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi lấy thống kê điểm!' });
+        
+        if (results.length === 0) {
+            return res.json({ 
+                success: true, 
+                totalStudents: 0,
+                average: 0,
+                highest: 0,
+                lowest: 0,
+                passRate: 0,
+                gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 }
+            });
+        }
+
+        const averages = results.map(grade => {
+            return parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy));
+        });
+
+        const sum = averages.reduce((a, b) => a + b, 0);
+        const average = (sum / averages.length).toFixed(2);
+        const highest = Math.max(...averages).toFixed(2);
+        const lowest = Math.min(...averages).toFixed(2);
+        const passed = averages.filter(a => a >= 4.0).length;
+        const passRate = ((passed / averages.length) * 100).toFixed(2);
+
+        const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+        averages.forEach(avg => {
+            if (avg >= 8.5) gradeDistribution.A++;
+            else if (avg >= 7.0) gradeDistribution.B++;
+            else if (avg >= 5.5) gradeDistribution.C++;
+            else if (avg >= 4.0) gradeDistribution.D++;
+            else gradeDistribution.F++;
+        });
+
+        res.json({
+            success: true,
+            totalStudents: results.length,
+            average: parseFloat(average),
+            highest: parseFloat(highest),
+            lowest: parseFloat(lowest),
+            passRate: parseFloat(passRate),
+            gradeDistribution
+        });
+    });
+});
+
+app.get('/api/grades/class-averages/:hocKy', (req, res) => {
+    const { hocKy } = req.params;
+    const query = `
+        SELECT d.MaMonHoc, mh.TenMonHoc, d.DiemQuaTrinh, d.DiemGiuaKy, d.DiemCuoiKy
+        FROM diem d
+        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        WHERE d.HocKy = ?
+    `;
+    
+    db.query(query, [hocKy], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi lấy điểm trung bình lớp!' });
+        
+        if (results.length === 0) {
+            return res.json({ success: true, classAverages: [] });
+        }
+
+        const subjectGroups = {};
+        results.forEach(grade => {
+            if (!subjectGroups[grade.MaMonHoc]) {
+                subjectGroups[grade.MaMonHoc] = {
+                    MaMonHoc: grade.MaMonHoc,
+                    TenMonHoc: grade.TenMonHoc,
+                    grades: []
+                };
+            }
+            subjectGroups[grade.MaMonHoc].grades.push(
+                parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy))
+            );
+        });
+
+        const classAverages = Object.values(subjectGroups).map(subject => {
+            const sum = subject.grades.reduce((a, b) => a + b, 0);
+            const average = (sum / subject.grades.length).toFixed(2);
+            return {
+                MaMonHoc: subject.MaMonHoc,
+                TenMonHoc: subject.TenMonHoc,
+                average: parseFloat(average),
+                studentCount: subject.grades.length
+            };
+        });
+
+        res.json({ success: true, classAverages });
+    });
+});
+
+// ==================== ACADEMIC CALCULATIONS (GPA & ACADEMIC STANDING) ====================
+app.get('/api/academic/gpa/:mssv', (req, res) => {
+    const { mssv } = req.params;
+    const query = `
+        SELECT d.DiemQuaTrinh, d.DiemGiuaKy, d.DiemCuoiKy, mh.SoTinChi, d.HocKy
+        FROM diem d
+        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        WHERE d.MSSV = ?
+    `;
+    
+    db.query(query, [mssv], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi tính GPA!' });
+        
+        if (results.length === 0) {
+            return res.json({ 
+                success: true, 
+                gpa: 0, 
+                totalCredits: 0, 
+                academicStanding: 'Chưa có dữ liệu',
+                semesterGPA: [],
+                cumulativeGPA: 0
+            });
+        }
+
+        let totalWeightedPoints = 0;
+        let totalCredits = 0;
+        const semesterData = {};
+
+        results.forEach(grade => {
+            const diemTB = parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy));
+            const gpa = calculateGPA(diemTB);
+            const credits = grade.SoTinChi || 0;
+            
+            totalWeightedPoints += gpa * credits;
+            totalCredits += credits;
+
+            // Group by semester
+            if (!semesterData[grade.HocKy]) {
+                semesterData[grade.HocKy] = { totalPoints: 0, totalCredits: 0 };
+            }
+            semesterData[grade.HocKy].totalPoints += gpa * credits;
+            semesterData[grade.HocKy].totalCredits += credits;
+        });
+
+        const cumulativeGPA = totalCredits > 0 ? (totalWeightedPoints / totalCredits).toFixed(2) : 0;
+        const academicStanding = calculateAcademicStanding(parseFloat(cumulativeGPA));
+
+        // Calculate semester GPA
+        const semesterGPA = Object.keys(semesterData).map(semester => ({
+            semester,
+            gpa: (semesterData[semester].totalPoints / semesterData[semester].totalCredits).toFixed(2),
+            credits: semesterData[semester].totalCredits
+        }));
+
+        res.json({
+            success: true,
+            gpa: parseFloat(cumulativeGPA),
+            totalCredits,
+            academicStanding,
+            semesterGPA,
+            cumulativeGPA: parseFloat(cumulativeGPA)
+        });
+    });
+});
+
+app.get('/api/academic/transcript/:mssv', (req, res) => {
+    const { mssv } = req.params;
+    const query = `
+        SELECT d.*, mh.TenMonHoc, mh.SoTinChi, s.HoTen, s.NgaySinh, s.GioiTinh, s.Email, s.MaLop, l.TenLop
+        FROM diem d
+        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
+        LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+        WHERE d.MSSV = ?
+        ORDER BY d.HocKy ASC
+    `;
+    
+    db.query(query, [mssv], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi lấy bảng điểm!' });
+        
+        if (results.length === 0) {
+            return res.json({ success: true, transcript: [], summary: null });
+        }
+
+        const transcript = results.map(grade => {
+            const diemTB = parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy));
+            const gpa = calculateGPA(diemTB);
+            const credits = grade.SoTinChi || 0;
+            
+            return {
+                ...grade,
+                DiemTB: diemTB,
+                GPA: gpa,
+                SoTinChi: credits,
+                DiemChu: diemTB >= 8.5 ? 'A' : diemTB >= 7.0 ? 'B' : diemTB >= 5.5 ? 'C' : diemTB >= 4.0 ? 'D' : 'F'
+            };
+        });
+
+        // Calculate summary
+        let totalCredits = 0;
+        let totalWeightedPoints = 0;
+        let passedCredits = 0;
+
+        transcript.forEach(course => {
+            totalCredits += course.SoTinChi;
+            totalWeightedPoints += course.GPA * course.SoTinChi;
+            if (course.DiemTB >= 4.0) passedCredits += course.SoTinChi;
+        });
+
+        const cumulativeGPA = totalCredits > 0 ? (totalWeightedPoints / totalCredits).toFixed(2) : 0;
+        const academicStanding = calculateAcademicStanding(parseFloat(cumulativeGPA));
+
+        const summary = {
+            totalCredits,
+            passedCredits,
+            cumulativeGPA: parseFloat(cumulativeGPA),
+            academicStanding,
+            passRate: totalCredits > 0 ? ((passedCredits / totalCredits) * 100).toFixed(2) : 0
+        };
+
+        res.json({ success: true, transcript, summary });
+    });
+});
+
 // ==================== ATTENDANCE (DIEMDANH) ====================
 app.get('/api/attendance', (req, res) => {
     const query = `
@@ -506,6 +1112,45 @@ app.get('/api/attendance/student/:mssv', (req, res) => {
         WHERE dd.MSSV = ?
     `;
     executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm danh sinh viên!');
+});
+
+app.get('/api/attendance/percentage/:mssv', (req, res) => {
+    const { mssv } = req.params;
+    const query = `
+        SELECT TrangThai
+        FROM diemdanh
+        WHERE MSSV = ?
+    `;
+    
+    db.query(query, [mssv], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi tính tỷ lệ điểm danh!' });
+        
+        if (results.length === 0) {
+            return res.json({ 
+                success: true, 
+                totalSessions: 0,
+                present: 0,
+                absent: 0,
+                excused: 0,
+                percentage: 0
+            });
+        }
+
+        const totalSessions = results.length;
+        const present = results.filter(r => r.TrangThai === 'Có mặt').length;
+        const absent = results.filter(r => r.TrangThai === 'Vắng mặt').length;
+        const excused = results.filter(r => r.TrangThai === 'Có phép').length;
+        const percentage = totalSessions > 0 ? ((present / totalSessions) * 100).toFixed(2) : 0;
+
+        res.json({
+            success: true,
+            totalSessions,
+            present,
+            absent,
+            excused,
+            percentage: parseFloat(percentage)
+        });
+    });
 });
 
 app.post('/api/attendance', (req, res) => {

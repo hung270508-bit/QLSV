@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Search, X, Filter, XCircle, BarChart3, User } from 'lucide-react';
 import axios from 'axios';
 
 function TeachingAssignment() {
@@ -24,6 +24,8 @@ function TeachingAssignment() {
     classFilter: '',
     semesterFilter: ''
   });
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'teacher'
+  const [teacherLoadStats, setTeacherLoadStats] = useState([]);
   const [formData, setFormData] = useState({
     MaGiangVien: '',
     MaMonHoc: '',
@@ -34,6 +36,35 @@ function TeachingAssignment() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    calculateTeacherLoadStats();
+  }, [assignments, subjects]);
+
+  const calculateTeacherLoadStats = () => {
+    const stats = {};
+    
+    teachers.forEach(teacher => {
+      stats[teacher.MaGiangVien] = {
+        MaGiangVien: teacher.MaGiangVien,
+        HoTen: teacher.HoTen,
+        totalAssignments: 0,
+        totalCredits: 0
+      };
+    });
+    
+    assignments.forEach(assignment => {
+      if (stats[assignment.MaGiangVien]) {
+        stats[assignment.MaGiangVien].totalAssignments++;
+        const subject = subjects.find(s => s.MaMonHoc === assignment.MaMonHoc);
+        if (subject) {
+          stats[assignment.MaGiangVien].totalCredits += parseInt(subject.SoTinChi) || 0;
+        }
+      }
+    });
+    
+    setTeacherLoadStats(Object.values(stats));
+  };
 
   const fetchData = async () => {
     try {
@@ -126,9 +157,6 @@ function TeachingAssignment() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ subjectFilter: '', classFilter: '', semesterFilter: '' });
@@ -155,21 +183,32 @@ function TeachingAssignment() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Phân công giảng dạy</h2>
           <p className="text-gray-500">Thêm, sửa, xóa phân công giảng dạy</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm phân công
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setViewMode(viewMode === 'list' ? 'teacher' : 'list')}
+            className="flex items-center gap-2 bg-gray-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            {viewMode === 'list' ? <BarChart3 className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+            {viewMode === 'list' ? 'Xem tải giảng' : 'Xem danh sách'}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm phân công
+          </motion.button>
+        </div>
       </div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -202,15 +241,6 @@ function TeachingAssignment() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -228,7 +258,7 @@ function TeachingAssignment() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -297,7 +327,8 @@ function TeachingAssignment() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      {viewMode === 'list' && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -356,6 +387,62 @@ function TeachingAssignment() {
           </table>
         </div>
       </div>
+      )}
+
+      {/* Teacher Load Statistics View */}
+      {viewMode === 'teacher' && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giảng viên</th>
+                  <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Số môn dạy</th>
+                  <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Tổng tín chỉ</th>
+                  <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teacherLoadStats.length > 0 ? (
+                  teacherLoadStats.map((stat, index) => (
+                    <motion.tr
+                      key={stat.MaGiangVien}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
+                    >
+                      <td className="py-4 px-6 text-sm font-medium text-gray-800 flex items-center gap-2">
+                        <User className="w-4 h-4 text-gray-400" />
+                        {stat.HoTen}
+                      </td>
+                      <td className="py-4 px-6 text-sm text-gray-600 text-center">{stat.totalAssignments}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600 text-center">{stat.totalCredits}</td>
+                      <td className="py-4 px-6 text-sm text-center">
+                        {stat.totalAssignments === 0 ? (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">Không có phân công</span>
+                        ) : stat.totalCredits < 10 ? (
+                          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">Tải thấp</span>
+                        ) : stat.totalCredits < 20 ? (
+                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">Tải vừa phải</span>
+                        ) : (
+                          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs">Tải cao</span>
+                        )}
+                      </td>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="py-12 text-center text-gray-500">
+                      Không có dữ liệu thống kê
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (

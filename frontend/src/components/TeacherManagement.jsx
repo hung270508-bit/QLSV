@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Calendar, FileText } from 'lucide-react';
 import axios from 'axios';
 
 function TeacherManagement() {
@@ -18,6 +18,12 @@ function TeacherManagement() {
   const [displayFilters, setDisplayFilters] = useState({
     facultyFilter: ''
   });
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [teacherDetails, setTeacherDetails] = useState(null);
+  const [teachingSchedule, setTeachingSchedule] = useState([]);
+  const [teachingLoad, setTeachingLoad] = useState([]);
+  const [detailTab, setDetailTab] = useState('info'); // 'info', 'schedule', 'load'
   const [formData, setFormData] = useState({
     MaGiangVien: '',
     HoTen: '',
@@ -97,6 +103,54 @@ function TeacherManagement() {
     });
   };
 
+  const handleViewDetails = async (teacher) => {
+    setSelectedTeacher(teacher);
+    setShowDetailModal(true);
+    setDetailTab('info');
+    
+    try {
+      const [detailsRes, scheduleRes, loadRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}/details`),
+        axios.get(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}/teaching-schedule`),
+        axios.get(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}/teaching-load`)
+      ]);
+      
+      setTeacherDetails(detailsRes.data[0] || null);
+      setTeachingSchedule(scheduleRes.data);
+      setTeachingLoad(loadRes.data);
+    } catch (error) {
+      console.error('Error fetching teacher details:', error);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedTeacher(null);
+    setTeacherDetails(null);
+    setTeachingSchedule([]);
+    setTeachingLoad([]);
+    setDetailTab('info');
+  };
+
+  const handleExportTeachers = () => {
+    const csvContent = [
+      ['Mã GV', 'Họ tên', 'Email', 'SĐT', 'Khoa'],
+      ...filteredTeachers.map(t => [
+        t.MaGiangVien,
+        t.HoTen,
+        t.Email,
+        t.SoDienThoai,
+        t.TenKhoa || ''
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'giangVien.csv';
+    link.click();
+  };
+
   const filteredTeachers = teachers.filter(teacher => {
     const matchesSearch = 
       teacher.HoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,9 +170,6 @@ function TeacherManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ facultyFilter: '' });
@@ -145,21 +196,32 @@ function TeacherManagement() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý giảng viên</h2>
           <p className="text-gray-500">Thêm, sửa, xóa thông tin giảng viên</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm giảng viên
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleExportTeachers}
+            className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Download className="w-5 h-5" />
+            Export
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm giảng viên
+          </motion.button>
+        </div>
       </div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -192,15 +254,6 @@ function TeacherManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -218,7 +271,7 @@ function TeacherManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo khoa</label>
@@ -288,6 +341,14 @@ function TeacherManagement() {
                     <td className="py-4 px-6 text-sm text-gray-600">{teacher.SoDienThoai || 'N/A'}</td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleViewDetails(teacher)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -421,6 +482,148 @@ function TeacherManagement() {
                 </motion.button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedTeacher && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Chi tiết giảng viên</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCloseDetailModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 border-b border-gray-200">
+              {[
+                { id: 'info', label: 'Thông tin', icon: Users },
+                { id: 'schedule', label: 'Lịch giảng dạy', icon: Calendar },
+                { id: 'load', label: 'Tải giảng dạy', icon: FileText }
+              ].map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setDetailTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                      detailTab === tab.id
+                        ? 'text-orange-600 border-b-2 border-orange-600'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab Content */}
+            {detailTab === 'info' && teacherDetails && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Mã GV</span>
+                    <p className="font-semibold text-gray-800">{teacherDetails.MaGiangVien}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Họ tên</span>
+                    <p className="font-semibold text-gray-800">{teacherDetails.HoTen}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Email</span>
+                    <p className="font-semibold text-gray-800">{teacherDetails.Email}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">SĐT</span>
+                    <p className="font-semibold text-gray-800">{teacherDetails.SoDienThoai}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl md:col-span-2">
+                    <span className="text-sm text-gray-600">Khoa</span>
+                    <p className="font-semibold text-gray-800">{teacherDetails.TenKhoa}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'schedule' && (
+              <div className="space-y-4">
+                {teachingSchedule.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Thứ</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ca</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Phòng</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Môn học</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Lớp</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Học kỳ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {teachingSchedule.map((schedule, index) => (
+                          <tr key={index} className="border-b border-gray-100">
+                            <td className="py-3 px-4 text-sm text-gray-800">{schedule.Thu}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{schedule.CaHoc}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{schedule.PhongHoc}</td>
+                            <td className="py-3 px-4 text-sm text-gray-800">{schedule.TenMonHoc}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{schedule.TenLop}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{schedule.HocKy}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">Chưa có lịch giảng dạy</p>
+                )}
+              </div>
+            )}
+
+            {detailTab === 'load' && (
+              <div className="space-y-4">
+                {teachingLoad.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Môn học</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tín chỉ</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Lớp</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Học kỳ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {teachingLoad.map((load, index) => (
+                          <tr key={index} className="border-b border-gray-100">
+                            <td className="py-3 px-4 text-sm text-gray-800">{load.TenMonHoc}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{load.SoTinChi}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{load.TenLop}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{load.HocKy}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">Chưa có tải giảng dạy</p>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       )}

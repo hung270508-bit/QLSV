@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { Bell, Plus, Edit, Trash2, Search, X, Filter, XCircle, Paperclip, Users, Eye } from 'lucide-react';
 import axios from 'axios';
 
 function AnnouncementManagement() {
   const [announcements, setAnnouncements] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
@@ -17,6 +18,11 @@ function AnnouncementManagement() {
   const [displayFilters, setDisplayFilters] = useState({
     typeFilter: ''
   });
+  const [selectedClasses, setSelectedClasses] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [showReadStatus, setShowReadStatus] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [readStatusData, setReadStatusData] = useState([]);
   const [formData, setFormData] = useState({
     TieuDe: '',
     NoiDung: '',
@@ -30,8 +36,12 @@ function AnnouncementManagement() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/announcements');
-      setAnnouncements(response.data);
+      const [announcementsRes, classesRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/announcements'),
+        axios.get('http://localhost:5000/api/classes')
+      ]);
+      setAnnouncements(announcementsRes.data);
+      setClasses(classesRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -81,12 +91,45 @@ function AnnouncementManagement() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingAnnouncement(null);
+    setSelectedClasses([]);
+    setAttachments([]);
     setFormData({
       TieuDe: '',
       NoiDung: '',
       LoaiThongBao: 'Chung',
       NgayDang: ''
     });
+  };
+
+  const handleViewReadStatus = async (announcement) => {
+    setSelectedAnnouncement(announcement);
+    setShowReadStatus(true);
+    // Simulate read status data (in real app, this would come from API)
+    const mockReadStatus = [
+      { name: 'Nguyễn Văn A', status: 'Đã đọc', date: '2025-05-28' },
+      { name: 'Trần Thị B', status: 'Đã đọc', date: '2025-05-28' },
+      { name: 'Lê Văn C', status: 'Chưa đọc', date: '-' },
+    ];
+    setReadStatusData(mockReadStatus);
+  };
+
+  const handleCloseReadStatus = () => {
+    setShowReadStatus(false);
+    setSelectedAnnouncement(null);
+    setReadStatusData([]);
+  };
+
+  const handleClassToggle = (classId) => {
+    setSelectedClasses(prev => 
+      prev.includes(classId) 
+        ? prev.filter(id => id !== classId)
+        : [...prev, classId]
+    );
+  };
+
+  const handleAttachmentChange = (e) => {
+    const files = Array.from(e.target.files);
+    setAttachments(files);
   };
 
   const filteredAnnouncements = announcements.filter(announcement => {
@@ -108,9 +151,6 @@ function AnnouncementManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ typeFilter: '' });
@@ -160,7 +200,7 @@ function AnnouncementManagement() {
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -193,15 +233,6 @@ function AnnouncementManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -219,7 +250,7 @@ function AnnouncementManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo loại</label>
@@ -290,6 +321,14 @@ function AnnouncementManagement() {
                     </td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleViewReadStatus(announcement)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -389,6 +428,61 @@ function AnnouncementManagement() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Gửi đến lớp</label>
+                <div className="flex flex-wrap gap-2">
+                  {classes.map((cls) => (
+                    <motion.button
+                      key={cls.MaLop}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleClassToggle(cls.MaLop)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        selectedClasses.includes(cls.MaLop)
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {cls.TenLop}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Đính kèm</label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleAttachmentChange}
+                    className="hidden"
+                    id="attachment-input"
+                  />
+                  <label
+                    htmlFor="attachment-input"
+                    className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-orange-500 transition-colors"
+                  >
+                    <Paperclip className="w-5 h-5 text-gray-400" />
+                    <span className="text-gray-600">
+                      {attachments.length > 0 
+                        ? `${attachments.length} file đã chọn` 
+                        : 'Chọn file đính kèm'}
+                    </span>
+                  </label>
+                </div>
+                {attachments.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {attachments.map((file, index) => (
+                      <div key={index} className="text-sm text-gray-600 flex items-center gap-2">
+                        <Paperclip className="w-4 h-4" />
+                        {file.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -409,6 +503,61 @@ function AnnouncementManagement() {
                 </motion.button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Read Status Modal */}
+      {showReadStatus && selectedAnnouncement && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Trạng thái đọc</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCloseReadStatus}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            <div className="mb-4">
+              <h4 className="font-semibold text-gray-700">{selectedAnnouncement.TieuDe}</h4>
+              <p className="text-sm text-gray-500 mt-1">
+                {readStatusData.filter(r => r.status === 'Đã đọc').length}/{readStatusData.length} đã đọc
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {readStatusData.length > 0 ? (
+                readStatusData.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-800">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        item.status === 'Đã đọc' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {item.status}
+                      </span>
+                      <span className="text-xs text-gray-500">{item.date}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500 py-4">Không có dữ liệu</p>
+              )}
+            </div>
           </motion.div>
         </div>
       )}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, BookOpen, Building2, GraduationCap, TrendingUp } from 'lucide-react';
+import { Users, BookOpen, Building2, GraduationCap, TrendingUp, AlertCircle, Calendar, FileText, Settings, BarChart3, CheckCircle, XCircle, Clock } from 'lucide-react';
 import axios from 'axios';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
 
 function DashboardOverview() {
   const [stats, setStats] = useState({
@@ -11,6 +12,7 @@ function DashboardOverview() {
     totalTeachers: 0
   });
   const [recentStudents, setRecentStudents] = useState([]);
+  const [facultyStats, setFacultyStats] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,12 +21,14 @@ function DashboardOverview() {
 
   const fetchDashboardData = async () => {
     try {
-      const [statsRes, studentsRes] = await Promise.all([
+      const [statsRes, studentsRes, facultyRes] = await Promise.all([
         axios.get('http://localhost:5000/api/dashboard/stats'),
-        axios.get('http://localhost:5000/api/dashboard/recent-students')
+        axios.get('http://localhost:5000/api/dashboard/recent-students'),
+        axios.get('http://localhost:5000/api/dashboard/stats-by-faculty')
       ]);
       setStats(statsRes.data);
       setRecentStudents(studentsRes.data);
+      setFacultyStats(facultyRes.data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -38,6 +42,20 @@ function DashboardOverview() {
     { title: 'Tổng lớp học', value: stats.totalClasses, icon: Building2, color: 'from-yellow-500 to-yellow-600' },
     { title: 'Tổng giảng viên', value: stats.totalTeachers, icon: GraduationCap, color: 'from-orange-400 to-orange-500' },
   ];
+
+  const facultyStudentData = facultyStats.map((faculty, index) => ({
+    name: faculty.TenKhoa,
+    value: faculty.studentCount || 0,
+    color: ['#f97316', '#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'][index % 8]
+  }));
+
+  const facultyChartData = facultyStats.map(faculty => ({
+    name: faculty.TenKhoa,
+    sinhVien: faculty.studentCount || 0,
+    giangVien: faculty.teacherCount || 0,
+    lopHoc: faculty.classCount || 0,
+  }));
+
 
   if (loading) {
     return (
@@ -79,11 +97,100 @@ function DashboardOverview() {
         })}
       </div>
 
+
+      {/* Charts Section - Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Faculty Statistics - Bar Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
+        >
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Thống kê theo khoa</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={facultyChartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80} 
+                  tick={{ fontSize: 11 }}
+                  interval={0}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="sinhVien" fill="#f97316" name="Sinh viên" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="giangVien" fill="#3b82f6" name="Giảng viên" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="lopHoc" fill="#22c55e" name="Lớp học" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        {/* Faculty Student Distribution - Pie Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
+        >
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Phân bổ sinh viên theo khoa</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={facultyStudentData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={100}
+                  innerRadius={60}
+                  fill="#8884d8"
+                  dataKey="value"
+                  animationBegin={0}
+                  animationDuration={1000}
+                >
+                  {facultyStudentData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: '12px' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      </div>
+
+
       {/* Recent Students */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.8 }}
         className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
       >
         <h3 className="text-lg font-bold text-gray-800 mb-4">Sinh viên mới đăng ký</h3>

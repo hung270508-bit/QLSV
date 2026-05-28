@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Upload, FileText, Calendar, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 
 function StudentManagement() {
@@ -20,6 +20,13 @@ function StudentManagement() {
     classFilter: '',
     genderFilter: ''
   });
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [studentDetails, setStudentDetails] = useState(null);
+  const [studentTranscript, setStudentTranscript] = useState(null);
+  const [studentSchedule, setStudentSchedule] = useState([]);
+  const [studentAttendance, setStudentAttendance] = useState([]);
+  const [detailTab, setDetailTab] = useState('info'); // 'info', 'transcript', 'schedule', 'attendance'
   const [formData, setFormData] = useState({
     MSSV: '',
     HoTen: '',
@@ -105,6 +112,59 @@ function StudentManagement() {
     });
   };
 
+  const handleViewDetails = async (student) => {
+    setSelectedStudent(student);
+    setShowDetailModal(true);
+    setDetailTab('info');
+    
+    try {
+      const [detailsRes, transcriptRes, scheduleRes, attendanceRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/students/${student.MSSV}/details`),
+        axios.get(`http://localhost:5000/api/academic/transcript/${student.MSSV}`),
+        axios.get(`http://localhost:5000/api/students/${student.MSSV}/schedule`),
+        axios.get(`http://localhost:5000/api/attendance/student/${student.MSSV}`)
+      ]);
+      
+      setStudentDetails(detailsRes.data[0] || null);
+      setStudentTranscript(transcriptRes.data);
+      setStudentSchedule(scheduleRes.data);
+      setStudentAttendance(attendanceRes.data);
+    } catch (error) {
+      console.error('Error fetching student details:', error);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedStudent(null);
+    setStudentDetails(null);
+    setStudentTranscript(null);
+    setStudentSchedule([]);
+    setStudentAttendance([]);
+    setDetailTab('info');
+  };
+
+  const handleExportStudents = () => {
+    const csvContent = [
+      ['MSSV', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Email', 'SĐT', 'Lớp'],
+      ...filteredStudents.map(s => [
+        s.MSSV,
+        s.HoTen,
+        s.NgaySinh,
+        s.GioiTinh,
+        s.Email,
+        s.SoDienThoai,
+        s.TenLop || ''
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'sinhVien.csv';
+    link.click();
+  };
+
   const filteredStudents = students.filter(student => {
     const matchesSearch = 
       student.HoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,9 +185,6 @@ function StudentManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ classFilter: '', genderFilter: '' });
@@ -154,21 +211,32 @@ function StudentManagement() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý sinh viên</h2>
           <p className="text-gray-500">Thêm, sửa, xóa thông tin sinh viên</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm sinh viên
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleExportStudents}
+            className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Download className="w-5 h-5" />
+            Export
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm sinh viên
+          </motion.button>
+        </div>
       </div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -201,15 +269,6 @@ function StudentManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -227,7 +286,7 @@ function StudentManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -313,6 +372,14 @@ function StudentManagement() {
                     <td className="py-4 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleViewDetails(student)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -466,6 +533,220 @@ function StudentManagement() {
                 </motion.button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedStudent && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Chi tiết sinh viên</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCloseDetailModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 border-b border-gray-200">
+              {[
+                { id: 'info', label: 'Thông tin', icon: Users },
+                { id: 'transcript', label: 'Bảng điểm', icon: FileText },
+                { id: 'schedule', label: 'Lịch học', icon: Calendar },
+                { id: 'attendance', label: 'Điểm danh', icon: CheckCircle }
+              ].map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setDetailTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                      detailTab === tab.id
+                        ? 'text-orange-600 border-b-2 border-orange-600'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab Content */}
+            {detailTab === 'info' && studentDetails && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">MSSV</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.MSSV}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Họ tên</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.HoTen}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Ngày sinh</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.NgaySinh}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Giới tính</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.GioiTinh}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Email</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.Email}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">SĐT</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.SoDienThoai}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Lớp</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.TenLop}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <span className="text-sm text-gray-600">Khoa</span>
+                    <p className="font-semibold text-gray-800">{studentDetails.TenKhoa}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'transcript' && studentTranscript && (
+              <div className="space-y-4">
+                {studentTranscript.summary && (
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="bg-blue-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-blue-600">{studentTranscript.summary.totalCredits}</p>
+                      <p className="text-sm text-gray-600">Tổng tín chỉ</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-green-600">{studentTranscript.summary.passedCredits}</p>
+                      <p className="text-sm text-gray-600">Tín chỉ qua</p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-purple-600">{studentTranscript.summary.cumulativeGPA}</p>
+                      <p className="text-sm text-gray-600">GPA tích lũy</p>
+                    </div>
+                    <div className="bg-orange-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-orange-600">{studentTranscript.summary.passRate}%</p>
+                      <p className="text-sm text-gray-600">Tỷ lệ qua</p>
+                    </div>
+                  </div>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Môn học</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Học kỳ</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">QT</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">GK</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">CK</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">TB</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Điểm chữ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentTranscript.transcript && studentTranscript.transcript.map((grade, index) => (
+                        <tr key={index} className="border-b border-gray-100">
+                          <td className="py-3 px-4 text-sm text-gray-800">{grade.TenMonHoc}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{grade.HocKy}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{grade.DiemQuaTrinh || '-'}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
+                          <td className="py-3 px-4 text-sm font-bold text-orange-600">{grade.DiemTB}</td>
+                          <td className="py-3 px-4 text-sm font-semibold text-gray-800">{grade.DiemChu}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'schedule' && (
+              <div className="space-y-4">
+                {studentSchedule.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Thứ</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ca</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Phòng</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Môn học</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Giảng viên</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentSchedule.map((schedule, index) => (
+                          <tr key={index} className="border-b border-gray-100">
+                            <td className="py-3 px-4 text-sm text-gray-800">{schedule.Thu}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{schedule.CaHoc}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{schedule.PhongHoc}</td>
+                            <td className="py-3 px-4 text-sm text-gray-800">{schedule.TenMonHoc}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{schedule.TenGiangVien}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">Chưa có lịch học</p>
+                )}
+              </div>
+            )}
+
+            {detailTab === 'attendance' && (
+              <div className="space-y-4">
+                {studentAttendance.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ngày</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Phòng</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentAttendance.map((att, index) => (
+                          <tr key={index} className="border-b border-gray-100">
+                            <td className="py-3 px-4 text-sm text-gray-800">
+                              {new Date(att.NgayDiemDanh).toLocaleDateString('vi-VN')}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{att.PhongHoc}</td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                att.TrangThai === 'Có mặt' ? 'bg-green-100 text-green-600' :
+                                att.TrangThai === 'Vắng mặt' ? 'bg-red-100 text-red-600' :
+                                'bg-yellow-100 text-yellow-600'
+                              }`}>
+                                {att.TrangThai}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">Chưa có dữ liệu điểm danh</p>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       )}

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, GraduationCap, School, ShieldAlert, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import axios from 'axios';
 import AdminDashboard from './components/AdminDashboard';
+import StudentDashboard from './components/StudentDashboard';
+import TeacherDashboard from './components/TeacherDashboard';
 
 function App() {
   const [username, setUsername] = useState('');
@@ -80,6 +82,16 @@ function App() {
   // Show AdminDashboard for admin users
   if (loggedInUser && loggedInUser.role === 'admin') {
     return <AdminDashboard user={loggedInUser} onLogout={handleLogout} />;
+  }
+
+  // Show StudentDashboard for student users
+  if (loggedInUser && loggedInUser.role === 'student') {
+    return <StudentDashboard user={loggedInUser} onLogout={handleLogout} />;
+  }
+
+  // Show TeacherDashboard for teacher users
+  if (loggedInUser && loggedInUser.role === 'teacher') {
+    return <TeacherDashboard user={loggedInUser} onLogout={handleLogout} />;
   }
 
   return (

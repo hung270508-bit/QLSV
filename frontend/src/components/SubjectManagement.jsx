@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Users, BarChart3 } from 'lucide-react';
 import axios from 'axios';
 
 function SubjectManagement() {
@@ -19,6 +19,19 @@ function SubjectManagement() {
     nameFilter: '',
     creditFilter: ''
   });
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [subjectClasses, setSubjectClasses] = useState([]);
+  const [subjectTeachers, setSubjectTeachers] = useState([]);
+  const [subjectGradeStats, setSubjectGradeStats] = useState({
+    totalGrades: 0,
+    average: 0,
+    excellent: 0,
+    good: 0,
+    averageGrade: 0,
+    fail: 0
+  });
+  const [detailTab, setDetailTab] = useState('classes'); // 'classes', 'teachers', 'stats'
   const [formData, setFormData] = useState({
     MaMonHoc: '',
     TenMonHoc: '',
@@ -88,6 +101,74 @@ function SubjectManagement() {
     });
   };
 
+  const handleViewDetails = async (subject) => {
+    setSelectedSubject(subject);
+    setShowDetailModal(true);
+    setDetailTab('classes');
+    
+    try {
+      const [classesRes, teachersRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/classes`),
+        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/teachers`)
+      ]);
+      
+      setSubjectClasses(classesRes.data);
+      setSubjectTeachers(teachersRes.data);
+      
+      // Calculate grade statistics
+      const gradesRes = await axios.get(`http://localhost:5000/api/grades`);
+      const subjectGrades = gradesRes.data.filter(g => g.MaMonHoc === subject.MaMonHoc);
+      
+      let total = subjectGrades.length;
+      let sum = 0;
+      let excellent = 0;
+      let good = 0;
+      let averageGrade = 0;
+      let fail = 0;
+      
+      subjectGrades.forEach(grade => {
+        const qt = parseFloat(grade.DiemQuaTrinh) || 0;
+        const gk = parseFloat(grade.DiemGiuaKy) || 0;
+        const ck = parseFloat(grade.DiemCuoiKy) || 0;
+        const avg = ((qt * 0.2) + (gk * 0.3) + (ck * 0.5)).toFixed(2);
+        sum += parseFloat(avg);
+        
+        if (parseFloat(avg) >= 8.5) excellent++;
+        else if (parseFloat(avg) >= 7.0) good++;
+        else if (parseFloat(avg) >= 5.5) averageGrade++;
+        else if (parseFloat(avg) >= 4.0) averageGrade++;
+        else fail++;
+      });
+      
+      setSubjectGradeStats({
+        totalGrades: total,
+        average: total > 0 ? (sum / total).toFixed(2) : 0,
+        excellent,
+        good,
+        averageGrade,
+        fail
+      });
+    } catch (error) {
+      console.error('Error fetching subject details:', error);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedSubject(null);
+    setSubjectClasses([]);
+    setSubjectTeachers([]);
+    setSubjectGradeStats({
+      totalGrades: 0,
+      average: 0,
+      excellent: 0,
+      good: 0,
+      averageGrade: 0,
+      fail: 0
+    });
+    setDetailTab('classes');
+  };
+
   const filteredSubjects = subjects.filter(subject => {
     const matchesSearch = 
       subject.TenMonHoc.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,9 +189,6 @@ function SubjectManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ nameFilter: '', creditFilter: '' });
@@ -151,7 +229,7 @@ function SubjectManagement() {
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -187,15 +265,6 @@ function SubjectManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -213,7 +282,7 @@ function SubjectManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -292,6 +361,14 @@ function SubjectManagement() {
                     <td className="py-4 px-6 text-sm text-gray-600">{subject.SoTinChi}</td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleViewDetails(subject)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -400,6 +477,142 @@ function SubjectManagement() {
                 </motion.button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedSubject && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Chi tiết môn học: {selectedSubject.TenMonHoc}</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCloseDetailModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 border-b border-gray-200">
+              {[
+                { id: 'classes', label: 'Lớp học', icon: BookOpen },
+                { id: 'teachers', label: 'Giảng viên', icon: Users },
+                { id: 'stats', label: 'Thống kê', icon: BarChart3 }
+              ].map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setDetailTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                      detailTab === tab.id
+                        ? 'text-orange-600 border-b-2 border-orange-600'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab Content */}
+            {detailTab === 'classes' && (
+              <div className="space-y-4">
+                {subjectClasses.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã lớp</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tên lớp</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Số sinh viên</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subjectClasses.map((cls, index) => (
+                          <tr key={index} className="border-b border-gray-100">
+                            <td className="py-3 px-4 text-sm text-gray-800">{cls.MaLop}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{cls.TenLop}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{cls.SoSinhVien || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">Chưa có lớp nào học môn này</p>
+                )}
+              </div>
+            )}
+
+            {detailTab === 'teachers' && (
+              <div className="space-y-4">
+                {subjectTeachers.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã GV</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">SĐT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subjectTeachers.map((teacher, index) => (
+                          <tr key={index} className="border-b border-gray-100">
+                            <td className="py-3 px-4 text-sm text-gray-800">{teacher.MaGiangVien}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.HoTen}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.Email || '-'}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.SoDienThoai || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">Chưa có giảng viên nào dạy môn này</p>
+                )}
+              </div>
+            )}
+
+            {detailTab === 'stats' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-blue-50 p-6 rounded-xl text-center">
+                    <div className="text-3xl font-bold text-blue-600">{subjectGradeStats.totalGrades}</div>
+                    <div className="text-sm text-gray-600">Tổng điểm</div>
+                  </div>
+                  <div className="bg-green-50 p-6 rounded-xl text-center">
+                    <div className="text-3xl font-bold text-green-600">{subjectGradeStats.average}</div>
+                    <div className="text-sm text-gray-600">Điểm TB</div>
+                  </div>
+                  <div className="bg-purple-50 p-6 rounded-xl text-center">
+                    <div className="text-3xl font-bold text-purple-600">{subjectGradeStats.excellent}</div>
+                    <div className="text-sm text-gray-600">Giỏi (A)</div>
+                  </div>
+                  <div className="bg-yellow-50 p-6 rounded-xl text-center">
+                    <div className="text-3xl font-bold text-yellow-600">{subjectGradeStats.good}</div>
+                    <div className="text-sm text-gray-600">Khá (B)</div>
+                  </div>
+                  <div className="bg-red-50 p-6 rounded-xl text-center">
+                    <div className="text-3xl font-bold text-red-600">{subjectGradeStats.fail}</div>
+                    <div className="text-sm text-gray-600">Rớt (F)</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

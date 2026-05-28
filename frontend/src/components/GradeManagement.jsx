@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, Download, BarChart3, FileText } from 'lucide-react';
 import axios from 'axios';
 
 function GradeManagement() {
@@ -20,6 +20,16 @@ function GradeManagement() {
   const [displayFilters, setDisplayFilters] = useState({
     subjectFilter: '',
     semesterFilter: ''
+  });
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkGrades, setBulkGrades] = useState([]);
+  const [gradeStats, setGradeStats] = useState({
+    total: 0,
+    average: 0,
+    excellent: 0,
+    good: 0,
+    averageGrade: 0,
+    fail: 0
   });
   const [formData, setFormData] = useState({
     MSSV: '',
@@ -126,9 +136,6 @@ function GradeManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ subjectFilter: '', semesterFilter: '' });
@@ -147,6 +154,103 @@ function GradeManagement() {
     return ((qt * 0.2) + (gk * 0.3) + (ck * 0.5)).toFixed(2);
   };
 
+  const calculateLetterGrade = (average) => {
+    const avg = parseFloat(average);
+    if (avg >= 8.5) return 'A';
+    if (avg >= 7.0) return 'B';
+    if (avg >= 5.5) return 'C';
+    if (avg >= 4.0) return 'D';
+    return 'F';
+  };
+
+  const calculateGradeStatistics = () => {
+    if (filteredGrades.length === 0) {
+      setGradeStats({ total: 0, average: 0, excellent: 0, good: 0, averageGrade: 0, fail: 0 });
+      return;
+    }
+
+    const total = filteredGrades.length;
+    let sum = 0;
+    let excellent = 0;
+    let good = 0;
+    let averageGrade = 0;
+    let fail = 0;
+
+    filteredGrades.forEach(grade => {
+      const avg = parseFloat(calculateAverage(grade));
+      sum += avg;
+      
+      if (avg >= 8.5) excellent++;
+      else if (avg >= 7.0) good++;
+      else if (avg >= 5.5) averageGrade++;
+      else if (avg >= 4.0) averageGrade++;
+      else fail++;
+    });
+
+    setGradeStats({
+      total,
+      average: (sum / total).toFixed(2),
+      excellent,
+      good,
+      averageGrade,
+      fail
+    });
+  };
+
+  const handleExportGrades = () => {
+    const csvContent = [
+      ['MSSV', 'Môn học', 'Học kỳ', 'QT', 'GK', 'CK', 'TB', 'Điểm chữ'],
+      ...filteredGrades.map(g => [
+        g.MSSV,
+        g.TenMonHoc || g.MaMonHoc,
+        g.HocKy,
+        g.DiemQuaTrinh || '-',
+        g.DiemGiuaKy || '-',
+        g.DiemCuoiKy || '-',
+        calculateAverage(g),
+        calculateLetterGrade(calculateAverage(g))
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'diem.csv';
+    link.click();
+  };
+
+  const handleOpenBulkModal = () => {
+    setBulkGrades(students.map(student => ({
+      MSSV: student.MSSV,
+      HoTen: student.HoTen,
+      MaMonHoc: '',
+      HocKy: '',
+      DiemQuaTrinh: '',
+      DiemGiuaKy: '',
+      DiemCuoiKy: ''
+    })));
+    setShowBulkModal(true);
+  };
+
+  const handleBulkSubmit = async () => {
+    const validGrades = bulkGrades.filter(g => g.MaMonHoc && g.HocKy);
+    
+    if (validGrades.length === 0) {
+      alert('Vui lòng nhập môn học và học kỳ!');
+      return;
+    }
+
+    try {
+      await axios.post('http://localhost:5000/api/grades/bulk', { grades: validGrades });
+      alert('Nhập điểm hàng loạt thành công!');
+      setShowBulkModal(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error bulk inserting grades:', error);
+      alert('Lỗi khi nhập điểm hàng loạt!');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -162,21 +266,41 @@ function GradeManagement() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý điểm sinh viên</h2>
           <p className="text-gray-500">Thêm, sửa, xóa điểm sinh viên</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm điểm
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleOpenBulkModal}
+            className="flex items-center gap-2 bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <FileText className="w-5 h-5" />
+            Nhập hàng loạt
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleExportGrades}
+            className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Download className="w-5 h-5" />
+            Export
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm điểm
+          </motion.button>
+        </div>
       </div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -209,15 +333,6 @@ function GradeManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -235,7 +350,7 @@ function GradeManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -288,6 +403,51 @@ function GradeManagement() {
         )}
       </div>
 
+      {/* Statistics */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 className="w-5 h-5 text-orange-600" />
+          <h3 className="text-lg font-bold text-gray-800">Thống kê điểm</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="text-center p-4 bg-blue-50 rounded-xl">
+            <div className="text-2xl font-bold text-blue-600">{filteredGrades.length}</div>
+            <div className="text-sm text-gray-600">Tổng điểm</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-xl">
+            <div className="text-2xl font-bold text-green-600">
+              {filteredGrades.length > 0 
+                ? (filteredGrades.reduce((sum, g) => sum + parseFloat(calculateAverage(g)), 0) / filteredGrades.length).toFixed(2)
+                : 0}
+            </div>
+            <div className="text-sm text-gray-600">Điểm TB</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-xl">
+            <div className="text-2xl font-bold text-purple-600">
+              {filteredGrades.filter(g => parseFloat(calculateAverage(g)) >= 8.5).length}
+            </div>
+            <div className="text-sm text-gray-600">Giỏi (A)</div>
+          </div>
+          <div className="text-center p-4 bg-yellow-50 rounded-xl">
+            <div className="text-2xl font-bold text-yellow-600">
+              {filteredGrades.filter(g => parseFloat(calculateAverage(g)) >= 7.0 && parseFloat(calculateAverage(g)) < 8.5).length}
+            </div>
+            <div className="text-sm text-gray-600">Khá (B)</div>
+          </div>
+          <div className="text-center p-4 bg-red-50 rounded-xl">
+            <div className="text-2xl font-bold text-red-600">
+              {filteredGrades.filter(g => parseFloat(calculateAverage(g)) < 4.0).length}
+            </div>
+            <div className="text-sm text-gray-600">Rớt (F)</div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -302,6 +462,7 @@ function GradeManagement() {
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">GK</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">CK</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">TB</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Điểm chữ</th>
                 <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
               </tr>
             </thead>
@@ -323,6 +484,17 @@ function GradeManagement() {
                     <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
                     <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
                     <td className="py-4 px-6 text-sm font-bold text-orange-600">{calculateAverage(grade)}</td>
+                    <td className="py-4 px-6 text-sm">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        calculateLetterGrade(calculateAverage(grade)) === 'A' ? 'bg-green-100 text-green-600' :
+                        calculateLetterGrade(calculateAverage(grade)) === 'B' ? 'bg-blue-100 text-blue-600' :
+                        calculateLetterGrade(calculateAverage(grade)) === 'C' ? 'bg-yellow-100 text-yellow-600' :
+                        calculateLetterGrade(calculateAverage(grade)) === 'D' ? 'bg-orange-100 text-orange-600' :
+                        'bg-red-100 text-red-600'
+                      }`}>
+                        {calculateLetterGrade(calculateAverage(grade))}
+                      </span>
+                    </td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <motion.button
@@ -484,6 +656,149 @@ function GradeManagement() {
                 </motion.button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Bulk Edit Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Nhập điểm hàng loạt</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowBulkModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học</label>
+                  <select
+                    value={bulkGrades[0]?.MaMonHoc || ''}
+                    onChange={(e) => setBulkGrades(bulkGrades.map(g => ({ ...g, MaMonHoc: e.target.value })))}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    required
+                  >
+                    <option value="">Chọn môn học</option>
+                    {subjects.map((subject) => (
+                      <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
+                        {subject.TenMonHoc}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Học kỳ</label>
+                  <select
+                    value={bulkGrades[0]?.HocKy || ''}
+                    onChange={(e) => setBulkGrades(bulkGrades.map(g => ({ ...g, HocKy: e.target.value })))}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    required
+                  >
+                    <option value="">Chọn học kỳ</option>
+                    <option value="HK1_2025_2026">HK1 2025-2026</option>
+                    <option value="HK2_2025_2026">HK2 2025-2026</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">QT</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">GK</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">CK</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkGrades.map((grade, index) => (
+                      <tr key={index} className="border-b border-gray-100">
+                        <td className="py-3 px-4 text-sm font-medium text-gray-800">{grade.MSSV}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600">{grade.HoTen}</td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="10"
+                            value={grade.DiemQuaTrinh}
+                            onChange={(e) => {
+                              const newGrades = [...bulkGrades];
+                              newGrades[index].DiemQuaTrinh = e.target.value;
+                              setBulkGrades(newGrades);
+                            }}
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500"
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="10"
+                            value={grade.DiemGiuaKy}
+                            onChange={(e) => {
+                              const newGrades = [...bulkGrades];
+                              newGrades[index].DiemGiuaKy = e.target.value;
+                              setBulkGrades(newGrades);
+                            }}
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500"
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="10"
+                            value={grade.DiemCuoiKy}
+                            onChange={(e) => {
+                              const newGrades = [...bulkGrades];
+                              newGrades[index].DiemCuoiKy = e.target.value;
+                              setBulkGrades(newGrades);
+                            }}
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleBulkSubmit}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
+                >
+                  Lưu tất cả
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowBulkModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Hủy
+                </motion.button>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}

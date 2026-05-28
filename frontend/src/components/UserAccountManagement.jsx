@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserCircle, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { UserCircle, Plus, Edit, Trash2, Search, X, Filter, XCircle, Key, Lock, Unlock, CheckCircle, XCircle as XCircleIcon } from 'lucide-react';
 import axios from 'axios';
 
 function UserAccountManagement() {
@@ -18,6 +18,9 @@ function UserAccountManagement() {
   const [displayFilters, setDisplayFilters] = useState({
     roleFilter: ''
   });
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [selectedUserForReset, setSelectedUserForReset] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
   const [formData, setFormData] = useState({
     TaiKhoan: '',
     password: '',
@@ -91,6 +94,46 @@ function UserAccountManagement() {
     });
   };
 
+  const handleResetPassword = (user) => {
+    setSelectedUserForReset(user);
+    setShowResetPasswordModal(true);
+    setNewPassword('');
+  };
+
+  const handleCloseResetPasswordModal = () => {
+    setShowResetPasswordModal(false);
+    setSelectedUserForReset(null);
+    setNewPassword('');
+  };
+
+  const handleResetPasswordSubmit = async () => {
+    if (!newPassword) {
+      alert('Vui lòng nhập mật khẩu mới!');
+      return;
+    }
+
+    try {
+      await axios.put(`http://localhost:5000/api/users/${selectedUserForReset.TaiKhoan}/reset-password`, { password: newPassword });
+      fetchData();
+      handleCloseResetPasswordModal();
+      alert('Đặt lại mật khẩu thành công!');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert('Lỗi khi đặt lại mật khẩu!');
+    }
+  };
+
+  const handleToggleLock = async (user) => {
+    try {
+      const newStatus = user.TrangThai === 'Hoạt động' ? 'Khóa' : 'Hoạt động';
+      await axios.put(`http://localhost:5000/api/users/${user.TaiKhoan}/status`, { TrangThai: newStatus });
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling lock status:', error);
+      alert('Lỗi khi thay đổi trạng thái!');
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.TaiKhoan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,9 +153,6 @@ function UserAccountManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ roleFilter: '' });
@@ -162,7 +202,7 @@ function UserAccountManagement() {
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -195,15 +235,6 @@ function UserAccountManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -221,7 +252,7 @@ function UserAccountManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo quyền</label>
@@ -268,6 +299,7 @@ function UserAccountManagement() {
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Tài khoản</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Quyền</th>
+                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Trạng thái</th>
                 <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
               </tr>
             </thead>
@@ -288,7 +320,37 @@ function UserAccountManagement() {
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm">
+                      <span className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                        user.TrangThai === 'Hoạt động' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                      }`}>
+                        {user.TrangThai === 'Hoạt động' ? <CheckCircle className="w-3 h-3" /> : <XCircleIcon className="w-3 h-3" />}
+                        {user.TrangThai || 'Hoạt động'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-sm">
                       <div className="flex items-center justify-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleResetPassword(user)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                          title="Đặt lại mật khẩu"
+                        >
+                          <Key className="w-4 h-4" />
+                        </motion.button>
+                        {user.TaiKhoan !== 'admin' && (
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleToggleLock(user)}
+                            className={`p-2 rounded-lg hover:opacity-80 transition-colors ${
+                              user.TrangThai === 'Hoạt động' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'
+                            }`}
+                            title={user.TrangThai === 'Hoạt động' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                          >
+                            {user.TrangThai === 'Hoạt động' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                          </motion.button>
+                        )}
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -313,7 +375,7 @@ function UserAccountManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="py-12 text-center text-gray-500">
+                  <td colSpan="4" className="py-12 text-center text-gray-500">
                     Không tìm thấy tài khoản nào
                   </td>
                 </tr>
@@ -404,6 +466,67 @@ function UserAccountManagement() {
                 </motion.button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetPasswordModal && selectedUserForReset && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Đặt lại mật khẩu</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCloseResetPasswordModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </motion.button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600">
+                Đặt lại mật khẩu cho tài khoản: <span className="font-semibold text-gray-800">{selectedUserForReset.TaiKhoan}</span>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleResetPasswordSubmit}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
+                >
+                  Đặt lại mật khẩu
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleCloseResetPasswordModal}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Hủy
+                </motion.button>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}

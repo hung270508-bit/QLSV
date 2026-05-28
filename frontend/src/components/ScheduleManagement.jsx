@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Plus, Edit, Trash2, Search, X, Filter, XCircle, AlertCircle, Grid } from 'lucide-react';
 import axios from 'axios';
 
 function ScheduleManagement() {
@@ -20,6 +20,8 @@ function ScheduleManagement() {
     dayFilter: '',
     periodFilter: ''
   });
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'calendar'
+  const [conflicts, setConflicts] = useState([]);
   const [formData, setFormData] = useState({
     MaPhanCong: '',
     Thu: '',
@@ -30,6 +32,53 @@ function ScheduleManagement() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    detectConflicts();
+  }, [schedules]);
+
+  const detectConflicts = () => {
+    const conflictList = [];
+    
+    for (let i = 0; i < schedules.length; i++) {
+      for (let j = i + 1; j < schedules.length; j++) {
+        const s1 = schedules[i];
+        const s2 = schedules[j];
+        
+        // Check if same day and period
+        if (s1.Thu === s2.Thu && s1.CaHoc === s2.CaHoc) {
+          // Check room conflict
+          if (s1.PhongHoc === s2.PhongHoc && s1.MaLichHoc !== s2.MaLichHoc) {
+            conflictList.push({
+              type: 'Phòng',
+              details: `Phòng ${s1.PhongHoc} bị trùng`,
+              schedules: [s1, s2]
+            });
+          }
+          
+          // Check teacher conflict
+          if (s1.MaGiangVien === s2.MaGiangVien && s1.MaLichHoc !== s2.MaLichHoc) {
+            conflictList.push({
+              type: 'Giảng viên',
+              details: `Giảng viên ${s1.TenGiangVien} bị trùng`,
+              schedules: [s1, s2]
+            });
+          }
+          
+          // Check class conflict
+          if (s1.MaLop === s2.MaLop && s1.MaLichHoc !== s2.MaLichHoc) {
+            conflictList.push({
+              type: 'Lớp',
+              details: `Lớp ${s1.TenLop} bị trùng`,
+              schedules: [s1, s2]
+            });
+          }
+        }
+      }
+    }
+    
+    setConflicts(conflictList);
+  };
 
   const fetchData = async () => {
     try {
@@ -133,9 +182,6 @@ function ScheduleManagement() {
     setShowFilters(false);
   };
 
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const clearFilters = () => {
     setFilters({ dayFilter: '', periodFilter: '' });
@@ -162,21 +208,58 @@ function ScheduleManagement() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý lịch học</h2>
           <p className="text-gray-500">Thêm, sửa, xóa lịch học</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm lịch học
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}
+            className="flex items-center gap-2 bg-gray-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Grid className="w-5 h-5" />
+            {viewMode === 'table' ? 'Xem lịch' : 'Xem bảng'}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm lịch học
+          </motion.button>
+        </div>
       </div>
+
+      {/* Conflict Warning */}
+      {conflicts.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border-2 border-red-200 rounded-xl p-4"
+        >
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 text-red-600" />
+            <div>
+              <h4 className="font-semibold text-red-800">Phát hiện {conflicts.length} xung đột lịch học</h4>
+              <div className="mt-2 space-y-1">
+                {conflicts.slice(0, 3).map((conflict, index) => (
+                  <div key={index} className="text-sm text-red-700">
+                    • {conflict.details}
+                  </div>
+                ))}
+                {conflicts.length > 3 && (
+                  <div className="text-sm text-red-700">... và {conflicts.length - 3} xung đột khác</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
+          <div className="relative w-1/2">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -209,15 +292,6 @@ function ScheduleManagement() {
             <Search className="w-5 h-5" />
             Tìm kiếm
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -235,7 +309,7 @@ function ScheduleManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -294,71 +368,161 @@ function ScheduleManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Thứ</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Ca</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Phòng</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Môn học</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Lớp</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giảng viên</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Học kỳ</th>
-                <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSchedules.length > 0 ? (
-                filteredSchedules.map((schedule, index) => (
-                  <motion.tr
-                    key={schedule.MaLichHoc}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
-                  >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{getDayName(schedule.Thu)}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{getPeriodName(schedule.CaHoc)}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.PhongHoc || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenMonHoc || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenLop || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenGiangVien || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{schedule.HocKy || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(schedule)}
-                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(schedule.MaLichHoc)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
-              ) : (
+      {viewMode === 'table' && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-gray-500">
-                    Không tìm thấy lịch học nào
-                  </td>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Thứ</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Ca</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Phòng</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Môn học</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Lớp</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giảng viên</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Học kỳ</th>
+                  <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredSchedules.length > 0 ? (
+                  filteredSchedules.map((schedule, index) => (
+                    <motion.tr
+                      key={schedule.MaLichHoc}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
+                    >
+                      <td className="py-4 px-6 text-sm font-medium text-gray-800">{getDayName(schedule.Thu)}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600">{getPeriodName(schedule.CaHoc)}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600">{schedule.PhongHoc || 'N/A'}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenMonHoc || 'N/A'}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenLop || 'N/A'}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600">{schedule.TenGiangVien || 'N/A'}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600">{schedule.HocKy || 'N/A'}</td>
+                      <td className="py-4 px-6 text-sm">
+                        <div className="flex items-center justify-center gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleEdit(schedule)}
+                            className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleDelete(schedule.MaLichHoc)}
+                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </motion.button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="py-12 text-center text-gray-500">
+                      Không tìm thấy lịch học nào
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Calendar View */}
+      {viewMode === 'calendar' && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Ca</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 2</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 3</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 4</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 5</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 6</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 7</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4, 5, 6].map((period) => (
+                  <tr key={period}>
+                    <td className="text-center py-3 px-4 text-sm font-medium text-gray-800 bg-gray-50">Ca {period}</td>
+                    {[2, 3, 4, 5, 6, 7].map((day) => {
+                      const schedule = filteredSchedules.find(s => s.Thu === day && s.CaHoc === period);
+                      return (
+                        <td key={day} className="py-3 px-4 text-sm">
+                          {schedule ? (
+                            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                              <div className="font-medium text-gray-800 text-xs">{schedule.TenMonHoc}</div>
+                              <div className="text-gray-600 text-xs mt-1">{schedule.TenLop}</div>
+                              <div className="text-gray-600 text-xs">{schedule.PhongHoc}</div>
+                              <div className="text-gray-600 text-xs">{schedule.TenGiangVien}</div>
+                            </div>
+                          ) : (
+                            <div className="text-gray-300">-</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {viewMode === 'calendar' && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Ca</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 2</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 3</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 4</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 5</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 6</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Thứ 7</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4, 5, 6].map((period) => (
+                  <tr key={period}>
+                    <td className="text-center py-3 px-4 text-sm font-medium text-gray-800 bg-gray-50">Ca {period}</td>
+                    {[2, 3, 4, 5, 6, 7].map((day) => {
+                      const schedule = filteredSchedules.find(s => s.Thu === day && s.CaHoc === period);
+                      return (
+                        <td key={day} className="py-3 px-4 text-sm">
+                          {schedule ? (
+                            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                              <div className="font-medium text-gray-800 text-xs">{schedule.TenMonHoc}</div>
+                              <div className="text-gray-600 text-xs mt-1">{schedule.TenLop}</div>
+                              <div className="text-gray-600 text-xs">{schedule.PhongHoc}</div>
+                              <div className="text-gray-600 text-xs">{schedule.TenGiangVien}</div>
+                            </div>
+                          ) : (
+                            <div className="text-gray-300">-</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
