@@ -97,6 +97,10 @@ const handleSearch = () => {
   setAppliedSearchTerm(searchTerm); // Chỉ khi nhấn nút thì mới cập nhật appliedSearchTerm
 };
 
+  const handleRefresh = () => {
+    fetchData();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -206,11 +210,11 @@ const handleSearch = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">
