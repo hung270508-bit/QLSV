@@ -88,48 +88,6 @@ function SubjectManagement() {
     setSearchTerm(displaySearchTerm);
   };
 
-<<<<<<< Updated upstream
-=======
-  const handleApplyFilters = () => {
-  setFilters({ ...displayFilters });
-
-  const hasFilter =
-    displayFilters.nameFilter ||
-    displayFilters.creditFilter;
-
-  if (hasFilter) {
-    setShowFilters(false);
-  }
-};
-
-  const handleRefresh = () => {
-  setSearchTerm('');
-  setDisplaySearchTerm('');
-
-  setFilters({
-    nameFilter: '',
-    creditFilter: ''
-  });
-
-  setDisplayFilters({
-    nameFilter: '',
-    creditFilter: ''
-  });
-  setShowFilters(false);
-  fetchData();
-  };
-
-  const clearFilters = () => {
-    setFilters({ nameFilter: '', creditFilter: '' });
-    setDisplayFilters({ nameFilter: '', creditFilter: '' });
-    setSearchTerm('');
-    setDisplaySearchTerm('');
-  };
-
-  const activeFilterCount = (filters.nameFilter ? 1 : 0) + (filters.creditFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.nameFilter || filters.creditFilter || searchTerm;
-
->>>>>>> Stashed changes
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -155,8 +113,6 @@ function SubjectManagement() {
           Thêm môn học
         </motion.button>
       </div>
-
-<<<<<<< Updated upstream
       {/* Search */}
       <div className="flex gap-3">
         <div className="relative flex-1">
@@ -185,111 +141,6 @@ function SubjectManagement() {
           <Search className="w-5 h-5" />
           Tìm kiếm
         </motion.button>
-=======
-      {/* Search and Filters */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm môn học..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-            />
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setShowFilters(!showFilters)}
-                className={`transition-colors ${
-                  hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Filter className="w-5 h-5" />
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </motion.button>
-            </div>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-xl shadow-md transition-all font-medium"          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl shadow-md transition-all font-medium"          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
-          
-        </div>
-
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo tên môn học</label>
-                <input
-                  type="text"
-                  placeholder="Nhập tên môn học..."
-                  value={displayFilters.nameFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, nameFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo số tín chỉ</label>
-                <select
-                  value={displayFilters.creditFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, creditFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                >
-                  <option value="">Tất cả</option>
-                  <option value="1">1 tín chỉ</option>
-                  <option value="2">2 tín chỉ</option>
-                  <option value="3">3 tín chỉ</option>
-                  <option value="4">4 tín chỉ</option>
-                  <option value="5">5 tín chỉ</option>
-                  <option value="6">6 tín chỉ</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
-              >
-                Áp dụng lọc
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setDisplayFilters({ nameFilter: '', creditFilter: '' })}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-              >
-                Đặt lại
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
->>>>>>> Stashed changes
       </div>
 
       {/* Table */}
