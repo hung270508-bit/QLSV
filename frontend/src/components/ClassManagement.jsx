@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 
 function ClassManagement() {
@@ -11,6 +11,13 @@ function ClassManagement() {
   const [editingClass, setEditingClass] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    facultyFilter: ''
+  });
+  const [displayFilters, setDisplayFilters] = useState({
+    facultyFilter: ''
+  });
   const [formData, setFormData] = useState({
     MaLop: '',
     TenLop: '',
@@ -84,14 +91,38 @@ function ClassManagement() {
     });
   };
 
-  const filteredClasses = classes.filter(cls =>
-    cls.TenLop.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cls.MaLop.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredClasses = classes.filter(cls => {
+    const matchesSearch = 
+      cls.TenLop.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cls.MaLop.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFaculty = !filters.facultyFilter || cls.MaKhoa === filters.facultyFilter;
+    
+    return matchesSearch && matchesFaculty;
+  });
 
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
   };
+
+  const handleApplyFilters = () => {
+    setFilters({ ...displayFilters });
+    setShowFilters(false);
+  };
+
+  const handleRefresh = () => {
+    fetchData();
+  };
+
+  const clearFilters = () => {
+    setFilters({ facultyFilter: '' });
+    setDisplayFilters({ facultyFilter: '' });
+    setSearchTerm('');
+    setDisplaySearchTerm('');
+  };
+
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || searchTerm;
 
   if (loading) {
     return (
@@ -119,34 +150,105 @@ function ClassManagement() {
         </motion.button>
       </div>
 
-      {/* Search */}
-      <div className="flex gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Tìm kiếm lớp học..."
-            value={displaySearchTerm}
-            onChange={(e) => setDisplaySearchTerm(e.target.value)}
-            className="w-full pl-12 pr-24 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-          />
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        <div className="flex gap-3">
+          <div className="relative w-2/3">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm lớp học..."
+              value={displaySearchTerm}
+              onChange={(e) => setDisplaySearchTerm(e.target.value)}
+              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+            />
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${
+                hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <Filter className="w-5 h-5" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
           <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSearch}
+            className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
           >
-            <Filter className="w-5 h-5" />
+            <Search className="w-5 h-5" />
+            Tìm kiếm
           </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleRefresh}
+            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          >
+            <RefreshCw className="w-5 h-5" />
+            Làm mới
+          </motion.button>
+          {hasActiveFilters && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={clearFilters}
+              className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"
+            >
+              <XCircle className="w-5 h-5" />
+              Xóa bộ lọc
+            </motion.button>
+          )}
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSearch}
-          className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Search className="w-5 h-5" />
-          Tìm kiếm
-        </motion.button>
+
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
+          >
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo khoa</label>
+              <select
+                value={displayFilters.facultyFilter}
+                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+              >
+                <option value="">Tất cả khoa</option>
+                {faculties.map((faculty) => (
+                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                    {faculty.TenKhoa}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleApplyFilters}
+                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+              >
+                Áp dụng lọc
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setDisplayFilters({ facultyFilter: '' })}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Đặt lại
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Table */}
@@ -210,11 +312,11 @@ function ClassManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">

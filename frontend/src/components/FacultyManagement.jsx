@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Plus, Edit, Trash2, Search, X, Filter } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Search, X, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 
 function FacultyManagement() {
@@ -86,6 +86,10 @@ function FacultyManagement() {
     setSearchTerm(displaySearchTerm);
   };
 
+  const handleRefresh = () => {
+    fetchData();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -114,22 +118,15 @@ function FacultyManagement() {
 
       {/* Search */}
       <div className="flex gap-3">
-        <div className="relative flex-1">
+        <div className="relative w-2/3">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Tìm kiếm khoa..."
             value={displaySearchTerm}
             onChange={(e) => setDisplaySearchTerm(e.target.value)}
-            className="w-full pl-12 pr-24 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full pl-12 pr-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
           />
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <Filter className="w-5 h-5" />
-          </motion.button>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -139,6 +136,15 @@ function FacultyManagement() {
         >
           <Search className="w-5 h-5" />
           Tìm kiếm
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleRefresh}
+          className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+        >
+          <RefreshCw className="w-5 h-5" />
+          Làm mới
         </motion.button>
       </div>
 
@@ -201,11 +207,11 @@ function FacultyManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">
