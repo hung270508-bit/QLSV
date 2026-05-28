@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Plus, Edit, Trash2, Search, X, Users, GraduationCap, BookOpen } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Search, X, Filter } from 'lucide-react';
 import axios from 'axios';
 
 function FacultyManagement() {
@@ -9,10 +9,7 @@ function FacultyManagement() {
   const [showModal, setShowModal] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedFaculty, setExpandedFaculty] = useState(null);
-  const [filterType, setFilterType] = useState('teachers'); // 'teachers', 'students', 'classes'
-  const [filteredData, setFilteredData] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
+  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [formData, setFormData] = useState({
     MaKhoa: '',
     TenKhoa: ''
@@ -79,61 +76,15 @@ function FacultyManagement() {
     });
   };
 
-  const handleExpandFaculty = async (maKhoa) => {
-    if (expandedFaculty === maKhoa) {
-      setExpandedFaculty(null);
-      setFilteredData([]);
-    } else {
-      setExpandedFaculty(maKhoa);
-      setLoadingData(true);
-      try {
-        let endpoint;
-        if (filterType === 'teachers') {
-          endpoint = `http://localhost:5000/api/faculties/${maKhoa}/teachers`;
-        } else if (filterType === 'students') {
-          endpoint = `http://localhost:5000/api/faculties/${maKhoa}/students`;
-        } else if (filterType === 'classes') {
-          endpoint = `http://localhost:5000/api/faculties/${maKhoa}/classes`;
-        }
-        const response = await axios.get(endpoint);
-        setFilteredData(response.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        alert('Lỗi khi lấy dữ liệu!');
-      } finally {
-        setLoadingData(false);
-      }
-    }
-  };
-
-  const handleFilterChange = async (newFilterType) => {
-    setFilterType(newFilterType);
-    if (expandedFaculty) {
-      setLoadingData(true);
-      try {
-        let endpoint;
-        if (newFilterType === 'teachers') {
-          endpoint = `http://localhost:5000/api/faculties/${expandedFaculty}/teachers`;
-        } else if (newFilterType === 'students') {
-          endpoint = `http://localhost:5000/api/faculties/${expandedFaculty}/students`;
-        } else if (newFilterType === 'classes') {
-          endpoint = `http://localhost:5000/api/faculties/${expandedFaculty}/classes`;
-        }
-        const response = await axios.get(endpoint);
-        setFilteredData(response.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        alert('Lỗi khi lấy dữ liệu!');
-      } finally {
-        setLoadingData(false);
-      }
-    }
-  };
 
   const filteredFaculties = faculties.filter(faculty =>
     faculty.TenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) ||
     faculty.MaKhoa.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSearch = () => {
+    setSearchTerm(displaySearchTerm);
+  };
 
   if (loading) {
     return (
@@ -154,7 +105,7 @@ function FacultyManagement() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
+          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
           Thêm khoa
@@ -162,22 +113,40 @@ function FacultyManagement() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input
-          type="text"
-          placeholder="Tìm kiếm khoa..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-        />
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm khoa..."
+            value={displaySearchTerm}
+            onChange={(e) => setDisplaySearchTerm(e.target.value)}
+            className="w-full pl-12 pr-24 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+          />
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <Filter className="w-5 h-5" />
+          </motion.button>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleSearch}
+          className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+        >
+          <Search className="w-5 h-5" />
+          Tìm kiếm
+        </motion.button>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg shadow-orange-100 border border-orange-50 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+            <thead className="bg-gray-50">
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Mã khoa</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Tên khoa</th>
@@ -187,168 +156,36 @@ function FacultyManagement() {
             <tbody>
               {filteredFaculties.length > 0 ? (
                 filteredFaculties.map((faculty, index) => (
-                  <React.Fragment key={faculty.MaKhoa}>
-                    <motion.tr
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="border-b border-gray-100 hover:bg-orange-50 transition-colors cursor-pointer"
-                      onClick={() => handleExpandFaculty(faculty.MaKhoa)}
-                    >
-                      <td className="py-4 px-6 text-sm font-medium text-gray-800">{faculty.MaKhoa}</td>
-                      <td className="py-4 px-6 text-sm text-gray-600">{faculty.TenKhoa}</td>
-                      <td className="py-4 px-6 text-sm">
-                        <div className="flex items-center justify-center gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(faculty);
-                            }}
-                            className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(faculty.MaKhoa);
-                            }}
-                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </motion.button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                    {expandedFaculty === faculty.MaKhoa && (
-                      <motion.tr
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="bg-orange-50"
-                      >
-                        <td colSpan="3" className="py-4 px-6">
-                          {/* Filter Tabs */}
-                          <div className="flex gap-2 mb-4">
-                            <motion.button
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => handleFilterChange('teachers')}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                                filterType === 'teachers'
-                                  ? 'bg-orange-500 text-white'
-                                  : 'bg-white text-gray-600 hover:bg-orange-100'
-                              }`}
-                            >
-                              <Users className="w-4 h-4" />
-                              Giảng viên
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => handleFilterChange('students')}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                                filterType === 'students'
-                                  ? 'bg-orange-500 text-white'
-                                  : 'bg-white text-gray-600 hover:bg-orange-100'
-                              }`}
-                            >
-                              <GraduationCap className="w-4 h-4" />
-                              Sinh viên
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => handleFilterChange('classes')}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                                filterType === 'classes'
-                                  ? 'bg-orange-500 text-white'
-                                  : 'bg-white text-gray-600 hover:bg-orange-100'
-                              }`}
-                            >
-                              <BookOpen className="w-4 h-4" />
-                              Lớp học
-                            </motion.button>
-                          </div>
-
-                          {loadingData ? (
-                            <div className="flex items-center justify-center py-4">
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                            </div>
-                          ) : filteredData.length > 0 ? (
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                              <table className="w-full">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    {filterType === 'teachers' && (
-                                      <>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã GV</th>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">SĐT</th>
-                                      </>
-                                    )}
-                                    {filterType === 'students' && (
-                                      <>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Lớp</th>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
-                                      </>
-                                    )}
-                                    {filterType === 'classes' && (
-                                      <>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã lớp</th>
-                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tên lớp</th>
-                                      </>
-                                    )}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {filteredData.map((item, index) => (
-                                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                                      {filterType === 'teachers' && (
-                                        <>
-                                          <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.MaGiangVien}</td>
-                                          <td className="py-3 px-4 text-sm text-gray-600">{item.HoTen}</td>
-                                          <td className="py-3 px-4 text-sm text-gray-600">{item.Email}</td>
-                                          <td className="py-3 px-4 text-sm text-gray-600">{item.SoDienThoai}</td>
-                                        </>
-                                      )}
-                                      {filterType === 'students' && (
-                                        <>
-                                          <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.MSSV}</td>
-                                          <td className="py-3 px-4 text-sm text-gray-600">{item.HoTen}</td>
-                                          <td className="py-3 px-4 text-sm text-gray-600">{item.TenLop}</td>
-                                          <td className="py-3 px-4 text-sm text-gray-600">{item.Email}</td>
-                                        </>
-                                      )}
-                                      {filterType === 'classes' && (
-                                        <>
-                                          <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.MaLop}</td>
-                                          <td className="py-3 px-4 text-sm text-gray-600">{item.TenLop}</td>
-                                        </>
-                                      )}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <p className="text-gray-500 text-center py-4">
-                              {filterType === 'teachers' && 'Không có giảng viên nào trong khoa này'}
-                              {filterType === 'students' && 'Không có sinh viên nào trong khoa này'}
-                              {filterType === 'classes' && 'Không có lớp nào trong khoa này'}
-                            </p>
-                          )}
-                        </td>
-                      </motion.tr>
-                    )}
-                  </React.Fragment>
+                  <motion.tr
+                    key={faculty.MaKhoa}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{faculty.MaKhoa}</td>
+                    <td className="py-4 px-6 text-sm text-gray-600">{faculty.TenKhoa}</td>
+                    <td className="py-4 px-6 text-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleEdit(faculty)}
+                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDelete(faculty.MaKhoa)}
+                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </td>
+                  </motion.tr>
                 ))
               ) : (
                 <tr>
@@ -412,7 +249,7 @@ function FacultyManagement() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
                 >
                   {editingFaculty ? 'Cập nhật' : 'Thêm mới'}
                 </motion.button>

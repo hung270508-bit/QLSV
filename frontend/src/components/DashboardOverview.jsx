@@ -64,13 +64,13 @@ function DashboardOverview() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-6 shadow-lg shadow-orange-100 border border-orange-50"
+              className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center shadow-lg`}>
                   <Icon className="w-6 h-6 text-white" />
                 </div>
-                <TrendingUp className="w-5 h-5 text-orange-500" />
+                <TrendingUp className="w-5 h-5 text-gray-500" />
               </div>
               <h3 className="text-3xl font-bold text-gray-800 mb-1">{stat.value}</h3>
               <p className="text-gray-500 text-sm">{stat.title}</p>
@@ -84,7 +84,7 @@ function DashboardOverview() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-white rounded-2xl p-6 shadow-lg shadow-orange-100 border border-orange-50"
+        className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
       >
         <h3 className="text-lg font-bold text-gray-800 mb-4">Sinh viên mới đăng ký</h3>
         <div className="overflow-x-auto">
@@ -100,7 +100,7 @@ function DashboardOverview() {
             <tbody>
               {recentStudents.length > 0 ? (
                 recentStudents.map((student, index) => (
-                  <tr key={index} className="border-b border-gray-50 hover:bg-orange-50 transition-colors">
+                  <tr key={index} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4 text-sm text-gray-800 font-medium">{student.MSSV}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{student.HoTen}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{student.TenLop || 'N/A'}</td>

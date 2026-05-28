@@ -217,7 +217,7 @@ app.get('/api/students', (req, res) => {
 
 app.post('/api/students', (req, res) => {
     const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop } = req.body;
-    
+                                                                                                                                                                                                                
     // MaQuyen = 3 (Sinh viên)
     const userQuery = 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)';
     db.query(userQuery, [MSSV, '123456aA@'], (err) => {

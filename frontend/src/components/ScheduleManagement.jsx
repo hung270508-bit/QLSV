@@ -10,6 +10,7 @@ function ScheduleManagement() {
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     dayFilter: '',
@@ -119,6 +120,10 @@ function ScheduleManagement() {
     return matchesSearch && matchesDay && matchesPeriod;
   });
 
+  const handleSearch = () => {
+    setSearchTerm(displaySearchTerm);
+  };
+
   const clearFilters = () => {
     setFilters({ dayFilter: '', periodFilter: '' });
     setSearchTerm('');
@@ -145,7 +150,7 @@ function ScheduleManagement() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
+          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
           Thêm lịch học
@@ -154,28 +159,33 @@ function ScheduleManagement() {
 
       {/* Search and Filters */}
       <div className="space-y-4">
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Tìm kiếm lịch học..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+              value={displaySearchTerm}
+              onChange={(e) => setDisplaySearchTerm(e.target.value)}
+              className="w-full pl-12 pr-24 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
             />
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowFilters(!showFilters)}
+              className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <Filter className="w-5 h-5" />
+            </motion.button>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-              showFilters 
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' 
-                : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-orange-500'
-            }`}
+            onClick={handleSearch}
+            className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
           >
-            <Filter className="w-5 h-5" />
+            <Search className="w-5 h-5" />
+            Tìm kiếm
           </motion.button>
           {hasActiveFilters && (
             <motion.button
@@ -194,7 +204,7 @@ function ScheduleManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-orange-50 rounded-xl p-4 space-y-4"
+            className="bg-gray-50 rounded-xl p-4 space-y-4"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -235,10 +245,10 @@ function ScheduleManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg shadow-orange-100 border border-orange-50 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+            <thead className="bg-gray-50">
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Thứ</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Ca</th>
