@@ -151,105 +151,78 @@ function ClassManagement() {
       </div>
 
       {/* Search and Filters */}
-      <div className="space-y-4">
-        <div className="flex gap-3">
-          <div className="relative w-2/3">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm lớp học..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${
-                hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
-          {hasActiveFilters && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={clearFilters}
-              className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"
-            >
-              <XCircle className="w-5 h-5" />
-              Xóa bộ lọc
-            </motion.button>
-          )}
-        </div>
+      {/* Search and Filter */}
+<div className="flex flex-wrap gap-3 items-center">
 
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
-          >
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo khoa</label>
-              <select
-                value={displayFilters.facultyFilter}
-                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
-                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-              >
-                <option value="">Tất cả khoa</option>
-                {faculties.map((faculty) => (
-                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                    {faculty.TenKhoa}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
-              >
-                Áp dụng lọc
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setDisplayFilters({ facultyFilter: '' })}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-              >
-                Đặt lại
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </div>
+  {/* Search */}
+  <div className="relative flex-1 min-w-[300px]">
+    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+
+    <input
+      type="text"
+      placeholder="Tìm kiếm lớp học..."
+      value={displaySearchTerm}
+      onChange={(e) => setDisplaySearchTerm(e.target.value)}
+      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+      className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+    />
+  </div>
+
+  {/* Filter Select */}
+  <div className="min-w-[220px]">
+    <select
+      value={displayFilters.facultyFilter}
+      onChange={(e) => {
+        const value = e.target.value;
+
+        setDisplayFilters({
+          facultyFilter: value
+        });
+
+        setFilters({
+          facultyFilter: value
+        });
+      }}
+      className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors max-h-40 overflow-y-auto"
+    >
+      <option value="">Tất cả khoa</option>
+
+      {faculties.map((faculty) => (
+        <option
+          key={faculty.MaKhoa}
+          value={faculty.MaKhoa}
+        >
+          {faculty.TenKhoa}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  {/* Search Button */}
+  <motion.button
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    onClick={handleSearch}
+    className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-xl shadow-lg transition-all"
+  >
+    <Search className="w-5 h-5" />
+    Tìm kiếm
+  </motion.button>
+
+  {/* Refresh + Reset */}
+  <motion.button
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    onClick={() => {
+      clearFilters();
+      fetchData();
+    }}
+    className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl shadow-lg transition-all"
+  >
+    <RefreshCw className="w-5 h-5" />
+    Làm mới
+  </motion.button>
+</div>
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
