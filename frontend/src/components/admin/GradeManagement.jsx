@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, Download, BarChart3, FileText } from 'lucide-react';
+import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, Download, FileText, BarChart3 } from 'lucide-react';
 import axios from 'axios';
 
 function GradeManagement() {
@@ -25,17 +25,24 @@ function GradeManagement() {
   const [bulkGrades, setBulkGrades] = useState([]);
   const [gradeStats, setGradeStats] = useState({
     total: 0,
-    average: 0,
-    excellent: 0,
-    good: 0,
-    averageGrade: 0,
-    fail: 0
+    a: 0,
+    bPlus: 0,
+    b: 0,
+    cPlus: 0,
+    c: 0,
+    dPlus: 0,
+    d: 0,
+    fPlus: 0,
+    f: 0
   });
+
+  // Cập nhật lại formData để khớp với các cột điểm mới
   const [formData, setFormData] = useState({
     MSSV: '',
     MaMonHoc: '',
     HocKy: '',
-    DiemQuaTrinh: '',
+    DiemChuyenCan: '',
+    DiemBaiTap: '',
     DiemGiuaKy: '',
     DiemCuoiKy: ''
   });
@@ -61,13 +68,56 @@ function GradeManagement() {
     }
   };
 
+  // Hàm tính điểm tổng hệ 10
+  const calculateTotal10 = (cc, bt, gk, ck) => {
+    const dcc = parseFloat(cc) || 0;
+    const dbt = parseFloat(bt) || 0;
+    const dgk = parseFloat(gk) || 0;
+    const dck = parseFloat(ck) || 0;
+    
+    // 10% CC + 15% BT + 25% GK + 50% CK
+    return ((dcc * 0.1) + (dbt * 0.15) + (dgk * 0.25) + (dck * 0.5)).toFixed(2);
+  };
+
+  // Hàm quy đổi sang hệ 4.0 và Điểm chữ
+  const convertToGPA = (total10) => {
+    const t = parseFloat(total10);
+    if (t >= 8.5) return { letter: 'A', gpa: 4.0, text: 'Giỏi' };
+    if (t >= 7.8) return { letter: 'B+', gpa: 3.5, text: 'Khá' };
+    if (t >= 7.0) return { letter: 'B', gpa: 3.0, text: 'Khá' };
+    if (t >= 6.3) return { letter: 'C+', gpa: 2.5, text: 'Trung bình' };
+    if (t >= 5.5) return { letter: 'C', gpa: 2.0, text: 'Trung bình' };
+    if (t >= 4.8) return { letter: 'D+', gpa: 1.5, text: 'Trung bình yếu' };
+    if (t >= 4.0) return { letter: 'D', gpa: 1.0, text: 'Trung bình yếu' };
+    if (t >= 3.0) return { letter: 'F+', gpa: 0.5, text: 'Kém' };
+    return { letter: 'F', gpa: 0.0, text: 'Kém' };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Tính toán trực tiếp ở FE trước khi gửi
+      const diemTong10 = calculateTotal10(
+        formData.DiemChuyenCan,
+        formData.DiemBaiTap,
+        formData.DiemGiuaKy,
+        formData.DiemCuoiKy
+      );
+      const gpaResult = convertToGPA(diemTong10);
+
+      // Đóng gói payload gửi về Backend
+      const payload = {
+        ...formData,
+        DiemTong: diemTong10,
+        DiemGPA: gpaResult.gpa,
+        DiemChu: gpaResult.letter,
+        XepLoai: gpaResult.text
+      };
+
       if (editingGrade) {
-        await axios.put(`http://localhost:5000/api/grades/${editingGrade.MaDiem}`, formData);
+        await axios.put(`http://localhost:5000/api/grades/${editingGrade.MaDiem}`, payload);
       } else {
-        await axios.post('http://localhost:5000/api/grades', formData);
+        await axios.post('http://localhost:5000/api/grades', payload);
       }
       fetchData();
       handleCloseModal();
@@ -83,7 +133,8 @@ function GradeManagement() {
       MSSV: grade.MSSV,
       MaMonHoc: grade.MaMonHoc,
       HocKy: grade.HocKy,
-      DiemQuaTrinh: grade.DiemQuaTrinh || '',
+      DiemChuyenCan: grade.DiemChuyenCan || '',
+      DiemBaiTap: grade.DiemBaiTap || '',
       DiemGiuaKy: grade.DiemGiuaKy || '',
       DiemCuoiKy: grade.DiemCuoiKy || ''
     });
@@ -109,7 +160,8 @@ function GradeManagement() {
       MSSV: '',
       MaMonHoc: '',
       HocKy: '',
-      DiemQuaTrinh: '',
+      DiemChuyenCan: '',
+      DiemBaiTap: '',
       DiemGiuaKy: '',
       DiemCuoiKy: ''
     });
@@ -136,7 +188,6 @@ function GradeManagement() {
     setShowFilters(false);
   };
 
-
   const clearFilters = () => {
     setFilters({ subjectFilter: '', semesterFilter: '' });
     setDisplayFilters({ subjectFilter: '', semesterFilter: '' });
@@ -147,69 +198,74 @@ function GradeManagement() {
   const activeFilterCount = (filters.subjectFilter ? 1 : 0) + (filters.semesterFilter ? 1 : 0) + (searchTerm ? 1 : 0);
   const hasActiveFilters = filters.subjectFilter || filters.semesterFilter || searchTerm;
 
-  const calculateAverage = (grade) => {
-    const qt = parseFloat(grade.DiemQuaTrinh) || 0;
-    const gk = parseFloat(grade.DiemGiuaKy) || 0;
-    const ck = parseFloat(grade.DiemCuoiKy) || 0;
-    return ((qt * 0.2) + (gk * 0.3) + (ck * 0.5)).toFixed(2);
-  };
-
-  const calculateLetterGrade = (average) => {
-    const avg = parseFloat(average);
-    if (avg >= 8.5) return 'A';
-    if (avg >= 7.0) return 'B';
-    if (avg >= 5.5) return 'C';
-    if (avg >= 4.0) return 'D';
-    return 'F';
-  };
-
+  // Calculate statistics
   const calculateGradeStatistics = () => {
     if (filteredGrades.length === 0) {
-      setGradeStats({ total: 0, average: 0, excellent: 0, good: 0, averageGrade: 0, fail: 0 });
+      setGradeStats({ total: 0, a: 0, bPlus: 0, b: 0, cPlus: 0, c: 0, dPlus: 0, d: 0, fPlus: 0, f: 0 });
       return;
     }
 
     const total = filteredGrades.length;
-    let sum = 0;
-    let excellent = 0;
-    let good = 0;
-    let averageGrade = 0;
-    let fail = 0;
+    let a = 0;
+    let bPlus = 0;
+    let b = 0;
+    let cPlus = 0;
+    let c = 0;
+    let dPlus = 0;
+    let d = 0;
+    let fPlus = 0;
+    let f = 0;
 
     filteredGrades.forEach(grade => {
-      const avg = parseFloat(calculateAverage(grade));
-      sum += avg;
-      
-      if (avg >= 8.5) excellent++;
-      else if (avg >= 7.0) good++;
-      else if (avg >= 5.5) averageGrade++;
-      else if (avg >= 4.0) averageGrade++;
-      else fail++;
+      const total10 = calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
+      const t = parseFloat(total10);
+
+      if (t >= 8.5) a++;
+      else if (t >= 7.8) bPlus++;
+      else if (t >= 7.0) b++;
+      else if (t >= 6.3) cPlus++;
+      else if (t >= 5.5) c++;
+      else if (t >= 4.8) dPlus++;
+      else if (t >= 4.0) d++;
+      else if (t >= 3.0) fPlus++;
+      else f++;
     });
 
     setGradeStats({
       total,
-      average: (sum / total).toFixed(2),
-      excellent,
-      good,
-      averageGrade,
-      fail
+      a,
+      bPlus,
+      b,
+      cPlus,
+      c,
+      dPlus,
+      d,
+      fPlus,
+      f
     });
   };
 
+  // Export grades to CSV
   const handleExportGrades = () => {
     const csvContent = [
-      ['MSSV', 'Môn học', 'Học kỳ', 'QT', 'GK', 'CK', 'TB', 'Điểm chữ'],
-      ...filteredGrades.map(g => [
-        g.MSSV,
-        g.TenMonHoc || g.MaMonHoc,
-        g.HocKy,
-        g.DiemQuaTrinh || '-',
-        g.DiemGiuaKy || '-',
-        g.DiemCuoiKy || '-',
-        calculateAverage(g),
-        calculateLetterGrade(calculateAverage(g))
-      ])
+      ['MSSV', 'Sinh viên', 'Môn học', 'Học kỳ', 'CC', 'BT', 'GK', 'CK', 'TB', 'GPA', 'Điểm chữ'],
+      ...filteredGrades.map(g => {
+        const total10 = calculateTotal10(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+        const gpaData = convertToGPA(total10);
+        return [
+          g.MSSV,
+          g.TenSinhVien || 'N/A',
+          g.TenMonHoc || g.MaMonHoc,
+          g.HocKy,
+          g.DiemChuyenCan || '-',
+          g.DiemBaiTap || '-',
+          g.DiemGiuaKy || '-',
+          g.DiemCuoiKy || '-',
+          g.DiemTong || total10,
+          g.DiemGPA || gpaData.gpa.toFixed(1),
+          g.DiemChu || gpaData.letter
+        ];
+      })
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -219,29 +275,45 @@ function GradeManagement() {
     link.click();
   };
 
+  // Open bulk import modal
   const handleOpenBulkModal = () => {
     setBulkGrades(students.map(student => ({
       MSSV: student.MSSV,
       HoTen: student.HoTen,
       MaMonHoc: '',
       HocKy: '',
-      DiemQuaTrinh: '',
+      DiemChuyenCan: '',
+      DiemBaiTap: '',
       DiemGiuaKy: '',
       DiemCuoiKy: ''
     })));
     setShowBulkModal(true);
   };
 
+  // Handle bulk import submit
   const handleBulkSubmit = async () => {
     const validGrades = bulkGrades.filter(g => g.MaMonHoc && g.HocKy);
-    
+
     if (validGrades.length === 0) {
       alert('Vui lòng nhập môn học và học kỳ!');
       return;
     }
 
     try {
-      await axios.post('http://localhost:5000/api/grades/bulk', { grades: validGrades });
+      // Calculate grades for each student
+      const gradesWithCalculation = validGrades.map(g => {
+        const diemTong10 = calculateTotal10(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+        const gpaResult = convertToGPA(diemTong10);
+        return {
+          ...g,
+          DiemTong: diemTong10,
+          DiemGPA: gpaResult.gpa,
+          DiemChu: gpaResult.letter,
+          XepLoai: gpaResult.text
+        };
+      });
+
+      await axios.post('http://localhost:5000/api/grades/bulk', { grades: gradesWithCalculation });
       alert('Nhập điểm hàng loạt thành công!');
       setShowBulkModal(false);
       fetchData();
@@ -250,6 +322,11 @@ function GradeManagement() {
       alert('Lỗi khi nhập điểm hàng loạt!');
     }
   };
+
+  // Calculate statistics when filtered grades change
+  useEffect(() => {
+    calculateGradeStatistics();
+  }, [filteredGrades]);
 
   if (loading) {
     return (
@@ -300,7 +377,7 @@ function GradeManagement() {
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-3">
-          <div className="relative w-1/2">
+          <div className="relative w-2/3">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -350,7 +427,7 @@ function GradeManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
+            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -420,30 +497,40 @@ function GradeManagement() {
             <div className="text-sm text-gray-600">Tổng điểm</div>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-xl">
-            <div className="text-2xl font-bold text-green-600">
-              {filteredGrades.length > 0 
-                ? (filteredGrades.reduce((sum, g) => sum + parseFloat(calculateAverage(g)), 0) / filteredGrades.length).toFixed(2)
-                : 0}
-            </div>
-            <div className="text-sm text-gray-600">Điểm TB</div>
+            <div className="text-2xl font-bold text-green-600">{gradeStats.a}</div>
+            <div className="text-sm text-gray-600">A (≥8.5)</div>
           </div>
-          <div className="text-center p-4 bg-purple-50 rounded-xl">
-            <div className="text-2xl font-bold text-purple-600">
-              {filteredGrades.filter(g => parseFloat(calculateAverage(g)) >= 8.5).length}
-            </div>
-            <div className="text-sm text-gray-600">Giỏi (A)</div>
+          <div className="text-center p-4 bg-emerald-50 rounded-xl">
+            <div className="text-2xl font-bold text-emerald-600">{gradeStats.bPlus}</div>
+            <div className="text-sm text-gray-600">B+ (≥7.8)</div>
           </div>
-          <div className="text-center p-4 bg-yellow-50 rounded-xl">
-            <div className="text-2xl font-bold text-yellow-600">
-              {filteredGrades.filter(g => parseFloat(calculateAverage(g)) >= 7.0 && parseFloat(calculateAverage(g)) < 8.5).length}
-            </div>
-            <div className="text-sm text-gray-600">Khá (B)</div>
+          <div className="text-center p-4 bg-teal-50 rounded-xl">
+            <div className="text-2xl font-bold text-teal-600">{gradeStats.b}</div>
+            <div className="text-sm text-gray-600">B (≥7.0)</div>
+          </div>
+          <div className="text-center p-4 bg-cyan-50 rounded-xl">
+            <div className="text-2xl font-bold text-cyan-600">{gradeStats.cPlus}</div>
+            <div className="text-sm text-gray-600">C+ (≥6.3)</div>
+          </div>
+          <div className="text-center p-4 bg-sky-50 rounded-xl">
+            <div className="text-2xl font-bold text-sky-600">{gradeStats.c}</div>
+            <div className="text-sm text-gray-600">C (≥5.5)</div>
+          </div>
+          <div className="text-center p-4 bg-indigo-50 rounded-xl">
+            <div className="text-2xl font-bold text-indigo-600">{gradeStats.dPlus}</div>
+            <div className="text-sm text-gray-600">D+ (≥4.8)</div>
+          </div>
+          <div className="text-center p-4 bg-violet-50 rounded-xl">
+            <div className="text-2xl font-bold text-violet-600">{gradeStats.d}</div>
+            <div className="text-sm text-gray-600">D (≥4.0)</div>
+          </div>
+          <div className="text-center p-4 bg-orange-50 rounded-xl">
+            <div className="text-2xl font-bold text-orange-600">{gradeStats.fPlus}</div>
+            <div className="text-sm text-gray-600">F+ (≥3.0)</div>
           </div>
           <div className="text-center p-4 bg-red-50 rounded-xl">
-            <div className="text-2xl font-bold text-red-600">
-              {filteredGrades.filter(g => parseFloat(calculateAverage(g)) < 4.0).length}
-            </div>
-            <div className="text-sm text-gray-600">Rớt (F)</div>
+            <div className="text-2xl font-bold text-red-600">{gradeStats.f}</div>
+            <div className="text-sm text-gray-600">F (&lt;3.0)</div>
           </div>
         </div>
       </motion.div>
@@ -454,72 +541,70 @@ function GradeManagement() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">MSSV</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Sinh viên</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Môn học</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Học kỳ</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">QT</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">GK</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">CK</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">TB</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Điểm chữ</th>
-                <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">MSSV</th>
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Sinh viên</th>
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Môn học</th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CC<br/><span className="text-xs font-normal text-gray-500">(10%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">BT<br/><span className="text-xs font-normal text-gray-500">(15%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">GK<br/><span className="text-xs font-normal text-gray-500">(25%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CK<br/><span className="text-xs font-normal text-gray-500">(50%)</span></th>
+                <th className="text-center py-4 px-3 text-sm font-bold text-gray-800">TB</th>
+                <th className="text-center py-4 px-3 text-sm font-bold text-orange-600">GPA</th>
+                <th className="text-center py-4 px-3 text-sm font-semibold text-gray-700">Xếp loại</th>
+                <th className="text-center py-4 px-4 text-sm font-semibold text-gray-700">Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {filteredGrades.length > 0 ? (
-                filteredGrades.map((grade, index) => (
-                  <motion.tr
-                    key={grade.MaDiem}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
-                  >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{grade.MSSV}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{grade.TenSinhVien || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{grade.TenMonHoc || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{grade.HocKy}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemQuaTrinh || '-'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
-                    <td className="py-4 px-6 text-sm font-bold text-orange-600">{calculateAverage(grade)}</td>
-                    <td className="py-4 px-6 text-sm">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        calculateLetterGrade(calculateAverage(grade)) === 'A' ? 'bg-green-100 text-green-600' :
-                        calculateLetterGrade(calculateAverage(grade)) === 'B' ? 'bg-blue-100 text-blue-600' :
-                        calculateLetterGrade(calculateAverage(grade)) === 'C' ? 'bg-yellow-100 text-yellow-600' :
-                        calculateLetterGrade(calculateAverage(grade)) === 'D' ? 'bg-orange-100 text-orange-600' :
-                        'bg-red-100 text-red-600'
-                      }`}>
-                        {calculateLetterGrade(calculateAverage(grade))}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(grade)}
-                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(grade.MaDiem)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
+                filteredGrades.map((grade, index) => {
+                  // Gọi hàm tính toán realtime để render (Trường hợp DB chưa có các trường này)
+                  const total10 = calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
+                  const gpaData = convertToGPA(total10);
+
+                  return (
+                    <motion.tr
+                      key={grade.MaDiem}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
+                    >
+                      <td className="py-4 px-4 text-sm font-medium text-gray-800">{grade.MSSV}</td>
+                      <td className="py-4 px-4 text-sm text-gray-600">{grade.TenSinhVien || 'N/A'}</td>
+                      <td className="py-4 px-4 text-sm text-gray-600 truncate max-w-[150px]">{grade.TenMonHoc || 'N/A'}</td>
+                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemChuyenCan || '-'}</td>
+                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemBaiTap || '-'}</td>
+                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemGiuaKy || '-'}</td>
+                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemCuoiKy || '-'}</td>
+                      <td className="py-4 px-3 text-sm text-center font-bold text-gray-800">{grade.DiemTong || total10}</td>
+                      <td className="py-4 px-3 text-sm text-center font-bold text-orange-600">{grade.DiemGPA || gpaData.gpa.toFixed(1)}</td>
+                      <td className="py-4 px-3 text-sm text-center font-semibold text-blue-600">{grade.DiemChu || gpaData.letter}</td>
+                      <td className="py-4 px-4 text-sm">
+                        <div className="flex items-center justify-center gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleEdit(grade)}
+                            className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleDelete(grade.MaDiem)}
+                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </motion.button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan="9" className="py-12 text-center text-gray-500">
+                  <td colSpan="11" className="py-12 text-center text-gray-500">
                     Không tìm thấy điểm nào
                   </td>
                 </tr>
@@ -529,7 +614,7 @@ function GradeManagement() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal Thêm/Sửa */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
           <motion.div
@@ -553,7 +638,7 @@ function GradeManagement() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Sinh viên</label>
                   <select
                     value={formData.MSSV}
@@ -569,6 +654,7 @@ function GradeManagement() {
                     ))}
                   </select>
                 </div>
+                
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học</label>
                   <select
@@ -585,7 +671,8 @@ function GradeManagement() {
                     ))}
                   </select>
                 </div>
-                <div className="md:col-span-2">
+                
+                <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Học kỳ</label>
                   <select
                     value={formData.HocKy}
@@ -598,20 +685,34 @@ function GradeManagement() {
                     <option value="HK2_2025_2026">HK2 2025-2026</option>
                   </select>
                 </div>
+
+                {/* Các trường nhập điểm mới */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Điểm quá trình (20%)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Chuyên cần (10%)</label>
                   <input
                     type="number"
                     step="0.1"
                     min="0"
                     max="10"
-                    value={formData.DiemQuaTrinh}
-                    onChange={(e) => setFormData({ ...formData, DiemQuaTrinh: e.target.value })}
+                    value={formData.DiemChuyenCan}
+                    onChange={(e) => setFormData({ ...formData, DiemChuyenCan: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Điểm giữa kỳ (30%)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Bài tập (15%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={formData.DiemBaiTap}
+                    onChange={(e) => setFormData({ ...formData, DiemBaiTap: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Giữa kỳ (25%)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -622,8 +723,8 @@ function GradeManagement() {
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Điểm cuối kỳ (50%)</label>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Cuối kỳ/Báo cáo (50%)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -633,6 +734,25 @@ function GradeManagement() {
                     onChange={(e) => setFormData({ ...formData, DiemCuoiKy: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   />
+                </div>
+              </div>
+
+              {/* Box Preview điểm tạm tính */}
+              <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-center justify-between mt-4">
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Tạm tính Hệ 10:</p>
+                  <p className="text-2xl font-bold text-gray-800">
+                    {calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600 font-medium">Quy đổi GPA:</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {convertToGPA(calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy)).gpa.toFixed(1)} 
+                    <span className="text-lg text-blue-600 ml-2">
+                      ({convertToGPA(calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy)).letter})
+                    </span>
+                  </p>
                 </div>
               </div>
 
@@ -719,9 +839,10 @@ function GradeManagement() {
                     <tr>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">QT</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">GK</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">CK</th>
+                      <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">CC<br/><span className="text-xs font-normal text-gray-500">(10%)</span></th>
+                      <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">BT<br/><span className="text-xs font-normal text-gray-500">(15%)</span></th>
+                      <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">GK<br/><span className="text-xs font-normal text-gray-500">(25%)</span></th>
+                      <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">CK<br/><span className="text-xs font-normal text-gray-500">(50%)</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -729,22 +850,37 @@ function GradeManagement() {
                       <tr key={index} className="border-b border-gray-100">
                         <td className="py-3 px-4 text-sm font-medium text-gray-800">{grade.MSSV}</td>
                         <td className="py-3 px-4 text-sm text-gray-600">{grade.HoTen}</td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-2">
                           <input
                             type="number"
                             step="0.1"
                             min="0"
                             max="10"
-                            value={grade.DiemQuaTrinh}
+                            value={grade.DiemChuyenCan}
                             onChange={(e) => {
                               const newGrades = [...bulkGrades];
-                              newGrades[index].DiemQuaTrinh = e.target.value;
+                              newGrades[index].DiemChuyenCan = e.target.value;
                               setBulkGrades(newGrades);
                             }}
                             className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500"
                           />
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="10"
+                            value={grade.DiemBaiTap}
+                            onChange={(e) => {
+                              const newGrades = [...bulkGrades];
+                              newGrades[index].DiemBaiTap = e.target.value;
+                              setBulkGrades(newGrades);
+                            }}
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500"
+                          />
+                        </td>
+                        <td className="py-3 px-2">
                           <input
                             type="number"
                             step="0.1"
@@ -759,7 +895,7 @@ function GradeManagement() {
                             className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500"
                           />
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-2">
                           <input
                             type="number"
                             step="0.1"

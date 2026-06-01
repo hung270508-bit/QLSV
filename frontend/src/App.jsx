@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, GraduationCap, School, ShieldAlert, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import axios from 'axios';
-import AdminDashboard from './components/AdminDashboard';
-import StudentDashboard from './components/StudentDashboard';
-import TeacherDashboard from './components/TeacherDashboard';
+import AdminDashboard from './components/admin/AdminDashboard';
+import StudentDashboard from './components/students/StudentDashboard';
+import TeacherDashboard from './components/teacher/TeacherDashboard';
 
 function App() {
   const [username, setUsername] = useState('');

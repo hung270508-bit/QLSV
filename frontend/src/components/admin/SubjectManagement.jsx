@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Users, BarChart3 } from 'lucide-react';
+import { 
+  BookOpen, Plus, Edit, Trash2, Search, X, Filter, 
+  XCircle, Eye, Users, BarChart3, ChevronLeft, ChevronRight 
+} from 'lucide-react';
 import axios from 'axios';
 
 function SubjectManagement() {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
+  
+  // States cho Search và Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -19,6 +25,12 @@ function SubjectManagement() {
     nameFilter: '',
     creditFilter: ''
   });
+
+  // States cho Phân trang (Pagination)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // States cho Chi tiết môn học
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [subjectClasses, setSubjectClasses] = useState([]);
@@ -32,6 +44,7 @@ function SubjectManagement() {
     fail: 0
   });
   const [detailTab, setDetailTab] = useState('classes'); // 'classes', 'teachers', 'stats'
+  
   const [formData, setFormData] = useState({
     MaMonHoc: '',
     TenMonHoc: '',
@@ -49,12 +62,13 @@ function SubjectManagement() {
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setLoading(false);
+      loading && setLoading(false);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       if (editingSubject) {
         await axios.put(`http://localhost:5000/api/subjects/${editingSubject.MaMonHoc}`, formData);
@@ -66,6 +80,8 @@ function SubjectManagement() {
     } catch (error) {
       console.error('Error saving subject:', error);
       alert('Lỗi khi lưu môn học!');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -115,7 +131,7 @@ function SubjectManagement() {
       setSubjectClasses(classesRes.data);
       setSubjectTeachers(teachersRes.data);
       
-      // Calculate grade statistics
+      // Tính toán thống kê điểm
       const gradesRes = await axios.get(`http://localhost:5000/api/grades`);
       const subjectGrades = gradesRes.data.filter(g => g.MaMonHoc === subject.MaMonHoc);
       
@@ -135,8 +151,7 @@ function SubjectManagement() {
         
         if (parseFloat(avg) >= 8.5) excellent++;
         else if (parseFloat(avg) >= 7.0) good++;
-        else if (parseFloat(avg) >= 5.5) averageGrade++;
-        else if (parseFloat(avg) >= 4.0) averageGrade++;
+        else if (parseFloat(avg) >= 4.0) averageGrade++; 
         else fail++;
       });
       
@@ -180,21 +195,29 @@ function SubjectManagement() {
     return matchesSearch && matchesName && matchesCredit;
   });
 
+  // Logic Phân trang
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredSubjects.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
+
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
+    setCurrentPage(1); 
   };
 
   const handleApplyFilters = () => {
     setFilters({ ...displayFilters });
     setShowFilters(false);
+    setCurrentPage(1); 
   };
-
 
   const clearFilters = () => {
     setFilters({ nameFilter: '', creditFilter: '' });
     setDisplayFilters({ nameFilter: '', creditFilter: '' });
     setSearchTerm('');
     setDisplaySearchTerm('');
+    setCurrentPage(1); 
   };
 
   const activeFilterCount = (filters.nameFilter ? 1 : 0) + (filters.creditFilter ? 1 : 0) + (searchTerm ? 1 : 0);
@@ -209,47 +232,54 @@ function SubjectManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý môn học</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa thông tin môn học</p>
+    <div className="space-y-8 bg-gray-50/50 p-4 rounded-2xl">
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl shadow-orange-500/10">
+        <div className="flex items-center justify-between">
+          <div className="text-white">
+            <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
+              <BookOpen className="w-8 h-8" />
+              Quản lý môn học
+            </h2>
+            <p className="text-orange-100 text-lg">Thêm, sửa, xóa và xem chi tiết thông tin môn học</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(249,115,22,0.2)" }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm môn học
+          </motion.button>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm môn học
-        </motion.button>
       </div>
 
       {/* Search and Filters */}
-      <div className="space-y-4">
-        <div className="flex gap-3">
-          <div className="relative w-1/2">
+      <div className="bg-white rounded-2xl shadow-lg border border-orange-100/50 p-6">
+        <div className="flex gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm môn học..."
+              placeholder="Tìm kiếm môn học theo tên hoặc mã môn..."
               value={displaySearchTerm}
               onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              className="w-full pl-12 pr-12 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setShowFilters(!showFilters)}
-                className={`transition-colors ${
-                  hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
+                className={`transition-colors relative p-1 rounded-lg ${
+                  hasActiveFilters ? 'text-orange-500 bg-orange-50' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 <Filter className="w-5 h-5" />
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                     {activeFilterCount}
                   </span>
                 )}
@@ -260,7 +290,7 @@ function SubjectManagement() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSearch}
-            className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-500/20 transition-all"
           >
             <Search className="w-5 h-5" />
             Tìm kiếm
@@ -270,7 +300,7 @@ function SubjectManagement() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={clearFilters}
-              className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-orange-50 text-orange-600 rounded-xl font-semibold hover:bg-orange-100 transition-colors flex items-center gap-2 border-2 border-orange-200"
             >
               <XCircle className="w-5 h-5" />
               Xóa bộ lọc
@@ -282,11 +312,11 @@ function SubjectManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
+            className="bg-orange-50/50 rounded-xl p-4 space-y-4 relative z-40 w-full mt-4 border border-orange-100"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo tên môn học</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo tên môn học</label>
                 <input
                   type="text"
                   placeholder="Nhập tên môn học..."
@@ -296,7 +326,7 @@ function SubjectManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo số tín chỉ</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo số tín chỉ</label>
                 <select
                   value={displayFilters.creditFilter}
                   onChange={(e) => setDisplayFilters({ ...displayFilters, creditFilter: e.target.value })}
@@ -317,7 +347,7 @@ function SubjectManagement() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="flex-1 bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/10"
               >
                 Áp dụng lọc
               </motion.button>
@@ -325,7 +355,7 @@ function SubjectManagement() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setDisplayFilters({ nameFilter: '', creditFilter: '' })}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-white text-gray-700 border border-gray-200 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
               >
                 Đặt lại
               </motion.button>
@@ -334,46 +364,48 @@ function SubjectManagement() {
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      {/* Table & Pagination */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-orange-50 to-orange-100/40">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Mã môn</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Tên môn học</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Số tín chỉ</th>
-                <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã môn</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên môn học</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Số tín chỉ</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {filteredSubjects.length > 0 ? (
-                filteredSubjects.map((subject, index) => (
+              {currentItems.length > 0 ? (
+                currentItems.map((subject, index) => (
                   <motion.tr
                     key={subject.MaMonHoc}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-orange-100/30 transition-all cursor-pointer"
+                    onClick={() => handleViewDetails(subject)}
                   >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{subject.MaMonHoc}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{subject.TenMonHoc}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{subject.SoTinChi}</td>
-                    <td className="py-4 px-6 text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleViewDetails(subject)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </motion.button>
+                    <td className="py-5 px-6">
+                      <span className="font-semibold text-gray-800 text-base">{subject.MaMonHoc}</span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="font-semibold text-gray-800">{subject.TenMonHoc}</div>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-50 text-orange-600 border border-orange-100">
+                        {subject.SoTinChi} tín chỉ
+                      </span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(subject)}
-                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                          className="p-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all shadow-sm border border-orange-100"
+                          title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
@@ -381,7 +413,8 @@ function SubjectManagement() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleDelete(subject.MaMonHoc)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                          className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100"
+                          title="Xóa"
                         >
                           <Trash2 className="w-4 h-4" />
                         </motion.button>
@@ -391,23 +424,67 @@ function SubjectManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="py-12 text-center text-gray-500">
-                    Không tìm thấy môn học nào
+                  <td colSpan="4" className="py-16">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <BookOpen className="w-16 h-16 mb-4 text-orange-200" />
+                      <p className="text-lg font-medium">Không tìm thấy môn học nào</p>
+                      <p className="text-sm mt-2">Thử tìm kiếm hoặc đổi bộ lọc khác</p>
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Component Phân trang */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div className="text-sm text-gray-500">
+              Hiển thị <span className="font-medium text-gray-700">{indexOfFirstItem + 1}</span> đến <span className="font-medium text-gray-700">{Math.min(indexOfLastItem, filteredSubjects.length)}</span> trong số <span className="font-medium text-gray-700">{filteredSubjects.length}</span> môn học
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-1">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                      currentPage === i + 1
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20'
+                        : 'text-gray-600 hover:bg-gray-100 border border-transparent'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal */}
+      {/* Modal Thêm/Sửa */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/20">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-orange-100"
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">
@@ -459,19 +536,31 @@ function SubjectManagement() {
 
               <div className="flex gap-3 pt-4">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={!isSubmitting ? { scale: 1.02 } : {}}
+                  whileTap={!isSubmitting ? { scale: 0.98 } : {}}
                   type="submit"
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
+                  disabled={isSubmitting}
+                  className={`flex-1 flex justify-center items-center gap-2 py-3 rounded-xl font-semibold shadow-lg transition-all ${
+                    isSubmitting 
+                      ? 'bg-orange-400 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-orange-500/20'
+                  } text-white`}
                 >
-                  {editingSubject ? 'Cập nhật' : 'Thêm mới'}
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : editingSubject ? (
+                    'Cập nhật'
+                  ) : (
+                    'Thêm mới'
+                  )}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
                 >
                   Hủy
                 </motion.button>
@@ -483,14 +572,14 @@ function SubjectManagement() {
 
       {/* Detail Modal */}
       {showDetailModal && selectedSubject && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/20">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl"
+            className="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl border border-orange-100"
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">Chi tiết môn học: {selectedSubject.TenMonHoc}</h3>
+              <h3 className="text-xl font-bold text-gray-800">Chi tiết môn học: <span className="text-orange-600">{selectedSubject.TenMonHoc}</span></h3>
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -506,17 +595,17 @@ function SubjectManagement() {
               {[
                 { id: 'classes', label: 'Lớp học', icon: BookOpen },
                 { id: 'teachers', label: 'Giảng viên', icon: Users },
-                { id: 'stats', label: 'Thống kê', icon: BarChart3 }
+                { id: 'stats', label: 'Thống kê điểm số', icon: BarChart3 }
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setDetailTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                    className={`flex items-center gap-2 px-5 py-3 font-semibold transition-all relative ${
                       detailTab === tab.id
-                        ? 'text-orange-600 border-b-2 border-orange-600'
-                        : 'text-gray-600 hover:text-gray-800'
+                        ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/50 rounded-t-xl'
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -530,7 +619,7 @@ function SubjectManagement() {
             {detailTab === 'classes' && (
               <div className="space-y-4">
                 {subjectClasses.length > 0 ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto border border-gray-100 rounded-xl">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
@@ -541,17 +630,19 @@ function SubjectManagement() {
                       </thead>
                       <tbody>
                         {subjectClasses.map((cls, index) => (
-                          <tr key={index} className="border-b border-gray-100">
-                            <td className="py-3 px-4 text-sm text-gray-800">{cls.MaLop}</td>
+                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
+                            <td className="py-3 px-4 text-sm font-medium text-gray-800">{cls.MaLop}</td>
                             <td className="py-3 px-4 text-sm text-gray-600">{cls.TenLop}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{cls.SoSinhVien || 0}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              <span className="bg-gray-100 px-2.5 py-1 rounded-md font-medium text-gray-700">{cls.SoSinhVien || 0} SV</span>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500 py-8">Chưa có lớp nào học môn này</p>
+                  <p className="text-center text-gray-500 py-8">Chưa có lớp nào đăng ký học môn này</p>
                 )}
               </div>
             )}
@@ -559,7 +650,7 @@ function SubjectManagement() {
             {detailTab === 'teachers' && (
               <div className="space-y-4">
                 {subjectTeachers.length > 0 ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto border border-gray-100 rounded-xl">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
@@ -571,9 +662,9 @@ function SubjectManagement() {
                       </thead>
                       <tbody>
                         {subjectTeachers.map((teacher, index) => (
-                          <tr key={index} className="border-b border-gray-100">
-                            <td className="py-3 px-4 text-sm text-gray-800">{teacher.MaGiangVien}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.HoTen}</td>
+                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
+                            <td className="py-3 px-4 text-sm font-medium text-gray-800">{teacher.MaGiangVien}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600 font-semibold">{teacher.HoTen}</td>
                             <td className="py-3 px-4 text-sm text-gray-600">{teacher.Email || '-'}</td>
                             <td className="py-3 px-4 text-sm text-gray-600">{teacher.SoDienThoai || '-'}</td>
                           </tr>
@@ -582,33 +673,37 @@ function SubjectManagement() {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500 py-8">Chưa có giảng viên nào dạy môn này</p>
+                  <p className="text-center text-gray-500 py-8">Chưa có giảng viên nào phân công dạy môn này</p>
                 )}
               </div>
             )}
 
             {detailTab === 'stats' && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="bg-blue-50 p-6 rounded-xl text-center">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="bg-blue-50 p-6 rounded-xl text-center shadow-sm">
                     <div className="text-3xl font-bold text-blue-600">{subjectGradeStats.totalGrades}</div>
-                    <div className="text-sm text-gray-600">Tổng điểm</div>
+                    <div className="text-sm text-gray-600 font-medium">Tổng Lượt thi</div>
                   </div>
-                  <div className="bg-green-50 p-6 rounded-xl text-center">
+                  <div className="bg-green-50 p-6 rounded-xl text-center shadow-sm">
                     <div className="text-3xl font-bold text-green-600">{subjectGradeStats.average}</div>
-                    <div className="text-sm text-gray-600">Điểm TB</div>
+                    <div className="text-sm text-gray-600 font-medium">Điểm TB</div>
                   </div>
-                  <div className="bg-purple-50 p-6 rounded-xl text-center">
+                  <div className="bg-purple-50 p-6 rounded-xl text-center shadow-sm">
                     <div className="text-3xl font-bold text-purple-600">{subjectGradeStats.excellent}</div>
-                    <div className="text-sm text-gray-600">Giỏi (A)</div>
+                    <div className="text-sm text-gray-600 font-medium">Giỏi (A)</div>
                   </div>
-                  <div className="bg-yellow-50 p-6 rounded-xl text-center">
+                  <div className="bg-yellow-50 p-6 rounded-xl text-center shadow-sm">
                     <div className="text-3xl font-bold text-yellow-600">{subjectGradeStats.good}</div>
-                    <div className="text-sm text-gray-600">Khá (B)</div>
+                    <div className="text-sm text-gray-600 font-medium">Khá (B)</div>
                   </div>
-                  <div className="bg-red-50 p-6 rounded-xl text-center">
+                  <div className="bg-orange-50 p-6 rounded-xl text-center shadow-sm">
+                    <div className="text-3xl font-bold text-orange-600">{subjectGradeStats.averageGrade}</div>
+                    <div className="text-sm text-gray-600 font-medium">Trung bình</div>
+                  </div>
+                  <div className="bg-red-50 p-6 rounded-xl text-center shadow-sm">
                     <div className="text-3xl font-bold text-red-600">{subjectGradeStats.fail}</div>
-                    <div className="text-sm text-gray-600">Rớt (F)</div>
+                    <div className="text-sm text-gray-600 font-medium">Rớt (F)</div>
                   </div>
                 </div>
               </div>

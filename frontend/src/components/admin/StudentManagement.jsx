@@ -26,7 +26,7 @@ function StudentManagement() {
   const [studentTranscript, setStudentTranscript] = useState(null);
   const [studentSchedule, setStudentSchedule] = useState([]);
   const [studentAttendance, setStudentAttendance] = useState([]);
-  const [detailTab, setDetailTab] = useState('info'); // 'info', 'transcript', 'schedule', 'attendance'
+  const [detailTab, setDetailTab] = useState('info');
   const [formData, setFormData] = useState({
     MSSV: '',
     HoTen: '',
@@ -185,7 +185,6 @@ function StudentManagement() {
     setShowFilters(false);
   };
 
-
   const clearFilters = () => {
     setFilters({ classFilter: '', genderFilter: '' });
     setDisplayFilters({ classFilter: '', genderFilter: '' });
@@ -205,45 +204,51 @@ function StudentManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý sinh viên</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa thông tin sinh viên</p>
-        </div>
-        <div className="flex gap-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleExportStudents}
-            className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <Download className="w-5 h-5" />
-            Export
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Thêm sinh viên
-          </motion.button>
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="text-white">
+            <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
+              <Users className="w-8 h-8" />
+              Quản lý sinh viên
+            </h2>
+            <p className="text-orange-100 text-lg">Thêm, sửa, xóa và xem chi tiết thông tin sinh viên</p>
+          </div>
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleExportStudents}
+              className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+            >
+              <Download className="w-5 h-5" />
+              Export
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+            >
+              <Plus className="w-5 h-5" />
+              Thêm sinh viên
+            </motion.button>
+          </div>
         </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="space-y-4">
-        <div className="flex gap-3">
-          <div className="relative w-1/2">
+      <div className="bg-white rounded-2xl shadow-lg border border-orange-100 p-6">
+        <div className="flex gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm sinh viên..."
+              placeholder="Tìm kiếm sinh viên theo tên, MSSV hoặc email..."
               value={displaySearchTerm}
               onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+              className="w-full pl-12 pr-12 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
             />
             <button
               type="button"
@@ -260,11 +265,12 @@ function StudentManagement() {
               )}
             </button>
           </div>
+          {/* Search button: cam */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSearch}
-            className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all"
           >
             <Search className="w-5 h-5" />
             Tìm kiếm
@@ -274,7 +280,7 @@ function StudentManagement() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={clearFilters}
-              className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200"
             >
               <XCircle className="w-5 h-5" />
               Xóa bộ lọc
@@ -286,15 +292,15 @@ function StudentManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
+            className="bg-orange-50 rounded-xl p-4 space-y-4 relative z-50 w-full mt-4"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo lớp</label>
+                <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Lọc theo lớp</label>
                 <select
                   value={displayFilters.classFilter}
                   onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-white border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
                   <option value="">Tất cả lớp</option>
                   {classes.map((cls) => (
@@ -305,11 +311,11 @@ function StudentManagement() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo giới tính</label>
+                <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Lọc theo giới tính</label>
                 <select
                   value={displayFilters.genderFilter}
                   onChange={(e) => setDisplayFilters({ ...displayFilters, genderFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-white border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
                   <option value="">Tất cả</option>
                   <option value="Nam">Nam</option>
@@ -322,7 +328,7 @@ function StudentManagement() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="flex-1 bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
               >
                 Áp dụng lọc
               </motion.button>
@@ -330,7 +336,7 @@ function StudentManagement() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setDisplayFilters({ classFilter: '', genderFilter: '' })}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
               </motion.button>
@@ -340,18 +346,19 @@ function StudentManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            {/* Header: gradient cam */}
+            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">MSSV</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Họ tên</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giới tính</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Lớp</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Email</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">SĐT</th>
-                <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">MSSV</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Họ tên</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Email</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">SĐT</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -359,32 +366,39 @@ function StudentManagement() {
                 filteredStudents.map((student, index) => (
                   <motion.tr
                     key={student.MSSV}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
+                    onClick={() => handleViewDetails(student)}
                   >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{student.MSSV}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.HoTen}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.GioiTinh || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.TenLop || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.Email || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleViewDetails(student)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </motion.button>
+                    <td className="py-5 px-6">
+                      <span className="font-semibold text-gray-800 text-base">{student.MSSV}</span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="font-semibold text-gray-800">{student.HoTen}</div>
+                    </td>
+                    <td className="py-5 px-6">
+                      {/* Nam: xanh dương, Nữ: hồng */}
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                        student.GioiTinh === 'Nam'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-pink-100 text-pink-700'
+                      }`}>
+                        {student.GioiTinh || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="py-5 px-6 text-sm text-gray-600">{student.TenLop || 'N/A'}</td>
+                    <td className="py-5 px-6 text-sm text-gray-600">{student.Email || 'N/A'}</td>
+                    <td className="py-5 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
+                    <td className="py-5 px-6">
+                      <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(student)}
-                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
@@ -392,7 +406,8 @@ function StudentManagement() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleDelete(student.MSSV)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                          className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
+                          title="Xóa"
                         >
                           <Trash2 className="w-4 h-4" />
                         </motion.button>
@@ -402,8 +417,12 @@ function StudentManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-gray-500">
-                    Không tìm thấy sinh viên nào
+                  <td colSpan="7" className="py-16">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <Users className="w-16 h-16 mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">Không tìm thấy sinh viên nào</p>
+                      <p className="text-sm mt-2">Thử tìm kiếm với từ khóa khác</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -537,7 +556,7 @@ function StudentManagement() {
         </div>
       )}
 
-      {/* Detail Modal */}
+      {/* Detail Modal - giữ nguyên */}
       {showDetailModal && selectedStudent && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
           <motion.div

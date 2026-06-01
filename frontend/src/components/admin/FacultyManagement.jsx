@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Plus, Edit, Trash2, Search, X, Eye, Users, BookOpen, BarChart3 } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Search, X, Users, BookOpen, BarChart3 } from 'lucide-react';
 import axios from 'axios';
 
 function FacultyManagement() {
@@ -22,10 +22,9 @@ function FacultyManagement() {
   const [facultyStats, setFacultyStats] = useState({
     totalTeachers: 0,
     totalStudents: 0,
-    totalClasses: 0,
-    totalSubjects: 0
+    totalClasses: 0
   });
-  const [detailTab, setDetailTab] = useState('teachers'); // 'teachers', 'students', 'classes', 'stats'
+  const [detailTab, setDetailTab] = useState('teachers');
 
   useEffect(() => {
     fetchData();
@@ -82,32 +81,26 @@ function FacultyManagement() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingFaculty(null);
-    setFormData({
-      MaKhoa: '',
-      TenKhoa: ''
-    });
+    setFormData({ MaKhoa: '', TenKhoa: '' });
   };
 
   const handleViewDetails = async (faculty) => {
     setSelectedFaculty(faculty);
     setShowDetailModal(true);
     setDetailTab('teachers');
-    
     try {
       const [teachersRes, studentsRes, classesRes] = await Promise.all([
         axios.get(`http://localhost:5000/api/faculties/${faculty.MaKhoa}/teachers`),
         axios.get(`http://localhost:5000/api/faculties/${faculty.MaKhoa}/students`),
         axios.get(`http://localhost:5000/api/faculties/${faculty.MaKhoa}/classes`)
       ]);
-      
       setFacultyTeachers(teachersRes.data);
       setFacultyStudents(studentsRes.data);
       setFacultyClasses(classesRes.data);
       setFacultyStats({
         totalTeachers: teachersRes.data.length,
         totalStudents: studentsRes.data.length,
-        totalClasses: classesRes.data.length,
-        totalSubjects: 0 // Will be calculated from teaching assignments
+        totalClasses: classesRes.data.length
       });
     } catch (error) {
       console.error('Error fetching faculty details:', error);
@@ -120,15 +113,9 @@ function FacultyManagement() {
     setFacultyTeachers([]);
     setFacultyStudents([]);
     setFacultyClasses([]);
-    setFacultyStats({
-      totalTeachers: 0,
-      totalStudents: 0,
-      totalClasses: 0,
-      totalSubjects: 0
-    });
+    setFacultyStats({ totalTeachers: 0, totalStudents: 0, totalClasses: 0 });
     setDetailTab('teachers');
   };
-
 
   const filteredFaculties = faculties.filter(faculty =>
     faculty.TenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -139,7 +126,6 @@ function FacultyManagement() {
     setSearchTerm(displaySearchTerm);
   };
 
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -149,55 +135,63 @@ function FacultyManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý khoa</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa thông tin khoa</p>
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="text-white">
+            <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
+              <Building2 className="w-8 h-8" />
+              Quản lý khoa
+            </h2>
+            <p className="text-orange-100 text-lg">Thêm, sửa, xóa thông tin khoa</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm khoa
+          </motion.button>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm khoa
-        </motion.button>
       </div>
 
       {/* Search */}
-      <div className="flex gap-3">
-        <div className="relative w-1/2">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Tìm kiếm khoa..."
-            value={displaySearchTerm}
-            onChange={(e) => setDisplaySearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-          />
+      <div className="bg-white rounded-2xl shadow-lg border border-orange-100 p-6">
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm khoa theo tên hoặc mã khoa..."
+              value={displaySearchTerm}
+              onChange={(e) => setDisplaySearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+            />
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSearch}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all"
+          >
+            <Search className="w-5 h-5" />
+            Tìm kiếm
+          </motion.button>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSearch}
-          className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Search className="w-5 h-5" />
-          Tìm kiếm
-        </motion.button>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Mã khoa</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Tên khoa</th>
-                <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Mã khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Tên khoa</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -205,28 +199,26 @@ function FacultyManagement() {
                 filteredFaculties.map((faculty, index) => (
                   <motion.tr
                     key={faculty.MaKhoa}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
+                    onClick={() => handleViewDetails(faculty)}
                   >
-                    <td className="py-4 px-6 text-sm font-medium text-gray-800">{faculty.MaKhoa}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{faculty.TenKhoa}</td>
-                    <td className="py-4 px-6 text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleViewDetails(faculty)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </motion.button>
+                    <td className="py-5 px-6">
+                      <span className="font-semibold text-gray-800 text-base">{faculty.MaKhoa}</span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className="font-semibold text-gray-800">{faculty.TenKhoa}</span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(faculty)}
-                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
@@ -234,7 +226,8 @@ function FacultyManagement() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleDelete(faculty.MaKhoa)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                          className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
+                          title="Xóa"
                         >
                           <Trash2 className="w-4 h-4" />
                         </motion.button>
@@ -244,8 +237,12 @@ function FacultyManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="py-12 text-center text-gray-500">
-                    Không tìm thấy khoa nào
+                  <td colSpan="3" className="py-16">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <Building2 className="w-16 h-16 mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">Không tìm thấy khoa nào</p>
+                      <p className="text-sm mt-2">Thử tìm kiếm với từ khóa khác</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -254,7 +251,7 @@ function FacultyManagement() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal CRUD */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
           <motion.div
@@ -275,7 +272,6 @@ function FacultyManagement() {
                 <X className="w-5 h-5 text-gray-500" />
               </motion.button>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Mã khoa</label>
@@ -298,7 +294,6 @@ function FacultyManagement() {
                   required
                 />
               </div>
-
               <div className="flex gap-3 pt-4">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -342,7 +337,6 @@ function FacultyManagement() {
                 <X className="w-5 h-5 text-gray-500" />
               </motion.button>
             </div>
-
             {/* Tabs */}
             <div className="flex gap-2 mb-6 border-b border-gray-200">
               {[
@@ -368,7 +362,6 @@ function FacultyManagement() {
                 );
               })}
             </div>
-
             {/* Tab Content */}
             {detailTab === 'teachers' && (
               <div className="space-y-4">
@@ -400,7 +393,6 @@ function FacultyManagement() {
                 )}
               </div>
             )}
-
             {detailTab === 'students' && (
               <div className="space-y-4">
                 {facultyStudents.length > 0 ? (
@@ -419,7 +411,17 @@ function FacultyManagement() {
                           <tr key={index} className="border-b border-gray-100">
                             <td className="py-3 px-4 text-sm text-gray-800">{student.MSSV}</td>
                             <td className="py-3 px-4 text-sm text-gray-600">{student.HoTen}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{student.GioiTinh || '-'}</td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                student.GioiTinh === 'Nam'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : student.GioiTinh === 'Nữ'
+                                  ? 'bg-pink-100 text-pink-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {student.GioiTinh || '-'}
+                              </span>
+                            </td>
                             <td className="py-3 px-4 text-sm text-gray-600">{student.TenLop || '-'}</td>
                           </tr>
                         ))}
@@ -431,7 +433,6 @@ function FacultyManagement() {
                 )}
               </div>
             )}
-
             {detailTab === 'classes' && (
               <div className="space-y-4">
                 {facultyClasses.length > 0 ? (
@@ -460,10 +461,10 @@ function FacultyManagement() {
                 )}
               </div>
             )}
-
             {detailTab === 'stats' && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Grid changed from grid-cols-4 to grid-cols-3 since "Môn học" was removed */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-blue-50 p-6 rounded-xl text-center">
                     <div className="text-3xl font-bold text-blue-600">{facultyStats.totalTeachers}</div>
                     <div className="text-sm text-gray-600">Giảng viên</div>
@@ -475,10 +476,6 @@ function FacultyManagement() {
                   <div className="bg-purple-50 p-6 rounded-xl text-center">
                     <div className="text-3xl font-bold text-purple-600">{facultyStats.totalClasses}</div>
                     <div className="text-sm text-gray-600">Lớp học</div>
-                  </div>
-                  <div className="bg-orange-50 p-6 rounded-xl text-center">
-                    <div className="text-3xl font-bold text-orange-600">{facultyStats.totalSubjects}</div>
-                    <div className="text-sm text-gray-600">Môn học</div>
                   </div>
                 </div>
               </div>

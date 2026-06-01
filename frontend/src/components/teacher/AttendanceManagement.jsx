@@ -348,7 +348,7 @@ function AttendanceManagement() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
+            className="bg-orange-50 rounded-xl p-4 space-y-4 relative z-50 w-1/2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -400,7 +400,7 @@ function AttendanceManagement() {
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-orange-50">
               <tr>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">MSSV</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Sinh viên</th>
@@ -418,7 +418,7 @@ function AttendanceManagement() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
                   >
                     <td className="py-4 px-6 text-sm font-medium text-gray-800">{att.MSSV}</td>
                     <td className="py-4 px-6 text-sm text-gray-600">{att.TenSinhVien || 'N/A'}</td>
@@ -493,7 +493,7 @@ function AttendanceManagement() {
                 <select
                   value={formData.MSSV}
                   onChange={(e) => setFormData({ ...formData, MSSV: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-orange-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
                 >
                   <option value="">Chọn sinh viên</option>
@@ -509,7 +509,7 @@ function AttendanceManagement() {
                 <select
                   value={formData.MaLichHoc}
                   onChange={(e) => setFormData({ ...formData, MaLichHoc: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-orange-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
                 >
                   <option value="">Chọn lịch học</option>
@@ -526,7 +526,7 @@ function AttendanceManagement() {
                   type="date"
                   value={formData.NgayDiemDanh}
                   onChange={(e) => setFormData({ ...formData, NgayDiemDanh: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-orange-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
                 />
               </div>
@@ -535,7 +535,7 @@ function AttendanceManagement() {
                 <select
                   value={formData.TrangThai}
                   onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-orange-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   required
                 >
                   <option value="Có mặt">Có mặt</option>
@@ -595,7 +595,7 @@ function AttendanceManagement() {
                   <select
                     value={selectedSchedule}
                     onChange={(e) => setSelectedSchedule(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    className="w-full px-4 py-3 bg-orange-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   >
                     <option value="">Chọn lịch học</option>
                     {schedules.map((schedule) => (
@@ -611,7 +611,7 @@ function AttendanceManagement() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    className="w-full px-4 py-3 bg-orange-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                   />
                 </div>
               </div>
@@ -619,7 +619,7 @@ function AttendanceManagement() {
 
             <div className="overflow-x-auto mb-6">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-orange-50">
                   <tr>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
@@ -635,7 +635,7 @@ function AttendanceManagement() {
                         <select
                           value={student.TrangThai}
                           onChange={(e) => handleBulkAttendanceChange(student.MSSV, e.target.value)}
-                          className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors"
+                          className="px-3 py-2 bg-orange-50 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors"
                         >
                           <option value="Có mặt">Có mặt</option>
                           <option value="Vắng mặt">Vắng mặt</option>
