@@ -196,7 +196,7 @@ function App() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
-                      placeholder="••••••••"
+                      placeholder="Nhập mật khẩu..."
                       required
                     />
                     <motion.button

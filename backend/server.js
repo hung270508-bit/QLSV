@@ -61,6 +61,8 @@ const calculateGPA = (diemTB) => {
     return 0.0;
 };
 
+const gradeCalcSQL = '(d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4)';
+
 const calculateAcademicStanding = (gpa) => {
     if (gpa >= 3.6) return 'Giỏi';
     if (gpa >= 3.2) return 'Khá';
@@ -77,26 +79,16 @@ const calculateGradeAverage = (diemChuyenCan, diemBaiTap, diemGiuaKy, diemCuoiKy
     return ((cc * 0.1) + (bt * 0.2) + (gk * 0.3) + (ck * 0.4)).toFixed(2);
 };
 
-const executeInsert = (query, params, res, successMessage, errorMessage) => {
+const executeMutation = (query, params, res, successMessage, errorMessage) => {
     db.query(query, params, (err) => {
         if (err) return res.status(500).json({ success: false, message: errorMessage });
         res.json({ success: true, message: successMessage });
     });
 };
 
-const executeUpdate = (query, params, res, successMessage, errorMessage) => {
-    db.query(query, params, (err) => {
-        if (err) return res.status(500).json({ success: false, message: errorMessage });
-        res.json({ success: true, message: successMessage });
-    });
-};
-
-const executeDelete = (query, params, res, successMessage, errorMessage) => {
-    db.query(query, params, (err) => {
-        if (err) return res.status(500).json({ success: false, message: errorMessage });
-        res.json({ success: true, message: successMessage });
-    });
-};
+const executeInsert = executeMutation;
+const executeUpdate = executeMutation;
+const executeDelete = executeMutation;
 
 // ==================== API ĐĂNG NHẬP ====================
 app.post('/api/login', (req, res) => {
@@ -272,7 +264,7 @@ app.get('/api/dashboard/academic-standing', (req, res) => {
         FROM (
             SELECT 
                 s.MSSV,
-                ((SUM((d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) * mh.SoTinChi)) / 
+                ((SUM((${gradeCalcSQL}) * mh.SoTinChi)) / 
                  SUM(mh.SoTinChi)) as gpa
             FROM sinhvien s
             LEFT JOIN diem d ON s.MSSV = d.MSSV
@@ -512,26 +504,6 @@ app.get('/api/faculties/:maKhoa/classes', (req, res) => {
     executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy lớp của khoa!');
 });
 
-app.get('/api/faculties/:maKhoa/students', (req, res) => {
-    const query = `
-        SELECT s.MSSV, s.HoTen, s.NgaySinh, s.GioiTinh, s.Email, s.SoDienThoai, s.MaLop, l.TenLop, l.MaKhoa, k.TenKhoa 
-        FROM sinhvien s 
-        INNER JOIN lophoc l ON s.MaLop = l.MaLop
-        INNER JOIN khoa k ON l.MaKhoa = k.MaKhoa
-        WHERE l.MaKhoa = ?
-    `;
-    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy danh sách sinh viên theo khoa!');
-});
-
-app.get('/api/faculties/:maKhoa/classes', (req, res) => {
-    const query = `
-        SELECT l.MaLop, l.TenLop, l.MaKhoa, k.TenKhoa 
-        FROM lophoc l 
-        INNER JOIN khoa k ON l.MaKhoa = k.MaKhoa
-        WHERE l.MaKhoa = ?
-    `;
-    executeQuery(query, [req.params.maKhoa], res, 'Lỗi lấy danh sách lớp theo khoa!');
-});
 
 // ==================== SUBJECTS (MONHOC) ====================
 app.get('/api/subjects', (req, res) => {
@@ -696,62 +668,43 @@ app.get('/api/teachers/:maGV/teaching-load', (req, res) => {
 });
 
 // ==================== BULK OPERATIONS ====================
-// Bulk insert grades
-app.post('/api/grades/bulk', (req, res) => {
-    const { grades } = req.body; // Array of grade objects
-    
-    if (!Array.isArray(grades) || grades.length === 0) {
+const executeBulkInsert = (query, items, itemParams, res, successMsg, errorMsg) => {
+    if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ!' });
     }
 
-    const query = 'INSERT INTO diem (MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy) VALUES (?, ?, ?, ?, ?, ?, ?)';
-    
     let completed = 0;
     let errors = [];
 
-    grades.forEach((grade, index) => {
-        db.query(query, [grade.MSSV, grade.MaLopHocPhan, grade.HocKy, grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy], (err) => {
+    items.forEach((item, index) => {
+        const params = itemParams(item);
+        db.query(query, params, (err) => {
             if (err) errors.push({ index, error: err.message });
             completed++;
 
-            if (completed === grades.length) {
+            if (completed === items.length) {
                 if (errors.length > 0) {
-                    res.status(207).json({ success: true, message: 'Nhập điểm thành công với một số lỗi!', errors });
+                    res.status(207).json({ success: true, message: successMsg + ' với một số lỗi!', errors });
                 } else {
-                    res.json({ success: true, message: 'Nhập điểm hàng loạt thành công!' });
+                    res.json({ success: true, message: successMsg + ' thành công!' });
                 }
             }
         });
     });
+};
+
+// Bulk insert grades
+app.post('/api/grades/bulk', (req, res) => {
+    const { grades } = req.body;
+    const query = 'INSERT INTO diem (MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    executeBulkInsert(query, grades, g => [g.MSSV, g.MaLopHocPhan, g.HocKy, g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy], res, 'Nhập điểm', 'Lỗi nhập điểm');
 });
 
 // Bulk insert attendance
 app.post('/api/attendance/bulk', (req, res) => {
-    const { attendance } = req.body; // Array of attendance objects
-    
-    if (!Array.isArray(attendance) || attendance.length === 0) {
-        return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ!' });
-    }
-
+    const { attendance } = req.body;
     const query = 'INSERT INTO diemdanh (MaLichHoc, MSSV, NgayDiemDanh, TrangThai) VALUES (?, ?, ?, ?)';
-    
-    let completed = 0;
-    let errors = [];
-
-    attendance.forEach((att, index) => {
-        db.query(query, [att.MaLichHoc, att.MSSV, att.NgayDiemDanh, att.TrangThai], (err) => {
-            if (err) errors.push({ index, error: err.message });
-            completed++;
-
-            if (completed === attendance.length) {
-                if (errors.length > 0) {
-                    res.status(207).json({ success: true, message: 'Điểm danh thành công với một số lỗi!', errors });
-                } else {
-                    res.json({ success: true, message: 'Điểm danh hàng loạt thành công!' });
-                }
-            }
-        });
-    });
+    executeBulkInsert(query, attendance, a => [a.MaLichHoc, a.MSSV, a.NgayDiemDanh, a.TrangThai], res, 'Điểm danh', 'Lỗi điểm danh');
 });
 
 // ==================== CLASS DETAILS ====================
@@ -798,13 +751,11 @@ app.get('/api/classes/:maLop/details', (req, res) => {
     const gradeStatsQuery = `
         SELECT 
             COUNT(*) as totalGrades,
-            ROUND(AVG(d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4), 2) as classAverage,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 8.5 THEN 1 ELSE 0 END) as excellent,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 7.0
-                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 8.5 THEN 1 ELSE 0 END) as good,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 5.0
-                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 7.0 THEN 1 ELSE 0 END) as averageGrade,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 5.0 THEN 1 ELSE 0 END) as fail
+            ROUND(AVG(${gradeCalcSQL}), 2) as classAverage,
+            SUM(CASE WHEN ${gradeCalcSQL} >= 8.5 THEN 1 ELSE 0 END) as excellent,
+            SUM(CASE WHEN ${gradeCalcSQL} >= 7.0 AND ${gradeCalcSQL} < 8.5 THEN 1 ELSE 0 END) as good,
+            SUM(CASE WHEN ${gradeCalcSQL} >= 5.0 AND ${gradeCalcSQL} < 7.0 THEN 1 ELSE 0 END) as averageGrade,
+            SUM(CASE WHEN ${gradeCalcSQL} < 5.0 THEN 1 ELSE 0 END) as fail
         FROM diem d
         LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
         WHERE s.MaLop = ?
@@ -877,13 +828,11 @@ app.get('/api/classes/:maLop/grade-stats', (req, res) => {
     const query = `
         SELECT 
             COUNT(*) as totalGrades,
-            ROUND(AVG(d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4), 2) as classAverage,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 8.5 THEN 1 ELSE 0 END) as excellent,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 7.0
-                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 8.5 THEN 1 ELSE 0 END) as good,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 5.0
-                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 7.0 THEN 1 ELSE 0 END) as averageGrade,
-            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 5.0 THEN 1 ELSE 0 END) as fail
+            ROUND(AVG(${gradeCalcSQL}), 2) as classAverage,
+            SUM(CASE WHEN ${gradeCalcSQL} >= 8.5 THEN 1 ELSE 0 END) as excellent,
+            SUM(CASE WHEN ${gradeCalcSQL} >= 7.0 AND ${gradeCalcSQL} < 8.5 THEN 1 ELSE 0 END) as good,
+            SUM(CASE WHEN ${gradeCalcSQL} >= 5.0 AND ${gradeCalcSQL} < 7.0 THEN 1 ELSE 0 END) as averageGrade,
+            SUM(CASE WHEN ${gradeCalcSQL} < 5.0 THEN 1 ELSE 0 END) as fail
         FROM diem d
         LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
         WHERE s.MaLop = ?
@@ -901,80 +850,6 @@ app.get('/api/classes/:maLop/grade-stats', (req, res) => {
         })]);
     });
 });
-
-// ==================== LỚP HỌC PHẦN (Phân công giảng dạy) ====================
-app.get('/api/teaching-assignments', (req, res) => {
-    const query = `
-        SELECT lhp.*, gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop
-        FROM lophocphan lhp
-        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
-        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
-        LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop
-    `;
-    executeQuery(query, [], res, 'Lỗi lấy Lớp học phần!');
-});
-
-app.post('/api/teaching-assignments', (req, res) => {
-    const { MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
-    const maLHP = MaLopHocPhan || `${MaMonHoc}_${HocKy}_${Math.floor(Math.random()*1000)}`;
-    
-    const insertLhpQuery = 'INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa) VALUES (?, ?, ?, ?, ?, ?, ?)';
-    
-    db.query(insertLhpQuery, [maLHP, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp học phần!', error: err.message });
-
-        // TỰ ĐỘNG LÊN DANH SÁCH & FIX LỖI MYSQL (Chèn sẵn điểm 0)
-        if (MaLop) {
-            const getStudentsQuery = 'SELECT MSSV FROM sinhvien WHERE MaLop = ?';
-            db.query(getStudentsQuery, [MaLop], (err, students) => {
-                if (!err && students.length > 0) {
-                    students.forEach(sv => {
-                        const enrollQuery = `INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)
-                            db.query(enrollQuery, [sv.MSSV, maLHP, HocKy])`;
-                        db.query(enrollQuery, [sv.MSSV, maLHP, HocKy]);
-                    });
-                }
-                res.json({ success: true, message: 'Tạo Lớp HP và lên danh sách thành công!' });
-            });
-        } else {
-            res.json({ success: true, message: 'Tạo Lớp học phần tự do thành công!' });
-        }
-    });
-});
-
-app.put('/api/teaching-assignments/:id', (req, res) => {
-    const { MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
-    const maLHP = req.params.id;
-
-    const updateQuery = 'UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=? WHERE MaLopHocPhan=?';
-    
-    db.query(updateQuery, [MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, maLHP], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
-
-        // NẾU CÓ ĐỔI LỚP THÌ ĐỒNG BỘ LẠI DANH SÁCH
-        if (MaLop) {
-            const getStudentsQuery = 'SELECT MSSV FROM sinhvien WHERE MaLop = ?';
-            db.query(getStudentsQuery, [MaLop], (err, students) => {
-                if (!err && students.length > 0) {
-                    students.forEach(sv => {
-                        const enrollQuery =  `INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)
-                            db.query(enrollQuery, [sv.MSSV, maLHP, HocKy])`;
-                        db.query(enrollQuery, [sv.MSSV, maLHP, HocKy]);
-                    });
-                }
-                res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách thành công!' });
-            });
-        } else {
-            res.json({ success: true, message: 'Cập nhật thành công!' });
-        }
-    });
-});
-
-app.delete('/api/teaching-assignments/:id', (req, res) => {
-    executeDelete('DELETE FROM lophocphan WHERE MaLopHocPhan=?', [req.params.id], res, 'Xóa thành công', 'Lỗi xóa');
-});
-
-
 
 // ==================== COURSE SECTIONS (LOPHOCPHAN) ====================
 app.get('/api/course-sections', (req, res) => {
