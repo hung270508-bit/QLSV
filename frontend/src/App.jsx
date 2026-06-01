@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, GraduationCap, School, ShieldAlert, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import axios from 'axios';
 import AdminDashboard from './components/AdminDashboard';
+import StudentDashboard from './components/student/StudentDashboard'; 
+import TeacherDashboard from './components/teacher/TeacherDashboard'; 
 
 function App() {
   const [username, setUsername] = useState('');
@@ -28,7 +30,6 @@ function App() {
 
       if (response.data.success) {
         setMessage({ type: 'success', text: response.data.message });
-        // Set user với format mới từ Backend: { id, username, role, tenQuyen }
         setLoggedInUser(response.data.user);
       }
     } catch (error) {
@@ -40,11 +41,19 @@ function App() {
   };
 
   const renderRoleBadge = (role) => {
-    switch (role) {
-      case 'admin': return { label: 'Quản trị viên', icon: <ShieldAlert className="w-16 h-16 text-red-500" />, color: 'bg-red-100 text-red-700' };
-      case 'teacher': return { label: 'Giảng viên', icon: <School className="w-16 h-16 text-orange-500" />, color: 'bg-orange-100 text-orange-700' };
-      case 'student': return { label: 'Sinh viên', icon: <GraduationCap className="w-16 h-16 text-amber-500" />, color: 'bg-amber-100 text-amber-700' };
-      default: return { label: 'Người dùng', icon: <User className="w-16 h-16 text-gray-500" />, color: 'bg-gray-100 text-gray-700' };
+    const safeRole = role ? role.toLowerCase() : '';
+    switch (safeRole) {
+      case 'admin': 
+      case 'quantri':
+        return { label: 'Quản trị viên', icon: <ShieldAlert className="w-16 h-16 text-red-500" />, color: 'bg-red-100 text-red-700' };
+      case 'teacher': 
+      case 'giangvien':
+        return { label: 'Giảng viên', icon: <School className="w-16 h-16 text-orange-500" />, color: 'bg-orange-100 text-orange-700' };
+      case 'student': 
+      case 'sinhvien':
+        return { label: 'Sinh viên', icon: <GraduationCap className="w-16 h-16 text-amber-500" />, color: 'bg-amber-100 text-amber-700' };
+      default: 
+        return { label: 'Người dùng', icon: <User className="w-16 h-16 text-gray-500" />, color: 'bg-gray-100 text-gray-700' };
     }
   };
 
@@ -77,41 +86,45 @@ function App() {
     }
   };
 
-  // Show AdminDashboard for admin users
-  if (loggedInUser && loggedInUser.role === 'admin') {
-    return <AdminDashboard user={loggedInUser} onLogout={handleLogout} />;
+  // PHÂN LUỒNG GIAO DIỆN CHÍNH Ở ĐÂY
+  if (loggedInUser) {
+    // Chuyển role về chữ thường để tránh lỗi do API trả về chữ in hoa (vd: 'SinhVien' -> 'sinhvien')
+    const currentRole = loggedInUser.role ? loggedInUser.role.toLowerCase() : '';
+
+    switch (currentRole) {
+      case 'admin':
+      case 'quantri':
+        return <AdminDashboard user={loggedInUser} onLogout={handleLogout} />;
+      
+      case 'student': 
+      case 'sinhvien': // Bắt luôn trường hợp API trả về 'sinhvien'
+        return <StudentDashboard user={loggedInUser} onLogout={handleLogout} />;
+        
+      case 'teacher':
+      case 'giangvien': // Bắt luôn trường hợp API trả về 'giangvien'
+        return <TeacherDashboard user={loggedInUser} onLogout={handleLogout} />;
+        
+      default:
+        // Nếu role không khớp bất kỳ case nào ở trên, nó sẽ thoát switch và chạy xuống giao diện báo lỗi bên dưới
+        break; 
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-100 p-4 relative overflow-hidden">
       {/* Background decorative elements */}
       <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          rotate: [0, 90, 0],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "linear"
-        }}
+        animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         className="absolute top-20 left-20 w-64 h-64 bg-orange-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
       />
       <motion.div
-        animate={{
-          scale: [1.2, 1, 1.2],
-          rotate: [90, 0, 90],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "linear"
-        }}
+        animate={{ scale: [1.2, 1, 1.2], rotate: [90, 0, 90] }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         className="absolute bottom-20 right-20 w-64 h-64 bg-amber-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
       />
 
       <AnimatePresence mode="wait">
-        
         {!loggedInUser ? (
           <motion.div
             key="login-form"
@@ -148,11 +161,7 @@ function App() {
 
             {!showForgotPassword ? (
               <form onSubmit={handleLogin} className="space-y-5">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Mã số tài khoản</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-orange-500 transition-colors">
@@ -169,11 +178,7 @@ function App() {
                   </div>
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-orange-500 transition-colors">
@@ -199,12 +204,7 @@ function App() {
                   </div>
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-right"
-                >
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-right">
                   <motion.button
                     type="button"
                     whileHover={{ scale: 1.05 }}
@@ -220,9 +220,7 @@ function App() {
                 </motion.div>
 
                 <motion.button
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                   whileHover={{ scale: 1.02, boxShadow: "0 10px 40px -10px rgba(249, 115, 22, 0.5)" }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
@@ -234,10 +232,7 @@ function App() {
                   ) : (
                     <>
                       Đăng Nhập
-                      <motion.div
-                        animate={{ x: [0, 5, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
+                      <motion.div animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
                         <User className="w-5 h-5" />
                       </motion.div>
                     </>
@@ -245,17 +240,8 @@ function App() {
                 </motion.button>
               </form>
             ) : (
-              <motion.form
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                onSubmit={handleForgotPassword}
-                className="space-y-5"
-              >
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
+              <motion.form initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} onSubmit={handleForgotPassword} className="space-y-5">
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-orange-500 transition-colors">
@@ -273,28 +259,19 @@ function App() {
                 </motion.div>
 
                 <motion.button
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                   whileHover={{ scale: 1.02, boxShadow: "0 10px 40px -10px rgba(249, 115, 22, 0.5)" }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={forgotLoading}
                   className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-300 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {forgotLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    'Gửi liên kết đặt lại mật khẩu'
-                  )}
+                  {forgotLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Gửi liên kết đặt lại mật khẩu'}
                 </motion.button>
 
                 <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => {
                     setShowForgotPassword(false);
@@ -310,51 +287,30 @@ function App() {
         ) : (
           <motion.div
             key="dashboard-mock"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl border border-orange-100 text-center"
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+            className="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl border border-red-100 text-center"
           >
             <div className="flex justify-center mb-4">
-              <motion.div
-                initial={{ rotate: -10, scale: 0 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
-              >
-                {renderRoleBadge(loggedInUser.role).icon}
-              </motion.div>
+              <ShieldAlert className="w-16 h-16 text-red-500" />
             </div>
             
-            <h1 className="text-2xl font-bold text-gray-800">
-              Xin chào, {loggedInUser.username}!
-            </h1>
-            <p className="text-gray-400 text-sm mt-1">Bạn đã đăng nhập thành công vào hệ thống.</p>
+            <h1 className="text-2xl font-bold text-gray-800">Lỗi xác thực quyền!</h1>
+            <p className="text-gray-500 text-sm mt-2">Hệ thống nhận diện được bạn đã đăng nhập nhưng <span className="font-bold text-red-500">quyền (role)</span> trả về từ server không khớp với giao diện nào cả.</p>
             
-            <div className="my-6 inline-block">
-              <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${renderRoleBadge(loggedInUser.role).color}`}>
-                Quyền: {loggedInUser.tenQuyen || renderRoleBadge(loggedInUser.role).label}
-              </span>
-            </div>
-
-            <div className="p-4 bg-orange-50 rounded-xl text-left text-sm text-gray-600 space-y-2 mb-6">
-              <p><strong>Mã tài khoản:</strong> {loggedInUser.id}</p>
-              <p><strong>Trạng thái phân trang:</strong> Giao diện dành riêng cho <span className="font-semibold text-orange-600">{loggedInUser.tenQuyen || renderRoleBadge(loggedInUser.role).label}</span> đã sẵn sàng tải.</p>
+            <div className="p-4 mt-4 bg-gray-50 rounded-xl text-left text-sm text-gray-600 border border-gray-200">
+              <p><strong>Mã tài khoản:</strong> {loggedInUser.id || loggedInUser.username}</p>
+              <p><strong>Role từ Backend gửi lên:</strong> <code className="bg-gray-200 px-1 rounded text-red-500">{loggedInUser.role}</code></p>
+              <p className="mt-2 text-xs italic text-gray-400">* Hãy kiểm tra lại API Login của Backend xem field role đang trả về chuỗi chính xác là gì.</p>
             </div>
 
             <button
-              onClick={() => {
-                setLoggedInUser(null);
-                setUsername('');
-                setPassword('');
-                setMessage({ type: '', text: '' });
-              }}
-              className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors underline bg-transparent border-none cursor-pointer"
+              onClick={handleLogout}
+              className="mt-6 w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
             >
-              Đăng xuất khỏi tài khoản
+              Quay lại đăng nhập
             </button>
           </motion.div>
         )}
-
       </AnimatePresence>
     </div>
   );

@@ -1,34 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, RefreshCw, UserCheck, Users } from 'lucide-react';
 import axios from 'axios';
 
 function TeachingAssignment() {
   const [assignments, setAssignments] = useState([]);
-  const [teachers, setTeachers] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [classes, setClasses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [classes, setClasses] = useState([]); // Chứa danh sách lớp sinh hoạt
   const [loading, setLoading] = useState(true);
+
   const [showModal, setShowModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    subjectFilter: '',
-    classFilter: '',
-    semesterFilter: ''
-  });
-  const [displayFilters, setDisplayFilters] = useState({
-    subjectFilter: '',
-    classFilter: '',
-    semesterFilter: ''
-  });
+
   const [formData, setFormData] = useState({
-    MaGiangVien: '',
-    MaMonHoc: '',
-    MaLop: '',
-    HocKy: ''
+    MaLopHocPhan: '', MaMonHoc: '', MaLop: '', MaGiangVien: '',
+    HocKy: 'HK1_2025_2026', NamHoc: '2025-2026', SoLuongToiDa: 40
   });
 
   useEffect(() => {
@@ -37,16 +25,16 @@ function TeachingAssignment() {
 
   const fetchData = async () => {
     try {
-      const [assignmentsRes, teachersRes, subjectsRes, classesRes] = await Promise.all([
+      const [assRes, subRes, teachRes, classRes] = await Promise.all([
         axios.get('http://localhost:5000/api/teaching-assignments'),
-        axios.get('http://localhost:5000/api/teachers'),
         axios.get('http://localhost:5000/api/subjects'),
-        axios.get('http://localhost:5000/api/classes')
+        axios.get('http://localhost:5000/api/teachers'),
+        axios.get('http://localhost:5000/api/classes') // Gọi API lấy Lớp
       ]);
-      setAssignments(assignmentsRes.data);
-      setTeachers(teachersRes.data);
-      setSubjects(subjectsRes.data);
-      setClasses(classesRes.data);
+      setAssignments(assRes.data);
+      setSubjects(subRes.data);
+      setTeachers(teachRes.data);
+      setClasses(classRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -58,37 +46,35 @@ function TeachingAssignment() {
     e.preventDefault();
     try {
       if (editingAssignment) {
-        await axios.put(`http://localhost:5000/api/teaching-assignments/${editingAssignment.MaPhanCong}`, formData);
+        // Tạm thời chưa viết logic tự động cập nhật lại danh sách sinh viên khi sửa lớp
+        await axios.put(`http://localhost:5000/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
       } else {
         await axios.post('http://localhost:5000/api/teaching-assignments', formData);
       }
       fetchData();
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving assignment:', error);
-      alert('Lỗi khi lưu phân công!');
+      alert('Lỗi khi lưu phân công / mở lớp!');
     }
   };
 
   const handleEdit = (assignment) => {
     setEditingAssignment(assignment);
     setFormData({
-      MaGiangVien: assignment.MaGiangVien,
-      MaMonHoc: assignment.MaMonHoc,
-      MaLop: assignment.MaLop,
-      HocKy: assignment.HocKy
+      MaLopHocPhan: assignment.MaLopHocPhan, MaMonHoc: assignment.MaMonHoc,
+      MaLop: assignment.MaLop || '', MaGiangVien: assignment.MaGiangVien,
+      HocKy: assignment.HocKy, NamHoc: assignment.NamHoc, SoLuongToiDa: assignment.SoLuongToiDa
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (maPhanCong) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa phân công này?')) {
+  const handleDelete = async (id) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa Lớp học phần này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/teaching-assignments/${maPhanCong}`);
+        await axios.delete(`http://localhost:5000/api/teaching-assignments/${id}`);
         fetchData();
       } catch (error) {
-        console.error('Error deleting assignment:', error);
-        alert('Lỗi khi xóa phân công!');
+        alert('Lỗi khi xóa!');
       }
     }
   };
@@ -96,370 +82,151 @@ function TeachingAssignment() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingAssignment(null);
-    setFormData({
-      MaGiangVien: '',
-      MaMonHoc: '',
-      MaLop: '',
-      HocKy: ''
-    });
+    setFormData({ MaLopHocPhan: '', MaMonHoc: '', MaLop: '', MaGiangVien: '', HocKy: 'HK1_2025_2026', NamHoc: '2025-2026', SoLuongToiDa: 40 });
   };
 
-  const filteredAssignments = assignments.filter(assignment => {
-    const matchesSearch = 
-      assignment.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.TenLop?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.TenGiangVien?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesSubject = !filters.subjectFilter || assignment.MaMonHoc === filters.subjectFilter;
-    const matchesClass = !filters.classFilter || assignment.MaLop === filters.classFilter;
-    const matchesSemester = !filters.semesterFilter || assignment.HocKy === filters.semesterFilter;
-    
-    return matchesSearch && matchesSubject && matchesClass && matchesSemester;
-  });
+  const filteredAssignments = assignments.filter(a =>
+    a.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.TenLop?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.MaLopHocPhan?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const handleSearch = () => {
-    setSearchTerm(displaySearchTerm);
-  };
-
-  const handleApplyFilters = () => {
-    setFilters({ ...displayFilters });
-    setShowFilters(false);
-  };
-
-  const handleRefresh = () => {
-    fetchData();
-  };
-
-  const clearFilters = () => {
-    setFilters({ subjectFilter: '', classFilter: '', semesterFilter: '' });
-    setDisplayFilters({ subjectFilter: '', classFilter: '', semesterFilter: '' });
-    setSearchTerm('');
-    setDisplaySearchTerm('');
-  };
-
-  const activeFilterCount = (filters.subjectFilter ? 1 : 0) + (filters.classFilter ? 1 : 0) + (filters.semesterFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.subjectFilter || filters.classFilter || filters.semesterFilter || searchTerm;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div></div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center mb-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Phân công giảng dạy</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa phân công giảng dạy</p>
+          <h2 className="text-2xl font-bold text-gray-800">Quản lý Phân công & Mở lớp</h2>
+          <p className="text-gray-500">Tạo Lớp học phần, tự động xếp danh sách sinh viên</p>
         </div>
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
+          className="bg-orange-500 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 font-medium shadow-lg shadow-orange-200"
         >
-          <Plus className="w-5 h-5" />
-          Thêm phân công
+          <Plus className="w-5 h-5" /> Mở lớp học phần
         </motion.button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="space-y-4">
-        <div className="flex gap-3">
-          <div className="relative w-2/3">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm phân công..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${
-                hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Làm mới
-          </motion.button>
-          {hasActiveFilters && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={clearFilters}
-              className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"
-            >
-              <XCircle className="w-5 h-5" />
-              Xóa bộ lọc
-            </motion.button>
-          )}
+      <div className="flex gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text" placeholder="Tìm theo mã lớp, tên môn..."
+            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:border-orange-500 outline-none"
+          />
         </div>
-
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4 relative z-50 w-2/3"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo môn học</label>
-                <select
-                  value={displayFilters.subjectFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, subjectFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                >
-                  <option value="">Tất cả môn</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
-                      {subject.TenMonHoc}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo lớp</label>
-                <select
-                  value={displayFilters.classFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                >
-                  <option value="">Tất cả lớp</option>
-                  {classes.map((cls) => (
-                    <option key={cls.MaLop} value={cls.MaLop}>
-                      {cls.TenLop}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo học kỳ</label>
-                <select
-                  value={displayFilters.semesterFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, semesterFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                >
-                  <option value="">Tất cả học kỳ</option>
-                  <option value="HK1_2025_2026">HK1 2025-2026</option>
-                  <option value="HK2_2025_2026">HK2 2025-2026</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
-              >
-                Áp dụng lọc
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setDisplayFilters({ subjectFilter: '', classFilter: '', semesterFilter: '' })}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-              >
-                Đặt lại
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
+        <button onClick={fetchData} className="bg-blue-500 text-white p-2.5 rounded-xl shadow-md"><RefreshCw className="w-5 h-5" /></button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Môn học</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Lớp</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giảng viên</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Học kỳ</th>
-                <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Mã Lớp HP</th>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Môn học</th>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Giảng viên</th>
+              <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Lớp tham gia</th>
+              <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Học kỳ</th>
+              <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAssignments.map((a) => (
+              <tr key={a.MaLopHocPhan} className="border-b border-gray-50 hover:bg-orange-50/50">
+                <td className="py-3 px-6 text-sm font-bold text-blue-600">{a.MaLopHocPhan}</td>
+                <td className="py-3 px-6 text-sm text-gray-800 font-medium">{a.TenMonHoc}</td>
+                <td className="py-3 px-6 text-sm text-gray-600 flex items-center gap-2"><UserCheck className="w-4 h-4 text-green-500"/> {a.TenGiangVien}</td>
+                <td className="py-3 px-6 text-sm text-gray-600">
+                  {a.TenLop ? <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded font-medium">{a.TenLop}</span> : <span className="text-gray-400 italic">Lớp tự do</span>}
+                </td>
+                <td className="py-3 px-6 text-sm text-center text-gray-600">{a.HocKy}</td>
+                <td className="py-3 px-6">
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => handleEdit(a)} className="p-1.5 bg-orange-100 text-orange-600 rounded hover:bg-orange-200"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(a.MaLopHocPhan)} className="p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredAssignments.length > 0 ? (
-                filteredAssignments.map((assignment, index) => (
-                  <motion.tr
-                    key={assignment.MaPhanCong}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
-                  >
-                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.TenMonHoc || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.TenLop || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.TenGiangVien || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{assignment.HocKy || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(assignment)}
-                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(assignment.MaPhanCong)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="py-12 text-center text-gray-500">
-                    Không tìm thấy phân công nào
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingAssignment ? 'Cập nhật phân công' : 'Thêm phân công mới'}
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </motion.button>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/30 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">{editingAssignment ? 'Cập nhật Lớp học phần' : 'Mở Lớp học phần mới'}</h3>
+              <button onClick={handleCloseModal}><X className="text-gray-500" /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Giảng viên</label>
-                <select
-                  value={formData.MaGiangVien}
-                  onChange={(e) => setFormData({ ...formData, MaGiangVien: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                >
-                  <option value="">Chọn giảng viên</option>
-                  {teachers.map((teacher) => (
-                    <option key={teacher.MaGiangVien} value={teacher.MaGiangVien}>
-                      {teacher.HoTen}
-                    </option>
-                  ))}
-                </select>
+              {!editingAssignment && (
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Mã Lớp Học Phần</label>
+                  <input 
+                    type="text" placeholder="VD: IT001_N01"
+                    value={formData.MaLopHocPhan} 
+                    onChange={(e) => setFormData({ ...formData, MaLopHocPhan: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-500"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Môn học</label>
+                  <select value={formData.MaMonHoc} onChange={(e) => setFormData({ ...formData, MaMonHoc: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl" required>
+                    <option value="">-- Chọn Môn --</option>
+                    {subjects.map(s => <option key={s.MaMonHoc} value={s.MaMonHoc}>{s.TenMonHoc}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Giảng viên</label>
+                  <select value={formData.MaGiangVien} onChange={(e) => setFormData({ ...formData, MaGiangVien: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl" required>
+                    <option value="">-- Chọn GV --</option>
+                    {teachers.map(t => <option key={t.MaGiangVien} value={t.MaGiangVien}>{t.HoTen}</option>)}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học</label>
-                <select
-                  value={formData.MaMonHoc}
-                  onChange={(e) => setFormData({ ...formData, MaMonHoc: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                >
-                  <option value="">Chọn môn học</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
-                      {subject.TenMonHoc}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
-                <select
-                  value={formData.MaLop}
+
+              {/* Ô CHỌN LỚP SINH HOẠT MỚI THÊM VÀO */}
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <label className="flex items-center gap-2 text-sm font-semibold text-blue-800 mb-2">
+                  <Users className="w-4 h-4"/> Chọn Lớp tham gia (Tự động lên danh sách)
+                </label>
+                <select 
+                  value={formData.MaLop} 
                   onChange={(e) => setFormData({ ...formData, MaLop: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
+                  className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl outline-none focus:border-blue-500"
                 >
-                  <option value="">Chọn lớp</option>
-                  {classes.map((cls) => (
-                    <option key={cls.MaLop} value={cls.MaLop}>
-                      {cls.TenLop}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Học kỳ</label>
-                <select
-                  value={formData.HocKy}
-                  onChange={(e) => setFormData({ ...formData, HocKy: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                >
-                  <option value="">Chọn học kỳ</option>
-                  <option value="HK1_2025_2026">HK1 2025-2026</option>
-                  <option value="HK2_2025_2026">HK2 2025-2026</option>
+                  <option value="">-- Tạo lớp tự do (Sinh viên tự đăng ký) --</option>
+                  {classes.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
                 </select>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
-                >
-                  {editingAssignment ? 'Cập nhật' : 'Thêm mới'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-                >
-                  Hủy
-                </motion.button>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Học kỳ</label>
+                  <select value={formData.HocKy} onChange={(e) => setFormData({ ...formData, HocKy: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                    <option value="HK1_2025_2026">HK1 2025-2026</option>
+                    <option value="HK2_2025_2026">HK2 2025-2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Sỉ số tối đa</label>
+                  <input type="number" min="1" value={formData.SoLuongToiDa} onChange={(e) => setFormData({ ...formData, SoLuongToiDa: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl"/>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={handleCloseModal} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200">Hủy</button>
+                <button type="submit" className="flex-1 py-2.5 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 shadow-md">
+                  {editingAssignment ? 'Lưu thay đổi' : 'Tạo lớp & Lên danh sách'}
+                </button>
               </div>
             </form>
           </motion.div>

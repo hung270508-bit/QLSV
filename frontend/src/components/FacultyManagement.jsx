@@ -97,7 +97,7 @@ const handleSearch = () => {
   setAppliedSearchTerm(searchTerm); // Chỉ khi nhấn nút thì mới cập nhật appliedSearchTerm
 };
 
-  const handleRefresh = () => {
+  const handleRefreshData  = () => {
     fetchData();
   };
 
