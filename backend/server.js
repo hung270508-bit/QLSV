@@ -69,11 +69,12 @@ const calculateAcademicStanding = (gpa) => {
     return 'Cảnh báo học vụ';
 };
 
-const calculateGradeAverage = (diemQuaTrinh, diemGiuaKy, diemCuoiKy) => {
-    const qt = parseFloat(diemQuaTrinh) || 0;
+const calculateGradeAverage = (diemChuyenCan, diemBaiTap, diemGiuaKy, diemCuoiKy) => {
+    const cc = parseFloat(diemChuyenCan) || 0;
+    const bt = parseFloat(diemBaiTap) || 0;
     const gk = parseFloat(diemGiuaKy) || 0;
     const ck = parseFloat(diemCuoiKy) || 0;
-    return ((qt * 0.2) + (gk * 0.3) + (ck * 0.5)).toFixed(2);
+    return ((cc * 0.1) + (bt * 0.2) + (gk * 0.3) + (ck * 0.4)).toFixed(2);
 };
 
 const executeInsert = (query, params, res, successMessage, errorMessage) => {
@@ -271,11 +272,12 @@ app.get('/api/dashboard/academic-standing', (req, res) => {
         FROM (
             SELECT 
                 s.MSSV,
-                ((SUM((d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) * mh.SoTinChi)) / 
+                ((SUM((d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) * mh.SoTinChi)) / 
                  SUM(mh.SoTinChi)) as gpa
             FROM sinhvien s
             LEFT JOIN diem d ON s.MSSV = d.MSSV
-            LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+            LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan
+            LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
             GROUP BY s.MSSV
         ) as student_gpa
     `;
@@ -646,12 +648,12 @@ app.get('/api/students/:mssv/details', (req, res) => {
 app.get('/api/students/:mssv/schedule', (req, res) => {
     const { mssv } = req.params;
     const query = `
-        SELECT lh.*, pc.MaMonHoc, pc.MaLop, pc.HocKy, mh.TenMonHoc, gv.HoTen as TenGiangVien
+        SELECT lh.*, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy, mh.TenMonHoc, gv.HoTen as TenGiangVien
         FROM lichhoc lh
-        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
-        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
-        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
-        WHERE pc.MaLop = (SELECT MaLop FROM sinhvien WHERE MSSV = ?)
+        LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        WHERE lhp.MaLop = (SELECT MaLop FROM sinhvien WHERE MSSV = ?)
     `;
     executeQuery(query, [mssv], res, 'Lỗi khi lấy lịch học sinh viên!');
 });
@@ -671,12 +673,12 @@ app.get('/api/teachers/:maGV/details', (req, res) => {
 app.get('/api/teachers/:maGV/teaching-schedule', (req, res) => {
     const { maGV } = req.params;
     const query = `
-        SELECT lh.*, pc.MaMonHoc, pc.MaLop, pc.HocKy, mh.TenMonHoc, l.TenLop
+        SELECT lh.*, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy, mh.TenMonHoc, l.TenLop
         FROM lichhoc lh
-        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
-        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
-        LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
-        WHERE pc.MaGiangVien = ?
+        LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop
+        WHERE lhp.MaGiangVien = ?
     `;
     executeQuery(query, [maGV], res, 'Lỗi khi lấy lịch giảng dạy!');
 });
@@ -702,13 +704,13 @@ app.post('/api/grades/bulk', (req, res) => {
         return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ!' });
     }
 
-    const query = 'INSERT INTO diem (MSSV, MaMonHoc, HocKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy) VALUES (?, ?, ?, ?, ?, ?)';
+    const query = 'INSERT INTO diem (MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy) VALUES (?, ?, ?, ?, ?, ?, ?)';
     
     let completed = 0;
     let errors = [];
 
     grades.forEach((grade, index) => {
-        db.query(query, [grade.MSSV, grade.MaMonHoc, grade.HocKy, grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy], (err) => {
+        db.query(query, [grade.MSSV, grade.MaLopHocPhan, grade.HocKy, grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy], (err) => {
             if (err) errors.push({ index, error: err.message });
             completed++;
 
@@ -775,15 +777,15 @@ app.get('/api/classes/:maLop/details', (req, res) => {
         ORDER BY s.HoTen
     `;
     const scheduleQuery = `
-        SELECT lh.MaLichHoc, lh.Thu, lh.CaHoc, lh.PhongHoc,
-               pc.MaMonHoc, pc.HocKy, mh.TenMonHoc, mh.SoTinChi,
+        SELECT lh.MaLichHoc, lh.NgayHoc, lh.CaHoc, lh.PhongHoc,
+               lhp.MaMonHoc, lhp.HocKy, mh.TenMonHoc, mh.SoTinChi,
                gv.MaGiangVien, gv.HoTen as TenGiangVien
         FROM lichhoc lh
-        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
-        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
-        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
-        WHERE pc.MaLop = ?
-        ORDER BY lh.Thu, lh.CaHoc
+        LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        WHERE lhp.MaLop = ?
+        ORDER BY lh.NgayHoc, lh.CaHoc
     `;
     const teachersQuery = `
         SELECT DISTINCT gv.MaGiangVien, gv.HoTen as TenGiangVien, mh.TenMonHoc, pc.HocKy
@@ -796,13 +798,13 @@ app.get('/api/classes/:maLop/details', (req, res) => {
     const gradeStatsQuery = `
         SELECT 
             COUNT(*) as totalGrades,
-            ROUND(AVG(d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5), 2) as classAverage,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) >= 8.5 THEN 1 ELSE 0 END) as excellent,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) >= 7.0
-                     AND (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) < 8.5 THEN 1 ELSE 0 END) as good,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) >= 5.0
-                     AND (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) < 7.0 THEN 1 ELSE 0 END) as averageGrade,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) < 5.0 THEN 1 ELSE 0 END) as fail
+            ROUND(AVG(d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4), 2) as classAverage,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 8.5 THEN 1 ELSE 0 END) as excellent,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 7.0
+                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 8.5 THEN 1 ELSE 0 END) as good,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 5.0
+                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 7.0 THEN 1 ELSE 0 END) as averageGrade,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 5.0 THEN 1 ELSE 0 END) as fail
         FROM diem d
         LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
         WHERE s.MaLop = ?
@@ -857,15 +859,15 @@ app.get('/api/classes/:maLop/students', (req, res) => {
 app.get('/api/classes/:maLop/schedule', (req, res) => {
     const { maLop } = req.params;
     const query = `
-        SELECT lh.MaLichHoc, lh.Thu, lh.CaHoc, lh.PhongHoc,
-               pc.MaMonHoc, pc.HocKy, mh.TenMonHoc, mh.SoTinChi,
+        SELECT lh.MaLichHoc, lh.NgayHoc, lh.CaHoc, lh.PhongHoc,
+               lhp.MaMonHoc, lhp.HocKy, mh.TenMonHoc, mh.SoTinChi,
                gv.MaGiangVien, gv.HoTen as TenGiangVien
         FROM lichhoc lh
-        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
-        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
-        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
-        WHERE pc.MaLop = ?
-        ORDER BY lh.Thu, lh.CaHoc
+        LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        WHERE lhp.MaLop = ?
+        ORDER BY lh.NgayHoc, lh.CaHoc
     `;
     executeQuery(query, [maLop], res, 'Lỗi khi lấy lịch học lớp!');
 });
@@ -875,13 +877,13 @@ app.get('/api/classes/:maLop/grade-stats', (req, res) => {
     const query = `
         SELECT 
             COUNT(*) as totalGrades,
-            ROUND(AVG(d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5), 2) as classAverage,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) >= 8.5 THEN 1 ELSE 0 END) as excellent,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) >= 7.0
-                     AND (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) < 8.5 THEN 1 ELSE 0 END) as good,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) >= 5.0
-                     AND (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) < 7.0 THEN 1 ELSE 0 END) as averageGrade,
-            SUM(CASE WHEN (d.DiemQuaTrinh * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.5) < 5.0 THEN 1 ELSE 0 END) as fail
+            ROUND(AVG(d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4), 2) as classAverage,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 8.5 THEN 1 ELSE 0 END) as excellent,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 7.0
+                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 8.5 THEN 1 ELSE 0 END) as good,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) >= 5.0
+                     AND (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 7.0 THEN 1 ELSE 0 END) as averageGrade,
+            SUM(CASE WHEN (d.DiemChuyenCan * 0.1 + d.DiemBaiTap * 0.2 + d.DiemGiuaKy * 0.3 + d.DiemCuoiKy * 0.4) < 5.0 THEN 1 ELSE 0 END) as fail
         FROM diem d
         LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
         WHERE s.MaLop = ?
@@ -900,60 +902,171 @@ app.get('/api/classes/:maLop/grade-stats', (req, res) => {
     });
 });
 
-// ==================== TEACHING ASSIGNMENTS (PHANCONGGIANGDAY) ====================
+// ==================== LỚP HỌC PHẦN (Phân công giảng dạy) ====================
 app.get('/api/teaching-assignments', (req, res) => {
     const query = `
-        SELECT pc.*, gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop
-        FROM phanconggiangday pc
-        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
-        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
-        LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
+        SELECT lhp.*, gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop
+        FROM lophocphan lhp
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop
     `;
-    executeQuery(query, [], res, 'Lỗi lấy phân công giảng dạy!');
+    executeQuery(query, [], res, 'Lỗi lấy Lớp học phần!');
 });
 
 app.post('/api/teaching-assignments', (req, res) => {
-    const { MaGiangVien, MaMonHoc, MaLop, HocKy } = req.body;
-    const query = 'INSERT INTO phanconggiangday (MaGiangVien, MaMonHoc, MaLop, HocKy) VALUES (?, ?, ?, ?)';
-    executeInsert(query, [MaGiangVien, MaMonHoc, MaLop, HocKy], res, 'Thêm phân công giảng dạy thành công!', 'Lỗi thêm phân công giảng dạy!');
+    const { MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
+    const maLHP = MaLopHocPhan || `${MaMonHoc}_${HocKy}_${Math.floor(Math.random()*1000)}`;
+    
+    const insertLhpQuery = 'INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    
+    db.query(insertLhpQuery, [maLHP, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp học phần!', error: err.message });
+
+        // TỰ ĐỘNG LÊN DANH SÁCH & FIX LỖI MYSQL (Chèn sẵn điểm 0)
+        if (MaLop) {
+            const getStudentsQuery = 'SELECT MSSV FROM sinhvien WHERE MaLop = ?';
+            db.query(getStudentsQuery, [MaLop], (err, students) => {
+                if (!err && students.length > 0) {
+                    students.forEach(sv => {
+                        const enrollQuery = `INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)
+                            db.query(enrollQuery, [sv.MSSV, maLHP, HocKy])`;
+                        db.query(enrollQuery, [sv.MSSV, maLHP, HocKy]);
+                    });
+                }
+                res.json({ success: true, message: 'Tạo Lớp HP và lên danh sách thành công!' });
+            });
+        } else {
+            res.json({ success: true, message: 'Tạo Lớp học phần tự do thành công!' });
+        }
+    });
 });
 
-app.put('/api/teaching-assignments/:maPhanCong', (req, res) => {
-    const { maPhanCong } = req.params;
-    const { MaGiangVien, MaMonHoc, MaLop, HocKy } = req.body;
-    const query = 'UPDATE phanconggiangday SET MaGiangVien = ?, MaMonHoc = ?, MaLop = ?, HocKy = ? WHERE MaPhanCong = ?';
-    executeUpdate(query, [MaGiangVien, MaMonHoc, MaLop, HocKy, maPhanCong], res, 'Cập nhật phân công giảng dạy thành công!', 'Lỗi cập nhật phân công giảng dạy!');
+app.put('/api/teaching-assignments/:id', (req, res) => {
+    const { MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
+    const maLHP = req.params.id;
+
+    const updateQuery = 'UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=? WHERE MaLopHocPhan=?';
+    
+    db.query(updateQuery, [MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, maLHP], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+
+        // NẾU CÓ ĐỔI LỚP THÌ ĐỒNG BỘ LẠI DANH SÁCH
+        if (MaLop) {
+            const getStudentsQuery = 'SELECT MSSV FROM sinhvien WHERE MaLop = ?';
+            db.query(getStudentsQuery, [MaLop], (err, students) => {
+                if (!err && students.length > 0) {
+                    students.forEach(sv => {
+                        const enrollQuery =  `INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)
+                            db.query(enrollQuery, [sv.MSSV, maLHP, HocKy])`;
+                        db.query(enrollQuery, [sv.MSSV, maLHP, HocKy]);
+                    });
+                }
+                res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách thành công!' });
+            });
+        } else {
+            res.json({ success: true, message: 'Cập nhật thành công!' });
+        }
+    });
 });
 
-app.delete('/api/teaching-assignments/:maPhanCong', (req, res) => {
-    executeDelete('DELETE FROM phanconggiangday WHERE MaPhanCong = ?', [req.params.maPhanCong], res, 'Xóa phân công giảng dạy thành công!', 'Lỗi xóa phân công giảng dạy!');
+app.delete('/api/teaching-assignments/:id', (req, res) => {
+    executeDelete('DELETE FROM lophocphan WHERE MaLopHocPhan=?', [req.params.id], res, 'Xóa thành công', 'Lỗi xóa');
+});
+
+
+
+// ==================== COURSE SECTIONS (LOPHOCPHAN) ====================
+app.get('/api/course-sections', (req, res) => {
+    const query = `
+        SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop, gv.HoTen as TenGiangVien, k.TenKhoa
+        FROM lophocphan lhp
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy danh sách lớp học phần!');
+});
+
+app.post('/api/course-sections', (req, res) => {
+    const { MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
+    const query = 'INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    executeInsert(query, [MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa], res, 'Thêm lớp học phần thành công!', 'Lỗi thêm lớp học phần!');
+});
+
+app.put('/api/course-sections/:maLopHocPhan', (req, res) => {
+    const { maLopHocPhan } = req.params;
+    const { MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
+    const query = 'UPDATE lophocphan SET MaMonHoc = ?, MaLop = ?, MaGiangVien = ?, HocKy = ?, NamHoc = ?, SoLuongToiDa = ? WHERE MaLopHocPhan = ?';
+    executeUpdate(query, [MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, maLopHocPhan], res, 'Cập nhật lớp học phần thành công!', 'Lỗi cập nhật lớp học phần!');
+});
+
+app.delete('/api/course-sections/:maLopHocPhan', (req, res) => {
+    executeDelete('DELETE FROM lophocphan WHERE MaLopHocPhan = ?', [req.params.maLopHocPhan], res, 'Xóa lớp học phần thành công!', 'Lỗi xóa lớp học phần!');
+});
+
+// Course sections by class
+app.get('/api/course-sections/class/:maLop', (req, res) => {
+    const query = `
+        SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, gv.HoTen as TenGiangVien
+        FROM lophocphan lhp
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        WHERE lhp.MaLop = ?
+    `;
+    executeQuery(query, [req.params.maLop], res, 'Lỗi lấy lớp học phần theo lớp!');
+});
+
+// Course sections by teacher
+app.get('/api/course-sections/teacher/:maGV', (req, res) => {
+    const query = `
+        SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop
+        FROM lophocphan lhp
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop
+        WHERE lhp.MaGiangVien = ?
+    `;
+    executeQuery(query, [req.params.maGV], res, 'Lỗi lấy lớp học phần theo giảng viên!');
+});
+
+// Course sections by subject
+app.get('/api/course-sections/subject/:maMH', (req, res) => {
+    const query = `
+        SELECT lhp.*, l.TenLop, gv.HoTen as TenGiangVien
+        FROM lophocphan lhp
+        LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        WHERE lhp.MaMonHoc = ?
+    `;
+    executeQuery(query, [req.params.maMH], res, 'Lỗi lấy lớp học phần theo môn học!');
 });
 
 // ==================== SCHEDULES (LICHHOC) ====================
 app.get('/api/schedules', (req, res) => {
     const query = `
-        SELECT lh.*, pc.MaGiangVien, pc.MaMonHoc, pc.MaLop, pc.HocKy,
+        SELECT lh.*, lhp.MaGiangVien, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy,
                gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop
         FROM lichhoc lh
-        LEFT JOIN phanconggiangday pc ON lh.MaPhanCong = pc.MaPhanCong
-        LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien
-        LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc
-        LEFT JOIN lophoc l ON pc.MaLop = l.MaLop
+        LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop
     `;
     executeQuery(query, [], res, 'Lỗi lấy lịch học!');
 });
 
 app.post('/api/schedules', (req, res) => {
-    const { MaPhanCong, Thu, CaHoc, PhongHoc } = req.body;
-    const query = 'INSERT INTO lichhoc (MaPhanCong, Thu, CaHoc, PhongHoc) VALUES (?, ?, ?, ?)';
-    executeInsert(query, [MaPhanCong, Thu, CaHoc, PhongHoc], res, 'Thêm lịch học thành công!', 'Lỗi thêm lịch học!');
+    const { MaLopHocPhan, NgayHoc, CaHoc, PhongHoc } = req.body;
+    const query = 'INSERT INTO lichhoc (MaLopHocPhan, NgayHoc, CaHoc, PhongHoc) VALUES (?, ?, ?, ?)';
+    executeInsert(query, [MaLopHocPhan, NgayHoc, CaHoc, PhongHoc], res, 'Thêm lịch học thành công!', 'Lỗi thêm lịch học!');
 });
 
 app.put('/api/schedules/:maLichHoc', (req, res) => {
     const { maLichHoc } = req.params;
-    const { MaPhanCong, Thu, CaHoc, PhongHoc } = req.body;
-    const query = 'UPDATE lichhoc SET MaPhanCong = ?, Thu = ?, CaHoc = ?, PhongHoc = ? WHERE MaLichHoc = ?';
-    executeUpdate(query, [MaPhanCong, Thu, CaHoc, PhongHoc, maLichHoc], res, 'Cập nhật lịch học thành công!', 'Lỗi cập nhật lịch học!');
+    const { MaLopHocPhan, NgayHoc, CaHoc, PhongHoc } = req.body;
+    const query = 'UPDATE lichhoc SET MaLopHocPhan = ?, NgayHoc = ?, CaHoc = ?, PhongHoc = ? WHERE MaLichHoc = ?';
+    executeUpdate(query, [MaLopHocPhan, NgayHoc, CaHoc, PhongHoc, maLichHoc], res, 'Cập nhật lịch học thành công!', 'Lỗi cập nhật lịch học!');
 });
 
 app.delete('/api/schedules/:maLichHoc', (req, res) => {
@@ -966,7 +1079,8 @@ app.get('/api/grades', (req, res) => {
         SELECT d.*, s.HoTen as TenSinhVien, mh.TenMonHoc
         FROM diem d
         LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
-        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
     `;
     executeQuery(query, [], res, 'Lỗi lấy điểm!');
 });
@@ -975,36 +1089,35 @@ app.get('/api/grades/student/:mssv', (req, res) => {
     const query = `
         SELECT d.*, mh.TenMonHoc, mh.SoTinChi
         FROM diem d
-        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
         WHERE d.MSSV = ?
     `;
     executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm sinh viên!');
 });
 
 app.post('/api/grades', (req, res) => {
-    // Cập nhật lấy các trường mới từ req.body
-    const { MSSV, MaMonHoc, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai } = req.body;
+    const { MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai } = req.body;
     
     const query = `
-        INSERT INTO diem (MSSV, MaMonHoc, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai) 
+        INSERT INTO diem (MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
-    executeInsert(query, [MSSV, MaMonHoc, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai], res, 'Thêm điểm thành công!', 'Lỗi thêm điểm!');
+    executeInsert(query, [MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai], res, 'Thêm điểm thành công!', 'Lỗi thêm điểm!');
 });
 
 app.put('/api/grades/:maDiem', (req, res) => {
     const { maDiem } = req.params;
-    // Cập nhật lấy các trường mới từ req.body
-    const { MSSV, MaMonHoc, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai } = req.body;
+    const { MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai } = req.body;
     
     const query = `
         UPDATE diem 
-        SET MSSV = ?, MaMonHoc = ?, HocKy = ?, DiemChuyenCan = ?, DiemBaiTap = ?, DiemGiuaKy = ?, DiemCuoiKy = ?, DiemTong = ?, DiemGPA = ?, DiemChu = ?, XepLoai = ? 
+        SET MSSV = ?, MaLopHocPhan = ?, HocKy = ?, DiemChuyenCan = ?, DiemBaiTap = ?, DiemGiuaKy = ?, DiemCuoiKy = ?, DiemTong = ?, DiemGPA = ?, DiemChu = ?, XepLoai = ? 
         WHERE MaDiem = ?
     `;
     
-    executeUpdate(query, [MSSV, MaMonHoc, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai, maDiem], res, 'Cập nhật điểm thành công!', 'Lỗi cập nhật điểm!');
+    executeUpdate(query, [MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy, DiemTong, DiemGPA, DiemChu, XepLoai, maDiem], res, 'Cập nhật điểm thành công!', 'Lỗi cập nhật điểm!');
 });
 
 app.delete('/api/grades/:maDiem', (req, res) => {
@@ -1012,15 +1125,15 @@ app.delete('/api/grades/:maDiem', (req, res) => {
 });
 
 // ==================== GRADE STATISTICS ====================
-app.get('/api/grades/statistics/:maMonHoc', (req, res) => {
-    const { maMonHoc } = req.params;
+app.get('/api/grades/statistics/:maLopHocPhan', (req, res) => {
+    const { maLopHocPhan } = req.params;
     const query = `
-        SELECT d.DiemQuaTrinh, d.DiemGiuaKy, d.DiemCuoiKy
+        SELECT d.DiemChuyenCan, d.DiemBaiTap, d.DiemGiuaKy, d.DiemCuoiKy
         FROM diem d
-        WHERE d.MaMonHoc = ?
+        WHERE d.MaLopHocPhan = ?
     `;
     
-    db.query(query, [maMonHoc], (err, results) => {
+    db.query(query, [maLopHocPhan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi khi lấy thống kê điểm!' });
         
         if (results.length === 0) {
@@ -1036,7 +1149,7 @@ app.get('/api/grades/statistics/:maMonHoc', (req, res) => {
         }
 
         const averages = results.map(grade => {
-            return parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy));
+            return parseFloat(calculateGradeAverage(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy));
         });
 
         const sum = averages.reduce((a, b) => a + b, 0);
@@ -1070,9 +1183,10 @@ app.get('/api/grades/statistics/:maMonHoc', (req, res) => {
 app.get('/api/grades/class-averages/:hocKy', (req, res) => {
     const { hocKy } = req.params;
     const query = `
-        SELECT d.MaMonHoc, mh.TenMonHoc, d.DiemQuaTrinh, d.DiemGiuaKy, d.DiemCuoiKy
+        SELECT d.MaLopHocPhan, lhp.MaMonHoc, mh.TenMonHoc, d.DiemChuyenCan, d.DiemBaiTap, d.DiemGiuaKy, d.DiemCuoiKy
         FROM diem d
-        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
         WHERE d.HocKy = ?
     `;
     
@@ -1093,7 +1207,7 @@ app.get('/api/grades/class-averages/:hocKy', (req, res) => {
                 };
             }
             subjectGroups[grade.MaMonHoc].grades.push(
-                parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy))
+                parseFloat(calculateGradeAverage(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy))
             );
         });
 
@@ -1116,9 +1230,10 @@ app.get('/api/grades/class-averages/:hocKy', (req, res) => {
 app.get('/api/academic/gpa/:mssv', (req, res) => {
     const { mssv } = req.params;
     const query = `
-        SELECT d.DiemQuaTrinh, d.DiemGiuaKy, d.DiemCuoiKy, mh.SoTinChi, d.HocKy
+        SELECT d.DiemChuyenCan, d.DiemBaiTap, d.DiemGiuaKy, d.DiemCuoiKy, mh.SoTinChi, d.HocKy
         FROM diem d
-        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
         WHERE d.MSSV = ?
     `;
     
@@ -1141,7 +1256,7 @@ app.get('/api/academic/gpa/:mssv', (req, res) => {
         const semesterData = {};
 
         results.forEach(grade => {
-            const diemTB = parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy));
+            const diemTB = parseFloat(calculateGradeAverage(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy));
             const gpa = calculateGPA(diemTB);
             const credits = grade.SoTinChi || 0;
             
@@ -1182,7 +1297,8 @@ app.get('/api/academic/transcript/:mssv', (req, res) => {
     const query = `
         SELECT d.*, mh.TenMonHoc, mh.SoTinChi, s.HoTen, s.NgaySinh, s.GioiTinh, s.Email, s.MaLop, l.TenLop
         FROM diem d
-        LEFT JOIN monhoc mh ON d.MaMonHoc = mh.MaMonHoc
+        LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan
+        LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
         LEFT JOIN sinhvien s ON d.MSSV = s.MSSV
         LEFT JOIN lophoc l ON s.MaLop = l.MaLop
         WHERE d.MSSV = ?
@@ -1197,7 +1313,7 @@ app.get('/api/academic/transcript/:mssv', (req, res) => {
         }
 
         const transcript = results.map(grade => {
-            const diemTB = parseFloat(calculateGradeAverage(grade.DiemQuaTrinh, grade.DiemGiuaKy, grade.DiemCuoiKy));
+            const diemTB = parseFloat(calculateGradeAverage(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy));
             const gpa = calculateGPA(diemTB);
             const credits = grade.SoTinChi || 0;
             
@@ -1239,7 +1355,7 @@ app.get('/api/academic/transcript/:mssv', (req, res) => {
 // ==================== ATTENDANCE (DIEMDANH) ====================
 app.get('/api/attendance', (req, res) => {
     const query = `
-        SELECT dd.*, s.HoTen as TenSinhVien, lh.PhongHoc, lh.Thu, lh.CaHoc
+        SELECT dd.*, s.HoTen as TenSinhVien, lh.PhongHoc, lh.NgayHoc, lh.CaHoc
         FROM diemdanh dd
         LEFT JOIN sinhvien s ON dd.MSSV = s.MSSV
         LEFT JOIN lichhoc lh ON dd.MaLichHoc = lh.MaLichHoc
@@ -1249,7 +1365,7 @@ app.get('/api/attendance', (req, res) => {
 
 app.get('/api/attendance/student/:mssv', (req, res) => {
     const query = `
-        SELECT dd.*, lh.PhongHoc, lh.Thu, lh.CaHoc
+        SELECT dd.*, lh.PhongHoc, lh.NgayHoc, lh.CaHoc
         FROM diemdanh dd
         LEFT JOIN lichhoc lh ON dd.MaLichHoc = lh.MaLichHoc
         WHERE dd.MSSV = ?

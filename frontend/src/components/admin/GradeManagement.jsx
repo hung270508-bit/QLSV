@@ -6,6 +6,7 @@ import axios from 'axios';
 function GradeManagement() {
   const [grades, setGrades] = useState([]);
   const [students, setStudents] = useState([]);
+  const [courseSections, setCourseSections] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -39,7 +40,7 @@ function GradeManagement() {
   // Cập nhật lại formData để khớp với các cột điểm mới
   const [formData, setFormData] = useState({
     MSSV: '',
-    MaMonHoc: '',
+    MaLopHocPhan: '',
     HocKy: '',
     DiemChuyenCan: '',
     DiemBaiTap: '',
@@ -53,13 +54,15 @@ function GradeManagement() {
 
   const fetchData = async () => {
     try {
-      const [gradesRes, studentsRes, subjectsRes] = await Promise.all([
+      const [gradesRes, studentsRes, courseSectionsRes, subjectsRes] = await Promise.all([
         axios.get('http://localhost:5000/api/grades'),
         axios.get('http://localhost:5000/api/students'),
+        axios.get('http://localhost:5000/api/course-sections'),
         axios.get('http://localhost:5000/api/subjects')
       ]);
       setGrades(gradesRes.data);
       setStudents(studentsRes.data);
+      setCourseSections(courseSectionsRes.data);
       setSubjects(subjectsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -131,7 +134,7 @@ function GradeManagement() {
     setEditingGrade(grade);
     setFormData({
       MSSV: grade.MSSV,
-      MaMonHoc: grade.MaMonHoc,
+      MaLopHocPhan: grade.MaLopHocPhan,
       HocKy: grade.HocKy,
       DiemChuyenCan: grade.DiemChuyenCan || '',
       DiemBaiTap: grade.DiemBaiTap || '',
@@ -158,7 +161,7 @@ function GradeManagement() {
     setEditingGrade(null);
     setFormData({
       MSSV: '',
-      MaMonHoc: '',
+      MaLopHocPhan: '',
       HocKy: '',
       DiemChuyenCan: '',
       DiemBaiTap: '',
@@ -173,7 +176,7 @@ function GradeManagement() {
       grade.MSSV?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       grade.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSubject = !filters.subjectFilter || grade.MaMonHoc === filters.subjectFilter;
+    const matchesSubject = !filters.subjectFilter || grade.MaLopHocPhan === filters.subjectFilter;
     const matchesSemester = !filters.semesterFilter || grade.HocKy === filters.semesterFilter;
     
     return matchesSearch && matchesSubject && matchesSemester;
@@ -280,7 +283,7 @@ function GradeManagement() {
     setBulkGrades(students.map(student => ({
       MSSV: student.MSSV,
       HoTen: student.HoTen,
-      MaMonHoc: '',
+      MaLopHocPhan: '',
       HocKy: '',
       DiemChuyenCan: '',
       DiemBaiTap: '',
@@ -292,7 +295,7 @@ function GradeManagement() {
 
   // Handle bulk import submit
   const handleBulkSubmit = async () => {
-    const validGrades = bulkGrades.filter(g => g.MaMonHoc && g.HocKy);
+    const validGrades = bulkGrades.filter(g => g.MaLopHocPhan && g.HocKy);
 
     if (validGrades.length === 0) {
       alert('Vui lòng nhập môn học và học kỳ!');
@@ -438,9 +441,9 @@ function GradeManagement() {
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                 >
                   <option value="">Tất cả môn</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
-                      {subject.TenMonHoc}
+                  {courseSections.map((cs) => (
+                    <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>
+                      {cs.TenMonHoc} - {cs.TenLop}
                     </option>
                   ))}
                 </select>
@@ -656,17 +659,17 @@ function GradeManagement() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp học phần</label>
                   <select
-                    value={formData.MaMonHoc}
-                    onChange={(e) => setFormData({ ...formData, MaMonHoc: e.target.value })}
+                    value={formData.MaLopHocPhan}
+                    onChange={(e) => setFormData({ ...formData, MaLopHocPhan: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                     required
                   >
-                    <option value="">Chọn môn học</option>
-                    {subjects.map((subject) => (
-                      <option key={subject.MaMonHoc} value={subject.MaMonHoc}>
-                        {subject.TenMonHoc}
+                    <option value="">Chọn lớp học phần</option>
+                    {courseSections.map((cs) => (
+                      <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>
+                        {cs.TenMonHoc} - {cs.TenLop} - {cs.HocKy}
                       </option>
                     ))}
                   </select>
