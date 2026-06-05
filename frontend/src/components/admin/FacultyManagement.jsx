@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Building2, Plus, Edit, Trash2, Search, X, Users, BookOpen, BarChart3 } from 'lucide-react';
+import { motion} from 'framer-motion';
+import { Building2, Plus, Edit, Search, X, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal from '../ModalPortal';
 
 function FacultyManagement() {
   const [faculties, setFaculties] = useState([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('default'); // 'default', 'asc', 'desc'
   const [formData, setFormData] = useState({
     MaKhoa: '',
     TenKhoa: ''
   });
+  const [errors, setErrors] = useState({
+  TenKhoa: ''
+});
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedFaculty, setSelectedFaculty] = useState(null);
   const [facultyTeachers, setFacultyTeachers] = useState([]);
@@ -24,12 +30,83 @@ function FacultyManagement() {
     totalStudents: 0,
     totalClasses: 0
   });
-  const [detailTab, setDetailTab] = useState('teachers');
 
+  const executeAddFaculty = async () => {
+  try {
+    const response = await axios.post('http://localhost:5000/api/faculties', formData);
+    if (response.data.success) {
+      setShowConfirmModal(false);
+      setShowModal(false); // Đóng form chính
+      setFormData({ MaKhoa: '', TenKhoa: '' }); // Reset form
+      // Gọi lại hàm load danh sách khoa của bạn ở đây (ví dụ: fetchFaculties())
+    }
+  } catch (error) {
+    alert(error.response?.data?.message || 'Có lỗi xảy ra!');
+  }
+};
+  const [detailTab, setDetailTab] = useState('teachers');
+  const filteredFaculties = [...faculties]
+    .filter(f => f.TenKhoa.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'asc') return a.TenKhoa.localeCompare(b.TenKhoa);
+      if (sortBy === 'desc') return b.TenKhoa.localeCompare(a.TenKhoa);
+      return 0;
+    });
   useEffect(() => {
     fetchData();
   }, []);
 
+const validateFacultyName = (value) => {
+  value = value.trim();
+
+  if (!value) {
+    return 'Tên khoa không được để trống';
+  }
+
+  if (/\d/.test(value)) {
+    return 'Tên khoa không được chứa số';
+  }
+
+  if (!/[A-Za-zÀ-ỹ]/.test(value)) {
+    return 'Tên khoa phải chứa ít nhất một chữ cái';
+  }
+
+  if (!/^[A-Za-zÀ-ỹ\s-]+$/.test(value)) {
+    return 'Tên khoa không được chứa ký tự đặc biệt';
+  }
+
+  if (/\s{2,}/.test(value)) {
+    return 'Chỉ được nhập 1 khoảng trắng giữa các từ';
+  }
+
+  if (/--+/.test(value)) {
+    return 'Không được nhập nhiều dấu gạch nối liên tiếp';
+  }
+
+  return '';
+};
+
+  const removeVietnameseTones = (str) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  };
+
+  const generateMaKhoa = (tenKhoa) => {
+    return removeVietnameseTones(
+      tenKhoa.replace(/-/g, ' ')
+    )
+      .trim()
+      .split(/\s+/)
+      .filter(word => word)
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase();
+  };
+
+  
   const fetchData = async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/faculties');
@@ -41,21 +118,90 @@ function FacultyManagement() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingFaculty) {
-        await axios.put(`http://localhost:5000/api/faculties/${editingFaculty.MaKhoa}`, formData);
-      } else {
-        await axios.post('http://localhost:5000/api/faculties', formData);
-      }
-      fetchData();
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error saving faculty:', error);
-      alert('Lỗi khi lưu khoa!');
-    }
+    const handleFacultyNameChange = (e) => {
+      let value = e.target.value;
+
+      // Nhiều khoảng trắng liên tiếp -> 1 khoảng trắng
+      value = value.replace(/\s+/g, ' ');
+
+      setFormData({
+        TenKhoa: value,
+        MaKhoa: generateMaKhoa(value.trim())
+      });
+
+      setErrors({
+        TenKhoa: ''
+      });
+    };
+
+
+  const handleSubmit = async () => {
+  const tenKhoa = formData.TenKhoa.trim();
+
+  const error = validateFacultyName(tenKhoa);
+
+  if (error) {
+    setErrors({
+      TenKhoa: error
+    });
+    return;
+  }
+
+  const submitData = {
+    ...formData,
+    TenKhoa: tenKhoa,
+    MaKhoa: generateMaKhoa(tenKhoa)
   };
+
+  const duplicateName = faculties.find(
+    faculty =>
+      faculty.TenKhoa.trim().toLowerCase() ===
+      formData.TenKhoa.trim().toLowerCase() &&
+      (!editingFaculty ||
+        faculty.MaKhoa !== editingFaculty.MaKhoa)
+  );
+
+  if (duplicateName) {
+    setErrors({
+      TenKhoa: 'Tên khoa đã tồn tại'
+    });
+    return;
+  }
+
+  const duplicateCode = faculties.find(
+    faculty =>
+      faculty.MaKhoa === formData.MaKhoa &&
+      (!editingFaculty ||
+        faculty.MaKhoa !== editingFaculty.MaKhoa)
+  );
+
+  if (duplicateCode) {
+    setErrors({
+      TenKhoa: 'Mã khoa đã tồn tại'
+    });
+    return;
+  }
+
+  try {
+    if (editingFaculty) {
+      await axios.put(
+        `http://localhost:5000/api/faculties/${editingFaculty.MaKhoa}`,
+        formData
+      );
+    } else {
+      await axios.post(
+        'http://localhost:5000/api/faculties',
+        formData
+      );
+    }
+
+    fetchData();
+    handleCloseModal();
+  } catch (error) {
+    console.error(error);
+    alert('Lỗi khi lưu khoa!');
+  }
+};
 
   const handleEdit = (faculty) => {
     setEditingFaculty(faculty);
@@ -66,23 +212,20 @@ function FacultyManagement() {
     setShowModal(true);
   };
 
-  const handleDelete = async (maKhoa) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa khoa này?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/faculties/${maKhoa}`);
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting faculty:', error);
-        alert('Lỗi khi xóa khoa!');
-      }
-    }
-  };
 
   const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingFaculty(null);
-    setFormData({ MaKhoa: '', TenKhoa: '' });
-  };
+  setShowModal(false);
+  setEditingFaculty(null);
+
+  setFormData({
+    MaKhoa: '',
+    TenKhoa: ''
+  });
+
+  setErrors({
+    TenKhoa: ''
+  });
+};
 
   const handleViewDetails = async (faculty) => {
     setSelectedFaculty(faculty);
@@ -117,10 +260,14 @@ function FacultyManagement() {
     setDetailTab('teachers');
   };
 
-  const filteredFaculties = faculties.filter(faculty =>
-    faculty.TenKhoa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    faculty.MaKhoa.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Thay đổi logic lọc/sắp xếp faculties
+  const filteredAndSortedFaculties = [...faculties]
+  .filter(f => f.TenKhoa.toLowerCase().includes(searchTerm.toLowerCase()))
+  .sort((a, b) => {
+    if (sortBy === 'asc') return a.TenKhoa.localeCompare(b.TenKhoa);
+    if (sortBy === 'desc') return b.TenKhoa.localeCompare(a.TenKhoa);
+    return 0;
+  });
 
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
@@ -144,7 +291,7 @@ function FacultyManagement() {
               <Building2 className="w-8 h-8" />
               Quản lý khoa
             </h2>
-            <p className="text-orange-100 text-lg">Thêm, sửa, xóa thông tin khoa</p>
+            <p className="text-orange-100 text-lg">Thêm, sửa thông tin khoa</p>
           </div>
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
@@ -155,33 +302,48 @@ function FacultyManagement() {
             <Plus className="w-5 h-5" />
             Thêm khoa
           </motion.button>
+          
         </div>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-2xl shadow-lg border border-orange-100 p-6">
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm khoa theo tên hoặc mã khoa..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
-            />
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all"
-          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
-        </div>
-      </div>
+      {/* Search và Filter */}
+<div className="bg-white rounded-2xl shadow-lg border border-orange-100 p-6">
+  <div className="flex gap-4">
+    {/* Thanh tìm kiếm ngắn lại */}
+    <div className="relative flex-grow max-w-sm">
+      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <input
+        type="text"
+        placeholder="Tìm kiếm..."
+        value={displaySearchTerm}
+        onChange={(e) => setDisplaySearchTerm(e.target.value)}
+        className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
+      />
+    </div>
+
+    {/* Chọn sắp xếp */}
+    <select 
+      className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 cursor-pointer"
+      value={sortBy}
+      onChange={(e) => setSortBy(e.target.value)}
+    >
+      <option value="default">Sắp xếp...</option>
+      <option value="asc">Tên Khoa: A-Z</option>
+      <option value="desc">Tên Khoa: Z-A</option>
+    </select>
+
+    {/* Nút tìm kiếm giữ nguyên */}
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={handleSearch}
+      className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all"
+    >
+      <Search className="w-5 h-5" />
+      Tìm kiếm
+    </motion.button>
+  </div>
+</div>
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
@@ -222,15 +384,6 @@ function FacultyManagement() {
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(faculty.MaKhoa)}
-                          className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
                       </div>
                     </td>
                   </motion.tr>
@@ -253,235 +406,357 @@ function FacultyManagement() {
 
       {/* Modal CRUD */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingFaculty ? 'Cập nhật khoa' : 'Thêm khoa mới'}
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </motion.button>
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+              <div className="text-white">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  {editingFaculty ? 'Cập nhật khoa' : 'Thêm khoa mới'}
+                </h3>
+                <p className="text-orange-100 text-sm mt-0.5">
+                  {editingFaculty ? 'Chỉnh sửa thông tin khoa' : 'Tạo khoa mới trong hệ thống'}
+                </p>
+              </div>
+              <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form
+                    onSubmit={(e) => e.preventDefault()}
+                    className="p-6 space-y-4 overflow-y-auto"
+                  >
+              
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Mã khoa</label>
-                <input
-                  type="text"
-                  value={formData.MaKhoa}
-                  onChange={(e) => setFormData({ ...formData, MaKhoa: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                  disabled={!!editingFaculty}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Tên khoa</label>
-                <input
-                  type="text"
-                  value={formData.TenKhoa}
-                  onChange={(e) => setFormData({ ...formData, TenKhoa: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
-                >
-                  {editingFaculty ? 'Cập nhật' : 'Thêm mới'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tên khoa
+              </label>
+
+              <input
+                type="text"
+                placeholder="Nhập tên khoa..."
+                value={formData.TenKhoa}
+                onChange={handleFacultyNameChange}
+                onFocus={() =>
+                  setErrors({
+                    TenKhoa: ''
+                  })
+                }
+                className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none ${
+                  errors.TenKhoa
+                    ? 'border-red-500'
+                    : 'border-gray-200 focus:border-orange-500'
+                }`}
+              />
+
+              {errors.TenKhoa && (
+                <p className="mt-2 text-sm text-red-500">
+                  {errors.TenKhoa}
+                </p>
+              )}
+            </div>
+              <div className="flex gap-3 pt-2">
+                <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
                 >
                   Hủy
-                </motion.button>
+                </button>
+                {/* Sửa đoạn này trong form */}
+                <button
+                  type="button"
+                  // Thay onClick={handleSubmit} bằng đoạn logic sau:
+                  onClick={() => {
+                    // 1. Kiểm tra lỗi trước khi cho phép xác nhận
+                    const error = validateFacultyName(formData.TenKhoa.trim());
+                    if (error) {
+                      setErrors({ TenKhoa: error });
+                      return;
+                    }
+                    // 2. Nếu không lỗi, mở popup xác nhận
+                    setShowConfirmModal(true);
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                >
+                  {editingFaculty ? 'Lưu thay đổi' : 'Thêm khoa'}
+                </button>
               </div>
             </form>
           </motion.div>
         </div>
+        </ModalPortal>
       )}
-
+      {/* Modal xác nhận thêm */}
+{showConfirmModal && (
+  <ModalPortal>
+    <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/40">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+      >
+        <h3 className="text-xl font-bold text-gray-800 mb-2">Xác nhận</h3>
+        <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn thêm khoa <strong>{formData.TenKhoa}</strong> không?</p>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => setShowConfirmModal(false)}
+            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200"
+          >
+            Không
+          </button>
+          <button 
+            onClick={executeAddFaculty}
+            className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg"
+          >
+            Có
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  </ModalPortal>
+)}
       {/* Detail Modal */}
       {showDetailModal && selectedFaculty && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl"
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">Chi tiết khoa: {selectedFaculty.TenKhoa}</h3>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseDetailModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </motion.button>
-            </div>
-            {/* Tabs */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200">
-              {[
-                { id: 'teachers', label: 'Giảng viên', icon: Users },
-                { id: 'students', label: 'Sinh viên', icon: Users },
-                { id: 'classes', label: 'Lớp', icon: BookOpen },
-                { id: 'stats', label: 'Thống kê', icon: BarChart3 }
-              ].map(tab => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setDetailTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
-                      detailTab === tab.id
-                        ? 'text-orange-600 border-b-2 border-orange-600'
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-            {/* Tab Content */}
-            {detailTab === 'teachers' && (
-              <div className="space-y-4">
-                {facultyTeachers.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã GV</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">SĐT</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {facultyTeachers.map((teacher, index) => (
-                          <tr key={index} className="border-b border-gray-100">
-                            <td className="py-3 px-4 text-sm text-gray-800">{teacher.MaGiangVien}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.HoTen}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.Email || '-'}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.SoDienThoai || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="bg-white/20 rounded-xl p-2">
+                      <Building2 className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết khoa</span>
                   </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Chưa có giảng viên nào</p>
-                )}
-              </div>
-            )}
-            {detailTab === 'students' && (
-              <div className="space-y-4">
-                {facultyStudents.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Giới tính</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Lớp</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {facultyStudents.map((student, index) => (
-                          <tr key={index} className="border-b border-gray-100">
-                            <td className="py-3 px-4 text-sm text-gray-800">{student.MSSV}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{student.HoTen}</td>
-                            <td className="py-3 px-4 text-sm">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                student.GioiTinh === 'Nam'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : student.GioiTinh === 'Nữ'
-                                  ? 'bg-pink-100 text-pink-700'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}>
-                                {student.GioiTinh || '-'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{student.TenLop || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Chưa có sinh viên nào</p>
-                )}
-              </div>
-            )}
-            {detailTab === 'classes' && (
-              <div className="space-y-4">
-                {facultyClasses.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã lớp</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tên lớp</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Số sinh viên</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {facultyClasses.map((cls, index) => (
-                          <tr key={index} className="border-b border-gray-100">
-                            <td className="py-3 px-4 text-sm text-gray-800">{cls.MaLop}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{cls.TenLop}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{cls.SoSinhVien || 0}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Chưa có lớp nào</p>
-                )}
-              </div>
-            )}
-            {detailTab === 'stats' && (
-              <div className="space-y-4">
-                {/* Grid changed from grid-cols-4 to grid-cols-3 since "Môn học" was removed */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-6 rounded-xl text-center">
-                    <div className="text-3xl font-bold text-blue-600">{facultyStats.totalTeachers}</div>
-                    <div className="text-sm text-gray-600">Giảng viên</div>
-                  </div>
-                  <div className="bg-green-50 p-6 rounded-xl text-center">
-                    <div className="text-3xl font-bold text-green-600">{facultyStats.totalStudents}</div>
-                    <div className="text-sm text-gray-600">Sinh viên</div>
-                  </div>
-                  <div className="bg-purple-50 p-6 rounded-xl text-center">
-                    <div className="text-3xl font-bold text-purple-600">{facultyStats.totalClasses}</div>
-                    <div className="text-sm text-gray-600">Lớp học</div>
+                  <h2 className="text-2xl font-bold text-white mt-2">{selectedFaculty.TenKhoa}</h2>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{selectedFaculty.MaKhoa}</span>
                   </div>
                 </div>
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleCloseDetailModal}
+                  className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </motion.button>
               </div>
-            )}
+
+              {/* Tabs */}
+              <div className="flex gap-1 mt-5">
+                {[
+                  { id: 'teachers', label: 'Giảng viên', icon: Users },
+                  { id: 'students', label: 'Sinh viên', icon: GraduationCap },
+                  { id: 'classes', label: 'Lớp học', icon: BookOpen },
+                  { id: 'stats', label: 'Thống kê', icon: BarChart3 }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setDetailTab(tab.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                        detailTab === tab.id
+                          ? 'bg-white text-orange-600 shadow-md'
+                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {detailTab === 'teachers' && (
+                <div>
+                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    Danh sách giảng viên ({facultyTeachers.length})
+                  </h4>
+                  {facultyTeachers.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {facultyTeachers.map((teacher, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.06 }}
+                          className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all"
+                        >
+                          <div className="bg-orange-100 rounded-xl p-2 flex-shrink-0">
+                            <UserCheck className="w-5 h-5 text-orange-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-800 text-sm truncate">{teacher.HoTen}</div>
+                            <div className="text-xs text-gray-500">{teacher.MaGiangVien}</div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <Users className="w-14 h-14 mb-3 text-gray-200" />
+                      <p className="font-medium">Chưa có giảng viên nào</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {detailTab === 'students' && (
+                <div>
+                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    Danh sách sinh viên ({facultyStudents.length})
+                  </h4>
+                  {facultyStudents.length > 0 ? (
+                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">MSSV</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Họ tên</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Giới tính</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Lớp</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facultyStudents.map((student, index) => (
+                            <motion.tr
+                              key={index}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: index * 0.03 }}
+                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                            >
+                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{student.MSSV}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{student.HoTen}</td>
+                              <td className="py-3.5 px-5">
+                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${
+                                  student.GioiTinh === 'Nam' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
+                                }`}>
+                                  {student.GioiTinh || '—'}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{student.TenLop || '—'}</td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <GraduationCap className="w-14 h-14 mb-3 text-gray-200" />
+                      <p className="font-medium">Chưa có sinh viên nào</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {detailTab === 'classes' && (
+                <div>
+                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    Danh sách lớp học ({facultyClasses.length})
+                  </h4>
+                  {facultyClasses.length > 0 ? (
+                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Mã lớp</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Tên lớp</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Số sinh viên</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facultyClasses.map((cls, index) => (
+                            <motion.tr
+                              key={index}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: index * 0.03 }}
+                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                            >
+                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{cls.MaLop}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{cls.TenLop}</td>
+                              <td className="py-3.5 px-5">
+                                <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-md font-bold text-sm">{cls.SoSinhVien || 0} SV</span>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <BookOpen className="w-14 h-14 mb-3 text-gray-200" />
+                      <p className="font-medium">Chưa có lớp nào</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {detailTab === 'stats' && (
+                <div className="space-y-6">
+                  {/* Stats cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {[
+                      { label: 'Giảng viên', value: facultyStats.totalTeachers, icon: Users, color: 'blue' },
+                      { label: 'Sinh viên', value: facultyStats.totalStudents, icon: GraduationCap, color: 'green' },
+                      { label: 'Lớp học', value: facultyStats.totalClasses, icon: BookOpen, color: 'purple' },
+                    ].map((card, i) => {
+                      const Icon = card.icon;
+                      const colorMap = {
+                        blue: 'bg-blue-50 text-blue-600 border-blue-100',
+                        green: 'bg-green-50 text-green-600 border-green-100',
+                        purple: 'bg-purple-50 text-purple-600 border-purple-100',
+                      };
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.07 }}
+                          className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
+                        >
+                          <Icon className="w-6 h-6 mb-3 opacity-80" />
+                          <div className="text-3xl font-bold">{card.value}</div>
+                          <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Summary card */}
+                  <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-center text-white">
+                    <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                    <div className="text-5xl font-bold mb-1">{facultyStats.totalStudents > 0 ? Math.round(facultyStats.totalTeachers / facultyStats.totalStudents * 10) / 10 : 0}</div>
+                    <div className="text-orange-100 font-medium">Tỷ lệ giảng viên/sinh viên</div>
+                    <div className="text-orange-200 text-sm mt-1">Trung bình mỗi giảng viên phụ trách {facultyStats.totalTeachers > 0 ? Math.round(facultyStats.totalStudents / facultyStats.totalTeachers) : 0} sinh viên</div>
+                  </div>
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
+        
+        </ModalPortal>
       )}
     </div>
   );

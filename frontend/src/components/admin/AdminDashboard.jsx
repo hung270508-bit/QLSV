@@ -28,7 +28,9 @@ import GradeManagement from './GradeManagement';
 import ScheduleManagement from './ScheduleManagement';
 import TeachingAssignment from './TeachingAssignment';
 import AnnouncementManagement from './AnnouncementManagement';
-
+import AdminRequests from './AdminRequests';
+import AdminTrainingPoints from './AdminTrainingPoints';
+import UserAccountManagement from './UserAccountManagement';
 const menuItems = [
   { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'khoa', label: 'Quản lý khoa', icon: Building2 },
@@ -40,6 +42,10 @@ const menuItems = [
   { id: 'lichhoc', label: 'Quản lý lịch học', icon: Calendar },
   { id: 'phancong', label: 'Phân công giảng dạy', icon: ClipboardCheck },
   { id: 'thongbao', label: 'Quản lý thông báo', icon: Bell },
+  { id: 'yeucau', label: 'Yêu cầu từ giảng viên', icon: Settings },
+  { id: 'diemrenluyen', label: 'Điểm rèn luyện', icon: UserCircle },
+  { id: 'taikhoan', label: 'Quản lý tài khoản', icon: UserCircle }
+
 ];
 
 function AdminDashboard({ user, onLogout }) {
@@ -68,6 +74,12 @@ function AdminDashboard({ user, onLogout }) {
         return <TeachingAssignment />;
       case 'thongbao':
         return <AnnouncementManagement />;
+      case 'yeucau':
+        return <AdminRequests />;
+      case 'diemrenluyen':
+        return <AdminTrainingPoints />;
+      case 'taikhoan':
+        return <UserAccountManagement />;
       default:
         return <DashboardOverview />;
     }

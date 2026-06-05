@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, BarChart3, BookOpen, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, CheckCircle, UserCheck } from 'lucide-react';
+import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, BarChart3, BookOpen, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, CheckCircle, UserCheck, Clock, MapPin, Trash2 } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal from '../ModalPortal';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -55,13 +56,113 @@ function ClassManagement() {
   const [formData, setFormData] = useState({
     MaLop: '',
     TenLop: '',
-    MaKhoa: ''
+    MaKhoa: '',
+    startYear: '',
+    endYear: ''
+  });
+  const [formErrors, setFormErrors] = useState({
+    startYear: '',
+    endYear: '',
+    TenLop: ''
+  });
+  const [confirmDialog, setConfirmDialog] = useState({
+    show: false,
+    message: '',
+    onConfirm: null
+  });
+  const [successDialog, setSuccessDialog] = useState({
+    show: false,
+    message: ''
   });
 
   useEffect(() => {
     fetchData();
   }, []);
+  const handleKhoaChange = async (e) => {
+  const maKhoa = e.target.value;
 
+  setFormData(prev => ({
+    ...prev,
+    MaKhoa: maKhoa
+  }));
+
+  if (editingClass) return;
+
+  // Only generate MaLop if both startYear and MaKhoa are selected
+  if (formData.startYear && maKhoa) {
+    try {
+      const res = await axios.get(
+        `${API_BASE}/classes/next-code/${formData.startYear}/${maKhoa}`
+      );
+
+      setFormData(prev => ({
+        ...prev,
+        MaKhoa: maKhoa,
+        MaLop: res.data.MaLop
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  };
+
+  const handleStartYearChange = async (e) => {
+  const value = e.target.value;
+  // Chỉ cho phép nhập số
+  if (/^\d*$/.test(value)) {
+    // Tính toán năm kết thúc = năm bắt đầu + 3
+    const startYearInt = parseInt(value, 10);
+    const endYear = !isNaN(startYearInt) && value.length === 4 ? (startYearInt + 4).toString() : '';
+
+    setFormData(prev => ({
+      ...prev,
+      startYear: value,
+      endYear: endYear // Tự động cập nhật năm kết thúc
+    }));
+
+    // Validate: phải đủ 4 chữ số
+    if (value && value.length !== 4) {
+      setFormErrors(prev => ({ ...prev, startYear: 'Năm bắt đầu phải có 4 chữ số' }));
+    } else {
+      setFormErrors(prev => ({ ...prev, startYear: '' }));
+    }
+
+    if (editingClass) return;
+
+    // Logic gọi API để tạo mã lớp (giữ nguyên)
+    if (value && value.length === 4 && formData.MaKhoa) {
+      try {
+        const res = await axios.get(
+          `${API_BASE}/classes/next-code/${value}/${formData.MaKhoa}`
+        );
+        setFormData(prev => ({
+          ...prev,
+          MaLop: res.data.MaLop
+        }));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+};
+
+  const handleEndYearChange = (e) => {
+  const value = e.target.value;
+  // Only allow numbers
+  if (/^\d*$/.test(value)) {
+    setFormData(prev => ({
+      ...prev,
+      endYear: value
+    }));
+
+    // Validate: must be 4 digits
+    if (value && value.length !== 4) {
+      setFormErrors(prev => ({ ...prev, endYear: 'Năm kết thúc phải có 4 chữ số' }));
+    } else {
+      setFormErrors(prev => ({ ...prev, endYear: '' }));
+    }
+  }
+  };
   const fetchData = async () => {
     try {
       const [classesRes, facultiesRes] = await Promise.all([
@@ -78,42 +179,69 @@ function ClassManagement() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingClass) {
-        await axios.put(`${API_BASE}/classes/${encodeURIComponent(editingClass.MaLop)}`, formData);
-      } else {
-        await axios.post(`${API_BASE}/classes`, formData);
+  e.preventDefault();
+
+  setConfirmDialog({
+    show: true,
+    message: editingClass
+      ? `Bạn có chắc chắn muốn cập nhật lớp "${formData.TenLop}" không?`
+      : `Bạn có chắc chắn muốn thêm lớp mới không?`,
+    onConfirm: async () => {
+      const nienKhoa = `${formData.startYear}-${formData.endYear}`;
+
+      try {
+        if (editingClass) {
+          await axios.put(`${API_BASE}/classes/${encodeURIComponent(editingClass.MaLop)}`, {
+            ...formData,
+            NienKhoa: nienKhoa
+          });
+        } else {
+          // --- FIX Ở ĐÂY ---
+          // 1. Lấy mã mới nhất ngay trước khi gửi để đảm bảo không bị trùng
+          const resCode = await axios.get(`${API_BASE}/classes/next-code/${formData.startYear}/${formData.MaKhoa}`);
+          const newMaLop = resCode.data.MaLop;
+
+          // 2. Tương tự cho tên lớp nếu cần
+          let finalTenLop = formData.TenLop;
+          try {
+            const resName = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(formData.TenLop)}`);
+            finalTenLop = resName.data.TenLop;
+          } catch (err) { /* giữ nguyên tên nếu lỗi */ }
+
+          // 3. Gửi request với mã đã chắc chắn mới nhất
+          await axios.post(`${API_BASE}/classes`, {
+            MaLop: newMaLop, // Đảm bảo gửi mã này lên
+            TenLop: finalTenLop,
+            MaKhoa: formData.MaKhoa,
+            NienKhoa: nienKhoa
+          });
+        }
+        
+        setSuccessDialog({ show: true, message: 'Thêm lớp học thành công!' });
+        fetchData();
+        handleCloseModal();
+      } catch (error) {
+        console.error('Error saving class:', error);
+        setSuccessDialog({ show: true, message: 'Lỗi khi thêm lớp học: ' + (error.response?.data?.error || error.message) });
       }
-      fetchData();
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error saving class:', error);
-      alert('Lỗi khi lưu lớp học!');
     }
-  };
+  });
+};
 
   const handleEdit = (cls) => {
     setEditingClass(cls);
+    // Split NienKhoa into startYear and endYear
+    const years = cls.NienKhoa ? cls.NienKhoa.split('-') : ['', ''];
     setFormData({
       MaLop: cls.MaLop,
       TenLop: cls.TenLop,
-      MaKhoa: cls.MaKhoa || ''
+      MaKhoa: cls.MaKhoa || '',
+      startYear: years[0] || '',
+      endYear: years[1] || ''
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (maLop) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa lớp học này?')) {
-      try {
-        await axios.delete(`${API_BASE}/classes/${encodeURIComponent(maLop)}`);
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting class:', error);
-        alert('Lỗi khi xóa lớp học!');
-      }
-    }
-  };
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -121,7 +249,37 @@ function ClassManagement() {
     setFormData({
       MaLop: '',
       TenLop: '',
-      MaKhoa: ''
+      MaKhoa: '',
+      startYear: '',
+      endYear: ''
+    });
+    setFormErrors({
+      startYear: '',
+      endYear: '',
+      TenLop: ''
+    });
+  };
+
+  const handleDelete = (cls) => {
+    setConfirmDialog({
+      show: true,
+      message: `Bạn có chắc chắn muốn xóa lớp học "${cls.TenLop}" (${cls.MaLop}) không? Hành động này không thể hoàn tác.`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API_BASE}/classes/${encodeURIComponent(cls.MaLop)}`);
+          setSuccessDialog({
+            show: true,
+            message: 'Xóa lớp học thành công!'
+          });
+          fetchData();
+        } catch (error) {
+          console.error('Error deleting class:', error);
+          setSuccessDialog({
+            show: true,
+            message: 'Lỗi khi xóa lớp học!'
+          });
+        }
+      }
     });
   };
 
@@ -262,7 +420,7 @@ function ClassManagement() {
               <Users className="w-8 h-8" />
               Quản lý lớp học
             </h2>
-            <p className="text-orange-100 text-lg">Thêm, sửa, xóa và xem chi tiết thông tin lớp học</p>
+            <p className="text-orange-100 text-lg">Thêm, sửa và xem chi tiết thông tin lớp học</p>
           </div>
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
@@ -286,22 +444,23 @@ function ClassManagement() {
               placeholder="Tìm kiếm lớp học theo tên hoặc mã lớp..."
               value={displaySearchTerm}
               onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
             />
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${
-                hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
-              }`}
+          </div>
+          <div className="relative">
+            <select
+              value={filters.facultyFilter}
+              onChange={(e) => setFilters({ ...filters, facultyFilter: e.target.value })}
+              className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors appearance-none pr-10 cursor-pointer"
             >
-              <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
+              <option value="">Sắp xếp...</option>
+              {faculties.map((faculty) => (
+                <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                  {faculty.TenKhoa}
+                </option>
+              ))}
+            </select>
+            <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -324,48 +483,6 @@ function ClassManagement() {
             </motion.button>
           )}
         </div>
-
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-orange-50 rounded-xl p-4 space-y-4 relative z-50 w-full mt-4"
-          >
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Lọc theo khoa</label>
-              <select
-                value={displayFilters.facultyFilter}
-                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
-                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-              >
-                <option value="">Tất cả khoa</option>
-                {faculties.map((faculty) => (
-                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                    {faculty.TenKhoa}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
-              >
-                Áp dụng lọc
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setDisplayFilters({ facultyFilter: '' })}
-                className="flex-1 bg-white border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-              >
-                Đặt lại
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
       </div>
 
       {/* Table */}
@@ -377,6 +494,7 @@ function ClassManagement() {
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã lớp</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên lớp</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Niên khóa</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Sĩ số</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
               </tr>
@@ -403,6 +521,11 @@ function ClassManagement() {
                         {cls.TenKhoa || 'N/A'}
                       </span>
                     </td>
+                    <td className="py-5 px-6">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                        {cls.NienKhoa || 'N/A'}
+                      </span>
+                    </td>
                     <td className="py-5 px-6 text-center">
                       <span className="inline-flex items-center justify-center min-w-[2rem] px-2.5 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-700">
                         {cls.SoSinhVien ?? 0}
@@ -422,7 +545,7 @@ function ClassManagement() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(cls.MaLop)}
+                          onClick={() => handleDelete(cls)}
                           className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
                           title="Xóa"
                         >
@@ -434,7 +557,7 @@ function ClassManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="py-16">
+                  <td colSpan="6" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy lớp học nào</p>
@@ -450,54 +573,100 @@ function ClassManagement() {
 
       {/* Modal Add/Edit */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingClass ? 'Cập nhật lớp học' : 'Thêm lớp học mới'}
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </motion.button>
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+              <div className="text-white">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  {editingClass ? 'Cập nhật lớp học' : 'Thêm lớp học mới'}
+                </h3>
+                <p className="text-orange-100 text-sm mt-0.5">
+                  {editingClass ? 'Chỉnh sửa thông tin lớp học' : 'Tạo lớp sinh hoạt theo khoa và niên khóa'}
+                </p>
+              </div>
+              <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Mã lớp</label>
-                <input
-                  type="text"
-                  value={formData.MaLop}
-                  onChange={(e) => setFormData({ ...formData, MaLop: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                  disabled={!!editingClass}
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.startYear}
+                      onChange={handleStartYearChange}
+                      placeholder="Năm bắt đầu"
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                      required
+                      maxLength={4}
+                    />
+                    {formErrors.startYear && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.startYear}</p>
+                    )}
+                  </div>
+                  <span className="flex items-center text-gray-500 font-semibold">-</span>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.endYear}
+                      onChange={handleEndYearChange}
+                      placeholder="Năm kết thúc"
+                      readOnly
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                      required
+                      maxLength={4}
+                    />
+                    {formErrors.endYear && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.endYear}</p>
+                    )}
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
                 <input
                   type="text"
                   value={formData.TenLop}
-                  onChange={(e) => setFormData({ ...formData, TenLop: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Disallow special characters and numbers, allow only single spaces between words
+                    // Allows Vietnamese characters, letters, and single spaces
+                    const cleanedValue = value
+                      .replace(/[^a-zA-Z\u00C0-\u1EF9\s]/g, '') // Remove special characters and numbers, keep Vietnamese letters and spaces
+                      .replace(/\s\s+/g, ' '); // Replace multiple spaces with a single space
+                    setFormData({ ...formData, TenLop: cleanedValue });
+
+                    // Validate: must not be empty
+                    if (!cleanedValue.trim()) {
+                      setFormErrors(prev => ({ ...prev, TenLop: 'Tên lớp không được để trống' }));
+                    } else {
+                      setFormErrors(prev => ({ ...prev, TenLop: '' }));
+                    }
+                  }}
+                  placeholder="Nhập tên lớp học"
+                  className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   required
                 />
+                {formErrors.TenLop && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
                 <select
                   value={formData.MaKhoa}
-                  onChange={(e) => setFormData({ ...formData, MaKhoa: e.target.value })}
+                  onChange={handleKhoaChange}
                   className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  required
                 >
                   <option value="">Chọn khoa</option>
                   {faculties.map((faculty) => (
@@ -508,34 +677,105 @@ function ClassManagement() {
                 </select>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                >
+                  {editingClass ? 'Lưu thay đổi' : 'Thêm lớp học'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+        </ModalPortal>
+      )}
+
+      {/* Custom Confirmation Dialog */}
+      {confirmDialog.show && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/30">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-orange-100 rounded-full p-3">
+                  <AlertCircle className="w-6 h-6 text-orange-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Xác nhận</h3>
+              </div>
+              <p className="text-gray-600 mb-6">{confirmDialog.message}</p>
+              <div className="flex gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  type="submit"
+                  onClick={() => {
+                    if (confirmDialog.onConfirm) {
+                      confirmDialog.onConfirm();
+                    }
+                    setConfirmDialog({ show: false, message: '', onConfirm: null });
+                  }}
                   className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
                 >
-                  {editingClass ? 'Cập nhật' : 'Thêm mới'}
+                  Xác nhận
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={handleCloseModal}
+                  onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
                   className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
                 >
                   Hủy
                 </motion.button>
               </div>
-            </form>
-          </motion.div>
-        </div>
+            </motion.div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Custom Success Dialog */}
+      {successDialog.show && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/30">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-green-100 rounded-full p-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Thông báo</h3>
+              </div>
+              <p className="text-gray-600 mb-6">{successDialog.message}</p>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSuccessDialog({ show: false, message: '' })}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
+              >
+                Đóng
+              </motion.button>
+            </motion.div>
+          </div>
+        </ModalPortal>
       )}
 
       {/* Detail Modal */}
       {showDetailModal && selectedClass && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
-          <motion.div
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
+            <motion.div
             initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 20 }}
@@ -765,57 +1005,12 @@ function ClassManagement() {
 
                   {/* TAB: LỊCH HỌC */}
                   {detailTab === 'schedule' && (
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
-                        Lịch học ({classSchedule.length} buổi/tuần)
-                      </h4>
-                      {classSchedule.length > 0 ? (
-                        <div className="space-y-3">
-                          {classSchedule.map((sch, idx) => (
-                            <motion.div
-                              key={idx}
-                              initial={{ opacity: 0, x: -12 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: idx * 0.07 }}
-                              className="flex items-center gap-4 bg-gray-50 border border-gray-100 rounded-2xl p-4 hover:border-orange-200 hover:bg-orange-50/30 transition-all"
-                            >
-                              {/* Thứ */}
-                              <div className="bg-orange-500 text-white rounded-xl w-14 h-14 flex flex-col items-center justify-center flex-shrink-0 shadow-sm">
-                                <span className="text-xs font-medium opacity-80">Thứ</span>
-                                <span className="text-xl font-bold leading-none">{sch.Thu}</span>
-                              </div>
-                              {/* Info */}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-gray-800 text-sm truncate">{sch.TenMonHoc}</div>
-                                <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap">
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" />
-                                    Ca {sch.CaHoc}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3" />
-                                    {sch.PhongHoc}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <UserCheck className="w-3 h-3" />
-                                    {sch.TenGiangVien}
-                                  </span>
-                                </div>
-                              </div>
-                              {/* Ca badge */}
-                              <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0">
-                                Ca {sch.CaHoc}
-                              </span>
-                            </motion.div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                          <Calendar className="w-14 h-14 mb-3 text-gray-200" />
-                          <p className="font-medium">Chưa có lịch học nào</p>
-                        </div>
-                      )}
-                    </div>
+                    <ScheduleDetailView
+                      schedule={classSchedule}
+                      title="Lịch học lớp"
+                      showTeacher
+                      showHocKy
+                    />
                   )}
 
                   {/* TAB: THỐNG KÊ ĐIỂM */}
@@ -902,7 +1097,183 @@ function ClassManagement() {
             </div>
           </motion.div>
         </div>
+        </ModalPortal>
       )}
+    </div>
+  );
+}
+
+const SCHEDULE_DAY_ORDER = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+const SCHEDULE_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+const SCHEDULE_CA_SLOTS = {
+  '1': { label: 'Ca 1', time: 'Tiết 1–3', color: 'bg-orange-100 text-orange-700' },
+  '2': { label: 'Ca 2', time: 'Tiết 4–6', color: 'bg-amber-100 text-amber-700' },
+  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-orange-200 text-orange-800' },
+  '4': { label: 'Ca 4', time: 'Tiết 10–12', color: 'bg-amber-200 text-amber-800' },
+};
+
+function scheduleDayOfWeek(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return '';
+  return SCHEDULE_DAY_NAMES[d.getDay()];
+}
+
+function scheduleFormatDate(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('vi-VN');
+}
+
+function scheduleCaSlot(ca) {
+  return SCHEDULE_CA_SLOTS[String(ca)] || { label: `Ca ${ca}`, time: '', color: 'bg-gray-100 text-gray-700' };
+}
+
+function enrichScheduleItem(item) {
+  const thu = scheduleDayOfWeek(item?.NgayHoc);
+  return {
+    ...item,
+    Thu: thu,
+    NgayFormatted: scheduleFormatDate(item?.NgayHoc),
+  };
+}
+
+function groupScheduleByDay(items) {
+  const sorted = [...items].sort((a, b) => {
+    const ta = a.NgayHoc ? new Date(a.NgayHoc).getTime() : 0;
+    const tb = b.NgayHoc ? new Date(b.NgayHoc).getTime() : 0;
+    if (ta !== tb) return ta - tb;
+    return Number(a.CaHoc) - Number(b.CaHoc);
+  }).map(enrichScheduleItem);
+
+  const buckets = Object.fromEntries(SCHEDULE_DAY_ORDER.map((d) => [d, []]));
+  sorted.forEach((item) => {
+    if (item.Thu && buckets[item.Thu]) buckets[item.Thu].push(item);
+    else {
+      if (!buckets._other) buckets._other = [];
+      buckets._other.push(item);
+    }
+  });
+
+  const groups = SCHEDULE_DAY_ORDER.filter((d) => buckets[d].length > 0).map((day) => ({
+    day,
+    items: buckets[day],
+  }));
+  if (buckets._other?.length) {
+    groups.push({ day: 'Khác', items: buckets._other });
+  }
+  return groups;
+}
+
+function ScheduleCaBadge({ ca }) {
+  const slot = scheduleCaSlot(ca);
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${slot.color}`}>
+      <Clock className="w-3 h-3 shrink-0" />
+      {slot.label}
+      {slot.time ? <span className="font-normal opacity-80">· {slot.time}</span> : null}
+    </span>
+  );
+}
+
+function ScheduleSessionCard({ item, showTeacher, showHocKy }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:border-orange-200 hover:shadow-md transition-all">
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+        <h5 className="font-semibold text-gray-800 text-sm leading-snug">{item.TenMonHoc || '—'}</h5>
+        <ScheduleCaBadge ca={item.CaHoc} />
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+        {item.NgayFormatted && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+            <Calendar className="w-3.5 h-3.5 text-orange-500" />
+            {item.NgayFormatted}
+          </span>
+        )}
+        {item.PhongHoc && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+            <MapPin className="w-3.5 h-3.5 text-orange-500" />
+            {item.PhongHoc}
+          </span>
+        )}
+        {showTeacher && item.TenGiangVien && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+            <UserCheck className="w-3.5 h-3.5 text-orange-500" />
+            {item.TenGiangVien}
+          </span>
+        )}
+        {showHocKy && item.HocKy && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 text-orange-700 px-2 py-1 font-medium">
+            <BookOpen className="w-3.5 h-3.5" />
+            {item.HocKy}
+          </span>
+        )}
+        {item.MaLopHocPhan && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1 font-mono text-[11px]">
+            {item.MaLopHocPhan}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ScheduleDetailView({
+  schedule,
+  title = 'Lịch học',
+  emptyMessage = 'Chưa có lịch học nào',
+  showTeacher = true,
+  showHocKy = false,
+}) {
+  const items = useMemo(() => (Array.isArray(schedule) ? schedule : []), [schedule]);
+  const groups = useMemo(() => groupScheduleByDay(items), [items]);
+  const stats = useMemo(() => ({
+    sessions: items.length,
+    subjects: new Set(items.map((s) => s.TenMonHoc).filter(Boolean)).size,
+  }), [items]);
+
+  if (items.length === 0) {
+    return (
+      <div>
+        <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">{title}</h4>
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <Calendar className="w-14 h-14 mb-3 text-gray-200" />
+          <p className="font-medium">{emptyMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{title}</h4>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-semibold">{stats.sessions} buổi</span>
+          <span className="rounded-full bg-blue-100 text-blue-700 px-3 py-1 font-semibold">{stats.subjects} môn</span>
+        </div>
+      </div>
+      <div className="space-y-6">
+        {groups.map((group) => (
+          <section key={group.day}>
+            <div className="flex items-baseline justify-between gap-2 mb-3 border-b border-orange-100 pb-2">
+              <p className="font-bold text-gray-800 text-sm">{group.day}</p>
+              <p className="text-xs text-gray-500 shrink-0">{group.items.length} buổi</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {group.items.map((item) => (
+                <ScheduleSessionCard
+                  key={item.MaLichHoc ?? `${item.TenMonHoc}-${item.NgayHoc}-${item.CaHoc}`}
+                  item={item}
+                  showTeacher={showTeacher}
+                  showHocKy={showHocKy}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

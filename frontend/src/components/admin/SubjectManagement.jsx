@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  BookOpen, Plus, Edit, Trash2, Search, X, Filter, 
-  XCircle, Eye, Users, BarChart3, ChevronLeft, ChevronRight 
+  BookOpen, Plus, Edit, Search, X, Filter, 
+  XCircle, Eye, Users, BarChart3, ChevronLeft, ChevronRight,
+  Award, TrendingUp, AlertCircle, CheckCircle, UserCheck
 } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal from '../ModalPortal';
 
 function SubjectManagement() {
+  
+  const [faculties, setFaculties] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -17,14 +21,8 @@ function SubjectManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    nameFilter: '',
-    creditFilter: ''
-  });
-  const [displayFilters, setDisplayFilters] = useState({
-    nameFilter: '',
-    creditFilter: ''
-  });
+  const [filters, setFilters] = useState({ facultyFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '' });
 
   // States cho Phân trang (Pagination)
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,7 +46,8 @@ function SubjectManagement() {
   const [formData, setFormData] = useState({
     MaMonHoc: '',
     TenMonHoc: '',
-    SoTinChi: ''
+    SoTinChi: '',
+    TenKhoa: ''
   });
 
   useEffect(() => {
@@ -56,113 +55,83 @@ function SubjectManagement() {
   }, []);
 
   const fetchData = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/subjects');
-      setSubjects(response.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      loading && setLoading(false);
-    }
-  };
+  try {
+    const [subjectsRes, facultiesRes] = await Promise.all([
+      axios.get('http://localhost:5000/api/subjects'),
+      axios.get('http://localhost:5000/api/faculties')
+    ]);
+    setSubjects(subjectsRes.data);
+    setFaculties(facultiesRes.data);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    loading && setLoading(false);
+  }
+};
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      if (editingSubject) {
-        await axios.put(`http://localhost:5000/api/subjects/${editingSubject.MaMonHoc}`, formData);
-      } else {
-        await axios.post('http://localhost:5000/api/subjects', formData);
-      }
-      fetchData();
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error saving subject:', error);
-      alert('Lỗi khi lưu môn học!');
-    } finally {
-      setIsSubmitting(false);
+  e.preventDefault();
+  setIsSubmitting(true);
+  try {
+    if (editingSubject) {
+      await axios.put(`http://localhost:5000/api/subjects/${editingSubject.MaMonHoc}`, formData);
+    } else {
+      const resCode = await axios.get(`http://localhost:5000/api/subjects/next-code/${formData.MaKhoa}`);
+      await axios.post('http://localhost:5000/api/subjects', { ...formData, MaMonHoc: resCode.data.MaMonHoc });
     }
-  };
+    fetchData();
+    handleCloseModal();
+  } catch (error) {
+    console.error('Error saving subject:', error);
+    alert('Lỗi khi lưu môn học!');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleEdit = (subject) => {
     setEditingSubject(subject);
     setFormData({
       MaMonHoc: subject.MaMonHoc,
       TenMonHoc: subject.TenMonHoc,
-      SoTinChi: subject.SoTinChi
+      SoTinChi: subject.SoTinChi,
+      MaKhoa: subject.MaKhoa || ''
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (maMH) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa môn học này?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/subjects/${maMH}`);
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting subject:', error);
-        alert('Lỗi khi xóa môn học!');
-      }
-    }
-  };
 
   const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingSubject(null);
-    setFormData({
-      MaMonHoc: '',
-      TenMonHoc: '',
-      SoTinChi: ''
-    });
+  setShowModal(false);
+  setEditingSubject(null);
+  setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
+};
+  const handleKhoaChange = async (e) => {
+    const maKhoa = e.target.value;
+    setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '' }));
+    if (editingSubject || !maKhoa) return;
+    try {
+      const res = await axios.get(`http://localhost:5000/api/subjects/next-code/${maKhoa}`);
+      setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: res.data.MaMonHoc }));
+    } catch (err) {
+      console.error('Lỗi tạo mã môn học:', err);
+    }
   };
-
   const handleViewDetails = async (subject) => {
     setSelectedSubject(subject);
     setShowDetailModal(true);
     setDetailTab('classes');
     
     try {
-      const [classesRes, teachersRes] = await Promise.all([
+      const [classesRes, teachersRes, statsRes] = await Promise.all([
         axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/classes`),
-        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/teachers`)
+        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/teachers`),
+        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/grade-stats`)
       ]);
       
       setSubjectClasses(classesRes.data);
       setSubjectTeachers(teachersRes.data);
-      
-      // Tính toán thống kê điểm
-      const gradesRes = await axios.get(`http://localhost:5000/api/grades`);
-      const subjectGrades = gradesRes.data.filter(g => g.MaMonHoc === subject.MaMonHoc);
-      
-      let total = subjectGrades.length;
-      let sum = 0;
-      let excellent = 0;
-      let good = 0;
-      let averageGrade = 0;
-      let fail = 0;
-      
-      subjectGrades.forEach(grade => {
-        const qt = parseFloat(grade.DiemQuaTrinh) || 0;
-        const gk = parseFloat(grade.DiemGiuaKy) || 0;
-        const ck = parseFloat(grade.DiemCuoiKy) || 0;
-        const avg = ((qt * 0.2) + (gk * 0.3) + (ck * 0.5)).toFixed(2);
-        sum += parseFloat(avg);
-        
-        if (parseFloat(avg) >= 8.5) excellent++;
-        else if (parseFloat(avg) >= 7.0) good++;
-        else if (parseFloat(avg) >= 4.0) averageGrade++; 
-        else fail++;
-      });
-      
-      setSubjectGradeStats({
-        totalGrades: total,
-        average: total > 0 ? (sum / total).toFixed(2) : 0,
-        excellent,
-        good,
-        averageGrade,
-        fail
-      });
+      setSubjectGradeStats(statsRes.data);
     } catch (error) {
       console.error('Error fetching subject details:', error);
     }
@@ -185,15 +154,12 @@ function SubjectManagement() {
   };
 
   const filteredSubjects = subjects.filter(subject => {
-    const matchesSearch = 
-      subject.TenMonHoc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subject.MaMonHoc.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesName = !filters.nameFilter || subject.TenMonHoc.toLowerCase().includes(filters.nameFilter.toLowerCase());
-    const matchesCredit = !filters.creditFilter || subject.SoTinChi.toString() === filters.creditFilter;
-    
-    return matchesSearch && matchesName && matchesCredit;
-  });
+  const matchesSearch =
+    subject.TenMonHoc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    subject.MaMonHoc.toLowerCase().includes(searchTerm.toLowerCase());
+  const matchesFaculty = !filters.facultyFilter || subject.MaKhoa === filters.facultyFilter;
+  return matchesSearch && matchesFaculty;
+});
 
   // Logic Phân trang
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -213,15 +179,15 @@ function SubjectManagement() {
   };
 
   const clearFilters = () => {
-    setFilters({ nameFilter: '', creditFilter: '' });
-    setDisplayFilters({ nameFilter: '', creditFilter: '' });
-    setSearchTerm('');
-    setDisplaySearchTerm('');
-    setCurrentPage(1); 
-  };
+  setFilters({ facultyFilter: '' });
+  setDisplayFilters({ facultyFilter: '' });
+  setSearchTerm('');
+  setDisplaySearchTerm('');
+  setCurrentPage(1);
+};
 
-  const activeFilterCount = (filters.nameFilter ? 1 : 0) + (filters.creditFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.nameFilter || filters.creditFilter || searchTerm;
+const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+const hasActiveFilters = filters.facultyFilter || searchTerm;
 
   if (loading) {
     return (
@@ -241,7 +207,7 @@ function SubjectManagement() {
               <BookOpen className="w-8 h-8" />
               Quản lý môn học
             </h2>
-            <p className="text-orange-100 text-lg">Thêm, sửa, xóa và xem chi tiết thông tin môn học</p>
+            <p className="text-orange-100 text-lg">Thêm, sửa và xem chi tiết thông tin môn học</p>
           </div>
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(249,115,22,0.2)" }}
@@ -256,113 +222,61 @@ function SubjectManagement() {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-2xl shadow-lg border border-orange-100/50 p-6">
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm môn học theo tên hoặc mã môn..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full pl-12 pr-12 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
-            />
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setShowFilters(!showFilters)}
-                className={`transition-colors relative p-1 rounded-lg ${
-                  hasActiveFilters ? 'text-orange-500 bg-orange-50' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Filter className="w-5 h-5" />
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </motion.button>
-            </div>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-500/20 transition-all"
-          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
-          {hasActiveFilters && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={clearFilters}
-              className="px-6 py-3 bg-orange-50 text-orange-600 rounded-xl font-semibold hover:bg-orange-100 transition-colors flex items-center gap-2 border-2 border-orange-200"
-            >
-              <XCircle className="w-5 h-5" />
-              Xóa bộ lọc
-            </motion.button>
-          )}
-        </div>
+<div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4">
+  <div className="flex items-center gap-3">
+    <div className="relative w-72">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+      <input
+        type="text"
+        placeholder="Tìm theo tên hoặc mã GV..."
+        value={displaySearchTerm}
+        onChange={(e) => setDisplaySearchTerm(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+        className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700 text-sm"
+      />
+    </div>
 
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-orange-50/50 rounded-xl p-4 space-y-4 relative z-40 w-full mt-4 border border-orange-100"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo tên môn học</label>
-                <input
-                  type="text"
-                  placeholder="Nhập tên môn học..."
-                  value={displayFilters.nameFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, nameFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo số tín chỉ</label>
-                <select
-                  value={displayFilters.creditFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, creditFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                >
-                  <option value="">Tất cả</option>
-                  <option value="1">1 tín chỉ</option>
-                  <option value="2">2 tín chỉ</option>
-                  <option value="3">3 tín chỉ</option>
-                  <option value="4">4 tín chỉ</option>
-                  <option value="5">5 tín chỉ</option>
-                  <option value="6">6 tín chỉ</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/10"
-              >
-                Áp dụng lọc
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setDisplayFilters({ nameFilter: '', creditFilter: '' })}
-                className="flex-1 bg-white text-gray-700 border border-gray-200 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
-              >
-                Đặt lại
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </div>
+    <select
+      value={displayFilters.facultyFilter}
+      onChange={(e) => {
+        setDisplayFilters({ facultyFilter: e.target.value });
+        setFilters({ facultyFilter: e.target.value });
+      }}
+      className="px-3 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700 text-sm"
+    >
+      <option value="">Tất cả khoa</option>
+      {faculties.map((faculty) => (
+        <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+          {faculty.TenKhoa}
+        </option>
+      ))}
+    </select>
+
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={handleSearch}
+      className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-md hover:from-orange-600 hover:to-orange-700 transition-all"
+    >
+      <Search className="w-4 h-4" />
+      Tìm kiếm
+    </motion.button>
+
+    {hasActiveFilters && (
+      <motion.button
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={clearFilters}
+        className="flex items-center gap-1.5 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-colors border-2 border-red-200/60"
+      >
+        <XCircle className="w-4 h-4" />
+        Xóa bộ lọc
+      </motion.button>
+    )}
+  </div>
+</div>
 
       {/* Table & Pagination */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
@@ -408,15 +322,6 @@ function SubjectManagement() {
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(subject.MaMonHoc)}
-                          className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
                         </motion.button>
                       </div>
                     </td>
@@ -480,236 +385,323 @@ function SubjectManagement() {
 
       {/* Modal Thêm/Sửa */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/20">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-orange-100"
+            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingSubject ? 'Cập nhật môn học' : 'Thêm môn học mới'}
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </motion.button>
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+              <div className="text-white">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  {editingSubject ? 'Cập nhật môn học' : 'Thêm môn học mới'}
+                </h3>
+                <p className="text-orange-100 text-sm mt-0.5">
+                  {editingSubject ? 'Chỉnh sửa thông tin môn học' : 'Tạo môn học theo khoa chuyên môn'}
+                </p>
+              </div>
+              <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Mã môn học</label>
-                <input
-                  type="text"
-                  value={formData.MaMonHoc}
-                  onChange={(e) => setFormData({ ...formData, MaMonHoc: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                  disabled={!!editingSubject}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Tên môn học</label>
-                <input
-                  type="text"
-                  value={formData.TenMonHoc}
-                  onChange={(e) => setFormData({ ...formData, TenMonHoc: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Số tín chỉ</label>
-                <input
-                  type="number"
-                  value={formData.SoTinChi}
-                  onChange={(e) => setFormData({ ...formData, SoTinChi: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
-                  min="1"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <motion.button
-                  whileHover={!isSubmitting ? { scale: 1.02 } : {}}
-                  whileTap={!isSubmitting ? { scale: 0.98 } : {}}
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`flex-1 flex justify-center items-center gap-2 py-3 rounded-xl font-semibold shadow-lg transition-all ${
-                    isSubmitting 
-                      ? 'bg-orange-400 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-orange-500/20'
-                  } text-white`}
-                >
-                  {isSubmitting ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : editingSubject ? (
-                    'Cập nhật'
-                  ) : (
-                    'Thêm mới'
-                  )}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Hủy
-                </motion.button>
-              </div>
-            </form>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
+    <select
+      value={formData.MaKhoa}
+      onChange={handleKhoaChange}
+      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+      required
+    >
+      <option value="">Chọn khoa</option>
+      {faculties.map((faculty) => (
+        <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+          {faculty.TenKhoa}
+        </option>
+      ))}
+    </select>
+  </div>
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">Mã môn học</label>
+    <input
+      type="text"
+      value={formData.MaMonHoc}
+      readOnly
+      placeholder={!editingSubject && !formData.MaKhoa ? 'Chọn khoa để tạo mã tự động' : ''}
+      className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors opacity-70 cursor-not-allowed font-mono"
+      required
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">Tên môn học</label>
+    <input
+      type="text"
+      value={formData.TenMonHoc}
+      onChange={(e) => setFormData({ ...formData, TenMonHoc: e.target.value })}
+      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+      required
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">Số tín chỉ</label>
+    <input
+      type="number"
+      min="1" max="10"
+      value={formData.SoTinChi}
+      onChange={(e) => setFormData({ ...formData, SoTinChi: e.target.value })}
+      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+      required
+    />
+  </div>
+  <div className="flex gap-3 pt-2">
+  <button
+    type="button"
+    onClick={handleCloseModal}
+    className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
+  >
+    Hủy
+  </button>
+  <button
+    type="submit"
+    disabled={isSubmitting}
+    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg disabled:opacity-60"
+  >
+    {isSubmitting ? 'Đang lưu...' : (editingSubject ? 'Lưu thay đổi' : 'Thêm môn học')}
+  </button>
+</div>
+</form>
           </motion.div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Detail Modal */}
       {showDetailModal && selectedSubject && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/20">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl border border-orange-100"
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">Chi tiết môn học: <span className="text-orange-600">{selectedSubject.TenMonHoc}</span></h3>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseDetailModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </motion.button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200">
-              {[
-                { id: 'classes', label: 'Lớp học', icon: BookOpen },
-                { id: 'teachers', label: 'Giảng viên', icon: Users },
-                { id: 'stats', label: 'Thống kê điểm số', icon: BarChart3 }
-              ].map(tab => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setDetailTab(tab.id)}
-                    className={`flex items-center gap-2 px-5 py-3 font-semibold transition-all relative ${
-                      detailTab === tab.id
-                        ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/50 rounded-t-xl'
-                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Tab Content */}
-            {detailTab === 'classes' && (
-              <div className="space-y-4">
-                {subjectClasses.length > 0 ? (
-                  <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã lớp</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tên lớp</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Số sinh viên</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subjectClasses.map((cls, index) => (
-                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
-                            <td className="py-3 px-4 text-sm font-medium text-gray-800">{cls.MaLop}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{cls.TenLop}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              <span className="bg-gray-100 px-2.5 py-1 rounded-md font-medium text-gray-700">{cls.SoSinhVien || 0} SV</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="bg-white/20 rounded-xl p-2">
+                      <BookOpen className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết môn học</span>
                   </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Chưa có lớp nào đăng ký học môn này</p>
-                )}
-              </div>
-            )}
-
-            {detailTab === 'teachers' && (
-              <div className="space-y-4">
-                {subjectTeachers.length > 0 ? (
-                  <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã GV</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">SĐT</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subjectTeachers.map((teacher, index) => (
-                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
-                            <td className="py-3 px-4 text-sm font-medium text-gray-800">{teacher.MaGiangVien}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600 font-semibold">{teacher.HoTen}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.Email || '-'}</td>
-                            <td className="py-3 px-4 text-sm text-gray-600">{teacher.SoDienThoai || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Chưa có giảng viên nào phân công dạy môn này</p>
-                )}
-              </div>
-            )}
-
-            {detailTab === 'stats' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <div className="bg-blue-50 p-6 rounded-xl text-center shadow-sm">
-                    <div className="text-3xl font-bold text-blue-600">{subjectGradeStats.totalGrades}</div>
-                    <div className="text-sm text-gray-600 font-medium">Tổng Lượt thi</div>
-                  </div>
-                  <div className="bg-green-50 p-6 rounded-xl text-center shadow-sm">
-                    <div className="text-3xl font-bold text-green-600">{subjectGradeStats.average}</div>
-                    <div className="text-sm text-gray-600 font-medium">Điểm TB</div>
-                  </div>
-                  <div className="bg-purple-50 p-6 rounded-xl text-center shadow-sm">
-                    <div className="text-3xl font-bold text-purple-600">{subjectGradeStats.excellent}</div>
-                    <div className="text-sm text-gray-600 font-medium">Giỏi (A)</div>
-                  </div>
-                  <div className="bg-yellow-50 p-6 rounded-xl text-center shadow-sm">
-                    <div className="text-3xl font-bold text-yellow-600">{subjectGradeStats.good}</div>
-                    <div className="text-sm text-gray-600 font-medium">Khá (B)</div>
-                  </div>
-                  <div className="bg-orange-50 p-6 rounded-xl text-center shadow-sm">
-                    <div className="text-3xl font-bold text-orange-600">{subjectGradeStats.averageGrade}</div>
-                    <div className="text-sm text-gray-600 font-medium">Trung bình</div>
-                  </div>
-                  <div className="bg-red-50 p-6 rounded-xl text-center shadow-sm">
-                    <div className="text-3xl font-bold text-red-600">{subjectGradeStats.fail}</div>
-                    <div className="text-sm text-gray-600 font-medium">Rớt (F)</div>
+                  <h2 className="text-2xl font-bold text-white mt-2">{selectedSubject.TenMonHoc}</h2>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{selectedSubject.MaMonHoc}</span>
+                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{selectedSubject.SoTinChi} tín chỉ</span>
                   </div>
                 </div>
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleCloseDetailModal}
+                  className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </motion.button>
               </div>
-            )}
+
+              {/* Tabs */}
+              <div className="flex gap-1 mt-5">
+                {[
+                  { id: 'classes', label: 'Lớp học', icon: BookOpen },
+                  { id: 'teachers', label: 'Giảng viên', icon: Users },
+                  { id: 'stats', label: 'Thống kê điểm', icon: BarChart3 }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setDetailTab(tab.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                        detailTab === tab.id
+                          ? 'bg-white text-orange-600 shadow-md'
+                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {detailTab === 'classes' && (
+                <div>
+                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    Danh sách lớp học ({subjectClasses.length})
+                  </h4>
+                  {subjectClasses.length > 0 ? (
+                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Mã lớp</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Tên lớp</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Số sinh viên</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {subjectClasses.map((cls, index) => (
+                            <motion.tr
+                              key={index}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: index * 0.03 }}
+                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                            >
+                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{cls.MaLop}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{cls.TenLop}</td>
+                              <td className="py-3.5 px-5">
+                                <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-md font-bold text-sm">{cls.SoSinhVien || 0} SV</span>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <BookOpen className="w-14 h-14 mb-3 text-gray-200" />
+                      <p className="font-medium">Chưa có lớp nào đăng ký học môn này</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {detailTab === 'teachers' && (
+                <div>
+                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    Giảng viên dạy môn ({subjectTeachers.length})
+                  </h4>
+                  {subjectTeachers.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {subjectTeachers.map((teacher, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.06 }}
+                          className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all"
+                        >
+                          <div className="bg-orange-100 rounded-xl p-2 flex-shrink-0">
+                            <UserCheck className="w-5 h-5 text-orange-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-800 text-sm truncate">{teacher.HoTen}</div>
+                            <div className="text-xs text-gray-500">{teacher.MaGiangVien}</div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <Users className="w-14 h-14 mb-3 text-gray-200" />
+                      <p className="font-medium">Chưa có giảng viên nào phân công dạy môn này</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {detailTab === 'stats' && (
+                <div className="space-y-6">
+                  {subjectGradeStats.totalGrades > 0 ? (
+                    <>
+                      {/* Điểm trung bình lớn */}
+                      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-center text-white">
+                        <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                        <div className="text-5xl font-bold mb-1">{subjectGradeStats.average || 0}</div>
+                        <div className="text-orange-100 font-medium">Điểm trung bình môn học</div>
+                        <div className="text-orange-200 text-sm mt-1">Tổng {subjectGradeStats.totalGrades} bản ghi điểm</div>
+                      </div>
+
+                      {/* Phân loại */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { label: 'Xuất sắc / Giỏi', sublabel: '≥ 8.5', value: subjectGradeStats.excellent || 0, icon: Award, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', iconBg: 'bg-amber-100' },
+                          { label: 'Khá', sublabel: '7.0 – 8.4', value: subjectGradeStats.good || 0, icon: CheckCircle, bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', iconBg: 'bg-green-100' },
+                          { label: 'Trung bình', sublabel: '5.0 – 6.9', value: subjectGradeStats.averageGrade || 0, icon: TrendingUp, bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', iconBg: 'bg-blue-100' },
+                          { label: 'Không đạt', sublabel: '< 5.0', value: subjectGradeStats.fail || 0, icon: AlertCircle, bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', iconBg: 'bg-red-100' },
+                        ].map((item, i) => {
+                          const Icon = item.icon;
+                          const pct = subjectGradeStats.totalGrades > 0 ? Math.round((item.value / subjectGradeStats.totalGrades) * 100) : 0;
+                          return (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.08 }}
+                              className={`rounded-2xl border-2 p-5 ${item.bg} ${item.border}`}
+                            >
+                              <div className={`rounded-xl p-2 w-fit mb-3 ${item.iconBg}`}>
+                                <Icon className={`w-5 h-5 ${item.text}`} />
+                              </div>
+                              <div className={`text-3xl font-bold ${item.text}`}>{item.value}</div>
+                              <div className={`text-xs font-semibold mt-0.5 ${item.text} opacity-70`}>{pct}% tổng số</div>
+                              <div className="text-xs text-gray-500 mt-2 font-medium">{item.label}</div>
+                              <div className="text-xs text-gray-400">{item.sublabel}</div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Progress bars */}
+                      <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                        <h5 className="text-sm font-bold text-gray-600 mb-4">Phân phối xếp loại</h5>
+                        {[
+                          { label: 'Giỏi (≥8.5)', value: subjectGradeStats.excellent || 0, color: 'bg-amber-400' },
+                          { label: 'Khá (7–8.4)', value: subjectGradeStats.good || 0, color: 'bg-green-400' },
+                          { label: 'TB (5–6.9)', value: subjectGradeStats.averageGrade || 0, color: 'bg-blue-400' },
+                          { label: 'Rớt (<5)', value: subjectGradeStats.fail || 0, color: 'bg-red-400' },
+                        ].map((bar, i) => {
+                          const pct = subjectGradeStats.totalGrades > 0 ? (bar.value / subjectGradeStats.totalGrades) * 100 : 0;
+                          return (
+                            <div key={i} className="flex items-center gap-3 mb-3 last:mb-0">
+                              <span className="text-xs text-gray-500 w-24 flex-shrink-0">{bar.label}</span>
+                              <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${pct}%` }}
+                                  transition={{ duration: 0.7, delay: i * 0.1 }}
+                                  className={`h-full rounded-full ${bar.color}`}
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-gray-600 w-8 text-right">{bar.value}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <BarChart3 className="w-14 h-14 mb-3 text-gray-200" />
+                      <p className="font-medium">Chưa có dữ liệu điểm</p>
+                      <p className="text-sm mt-1">Môn học này chưa có bản ghi điểm nào</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

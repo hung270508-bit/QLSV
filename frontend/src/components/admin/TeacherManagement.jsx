@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal from '../ModalPortal';
 
 function TeacherManagement() {
   const [teachers, setTeachers] = useState([]);
@@ -20,6 +21,8 @@ function TeacherManagement() {
   const [teachingSchedule, setTeachingSchedule] = useState([]);
   const [teachingLoad, setTeachingLoad] = useState([]);
   const [detailTab, setDetailTab] = useState('info'); // 'info', 'schedule', 'load'
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
+  const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
   const [formData, setFormData] = useState({
     MaGiangVien: '',
     HoTen: '',
@@ -47,22 +50,52 @@ function TeacherManagement() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleKhoaChange = async (e) => {
+    const maKhoa = e.target.value;
+    setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: '' }));
+
+    if (editingTeacher || !maKhoa) return;
+
+    // Lấy ID của khoa từ danh sách đã load
+    const selectedFaculty = faculties.find(f => f.MaKhoa === maKhoa);
+    const khoaId = selectedFaculty?.ID ?? selectedFaculty?.id ?? '';
+    if (!khoaId) return;
+
     try {
-      if (editingTeacher) {
-        await axios.put(`http://localhost:5000/api/teachers/${editingTeacher.MaGiangVien}`, formData);
-      } else {
-        await axios.post('http://localhost:5000/api/teachers', formData);
-      }
-      fetchData();
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error saving teacher:', error);
-      alert('Lỗi khi lưu giảng viên!');
+      const res = await axios.get(`http://localhost:5000/api/teachers/next-code/${khoaId}`);
+      setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: res.data.MaGiangVien }));
+    } catch (err) {
+      console.error('Lỗi tạo mã giảng viên:', err);
     }
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setConfirmDialog({
+      show: true,
+      message: `Bạn có chắc chắn muốn ${editingTeacher ? 'cập nhật' : 'thêm'} giảng viên ${formData.HoTen} không?`,
+      onConfirm: async () => {
+        try {
+          if (editingTeacher) {
+            await axios.put(`http://localhost:5000/api/teachers/${editingTeacher.MaGiangVien}`, formData);
+          } else {
+            // Lấy mã mới nhất ngay trước khi gửi để tránh trùng
+            const selectedFaculty = faculties.find(f => f.MaKhoa === formData.MaKhoa);
+            const khoaId = selectedFaculty?.ID ?? selectedFaculty?.id ?? '';
+            const resCode = await axios.get(`http://localhost:5000/api/teachers/next-code/${khoaId}`);
+            const newMaGV = resCode.data.MaGiangVien;
+            await axios.post('http://localhost:5000/api/teachers', { ...formData, MaGiangVien: newMaGV });
+          }
+          setSuccessDialog({ show: true, message: editingTeacher ? 'Cập nhật giảng viên thành công!' : 'Thêm giảng viên thành công!' });
+          fetchData();
+          handleCloseModal();
+        } catch (error) {
+          console.error('Lỗi lưu dữ liệu:', error);
+          setSuccessDialog({ show: true, message: 'Lỗi khi lưu dữ liệu: ' + (error.response?.data?.error || error.message) });
+        }
+      }
+    });
+  };
   const handleEdit = (teacher) => {
     setEditingTeacher(teacher);
     setFormData({
@@ -76,15 +109,19 @@ function TeacherManagement() {
   };
 
   const handleDelete = async (maGV) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa giảng viên này?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/teachers/${maGV}`);
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting teacher:', error);
-        alert('Lỗi khi xóa giảng viên!');
+    setConfirmDialog({
+      show: true,
+      message: 'Bạn có chắc chắn muốn xóa giảng viên này?',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`http://localhost:5000/api/teachers/${maGV}`);
+          fetchData();
+        } catch (error) {
+          console.error('Error deleting teacher:', error);
+          alert('Lỗi khi xóa giảng viên!');
+        }
       }
-    }
+    });
   };
 
   const handleCloseModal = () => {
@@ -182,31 +219,30 @@ function TeacherManagement() {
     /* THAY ĐỔI TẠI ĐÂY: Thay max-w-7xl thành max-w-screen-2xl để khung tổng rộng ra */
     <div className="space-y-8 p-4 max-w-screen-3xl mx-auto W-full">
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 rounded-2xl p-8 shadow-xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_50%)]" />
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl shadow-orange-500/10">
+        <div className="flex items-center justify-between">
           <div className="text-white">
             <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
               <Users className="w-8 h-8" />
               Quản lý giảng viên
             </h2>
-            <p className="text-orange-100 text-base opacity-90">Thêm, sửa, xóa và xem chi tiết thông tin hệ thống giảng viên</p>
+            <p className="text-orange-100 text-lg">Thêm, sửa và xem chi tiết thông tin giảng viên</p>
           </div>
-          <div className="flex gap-3 w-full sm:w-auto">
+          <div className="flex gap-3">
             <motion.button
-              whileHover={{ scale: 1.03, boxShadow: "0 10px 20px rgba(0,0,0,0.15)" }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleExportTeachers}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-white/10 text-white border border-white/20 backdrop-blur-md px-5 py-3 rounded-xl font-semibold shadow-lg transition-all hover:bg-white hover:text-orange-600"
+              className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
             >
               <Download className="w-5 h-5" />
-              Xuất dữ liệu
+              Export
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.03, boxShadow: "0 10px 20px rgba(0,0,0,0.15)" }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowModal(true)}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-white text-orange-600 px-5 py-3 rounded-xl font-bold shadow-lg transition-all hover:bg-orange-50"
+              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '' }); setShowModal(true); }}
+              className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
             >
               <Plus className="w-5 h-5" />
               Thêm giảng viên
@@ -390,37 +426,55 @@ function TeacherManagement() {
 
       {/* Form Modal (Add / Edit) */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-orange-100"
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingTeacher ? 'Cập nhật thông tin giảng viên' : 'Thêm giảng viên mới'}
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.1, bg: "#f3f4f6" }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseModal}
-                className="p-2 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
-              >
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+              <div className="text-white">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <UserCheck className="w-5 h-5" />
+                  {editingTeacher ? 'Cập nhật thông tin giảng viên' : 'Thêm giảng viên mới'}
+                </h3>
+                <p className="text-orange-100 text-sm mt-0.5">
+                  {editingTeacher ? 'Chỉnh sửa hồ sơ giảng viên' : 'Tạo hồ sơ giảng viên theo khoa chuyên môn'}
+                </p>
+              </div>
+              <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
                 <X className="w-5 h-5" />
-              </motion.button>
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa chuyên môn</label>
+                  <select
+                    value={formData.MaKhoa}
+                    onChange={handleKhoaChange}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
+                    required
+                  >
+                    <option value="">Chọn khoa</option>
+                    {faculties.map((faculty) => (
+                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                        {faculty.TenKhoa}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Mã giảng viên</label>
                   <input
                     type="text"
                     value={formData.MaGiangVien}
-                    onChange={(e) => setFormData({ ...formData, MaGiangVien: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors disabled:opacity-60 disabled:bg-gray-100"
+                    readOnly
+                    placeholder={!editingTeacher && !formData.MaKhoa ? 'Chọn khoa để tạo mã tự động' : ''}
+                    className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors opacity-70 cursor-not-allowed font-mono"
                     required
-                    disabled={!!editingTeacher}
                   />
                 </div>
                 <div>
@@ -451,195 +505,441 @@ function TeacherManagement() {
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors"
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa chuyên môn</label>
-                  <select
-                    value={formData.MaKhoa}
-                    onChange={(e) => setFormData({ ...formData, MaKhoa: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
-                    required
-                  >
-                    <option value="">Chọn khoa</option>
-                    {faculties.map((faculty) => (
-                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                        {faculty.TenKhoa}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-gray-100">
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-orange-100 hover:from-orange-600 hover:to-orange-700 transition-all"
-                >
-                  {editingTeacher ? 'Cập nhật' : 'Thêm mới'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
+              <div className="flex gap-3 pt-2">
+                <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
                 >
-                  Hủy bỏ
-                </motion.button>
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                >
+                  {editingTeacher ? 'Lưu thay đổi' : 'Thêm giảng viên'}
+                </button>
               </div>
             </form>
           </motion.div>
         </div>
+        </ModalPortal>
+      )}
+            {confirmDialog.show && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/50 p-4">
+            <motion.div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+              <h3 className="text-lg font-bold mb-4">Xác nhận</h3>
+              <p className="text-gray-600 mb-6">{confirmDialog.message}</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({...confirmDialog, show: false}); }}
+                  className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold"
+                >Xác nhận</button>
+                <button 
+                  onClick={() => setConfirmDialog({...confirmDialog, show: false})}
+                  className="flex-1 bg-gray-200 py-2 rounded-xl font-semibold"
+                >Hủy</button>
+              </div>
+            </motion.div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {successDialog.show && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-green-100 rounded-full p-3">
+                  <UserCheck className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Thông báo</h3>
+              </div>
+              <p className="text-gray-600 mb-6">{successDialog.message}</p>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSuccessDialog({ show: false, message: '' })}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold"
+              >
+                Đóng
+              </motion.button>
+            </motion.div>
+          </div>
+        </ModalPortal>
       )}
 
       {/* Detail Modal */}
       {showDetailModal && selectedTeacher && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-orange-100"
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-2">
-              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span className="bg-orange-500 text-white p-1.5 rounded-lg text-sm"><Users className="w-4 h-4" /></span>
-                Hồ sơ chi tiết giảng viên
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseDetailModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </motion.button>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="bg-white/20 rounded-xl p-2">
+                      <UserCheck className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết giảng viên</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mt-2">{teacherDetails?.HoTen || selectedTeacher.HoTen}</h2>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{teacherDetails?.MaGiangVien || selectedTeacher.MaGiangVien}</span>
+                    {teacherDetails?.TenKhoa && (
+                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{teacherDetails.TenKhoa}</span>
+                    )}
+                  </div>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleCloseDetailModal}
+                  className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </motion.button>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-1 mt-5">
+                {[
+                  { id: 'info', label: 'Thông tin', icon: Users },
+                  { id: 'schedule', label: 'Lịch giảng dạy', icon: Calendar },
+                  { id: 'load', label: 'Tải công việc', icon: FileText }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setDetailTab(tab.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                        detailTab === tab.id
+                          ? 'bg-white text-orange-600 shadow-md'
+                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Custom Tabs Design */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto pb-1">
-              {[
-                { id: 'info', label: 'Thông tin cá nhân', icon: Users },
-                { id: 'schedule', label: 'Lịch giảng dạy', icon: Calendar },
-                { id: 'load', label: 'Tải công việc', icon: FileText }
-              ].map(tab => {
-                const Icon = tab.icon;
-                const isActive = detailTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setDetailTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2.5 font-semibold transition-all rounded-t-xl text-sm whitespace-nowrap ${
-                      isActive
-                        ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600'
-                        : 'text-gray-500 hover:text-orange-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Tab Content */}
-            <div className="min-h-[250px]">
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
               {detailTab === 'info' && teacherDetails && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gray-50/80 p-4 rounded-xl border border-gray-100">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mã giảng viên</span>
-                      <p className="font-semibold text-orange-600 text-base mt-1">{teacherDetails.MaGiangVien}</p>
-                    </div>
-                    <div className="bg-gray-50/80 p-4 rounded-xl border border-gray-100">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Họ và tên</span>
-                      <p className="font-semibold text-gray-800 text-base mt-1">{teacherDetails.HoTen}</p>
-                    </div>
-                    <div className="bg-gray-50/80 p-4 rounded-xl border border-gray-100">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Địa chỉ Email</span>
-                      <p className="font-semibold text-gray-800 text-base mt-1">{teacherDetails.Email || 'Chưa cập nhật'}</p>
-                    </div>
-                    <div className="bg-gray-50/80 p-4 rounded-xl border border-gray-100">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
-                      <p className="font-semibold text-gray-800 text-base mt-1">{teacherDetails.SoDienThoai || 'Chưa cập nhật'}</p>
-                    </div>
-                    <div className="bg-orange-50/40 p-4 rounded-xl md:col-span-2 border border-orange-100/60">
-                      <span className="text-xs font-bold text-orange-500 uppercase tracking-wider">Khoa trực thuộc</span>
-                      <p className="font-bold text-gray-800 text-lg mt-1">{teacherDetails.TenKhoa || 'N/A'}</p>
+                <div className="space-y-6">
+                  {/* Stats cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Lớp dạy', value: teachingSchedule.length, icon: BookOpen, color: 'blue' },
+                      { label: 'Môn học', value: [...new Set(teachingSchedule.map(s => s.TenMonHoc))].length, icon: BarChart3, color: 'green' },
+                      { label: 'Tín chỉ', value: teachingLoad.reduce((sum, l) => sum + (parseInt(l.SoTinChi) || 0), 0), icon: Award, color: 'purple' },
+                      { label: 'Ca/tuần', value: teachingSchedule.length, icon: Calendar, color: 'orange' },
+                    ].map((card, i) => {
+                      const Icon = card.icon;
+                      const colorMap = {
+                        blue: 'bg-blue-50 text-blue-600 border-blue-100',
+                        green: 'bg-green-50 text-green-600 border-green-100',
+                        purple: 'bg-purple-50 text-purple-600 border-purple-100',
+                        orange: 'bg-orange-50 text-orange-600 border-orange-100',
+                      };
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.07 }}
+                          className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
+                        >
+                          <Icon className="w-6 h-6 mb-3 opacity-80" />
+                          <div className="text-3xl font-bold">{card.value}</div>
+                          <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Personal info */}
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {[
+                        { label: 'Mã giảng viên', value: teacherDetails.MaGiangVien, icon: null },
+                        { label: 'Họ và tên', value: teacherDetails.HoTen, icon: null },
+                        { label: 'Email', value: teacherDetails.Email, icon: Mail },
+                        { label: 'Số điện thoại', value: teacherDetails.SoDienThoai, icon: Phone },
+                        { label: 'Khoa trực thuộc', value: teacherDetails.TenKhoa, icon: null },
+                      ].map((item, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.06 }}
+                          className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100"
+                        >
+                          {item.icon && <item.icon className="w-5 h-5 text-gray-400" />}
+                          <div className="flex-1">
+                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                            <div className="font-semibold text-gray-800 text-sm">{item.value || '—'}</div>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {detailTab === 'schedule' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                  {teachingSchedule.length > 0 ? (
-                    <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                      <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                          <tr>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Thứ</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Ca học</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Phòng</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Môn học</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Lớp</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Học kỳ</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {teachingSchedule.map((schedule, index) => (
-                            <tr key={index} className="hover:bg-gray-50/60">
-                              <td className="py-3 px-4 text-sm font-semibold text-gray-800">{schedule.Thu}</td>
-                              <td className="py-3 px-4 text-sm text-gray-600">{schedule.CaHoc}</td>
-                              <td className="py-3 px-4 text-sm text-gray-600"><span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700 font-medium">{schedule.PhongHoc}</span></td>
-                              <td className="py-3 px-4 text-sm font-medium text-gray-800">{schedule.TenMonHoc}</td>
-                              <td className="py-3 px-4 text-sm text-gray-600">{schedule.TenLop}</td>
-                              <td className="py-3 px-4 text-sm text-gray-500">{schedule.HocKy}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-center text-gray-400 py-12 bg-gray-50 rounded-xl">Hiện tại chưa có dữ liệu lịch giảng dạy</p>
-                  )}
-                </motion.div>
+                <ScheduleDetailView
+                  schedule={teachingSchedule}
+                  title="Lịch giảng dạy"
+                  emptyMessage="Chưa có lịch giảng dạy nào"
+                  showClass={true}
+                  showHocKy={false}
+                />
               )}
 
               {detailTab === 'load' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    Tải công việc ({teachingLoad.length} môn)
+                  </h4>
                   {teachingLoad.length > 0 ? (
-                    <div className="overflow-x-auto border border-gray-100 rounded-xl">
+                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
                       <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                          <tr>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Môn học</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Số tín chỉ</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Lớp học phụ trách</th>
-                            <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Học kỳ</th>
+                        <thead>
+                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Môn học</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Số tín chỉ</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Lớp học</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Học kỳ</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody>
                           {teachingLoad.map((load, index) => (
-                            <tr key={index} className="hover:bg-gray-50/60">
-                              <td className="py-3 px-4 text-sm font-medium text-gray-800">{load.TenMonHoc}</td>
-                              <td className="py-3 px-4 text-sm text-center md:text-left"><span className="bg-orange-50 text-orange-600 px-2.5 py-0.5 font-bold rounded-md">{load.SoTinChi}</span></td>
-                              <td className="py-3 px-4 text-sm text-gray-600">{load.TenLop}</td>
-                              <td className="py-3 px-4 text-sm text-gray-500">{load.HocKy}</td>
-                            </tr>
+                            <motion.tr
+                              key={index}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: index * 0.03 }}
+                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                            >
+                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{load.TenMonHoc}</td>
+                              <td className="py-3.5 px-5">
+                                <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-md font-bold text-sm">{load.SoTinChi}</span>
+                              </td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{load.TenLop}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{load.HocKy}</td>
+                            </motion.tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   ) : (
-                    <p className="text-center text-gray-400 py-12 bg-gray-50 rounded-xl">Hiện tại chưa có dữ liệu tải giảng dạy</p>
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <FileText className="w-14 h-14 mb-3 text-gray-200" />
+                      <p className="font-medium">Chưa có dữ liệu tải giảng dạy</p>
+                    </div>
                   )}
-                </motion.div>
+                </div>
               )}
             </div>
           </motion.div>
         </div>
+        </ModalPortal>
       )}
+    </div>
+  );
+}
+
+const SCHEDULE_DAY_ORDER = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+const SCHEDULE_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+const SCHEDULE_CA_SLOTS = {
+  '1': { label: 'Ca 1', time: 'Tiết 1–3', color: 'bg-orange-100 text-orange-700' },
+  '2': { label: 'Ca 2', time: 'Tiết 4–6', color: 'bg-amber-100 text-amber-700' },
+  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-orange-200 text-orange-800' },
+  '4': { label: 'Ca 4', time: 'Tiết 10–12', color: 'bg-amber-200 text-amber-800' },
+};
+
+function scheduleDayOfWeek(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return '';
+  return SCHEDULE_DAY_NAMES[d.getDay()];
+}
+
+function scheduleFormatDate(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('vi-VN');
+}
+
+function scheduleCaSlot(ca) {
+  return SCHEDULE_CA_SLOTS[String(ca)] || { label: `Ca ${ca}`, time: '', color: 'bg-gray-100 text-gray-700' };
+}
+
+function enrichScheduleItem(item) {
+  const thu = scheduleDayOfWeek(item?.NgayHoc);
+  return {
+    ...item,
+    Thu: thu,
+    NgayFormatted: scheduleFormatDate(item?.NgayHoc),
+  };
+}
+
+function groupScheduleByDay(items) {
+  const sorted = [...items].sort((a, b) => {
+    const ta = a.NgayHoc ? new Date(a.NgayHoc).getTime() : 0;
+    const tb = b.NgayHoc ? new Date(b.NgayHoc).getTime() : 0;
+    if (ta !== tb) return ta - tb;
+    return Number(a.CaHoc) - Number(b.CaHoc);
+  }).map(enrichScheduleItem);
+
+  const buckets = Object.fromEntries(SCHEDULE_DAY_ORDER.map((d) => [d, []]));
+  sorted.forEach((item) => {
+    if (item.Thu && buckets[item.Thu]) buckets[item.Thu].push(item);
+    else {
+      if (!buckets._other) buckets._other = [];
+      buckets._other.push(item);
+    }
+  });
+
+  const groups = SCHEDULE_DAY_ORDER.filter((d) => buckets[d].length > 0).map((day) => ({
+    day,
+    items: buckets[day],
+  }));
+  if (buckets._other?.length) {
+    groups.push({ day: 'Khác', items: buckets._other });
+  }
+  return groups;
+}
+
+function ScheduleCaBadge({ ca }) {
+  const slot = scheduleCaSlot(ca);
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${slot.color}`}>
+      <Clock className="w-3 h-3 shrink-0" />
+      {slot.label}
+      {slot.time ? <span className="font-normal opacity-80">· {slot.time}</span> : null}
+    </span>
+  );
+}
+
+function ScheduleSessionCard({ item, showClass = true, showHocKy = false }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:border-orange-200 hover:shadow-md transition-all">
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+        <h5 className="font-semibold text-gray-800 text-sm leading-snug">{item.TenMonHoc || '—'}</h5>
+        <ScheduleCaBadge ca={item.CaHoc} />
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+        {item.NgayFormatted && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+            <Calendar className="w-3.5 h-3.5 text-orange-500" />
+            {item.NgayFormatted}
+          </span>
+        )}
+        {item.PhongHoc && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+            <MapPin className="w-3.5 h-3.5 text-orange-500" />
+            {item.PhongHoc}
+          </span>
+        )}
+        {showClass && item.TenLop && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+            <UserCheck className="w-3.5 h-3.5 text-orange-500" />
+            {item.TenLop}
+          </span>
+        )}
+        {showHocKy && item.HocKy && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 text-orange-700 px-2 py-1 font-medium">
+            <BookOpen className="w-3.5 h-3.5" />
+            {item.HocKy}
+          </span>
+        )}
+        {item.MaLopHocPhan && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1 font-mono text-[11px]">
+            {item.MaLopHocPhan}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ScheduleDetailView({
+  schedule,
+  title = 'Lịch học',
+  emptyMessage = 'Chưa có lịch học nào',
+  showClass = true,
+  showHocKy = false,
+}) {
+  const items = useMemo(() => (Array.isArray(schedule) ? schedule : []), [schedule]);
+  const groups = useMemo(() => groupScheduleByDay(items), [items]);
+  const stats = useMemo(() => ({
+    sessions: items.length,
+    subjects: new Set(items.map((s) => s.TenMonHoc).filter(Boolean)).size,
+  }), [items]);
+
+  if (items.length === 0) {
+    return (
+      <div>
+        <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">{title}</h4>
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <Calendar className="w-14 h-14 mb-3 text-gray-200" />
+          <p className="font-medium">{emptyMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{title}</h4>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-semibold">{stats.sessions} buổi</span>
+          <span className="rounded-full bg-blue-100 text-blue-700 px-3 py-1 font-semibold">{stats.subjects} môn</span>
+        </div>
+      </div>
+      <div className="space-y-6">
+        {groups.map((group) => (
+          <section key={group.day}>
+            <div className="flex items-baseline justify-between gap-2 mb-3 border-b border-orange-100 pb-2">
+              <p className="font-bold text-gray-800 text-sm">{group.day}</p>
+              <p className="text-xs text-gray-500 shrink-0">{group.items.length} buổi</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {group.items.map((item) => (
+                <ScheduleSessionCard
+                  key={item.MaLichHoc ?? `${item.TenMonHoc}-${item.NgayHoc}-${item.CaHoc}`}
+                  item={item}
+                  showClass={showClass}
+                  showHocKy={showHocKy}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

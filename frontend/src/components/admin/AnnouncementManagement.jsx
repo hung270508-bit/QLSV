@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal from '../ModalPortal';
 
 function AnnouncementManagement() {
   const [announcements, setAnnouncements] = useState([]);
@@ -15,6 +16,7 @@ function AnnouncementManagement() {
   const [filters, setFilters] = useState({});
   const [displayFilters, setDisplayFilters] = useState({});
   const [selectedClasses, setSelectedClasses] = useState([]);
+  const [recipientMode, setRecipientMode] = useState('all');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [formData, setFormData] = useState({
@@ -46,8 +48,7 @@ function AnnouncementManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validation
+
     if (!formData.TieuDe.trim()) {
       alert('Vui lòng nhập tiêu đề thông báo!');
       return;
@@ -56,21 +57,44 @@ function AnnouncementManagement() {
       alert('Vui lòng nhập nội dung thông báo!');
       return;
     }
-    
+    if (recipientMode === 'custom' && selectedClasses.length === 0) {
+      alert('Vui lòng chọn ít nhất một lớp nhận thông báo!');
+      return;
+    }
+
+    const baseData = {
+      TieuDe: formData.TieuDe.trim(),
+      NoiDung: formData.NoiDung.trim(),
+      NguoiTao: formData.NguoiTao || 'admin',
+    };
+
     try {
-      const submitData = {
-        TieuDe: formData.TieuDe.trim(),
-        NoiDung: formData.NoiDung.trim(),
-        NguoiTao: formData.NguoiTao || 'admin',
-        MaLop_Nhan: selectedClasses.length > 0 ? selectedClasses[0] : null
-      };
-      
       if (editingAnnouncement) {
-        await axios.put(`http://localhost:5000/api/announcements/${editingAnnouncement.MaThongBao}`, submitData);
+        await axios.put(`http://localhost:5000/api/announcements/${editingAnnouncement.MaThongBao}`, {
+          ...baseData,
+          MaLop_Nhan: recipientMode === 'all' ? null : selectedClasses[0],
+        });
         alert('Cập nhật thông báo thành công!');
-      } else {
-        await axios.post('http://localhost:5000/api/announcements', submitData);
+      } else if (recipientMode === 'all') {
+        await axios.post('http://localhost:5000/api/announcements', {
+          ...baseData,
+          MaLop_Nhan: null,
+        });
         alert('Thêm thông báo thành công!');
+      } else {
+        await Promise.all(
+          selectedClasses.map((maLop) =>
+            axios.post('http://localhost:5000/api/announcements', {
+              ...baseData,
+              MaLop_Nhan: maLop,
+            })
+          )
+        );
+        alert(
+          selectedClasses.length > 1
+            ? `Đã thêm thông báo cho ${selectedClasses.length} lớp!`
+            : 'Thêm thông báo thành công!'
+        );
       }
       fetchData();
       handleCloseModal();
@@ -80,11 +104,26 @@ function AnnouncementManagement() {
     }
   };
 
+  const openAddModal = () => {
+    setEditingAnnouncement(null);
+    setRecipientMode('all');
+    setSelectedClasses([]);
+    setFormData({
+      TieuDe: '',
+      NoiDung: '',
+      NguoiTao: '',
+      MaLop_Nhan: '',
+    });
+    setShowModal(true);
+  };
+
   const handleEdit = (announcement) => {
     setEditingAnnouncement(announcement);
     if (announcement.MaLop_Nhan) {
+      setRecipientMode('custom');
       setSelectedClasses([announcement.MaLop_Nhan]);
     } else {
+      setRecipientMode('all');
       setSelectedClasses([]);
     }
     setFormData({
@@ -112,6 +151,7 @@ function AnnouncementManagement() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingAnnouncement(null);
+    setRecipientMode('all');
     setSelectedClasses([]);
     setFormData({
       TieuDe: '',
@@ -191,7 +231,7 @@ function AnnouncementManagement() {
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
+            onClick={openAddModal}
             className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
           >
             <Plus className="w-5 h-5" />
@@ -316,98 +356,143 @@ function AnnouncementManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/30">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-3xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                <Bell className="w-7 h-7 text-orange-500" />
-                {editingAnnouncement ? 'Cập nhật thông báo' : 'Thêm thông báo mới'}
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.1, rotate: 90 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleCloseModal}
-                className="p-3 hover:bg-gray-100 rounded-xl transition-all"
-              >
-                <X className="w-6 h-6 text-gray-500" />
-              </motion.button>
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+              <div className="text-white">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Bell className="w-5 h-5" />
+                  {editingAnnouncement ? 'Cập nhật thông báo' : 'Thêm thông báo mới'}
+                </h3>
+                <p className="text-orange-100 text-sm mt-0.5">
+                  {editingAnnouncement ? 'Chỉnh sửa nội dung và đối tượng nhận' : 'Tạo thông báo gửi đến sinh viên'}
+                </p>
+              </div>
+              <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Tiêu đề</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Tiêu đề</label>
                 <input
                   type="text"
                   value={formData.TieuDe}
                   onChange={(e) => setFormData({ ...formData, TieuDe: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-base"
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none transition-colors"
                   required
                   placeholder="Nhập tiêu đề thông báo..."
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Nội dung</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nội dung</label>
                 <textarea
                   value={formData.NoiDung}
                   onChange={(e) => setFormData({ ...formData, NoiDung: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all h-40 resize-none text-base"
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none transition-colors h-40 resize-none"
                   required
                   placeholder="Nhập nội dung thông báo..."
                 />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Gửi đến lớp</label>
-                <div className="flex flex-wrap gap-3">
-                  {classes.map((cls) => (
-                    <motion.button
-                      key={cls.MaLop}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleClassToggle(cls.MaLop)}
-                      className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
-                        selectedClasses.includes(cls.MaLop)
-                          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {cls.TenLop}
-                    </motion.button>
-                  ))}
+              <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-100">
+                <label className="flex items-center gap-2 text-sm font-semibold text-orange-800 mb-2">
+                  <Users className="w-4 h-4" />
+                  Đối tượng nhận
+                </label>
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setRecipientMode('all');
+                      setSelectedClasses([]);
+                    }}
+                    className={`flex-1 px-5 py-3 rounded-xl text-sm font-semibold transition-all border-2 ${
+                      recipientMode === 'all'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Gửi cho tất cả
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setRecipientMode('custom')}
+                    className={`flex-1 px-5 py-3 rounded-xl text-sm font-semibold transition-all border-2 ${
+                      recipientMode === 'custom'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Tự chọn lớp
+                  </motion.button>
                 </div>
+                {recipientMode === 'custom' && (
+                  <div className="flex flex-wrap gap-3 p-4 bg-white rounded-xl border-2 border-orange-100">
+                    {classes.length > 0 ? (
+                      classes.map((cls) => (
+                        <motion.button
+                          key={cls.MaLop}
+                          type="button"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleClassToggle(cls.MaLop)}
+                          className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                            selectedClasses.includes(cls.MaLop)
+                              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
+                              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                          }`}
+                        >
+                          {cls.TenLop}
+                        </motion.button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">Chưa có lớp học trong hệ thống</p>
+                    )}
+                  </div>
+                )}
+                {recipientMode === 'all' && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Thông báo sẽ hiển thị cho tất cả sinh viên trên hệ thống.
+                  </p>
+                )}
               </div>
 
-              <div className="flex gap-4 pt-6 border-t border-gray-200">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all"
-                >
-                  {editingAnnouncement ? 'Cập nhật thông báo' : 'Thêm thông báo mới'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              <div className="flex gap-3 pt-2">
+                <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold hover:bg-gray-200 transition-all"
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
                 >
-                  Hủy bỏ
-                </motion.button>
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                >
+                  {editingAnnouncement ? 'Lưu thay đổi' : 'Thêm thông báo'}
+                </button>
               </div>
             </form>
           </motion.div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Detail Modal */}
       {showDetailModal && selectedAnnouncement && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/30">
-          <motion.div
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/30">
+            <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl"
@@ -453,17 +538,17 @@ function AnnouncementManagement() {
                 </div>
               </div>
 
-              {selectedAnnouncement.TenLop && (
-                <div className="bg-blue-50 rounded-xl p-4 flex items-center gap-3">
-                  <div className="p-3 bg-blue-200 rounded-xl">
-                    <Users className="w-5 h-5 text-blue-700" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold">Gửi đến</p>
-                    <p className="font-semibold text-gray-800">{selectedAnnouncement.TenLop}</p>
-                  </div>
+              <div className="bg-blue-50 rounded-xl p-4 flex items-center gap-3">
+                <div className="p-3 bg-blue-200 rounded-xl">
+                  <Users className="w-5 h-5 text-blue-700" />
                 </div>
-              )}
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Gửi đến</p>
+                  <p className="font-semibold text-gray-800">
+                    {selectedAnnouncement.TenLop || 'Tất cả'}
+                  </p>
+                </div>
+              </div>
 
               <div className="border-t border-gray-200 pt-6">
                 <h5 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -500,6 +585,7 @@ function AnnouncementManagement() {
             </div>
           </motion.div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );
