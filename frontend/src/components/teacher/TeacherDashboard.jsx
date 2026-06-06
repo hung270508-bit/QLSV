@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   BookOpen,
@@ -9,18 +8,13 @@ import {
   FileText,
   Bell,
   LogOut,
-  Menu,
-  X,
   ChevronRight,
-  TrendingUp,
   Award,
-  AlertCircle,
   Upload,
-  UserCircle // Đã thêm UserCircle để hiển thị Avatar góc phải
+  UserCircle
 } from 'lucide-react';
 import axios from 'axios';
 
-// Các thư viện component của bạn
 import TeacherProfileManagement from './TeacherProfileManagement';
 import OverviewSection from './OverviewSection';
 import StudentsSection from './StudentsSection';
@@ -30,23 +24,40 @@ import MaterialsSection from './MaterialsSection';
 import ScheduleSection from './ScheduleSection';
 import AnnouncementsSection from './AnnouncementsSection';
 
+const menuItems = [
+  { id: 'tongquan', label: 'Tổng quan', icon: LayoutDashboard },
+  { id: 'sinhvien', label: 'Sinh viên', icon: Users },
+  { id: 'quanlydiem', label: 'Quản lý điểm', icon: BookOpen },
+  { id: 'diemdanh', label: 'Điểm danh', icon: ClipboardCheck },
+  { id: 'tailieu', label: 'Tài liệu', icon: FileText },
+  { id: 'lichgiangday', label: 'Lịch giảng dạy', icon: Calendar },
+  { id: 'hoso', label: 'Hồ sơ cá nhân', icon: UserCircle },
+  { id: 'thongbao', label: 'Thông báo', icon: Bell },
+];
+
 function TeacherDashboard({ user, onLogout }) {
-  // 1. VIỆT HÓA BIẾN MẶC ĐỊNH
-  const [activeMenu, setActiveMenu] = useState('tongquan'); 
+  const [activeMenu, setActiveMenu] = useState(() => {
+    return localStorage.getItem('activeMenu') || 'tongquan';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
+  const [mounted, setMounted] = useState(false);
   const [teachingAssignments, setTeachingAssignments] = useState([]);
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [teachingSchedule, setTeachingSchedule] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // === ĐÂY LÀ ĐOẠN CODE BẠN QUÊN Ở BƯỚC TRƯỚC ===
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Lấy dữ liệu Hồ sơ cá nhân của Giảng viên
+  useEffect(() => {
+    localStorage.setItem('activeMenu', activeMenu);
+  }, [activeMenu]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (user?.id) {
       axios.get(`http://localhost:5000/api/teachers/${user.id}/details`)
@@ -59,7 +70,6 @@ function TeacherDashboard({ user, onLogout }) {
         .finally(() => setLoadingProfile(false));
     }
   }, [user]);
-  // ==============================================
 
   useEffect(() => {
     if (user) {
@@ -76,7 +86,7 @@ function TeacherDashboard({ user, onLogout }) {
         axios.get('http://localhost:5000/api/announcements'),
         axios.get(`http://localhost:5000/api/teachers/${user.id}/teaching-schedule`)
       ]);
-      
+
       setTeachingAssignments(assignmentsRes.data);
       setStudents(studentsRes.data);
       setGrades(gradesRes.data);
@@ -89,19 +99,6 @@ function TeacherDashboard({ user, onLogout }) {
     }
   };
 
-  // 2. VIỆT HÓA ID CỦA MENU
-  const menuItems = [
-    { id: 'tongquan', label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'sinhvien', label: 'Sinh viên', icon: Users },
-    { id: 'quanlydiem', label: 'Quản lý điểm', icon: BookOpen },
-    { id: 'diemdanh', label: 'Điểm danh', icon: ClipboardCheck },
-    { id: 'tailieu', label: 'Tài liệu', icon: FileText },
-    { id: 'lichgiangday', label: 'Lịch giảng dạy', icon: Calendar },
-    { id: 'hoso', label: 'Hồ sơ cá nhân', icon: Award },
-    { id: 'thongbao', label: 'Thông báo', icon: Bell },
-  ];
-
-  // 3. VIỆT HÓA CÁC CASE RENDER
   const renderContent = () => {
     if (loading) {
       return (
@@ -125,7 +122,6 @@ function TeacherDashboard({ user, onLogout }) {
       case 'lichgiangday':
         return <ScheduleSection teachingSchedule={teachingSchedule} teachingAssignments={teachingAssignments} user={user} />;
       case 'hoso':
-        // Đã truyền profile và loadingProfile vào component của bạn
         return <TeacherProfileManagement user={user} onLogout={onLogout} profile={profile} loading={loadingProfile} />;
       case 'thongbao':
         return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} />;
@@ -135,96 +131,90 @@ function TeacherDashboard({ user, onLogout }) {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-50 to-orange-50/30 flex overflow-hidden">
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ width: sidebarOpen ? 280 : 0 }}
-        animate={{ width: sidebarOpen ? 280 : 0 }}
-        transition={{ duration: 0.3, type: "spring" }}
-        className="bg-white/80 backdrop-blur-xl border-r border-orange-100 overflow-hidden flex-shrink-0 h-screen"
+    <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30 flex overflow-hidden">
+      <aside
+        className={`bg-white border-r shadow-border border-gray-200 overflow-hidden shrink-0 h-screen transition-all duration-300 ease-out ${sidebarOpen ? 'w-72' : 'w-0'}`}
       >
         <div className="h-full flex flex-col">
-          {/* Logo */}
-          <div className="p-6 border-b border-orange-100 flex-shrink-0">
+          <div className="p-6 border-b border-orange-50 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200/50">
-                <Award className="w-7 h-7 text-white" />
+              <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <Award className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Giảng Viên</span>
+              <div>
+                <span className="text-xl font-bold text-gray-800 whitespace-nowrap block">QLSV</span>
+                <span className="text-xs text-orange-500 font-medium whitespace-nowrap block">Giảng Viên</span>
+              </div>
             </div>
           </div>
 
-          {/* Menu Items */}
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeMenu === item.id;
               return (
-                <motion.button
+                <button
                   key={item.id}
                   onClick={() => setActiveMenu(item.id)}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05, type: "spring" }}
-                  whileHover={{ x: 6 }}
-                  whileTap={{ scale: 0.97 }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ease-out ${
                     isActive
-                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
-                      : 'text-gray-600 hover:bg-orange-50 hover:text-orange-500'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
                   }`}
                 >
-                  <div className={`relative z-10 ${isActive ? 'text-white' : ''}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <span className="font-medium">{item.label}</span>
-                  {isActive && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="ml-auto"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </motion.div>
-                  )}
-                </motion.button>
+                  <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+                  <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>
+                </button>
               );
             })}
           </nav>
 
-          {/* Profile Section */}
-          <div className="p-4 border-t border-orange-100 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <motion.div
+          <div className="p-4 border-t border-orange-50 flex-shrink-0 bg-gradient-to-b from-transparent to-orange-50/30">
+            <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0"
                 onClick={() => setActiveMenu('hoso')}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden cursor-pointer"
               >
-                <UserCircle className="w-10 h-10 text-white mt-1" />
-              </motion.div>
-              <div className="flex-1 cursor-pointer" onClick={() => setActiveMenu('hoso')}>
-                <p className="text-sm font-bold text-gray-800">{profile?.HoTen || user?.hoTen || 'Đang tải...'}</p>
-                <p className="text-xs text-gray-500">{profile?.MaGiangVien || user?.username}</p>
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                  <UserCircle className="w-6 h-6 text-white" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-sm font-bold text-gray-800 truncate group-hover:text-orange-600 transition-colors">
+                    {profile?.HoTen || user?.hoTen || 'Giảng Viên'}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    Mã GV: {profile?.MaGiangVien || user?.username}
+                  </p>
+                </div>
               </div>
-              <motion.button
+              <button
                 onClick={onLogout}
-                whileHover={{ scale: 1.15 }}
-                whileTap={{ scale: 0.9 }}
-                className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-500"
+                className="p-2.5 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-500 transition-all duration-200 ease-out flex-shrink-0"
+                title="Đăng xuất"
               >
                 <LogOut className="w-5 h-5" />
-              </motion.button>
+              </button>
             </div>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Content Area */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          {renderContent()}
+      <div className="flex-1 flex flex-col bg-transparent relative">
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-50">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 bg-white rounded-r-full shadow-lg border border-gray-200 transition-all duration-200 ease-out"
+          >
+            <ChevronRight className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${sidebarOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        <main className={`flex-1 p-6 overflow-y-auto transition-all duration-300 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ transitionDelay: mounted ? '300ms' : '0ms' }}
+        >
+          <div className="h-full">
+            {renderContent()}
+          </div>
         </main>
       </div>
     </div>

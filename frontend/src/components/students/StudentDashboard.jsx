@@ -1,50 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, UserCircle, CalendarDays, FileText,
-  Award, BookPlus, HelpCircle, ClipboardList,ClipboardCheck, LogOut,
-  Menu, X, ChevronRight, GraduationCap, Bell
+  LayoutDashboard,
+  UserCircle,
+  CalendarDays,
+  FileText,
+  Award,
+  BookPlus,
+  HelpCircle,
+  LogOut,
+  ChevronRight,
+  GraduationCap,
+  Bell,
+  ClipboardCheck
 } from 'lucide-react';
 import axios from 'axios';
 
-// IMPORT CÁC COMPONENT
 import StudentOverview from './StudentOverview';
 import StudentSchedule from './StudentSchedule';
 import StudentGrades from './StudentGrades';
-import StudentProfile from './StudentProfile'; // <-- Import thêm Hồ sơ cá nhân
+import StudentProfile from './StudentProfile';
 import StudentAttendance from './StudentAttendance';
 import StudentSupport from './StudentSupport';
 import StudentTrainingPoints from './StudentTrainingPoints';
 import StudentCourseRegistration from './StudentCourseRegistration';
 import StudentAnnouncements from './StudentAnnouncements';
+
 const menuItems = [
   { id: 'dashboard', label: 'Trang chủ', icon: LayoutDashboard },
   { id: 'hoso', label: 'Hồ sơ cá nhân', icon: UserCircle },
   { id: 'lichhoc', label: 'Học vụ', icon: CalendarDays },
   { id: 'xemdiem', label: 'Xem điểm', icon: FileText },
-  {id: 'diemdanh', label: 'Điểm danh', icon: ClipboardCheck},
+  { id: 'diemdanh', label: 'Điểm danh', icon: ClipboardCheck },
   { id: 'renluyen', label: 'Đánh giá rèn luyện', icon: Award },
   { id: 'dangky', label: 'Đăng ký môn học', icon: BookPlus },
   { id: 'thongbao', label: 'Thông báo', icon: Bell },
   { id: 'hotro', label: 'Yêu cầu - Trợ giúp', icon: HelpCircle },
-  //{ id: 'khaosat', label: 'Khảo sát', icon: ClipboardList },
 ];
 
 function StudentDashboard({ user, onLogout }) {
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [activeMenu, setActiveMenu] = useState(() => {
+    return localStorage.getItem('activeMenu') || 'dashboard';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
-  // State lưu toàn bộ Hồ sơ sinh viên
+  const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Gọi API lấy Tên thật và Hồ sơ khi vừa đăng nhập
+  useEffect(() => {
+    localStorage.setItem('activeMenu', activeMenu);
+  }, [activeMenu]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (user?.username) {
       axios.get(`http://localhost:5000/api/students/${user.username}/details`)
         .then(res => {
           if (res.data.length > 0) {
-            setProfile(res.data[0]); // Lưu dữ liệu thật vào state
+            setProfile(res.data[0]);
           }
         })
         .catch(err => console.error("Lỗi lấy hồ sơ:", err))
@@ -56,109 +71,112 @@ function StudentDashboard({ user, onLogout }) {
     switch (activeMenu) {
       case 'dashboard':
         return <StudentOverview user={user} setActiveMenu={setActiveMenu} />;
-      case 'hoso': // Đã gắn giao diện Hồ sơ cá nhân thật
+      case 'hoso':
         return <StudentProfile profile={profile} loading={loadingProfile} />;
       case 'lichhoc':
         return <StudentSchedule user={user} />;
       case 'xemdiem':
         return <StudentGrades user={user} />;
-      case 'diemdanh': return <StudentAttendance user={user} />;  
-      // Các case khác...
-      case 'renluyen': return <StudentTrainingPoints user={user} />;
-      case 'dangky': return <StudentCourseRegistration user={user} />;
-      case 'thongbao': return <StudentAnnouncements user={user} />;
-      case 'hotro': return <StudentSupport user={user} />;
-      case 'khaosat': return <div className="p-4 bg-white rounded-xl shadow-sm text-gray-500">Đang phát triển: Khảo sát</div>;
-      default: return <StudentOverview user={user} setActiveMenu={setActiveMenu} />;
+      case 'diemdanh':
+        return <StudentAttendance user={user} />;
+      case 'renluyen':
+        return <StudentTrainingPoints user={user} />;
+      case 'dangky':
+        return <StudentCourseRegistration user={user} />;
+      case 'thongbao':
+        return <StudentAnnouncements user={user} />;
+      case 'hotro':
+        return <StudentSupport user={user} />;
+      default:
+        return <StudentOverview user={user} setActiveMenu={setActiveMenu} />;
     }
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
-      {/* Sidebar (Giữ nguyên) */}
-      <motion.aside
-        initial={{ width: sidebarOpen ? 260 : 0 }} animate={{ width: sidebarOpen ? 260 : 0 }} transition={{ duration: 0.3 }}
-        className="bg-white border-r border-orange-100 overflow-hidden flex-shrink-0 h-screen shadow-sm"
+    <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30 flex overflow-hidden">
+      <aside
+        className={`bg-white border-r shadow-border border-gray-200 overflow-hidden shrink-0 h-screen transition-all duration-300 ease-out ${sidebarOpen ? 'w-72' : 'w-0'}`}
       >
         <div className="h-full flex flex-col">
-          <div className="p-6 border-b border-orange-100 flex-shrink-0">
+          <div className="p-6 border-b border-orange-50 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
+              <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-800">Cổng Sinh Viên</span>
+              <div>
+                <span className="text-xl font-bold text-gray-800 whitespace-nowrap block">QLSV</span>
+                <span className="text-xs text-orange-500 font-medium whitespace-nowrap block">Sinh Viên</span>
+              </div>
             </div>
           </div>
 
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeMenu === item.id;
               return (
-                <motion.button
-                  key={item.id} onClick={() => setActiveMenu(item.id)}
-                  initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}
-                  whileHover={{ x: 4 }} whileTap={{ scale: 0.97 }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                    isActive ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200' : 'text-gray-600 hover:bg-orange-50 hover:text-orange-500'
+                <button
+                  key={item.id}
+                  onClick={() => setActiveMenu(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ease-out ${
+                    isActive
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium text-sm">{item.label}</span>
-                  {isActive && <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="ml-auto"><ChevronRight className="w-4 h-4" /></motion.div>}
-                </motion.button>
+                  <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+                  <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>
+                </button>
               );
             })}
           </nav>
 
-          {/* Khu vực Profile & Logout dưới cùng */}
-          <div className="p-4 border-t border-orange-100 flex-shrink-0 bg-orange-50/30">
+          <div className="p-4 border-t border-orange-50 flex-shrink-0 bg-gradient-to-b from-transparent to-orange-50/30">
             <div className="flex items-center justify-between">
-              {/* Thông tin sinh viên (Bấm vào để xem hồ sơ) */}
               <div 
-                className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" 
+                className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0"
                 onClick={() => setActiveMenu('hoso')}
               >
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
                   <UserCircle className="w-6 h-6 text-white" />
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-gray-800 truncate group-hover:text-orange-600 transition-colors">
-                    {profile?.HoTen || user?.username || 'Đang tải...'}
+                    {profile?.HoTen || user?.username || 'Sinh Viên'}
                   </p>
-                  <p className="text-xs font-medium text-gray-500 truncate">
+                  <p className="text-xs text-gray-500 truncate">
                     MSSV: {profile?.MSSV || user?.username}
                   </p>
                 </div>
               </div>
-
-              {/* Nút Đăng xuất thu nhỏ */}
-              <motion.button 
-                onClick={onLogout} 
-                whileHover={{ scale: 1.1 }} 
-                whileTap={{ scale: 0.9 }} 
+              <button
+                onClick={onLogout}
+                className="p-2.5 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-500 transition-all duration-200 ease-out flex-shrink-0"
                 title="Đăng xuất"
-                className="p-2.5 ml-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all duration-200 flex-shrink-0 shadow-sm"
               >
-                <LogOut className="w-4 h-4" />
-              </motion.button>
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
-        {/* Top Bar Cập nhật Tên */}
-    
+      <div className="flex-1 flex flex-col bg-transparent relative">
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-50">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 bg-white rounded-r-full shadow-lg border border-gray-200 transition-all duration-200 ease-out"
+          >
+            <ChevronRight className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${sidebarOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
 
-        {/* Content Area */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            <motion.div key={activeMenu} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="h-full">
-              {renderContent()}
-            </motion.div>
-          </AnimatePresence>
+        <main className={`flex-1 p-6 overflow-y-auto transition-all duration-300 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ transitionDelay: mounted ? '300ms' : '0ms' }}
+        >
+          <div className="h-full">
+            {renderContent()}
+          </div>
         </main>
       </div>
     </div>

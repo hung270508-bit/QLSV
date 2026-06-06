@@ -11,11 +11,14 @@ function App() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [loggedInUser, setLoggedInUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -29,10 +32,17 @@ function App() {
       });
 
       if (response.data.success) {
-        setMessage({ type: 'success', text: response.data.message });
-        // Set user với format mới từ Backend: { id, username, role, tenQuyen }
-        setLoggedInUser(response.data.user);
-      }
+        setMessage({
+          type: 'success',
+          text: response.data.message
+      });
+
+      localStorage.setItem(
+        'user',
+        JSON.stringify(response.data.user)
+      );
+      setLoggedInUser(response.data.user);
+    }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Không thể kết nối đến server!';
       setMessage({ type: 'error', text: errorMsg });
@@ -51,12 +61,14 @@ function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('user');
+
     setLoggedInUser(null);
     setUsername('');
     setPassword('');
     setMessage({ type: '', text: '' });
-  };
-
+};
+  
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setForgotLoading(true);
@@ -221,10 +233,7 @@ function App() {
                     type="button"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setShowForgotPassword(true);
-                      setMessage({ type: '', text: '' });
-                    }}
+                    onClick={handleLogout}
                     className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors"
                   >
                     Quên mật khẩu?

@@ -15,8 +15,8 @@ app.use(express.json());
 const db = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '16052005T', 
-    database: process.env.DB_NAME || 'quanlysv'
+    password: process.env.DB_PASSWORD || '1234', 
+    database: process.env.DB_NAME || 'qlsv'
 });
 
 // Kiểm tra kết nối DB
