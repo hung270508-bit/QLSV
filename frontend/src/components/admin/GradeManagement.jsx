@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, Download, FileText, BarChart3 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal from '../ModalPortal';
@@ -342,10 +342,18 @@ useEffect(() => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Quản lý điểm sinh viên</h2>
-          <p className="text-gray-500">Thêm, sửa, xóa điểm sinh viên</p>
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 shadow-lg shadow-orange-200/50 flex items-center justify-between"
+      >
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white/20 rounded-xl"><GraduationCap className="w-7 h-7 text-white" /></div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Quản lý điểm sinh viên</h2>
+            <p className="text-orange-100 text-sm mt-0.5">Thêm, sửa, xóa điểm sinh viên</p>
+          </div>
         </div>
         <div className="flex gap-3">
           <motion.button
@@ -376,7 +384,7 @@ useEffect(() => {
             Thêm điểm
           </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
@@ -621,10 +629,18 @@ useEffect(() => {
       {/* Modal Thêm/Sửa */}
       {showModal && (
         <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm"
+          >
             <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
@@ -779,17 +795,25 @@ useEffect(() => {
               </div>
             </form>
           </motion.div>
-        </div>
+          </motion.div>
         </ModalPortal>
       )}
 
       {/* Bulk Edit Modal */}
       {showBulkModal && (
         <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
+          >
             <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             className="bg-white rounded-2xl p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
@@ -940,7 +964,7 @@ useEffect(() => {
               </div>
             </div>
           </motion.div>
-        </div>
+          </motion.div>
         </ModalPortal>
       )}
     </div>

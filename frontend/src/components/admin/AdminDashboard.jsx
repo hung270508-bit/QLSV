@@ -1,21 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LayoutDashboard,
-  Building2,
-  GraduationCap,
-  BookOpen,
-  Users,
-  UserCheck,
-  LogOut,
-  ChevronRight,
-  Calendar,
-  FileText,
-  Bell,
-  ClipboardCheck,
-  UserCircle,
-  MessageSquare,
-  Award
+  LayoutDashboard, Building2, GraduationCap, BookOpen, Users, UserCheck,
+  LogOut, ChevronRight, Calendar, FileText, Bell, ClipboardCheck,
+  UserCircle, MessageSquare, Award
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import DashboardOverview from './DashboardOverview';
 import StudentManagement from './StudentManagement';
 import TeacherManagement from './TeacherManagement';
@@ -46,147 +35,176 @@ const menuItems = [
   { id: 'taikhoan', label: 'Quản lý tài khoản', icon: UserCircle },
 ];
 
+const pageComponents = {
+  dashboard: DashboardOverview,
+  sinhvien: StudentManagement,
+  giangvien: TeacherManagement,
+  khoa: FacultyManagement,
+  monhoc: SubjectManagement,
+  lophoc: ClassManagement,
+  diem: GradeManagement,
+  lichhoc: ScheduleManagement,
+  phancong: TeachingAssignment,
+  thongbao: AnnouncementManagement,
+  yeucau: AdminRequests,
+  diemrenluyen: AdminTrainingPoints,
+  taikhoan: UserAccountManagement,
+};
+
 function AdminDashboard({ user, onLogout }) {
-  const [activeMenu, setActiveMenu] = useState(() => {
-    return localStorage.getItem('activeMenu') || 'dashboard';
-  });
+  const [activeMenu, setActiveMenu] = useState(() => localStorage.getItem('activeMenu') || 'dashboard');
+  const [prevMenu, setPrevMenu] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mounted, setMounted] = useState(false);
 
- useEffect(() => {
-    localStorage.setItem('activeMenu', activeMenu);
-  }, [activeMenu]);
+  useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  
-  const renderContent = () => {
-    switch (activeMenu) {
-      case 'dashboard':
-        return <DashboardOverview onNavigate={setActiveMenu} />;
-      case 'sinhvien':
-        return <StudentManagement />;
-      case 'giangvien':
-        return <TeacherManagement />;
-      case 'khoa':
-        return <FacultyManagement />;
-      case 'monhoc':
-        return <SubjectManagement />;
-      case 'lophoc':
-        return <ClassManagement />;
-      case 'diem':
-        return <GradeManagement />;
-      case 'lichhoc':
-        return <ScheduleManagement />;
-      case 'phancong':
-        return <TeachingAssignment />;
-      case 'thongbao':
-        return <AnnouncementManagement />;
-      case 'yeucau':
-        return <AdminRequests />;
-      case 'diemrenluyen':
-        return <AdminTrainingPoints />;
-      case 'taikhoan':
-        return <UserAccountManagement />;
-      default:
-        return <DashboardOverview onNavigate={setActiveMenu} />;
+  const handleNavigate = (id) => {
+    if (id !== activeMenu) {
+      setPrevMenu(activeMenu);
+      setActiveMenu(id);
     }
   };
+
+  const ActiveComponent = pageComponents[activeMenu] || DashboardOverview;
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30 flex overflow-hidden">
       {/* Sidebar */}
-      <aside
-        className={`bg-white border-r shadow-border border-gray-200 overflow-hidden shrink-0 h-screen transition-all duration-300 ease-out ${sidebarOpen ? 'w-72' : 'w-0'}`}
+      <motion.aside
+        animate={{ width: sidebarOpen ? 288 : 0 }}
+        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        className="bg-white border-r border-gray-200 overflow-hidden shrink-0 h-screen shadow-lg"
       >
-        <div className="h-full flex flex-col">
+        <div className="w-72 h-full flex flex-col">
           {/* Logo */}
           <div className="p-6 border-b border-orange-50 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="flex items-center gap-3"
+            >
+              <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-md shadow-orange-200 flex-shrink-0">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <div>
                 <span className="text-xl font-bold text-gray-800 whitespace-nowrap block">QLSV</span>
-                <span className="text-xs text-orange-500 font-medium whitespace-nowrap block">Admin Panel</span>
+                <span className="text-xs text-orange-500 font-semibold whitespace-nowrap block tracking-wide">Admin Panel</span>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Menu Items */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-orange-200">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeMenu === item.id;
               return (
-                <button
+                <motion.button
                   key={item.id}
-                  onClick={() => setActiveMenu(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ease-out ${
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, delay: index * 0.03 }}
+                  onClick={() => handleNavigate(item.id)}
+                  whileHover={{ x: isActive ? 0 : 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 relative overflow-hidden group ${
                     isActive
-                      ? 'bg-orange-500 text-white shadow-sm'
+                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-200'
                       : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeMenuBg"
+                      className="absolute inset-0 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl"
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      style={{ zIndex: -1 }}
+                    />
+                  )}
+                  <Icon className={`w-4.5 h-4.5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`} style={{ width: '1.1rem', height: '1.1rem' }} />
                   <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>
-                </button>
+                  {isActive && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70"
+                    />
+                  )}
+                </motion.button>
               );
             })}
           </nav>
 
           {/* User Profile & Logout */}
-          <div className="p-4 border-t border-orange-50 flex-shrink-0 bg-gradient-to-b from-transparent to-orange-50/30">
-            <div className="flex items-center justify-between">
-              <div 
-                className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0"
-                onClick={() => setActiveMenu('taikhoan')}
+          <div className="p-4 border-t border-orange-50 flex-shrink-0 bg-gradient-to-b from-transparent to-orange-50/40">
+            <div className="flex items-center justify-between gap-2">
+              <motion.div
+                className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0 p-2 rounded-xl hover:bg-orange-50 transition-colors duration-200"
+                onClick={() => handleNavigate('taikhoan')}
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-                  <UserCircle className="w-6 h-6 text-white" />
+                <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0 group-hover:shadow-md group-hover:shadow-orange-200 transition-all duration-200">
+                  <UserCircle className="w-5 h-5 text-white" />
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-sm font-bold text-gray-800 truncate group-hover:text-orange-600 transition-colors">
+                  <p className="text-sm font-bold text-gray-800 truncate group-hover:text-orange-600 transition-colors duration-200">
                     {user?.name || 'Admin'}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    Quản trị viên
-                  </p>
+                  <p className="text-xs text-gray-400 truncate">Quản trị viên</p>
                 </div>
-              </div>
-              <button 
+              </motion.div>
+              <motion.button
                 onClick={onLogout}
-                className="p-2.5 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-500 transition-all duration-200 ease-out flex-shrink-0"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all duration-200 flex-shrink-0"
                 title="Đăng xuất"
               >
-                <LogOut className="w-5 h-5" />
-              </button>
+                <LogOut className="w-4.5 h-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
+              </motion.button>
             </div>
           </div>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-transparent relative">
+      <div className="flex-1 flex flex-col bg-transparent relative overflow-hidden">
         {/* Toggle Button */}
         <div className="absolute top-1/2 -translate-y-1/2 left-0 z-50">
-          <button
+          <motion.button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 bg-white rounded-r-full shadow-lg border border-gray-200 transition-all duration-200 ease-out"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="p-1.5 bg-white rounded-r-xl shadow-lg border border-gray-200 hover:border-orange-300 transition-colors duration-200"
           >
-            <ChevronRight className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${sidebarOpen ? 'rotate-180' : ''}`} />
-          </button>
+            <motion.div
+              animate={{ rotate: sidebarOpen ? 180 : 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            </motion.div>
+          </motion.button>
         </div>
 
-        {/* Content Area */}
-        <main className={`flex-1 p-6 overflow-y-auto transition-all duration-300 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          style={{ transitionDelay: mounted ? '300ms' : '0ms' }}
-        >
-          <div className="h-full">
-            {renderContent()}
-          </div>
+        {/* Content Area with page transition */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeMenu}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="h-full"
+            >
+              {activeMenu === 'dashboard'
+                ? <ActiveComponent onNavigate={handleNavigate} />
+                : <ActiveComponent />
+              }
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

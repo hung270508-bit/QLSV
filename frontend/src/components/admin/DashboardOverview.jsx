@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Users, BookOpen, Building2, GraduationCap, TrendingUp, AlertCircle, Calendar, FileText, Settings, BarChart3, CheckCircle, XCircle, Clock, Activity } from 'lucide-react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, AreaChart, Area, Line, LineChart } from 'recharts';
@@ -136,11 +137,15 @@ function DashboardOverview({ onNavigate }) {
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <div
+            <motion.div
               key={stat.title}
               onClick={() => onNavigate && onNavigate(stat.menuId)}
-              className={`bg-white rounded-2xl p-6 shadow-xl border border-orange-100/50 hover:shadow-2xl hover:border-orange-200/50 transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 cursor-pointer ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-              style={{ transitionDelay: mounted ? `${index * 100}ms` : '0ms' }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: index * 0.07 }}
+              whileHover={{ y: -4, boxShadow: '0 20px 40px -8px rgba(249,115,22,0.15)' }}
+              whileTap={{ scale: 0.98 }}
+              className="bg-white rounded-2xl p-6 shadow-xl border border-orange-100/50 relative overflow-hidden group cursor-pointer transition-shadow duration-200"
             >
               <div className="flex items-center mb-4 relative z-10">
                 <div className={`w-14 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center shadow-xl shadow-orange-300/40 group-hover:scale-110 transition-transform duration-300`}>
@@ -149,7 +154,7 @@ function DashboardOverview({ onNavigate }) {
               </div>
               <h3 className="text-4xl font-bold text-gray-800 mb-1 relative z-10">{stat.value}</h3>
               <p className="text-gray-500 text-sm font-medium relative z-10">{stat.title}</p>
-            </div>
+            </motion.div>
           );
         })}
       </div>
