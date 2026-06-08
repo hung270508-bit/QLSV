@@ -566,23 +566,11 @@ function StudentManagement() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+              <input type="hidden" value={formData.MSSV} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                {/* Ô nhập MSSV mới tự động sinh */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã số sinh viên (MSSV)</label>
-                  <input
-                    type="text"
-                    value={formData.MSSV}
-                    readOnly
-                    placeholder={!editingStudent && !formData.MaLop ? 'Chọn lớp để tạo mã tự động' : ''}
-                    className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors opacity-70 cursor-not-allowed font-mono text-orange-600 font-bold"
-                    required
-                  />
-                </div>
-                
-                {/* Ô Họ tên nằm ngang hàng với MSSV */}
-                <div>
+                {/* Ô Họ tên */}
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
                   <input
                     type="text"

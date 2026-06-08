@@ -1,399 +1,458 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Users, BookOpen, Building2, GraduationCap, TrendingUp, AlertCircle, Calendar, FileText, Settings, BarChart3, CheckCircle, XCircle, Clock, Activity } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, BookOpen, Building2, GraduationCap, Activity, ArrowUpRight } from 'lucide-react';
 import axios from 'axios';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, AreaChart, Area, Line, LineChart } from 'recharts';
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 
+/* ─── Animation variants ─────────────────────────────────────────── */
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.45, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] } })
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.92 },
+  show: (i = 0) => ({ opacity: 1, scale: 1, transition: { duration: 0.4, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] } })
+};
+
+/* ─── Custom Tooltip ──────────────────────────────────────────────── */
+const CustomBarTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-2xl p-4 min-w-[160px]">
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center gap-2 mb-1">
+          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.fill }} />
+          <span className="text-xs text-gray-600">{p.name}</span>
+          <span className="ml-auto text-xs font-bold text-gray-800">{p.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const CustomPieTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const { name, value, payload: d } = payload[0];
+  return (
+    <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-2xl p-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
+        <span className="text-xs font-semibold text-gray-700">{name}</span>
+      </div>
+      <p className="text-lg font-bold text-gray-800">{value} SV</p>
+    </div>
+  );
+};
+
+/* ─── Stat Card ───────────────────────────────────────────────────── */
+const StatCard = ({ stat, index, onNavigate }) => {
+  const Icon = stat.icon;
+  return (
+    <motion.div
+      custom={index}
+      variants={scaleIn}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.97 }}
+      onClick={() => onNavigate?.(stat.menuId)}
+      className="relative bg-white rounded-2xl p-6 shadow-lg border border-orange-100/60 overflow-hidden cursor-pointer group"
+    >
+      {/* Decorative blob */}
+      <div className={`absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br ${stat.color} opacity-10 rounded-full blur-xl group-hover:opacity-20 transition-opacity duration-300`} />
+
+      <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center shadow-lg mb-4`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+
+      <p className="text-3xl font-extrabold text-gray-800 tracking-tight">{stat.value}</p>
+      <p className="text-sm text-gray-400 font-medium mt-1">{stat.title}</p>
+
+      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-1 group-hover:translate-x-0">
+        <ArrowUpRight className="w-4 h-4 text-orange-400" />
+      </div>
+    </motion.div>
+  );
+};
+
+/* ─── Loading skeleton ───────────────────────────────────────────── */
+const Skeleton = () => (
+  <div className="space-y-6 animate-pulse">
+    <div className="h-32 bg-orange-100 rounded-2xl" />
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-100 rounded-2xl" />)}
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="h-96 bg-gray-100 rounded-2xl" />
+      <div className="h-96 bg-gray-100 rounded-2xl" />
+    </div>
+    <div className="h-64 bg-gray-100 rounded-2xl" />
+  </div>
+);
+
+/* ─── Main Component ─────────────────────────────────────────────── */
 function DashboardOverview({ onNavigate }) {
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalSubjects: 0,
-    totalClasses: 0,
-    totalTeachers: 0
-  });
-  const [recentStudents, setRecentStudents] = useState([]);
+  const [stats, setStats] = useState({ totalStudents: 0, totalSubjects: 0, totalClasses: 0, totalTeachers: 0 });
   const [facultyStats, setFacultyStats] = useState([]);
-  const [lecturerWorkload, setLecturerWorkload] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
   const [activeTab, setActiveTab] = useState('students');
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    fetchDashboardData();
-    setMounted(true);
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
     try {
-      const [statsRes, studentsRes, facultyRes, workloadRes, teachersRes, allStudentsRes] = await Promise.all([
+      const [statsRes, facultyRes, teachersRes, allStudentsRes] = await Promise.all([
         axios.get('http://localhost:5000/api/dashboard/stats'),
-        axios.get('http://localhost:5000/api/dashboard/recent-students'),
         axios.get('http://localhost:5000/api/dashboard/stats-by-faculty'),
-        axios.get('http://localhost:5000/api/dashboard/lecturer-workload'),
         axios.get('http://localhost:5000/api/teachers'),
         axios.get('http://localhost:5000/api/students')
       ]);
       setStats(statsRes.data);
-      setRecentStudents(studentsRes.data);
       setFacultyStats(facultyRes.data);
-      setLecturerWorkload(workloadRes.data);
       setTeachers(teachersRes.data);
       setStudents(allStudentsRes.data);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const statCards = [
-    { title: 'Tổng sinh viên', value: stats.totalStudents, icon: Users, color: 'from-orange-500 to-orange-600', menuId: 'sinhvien' },
-    { title: 'Tổng môn học', value: stats.totalSubjects, icon: BookOpen, color: 'from-amber-500 to-amber-600', menuId: 'monhoc' },
-    { title: 'Tổng lớp học', value: stats.totalClasses, icon: Building2, color: 'from-yellow-500 to-yellow-600', menuId: 'lophoc' },
-    { title: 'Tổng giảng viên', value: stats.totalTeachers, icon: GraduationCap, color: 'from-orange-400 to-orange-500', menuId: 'giangvien' },
-    { title: 'Tổng khoa', value: facultyStats.length, icon: Building2, color: 'from-red-500 to-red-600', menuId: 'khoa' },
+  const COLORS = [
+    '#f97316','#3b82f6','#22c55e','#eab308','#ef4444','#8b5cf6',
+    '#06b6d4','#ec4899','#f59e0b','#14b8a6','#84cc16','#6366f1',
+    '#d946ef','#f43f5e','#0ea5e9','#a855f7','#fb923c','#10b981'
   ];
 
-  const facultyStudentData = facultyStats.map((faculty, index) => ({
-    name: faculty.TenKhoa,
-    maKhoa: faculty.MaKhoa || faculty.maKhoa || '',
-    value: faculty.studentCount || 0,
-    color: [
-      '#f97316', '#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899',
-      '#f59e0b', '#14b8a6', '#84cc16', '#6366f1', '#d946ef', '#f43f5e', '#0ea5e9', '#a855f7',
-      '#fb923c', '#10b981', '#eab308', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b'
-    ][index % 24]
-  }));
+  const statCards = [
+    { title: 'Tổng sinh viên',  value: stats.totalStudents,  icon: Users,         color: 'from-orange-500 to-orange-600', menuId: 'sinhvien' },
+    { title: 'Tổng môn học',    value: stats.totalSubjects,  icon: BookOpen,      color: 'from-amber-500  to-amber-600',  menuId: 'monhoc'   },
+    { title: 'Tổng lớp học',    value: stats.totalClasses,   icon: Building2,     color: 'from-yellow-500 to-yellow-600', menuId: 'lophoc'   },
+    { title: 'Tổng giảng viên', value: stats.totalTeachers,  icon: GraduationCap, color: 'from-orange-400 to-orange-500', menuId: 'giangvien'},
+    { title: 'Tổng khoa',       value: facultyStats.length,  icon: Building2,     color: 'from-red-500    to-red-600',    menuId: 'khoa'     },
+  ];
 
-  const totalStudents = facultyStudentData.reduce((sum, item) => sum + item.value, 0);
+  const facultyStudentData = useMemo(() =>
+    facultyStats.map((f, i) => ({
+      name: f.TenKhoa,
+      value: f.studentCount || 0,
+      color: COLORS[i % COLORS.length]
+    })), [facultyStats]);
 
-  const facultyChartData = facultyStats.map(faculty => ({
-    name: faculty.TenKhoa,
-    sinhVien: faculty.studentCount || 0,
-    giangVien: faculty.teacherCount || 0,
-    lopHoc: faculty.classCount || 0,
-  }));
+  const totalStudents = useMemo(() =>
+    facultyStudentData.reduce((s, d) => s + d.value, 0), [facultyStudentData]);
 
-  const lecturerWorkloadData = lecturerWorkload
-    .map((lecturer, index) => ({
-      name: lecturer.HoTen,
-      soMonHoc: lecturer.soMonHoc || 0,
-      soLop: lecturer.soLop || 0,
-      tongTinChi: lecturer.tongTinChi || 0,
-    }))
-    .sort((a, b) => b.tongTinChi - a.tongTinChi)
-    .slice(0, 10);
+  // Top-5 for bar chart
+  const top5ChartData = useMemo(() =>
+    facultyStats
+      .map(f => ({ name: f.TenKhoa, sinhVien: f.studentCount || 0, giangVien: f.teacherCount || 0, lopHoc: f.classCount || 0 }))
+      .sort((a, b) => b.sinhVien - a.sinhVien)
+      .slice(0, 5),
+    [facultyStats]);
 
-  // Memoize chart data to prevent unnecessary re-renders
-  const memoizedFacultyChartData = useMemo(() => facultyChartData, [facultyStats]);
-  const memoizedFacultyStudentData = useMemo(() => facultyStudentData, [facultyStats]);
-
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl p-6 shadow-xl border border-orange-100"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-orange-300 rounded-xl animate-pulse"></div>
-                <div className="w-5 h-5 bg-orange-200 rounded animate-pulse"></div>
-              </div>
-              <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl p-6 shadow-xl border border-orange-100 h-96"
-            >
-              <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-1/3"></div>
-              <div className="h-72 bg-gray-100 rounded-xl animate-pulse"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <Skeleton />;
 
   return (
-    <div className="space-y-6">
-      <div className={`transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-          <h2 className="text-2xl font-bold text-white mb-2">Tổng quan hệ thống</h2>
-          <p className="text-orange-100 text-lg">Xem thống kê và thông tin chung về hệ thống quản lý sinh viên</p>
+    <motion.div
+      className="space-y-7"
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.07 } } }}
+    >
+      {/* ── Hero Banner ── */}
+      <motion.div variants={fadeUp} custom={0}>
+        <div className="relative bg-gradient-to-r from-orange-500 via-orange-500 to-orange-400 rounded-2xl p-8 shadow-xl overflow-hidden">
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-1/3 w-40 h-40 bg-white rounded-full translate-y-1/2" />
+          </div>
+          <div className="relative">
+            <h2 className="text-2xl font-extrabold text-white mb-1 tracking-tight">Tổng quan hệ thống</h2>
+            <p className="text-orange-100 text-base">Thống kê và thông tin chung về hệ thống quản lý sinh viên</p>
+          </div>
         </div>
+      </motion.div>
+
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {statCards.map((stat, i) => (
+          <StatCard key={stat.title} stat={stat} index={i} onNavigate={onNavigate} />
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={stat.title}
-              onClick={() => onNavigate && onNavigate(stat.menuId)}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: index * 0.07 }}
-              whileHover={{ y: -4, boxShadow: '0 20px 40px -8px rgba(249,115,22,0.15)' }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-white rounded-2xl p-6 shadow-xl border border-orange-100/50 relative overflow-hidden group cursor-pointer transition-shadow duration-200"
-            >
-              <div className="flex items-center mb-4 relative z-10">
-                <div className={`w-14 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center shadow-xl shadow-orange-300/40 group-hover:scale-110 transition-transform duration-300`}>
-                  <Icon className="w-7 h-7 text-white" />
-                </div>
-              </div>
-              <h3 className="text-4xl font-bold text-gray-800 mb-1 relative z-10">{stat.value}</h3>
-              <p className="text-gray-500 text-sm font-medium relative z-10">{stat.title}</p>
-            </motion.div>
-          );
-        })}
-      </div>
-
-
+      {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div
-          className={`bg-white rounded-2xl p-6 shadow-xl border border-orange-100/50 hover:shadow-2xl hover:border-orange-200/50 transition-all duration-300 hover:-translate-y-1 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          style={{ transitionDelay: mounted ? '500ms' : '0ms' }}
+
+        {/* Bar Chart */}
+        <motion.div variants={fadeUp} custom={1}
+          className="bg-white rounded-2xl p-6 shadow-lg border border-orange-100/60 hover:shadow-xl transition-shadow duration-300"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center hover:scale-110 transition-transform duration-300">
+              <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center">
                 <Activity className="w-5 h-5 text-orange-500" />
               </div>
-              <h3 className="text-lg font-bold text-gray-800">Thống kê theo khoa</h3>
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Thống kê theo khoa</h3>
+                <p className="text-xs text-gray-400">Top 5 khoa nhiều sinh viên nhất</p>
+              </div>
             </div>
-            <div className="flex gap-2 text-xs">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/80 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors duration-200">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                <span className="text-gray-600 font-medium">Sinh viên</span>
-              </span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50/80 rounded-full border border-green-100 hover:bg-green-100 transition-colors duration-200">
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                <span className="text-gray-600 font-medium">Giảng viên</span>
-              </span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50/80 rounded-full border border-yellow-100 hover:bg-yellow-100 transition-colors duration-200">
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
-                <span className="text-gray-600 font-medium">Lớp học</span>
-              </span>
+            <div className="flex gap-1.5 text-[11px]">
+              {[
+                { label: 'Sinh viên', color: 'bg-blue-500' },
+                { label: 'Giảng viên', color: 'bg-green-500' },
+                { label: 'Lớp học', color: 'bg-yellow-400' },
+              ].map(l => (
+                <span key={l.label} className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-full border border-gray-100">
+                  <span className={`w-2 h-2 rounded-full ${l.color}`} />
+                  <span className="text-gray-500 font-medium">{l.label}</span>
+                </span>
+              ))}
             </div>
           </div>
-          <div className="h-80">
+
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%" debounce={200}>
-              <BarChart data={memoizedFacultyChartData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <BarChart data={top5ChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                  tick={{ fontSize: 10, fill: '#9ca3af' }}
                   axisLine={false}
                   tickLine={false}
+                  interval={0}
+                  tickFormatter={v => v.length > 10 ? v.slice(0, 10) + '…' : v}
                 />
-                <YAxis
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                    padding: '12px'
-                  }}
-                  itemStyle={{ fontSize: '12px', color: '#374151' }}
-                  labelStyle={{ fontSize: '13px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}
-                />
-                <Bar dataKey="lopHoc" stackId="a" fill="#eab308" name="Lớp học" radius={[0, 0, 0, 0]} stroke="#ca8a04" strokeWidth={1} isAnimationActive={false} />
-                <Bar dataKey="giangVien" stackId="a" fill="#22c55e" name="Giảng viên" radius={[0, 0, 0, 0]} stroke="#16a34a" strokeWidth={1} isAnimationActive={false} />
-                <Bar dataKey="sinhVien" stackId="a" fill="#3b82f6" name="Sinh viên" radius={[10, 10, 0, 0]} stroke="#2563eb" strokeWidth={1} isAnimationActive={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(249,115,22,0.04)', radius: 8 }} />
+                <Bar dataKey="lopHoc"    stackId="a" fill="#facc15" name="Lớp học"    radius={[0,0,0,0]} isAnimationActive={true} animationDuration={600} />
+                <Bar dataKey="giangVien" stackId="a" fill="#4ade80" name="Giảng viên" radius={[0,0,0,0]} isAnimationActive={true} animationDuration={700} />
+                <Bar dataKey="sinhVien"  stackId="a" fill="#60a5fa" name="Sinh viên"  radius={[6,6,0,0]} isAnimationActive={true} animationDuration={800} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
-        <div
-          className={`bg-white rounded-2xl p-6 shadow-xl border border-orange-100/50 hover:shadow-2xl hover:border-orange-200/50 transition-all duration-300 hover:-translate-y-1 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          style={{ transitionDelay: mounted ? '600ms' : '0ms' }}
+        {/* Pie Chart */}
+        <motion.div variants={fadeUp} custom={2}
+          className="bg-white rounded-2xl p-6 shadow-lg border border-orange-100/60 hover:shadow-xl transition-shadow duration-300"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center hover:scale-110 transition-transform duration-300">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center">
               <Activity className="w-5 h-5 text-orange-500" />
             </div>
-            <h3 className="text-lg font-bold text-gray-800">Phân bổ sinh viên theo khoa</h3>
+            <div>
+              <h3 className="text-sm font-bold text-gray-800">Phân bổ sinh viên theo khoa</h3>
+              <p className="text-xs text-gray-400">Tổng {totalStudents.toLocaleString()} sinh viên</p>
+            </div>
           </div>
-          <div className="flex h-80 gap-6">
-            <div className="w-1/2 relative">
+
+          <div className="flex h-72 gap-4">
+            {/* Pie */}
+            <div className="w-[45%] relative">
               <ResponsiveContainer width="100%" height="100%" debounce={200}>
                 <PieChart>
                   <Pie
-                    data={memoizedFacultyStudentData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={100}
-                    innerRadius={60}
-                    fill="#8884d8"
+                    data={facultyStudentData}
+                    cx="50%" cy="50%"
+                    outerRadius={90} innerRadius={52}
                     dataKey="value"
-                    isAnimationActive={true}
-                    animationDuration={800}
+                    labelLine={false}
+                    isAnimationActive
+                    animationBegin={200}
+                    animationDuration={900}
                     animationEasing="ease-out"
+                    stroke="none"
                   >
-                    {memoizedFacultyStudentData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color}
-                        stroke={entry.color}
-                        strokeWidth={1}
-                        style={{
-                          cursor: 'pointer',
-                          transition: 'all 0.3s ease'
-                        }}
-                      />
+                    {facultyStudentData.map((entry, i) => (
+                      <Cell key={`cell-${i}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value, name) => {
-                      const percentage = totalStudents > 0 ? ((value / totalStudents) * 100).toFixed(1) : 0;
-                      return [`${percentage}%`, name];
-                    }}
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                      borderRadius: '12px',
-                      border: '1px solid #e5e7eb',
-                      boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.15)',
-                      padding: '12px'
-                    }}
-                    itemStyle={{ fontSize: '12px', color: '#374151' }}
-                    labelStyle={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}
-                  />
+                  <Tooltip content={<CustomPieTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-1/2 flex flex-col justify-center overflow-y-auto max-h-80 pr-2">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                {memoizedFacultyStudentData.map((item, index) => {
-                  const percentage = totalStudents > 0 ? ((item.value / totalStudents) * 100).toFixed(1) : 0;
-                  return (
-                    <div key={index} className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-xs font-medium text-gray-700">{item.name} ({percentage}%)</span>
+
+            {/* Legend */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-orange-100">
+              {facultyStudentData.map((item, i) => {
+                const pct = totalStudents > 0 ? ((item.value / totalStudents) * 100).toFixed(1) : 0;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.04 }}
+                    className="flex items-center gap-2 group"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[11px] text-gray-600 truncate">{item.name}</span>
+                        <span className="text-[11px] font-bold text-gray-700 shrink-0">{pct}%</span>
+                      </div>
+                      <div className="h-1 bg-gray-100 rounded-full mt-0.5 overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: item.color }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.6, delay: 0.4 + i * 0.04 }}
+                        />
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-
-      <div
-        className={`bg-white rounded-2xl p-6 shadow-xl border border-orange-100/50 hover:shadow-2xl hover:border-orange-200/50 transition-all duration-300 hover:-translate-y-1 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-        style={{ transitionDelay: mounted ? '700ms' : '0ms' }}
+      {/* ── List Table ── */}
+      <motion.div variants={fadeUp} custom={3}
+        className="bg-white rounded-2xl shadow-lg border border-orange-100/60 overflow-hidden"
       >
-        <div className="flex items-center justify-between mb-6">
+        {/* Table header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center hover:scale-110 transition-transform duration-300">
+            <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center">
               <Users className="w-5 h-5 text-orange-500" />
             </div>
-            <h3 className="text-lg font-bold text-gray-800">Danh sách</h3>
+            <h3 className="text-sm font-bold text-gray-800">Danh sách</h3>
           </div>
-          <div className="flex gap-2 bg-orange-50/50 p-1.5 rounded-xl border border-orange-100">
-            <button
-              onClick={() => setActiveTab('students')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === 'students'
-                  ? 'bg-white text-orange-500 shadow-md'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
-              }`}
-            >
-              Sinh viên
-            </button>
-            <button
-              onClick={() => setActiveTab('teachers')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === 'teachers'
-                  ? 'bg-white text-orange-500 shadow-md'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
-              }`}
-            >
-              Giảng viên
-            </button>
+
+          {/* Tab switcher */}
+          <div className="flex gap-1 bg-orange-50 p-1 rounded-xl border border-orange-100">
+            {[
+              { id: 'students', label: 'Sinh viên' },
+              { id: 'teachers', label: 'Giảng viên' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors duration-200 ${
+                  activeTab === tab.id ? 'text-orange-600' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="tab-bg"
+                    className="absolute inset-0 bg-white rounded-lg shadow-sm"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-gray-100">
+        <AnimatePresence mode="wait">
           {activeTab === 'students' ? (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-orange-50/50 border-b border-orange-100">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Lớp</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Giới tính</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.length > 0 ? (
-                  students.slice(0, 10).map((student, index) => (
-                    <tr key={index} className="border-b border-gray-100 hover:bg-orange-50/50 transition-colors duration-200">
-                      <td className="py-3 px-4 text-sm text-gray-800 font-medium">{student.MSSV}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{student.HoTen}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{student.TenLop || 'N/A'}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{student.GioiTinh || 'N/A'}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="4" className="py-8 text-center text-gray-500">Chưa có sinh viên nào</td>
+            <motion.div
+              key="students"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-50">
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">MSSV</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Họ tên</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Lớp</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Giới tính</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {students.length > 0 ? (
+                    students.slice(0, 10).map((student, i) => (
+                      <motion.tr
+                        key={student.MSSV}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="border-b border-gray-50 hover:bg-orange-50/40 transition-colors duration-150"
+                      >
+                        <td className="py-3.5 px-6">
+                          <span className="font-mono text-sm font-semibold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-lg">{student.MSSV}</span>
+                        </td>
+                        <td className="py-3.5 px-6 text-sm font-semibold text-gray-700">{student.HoTen}</td>
+                        <td className="py-3.5 px-6 text-sm text-gray-500">{student.TenLop || '—'}</td>
+                        <td className="py-3.5 px-6">
+                          <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${
+                            student.GioiTinh === 'Nam' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'
+                          }`}>
+                            {student.GioiTinh || '—'}
+                          </span>
+                        </td>
+                      </motion.tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4" className="py-12 text-center text-gray-400 text-sm">Chưa có sinh viên nào</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </motion.div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-orange-50/50 border-b border-orange-100">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mã GV</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Khoa</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teachers.length > 0 ? (
-                  teachers.slice(0, 10).map((teacher, index) => (
-                    <tr key={index} className="border-b border-gray-100 hover:bg-orange-50/50 transition-colors duration-200">
-                      <td className="py-3 px-4 text-sm text-gray-800 font-medium">{teacher.MaGiangVien}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{teacher.HoTen}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{teacher.TenKhoa || 'N/A'}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{teacher.Email || 'N/A'}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="4" className="py-8 text-center text-gray-500">Chưa có giảng viên nào</td>
+            <motion.div
+              key="teachers"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-50">
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Mã GV</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Họ tên</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Khoa</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Email</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {teachers.length > 0 ? (
+                    teachers.slice(0, 10).map((teacher, i) => (
+                      <motion.tr
+                        key={teacher.MaGiangVien}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="border-b border-gray-50 hover:bg-orange-50/40 transition-colors duration-150"
+                      >
+                        <td className="py-3.5 px-6">
+                          <span className="font-mono text-sm font-semibold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-lg">{teacher.MaGiangVien}</span>
+                        </td>
+                        <td className="py-3.5 px-6 text-sm font-semibold text-gray-700">{teacher.HoTen}</td>
+                        <td className="py-3.5 px-6">
+                          <span className="text-xs bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full font-semibold border border-orange-100">
+                            {teacher.TenKhoa || '—'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-6 text-sm text-gray-500">{teacher.Email || '—'}</td>
+                      </motion.tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4" className="py-12 text-center text-gray-400 text-sm">Chưa có giảng viên nào</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </motion.div>
           )}
-        </div>
-      </div>
-    </div>
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   );
 }
 
