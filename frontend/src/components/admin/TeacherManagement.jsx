@@ -449,6 +449,7 @@ function TeacherManagement() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+              <input type="hidden" value={formData.MaGiangVien} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa chuyên môn</label>
@@ -466,18 +467,7 @@ function TeacherManagement() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã giảng viên</label>
-                  <input
-                    type="text"
-                    value={formData.MaGiangVien}
-                    readOnly
-                    placeholder={!editingTeacher && !formData.MaKhoa ? 'Chọn khoa để tạo mã tự động' : ''}
-                    className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors opacity-70 cursor-not-allowed font-mono"
-                    required
-                  />
-                </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
                   <input
                     type="text"

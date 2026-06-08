@@ -87,7 +87,10 @@ function DashboardOverview({ onNavigate }) {
     .slice(0, 10);
 
   // Memoize chart data to prevent unnecessary re-renders
-  const memoizedFacultyChartData = useMemo(() => facultyChartData, [facultyStats]);
+  const memoizedFacultyChartData = useMemo(
+    () => [...facultyChartData].sort((a, b) => b.sinhVien - a.sinhVien).slice(0, 5),
+    [facultyStats]
+  );
   const memoizedFacultyStudentData = useMemo(() => facultyStudentData, [facultyStats]);
 
 

@@ -424,17 +424,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
       ))}
     </select>
   </div>
-  <div>
-    <label className="block text-sm font-semibold text-gray-700 mb-2">Mã môn học</label>
-    <input
-      type="text"
-      value={formData.MaMonHoc}
-      readOnly
-      placeholder={!editingSubject && !formData.MaKhoa ? 'Chọn khoa để tạo mã tự động' : ''}
-      className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors opacity-70 cursor-not-allowed font-mono"
-      required
-    />
-  </div>
+  <input type="hidden" value={formData.MaMonHoc} />
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">Tên môn học</label>
     <input
