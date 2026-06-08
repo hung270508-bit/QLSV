@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin, CheckCircle } from 'lucide-react';
 import axios from 'axios';
-import ModalPortal from '../ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
 
 function TeacherManagement() {
   const [teachers, setTeachers] = useState([]);
@@ -21,15 +21,38 @@ function TeacherManagement() {
   const [teachingSchedule, setTeachingSchedule] = useState([]);
   const [teachingLoad, setTeachingLoad] = useState([]);
   const [detailTab, setDetailTab] = useState('info'); // 'info', 'schedule', 'load'
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
   const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
+  const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
   const [formData, setFormData] = useState({
     MaGiangVien: '',
     HoTen: '',
     Email: '',
     SoDienThoai: '',
-    MaKhoa: ''
+    MaKhoa: '',
+    TrangThai: 'Đang dạy'
   });
+  const [errors, setErrors] = useState({});
+
+  // Vietnamese diacritic removal for search
+  const removeVietnameseTones = useCallback((str) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  }, []);
+
+  // Debounced search
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchData();
@@ -69,32 +92,81 @@ function TeacherManagement() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setConfirmDialog({
-      show: true,
-      message: `Bạn có chắc chắn muốn ${editingTeacher ? 'cập nhật' : 'thêm'} giảng viên ${formData.HoTen} không?`,
-      onConfirm: async () => {
-        try {
-          if (editingTeacher) {
-            await axios.put(`http://localhost:5000/api/teachers/${editingTeacher.MaGiangVien}`, formData);
-          } else {
-            // Lấy mã mới nhất ngay trước khi gửi để tránh trùng
-            const selectedFaculty = faculties.find(f => f.MaKhoa === formData.MaKhoa);
-            const khoaId = selectedFaculty?.ID ?? selectedFaculty?.id ?? '';
-            const resCode = await axios.get(`http://localhost:5000/api/teachers/next-code/${khoaId}`);
-            const newMaGV = resCode.data.MaGiangVien;
-            await axios.post('http://localhost:5000/api/teachers', { ...formData, MaGiangVien: newMaGV });
-          }
-          setSuccessDialog({ show: true, message: editingTeacher ? 'Cập nhật giảng viên thành công!' : 'Thêm giảng viên thành công!' });
-          fetchData();
-          handleCloseModal();
-        } catch (error) {
-          console.error('Lỗi lưu dữ liệu:', error);
-          setSuccessDialog({ show: true, message: 'Lỗi khi lưu dữ liệu: ' + (error.response?.data?.error || error.message) });
-        }
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Validate Họ tên
+    if (!formData.HoTen.trim()) {
+      newErrors.HoTen = 'Họ tên không được để trống';
+    } else if (formData.HoTen.length < 2) {
+      newErrors.HoTen = 'Họ tên phải có ít nhất 2 ký tự';
+    }
+
+    // Validate Email
+    if (!formData.Email.trim()) {
+      newErrors.Email = 'Email không được để trống';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.Email)) {
+        newErrors.Email = 'Email không đúng định dạng';
       }
-    });
+    }
+
+    // Validate Số điện thoại
+    if (!formData.SoDienThoai.trim()) {
+      newErrors.SoDienThoai = 'Số điện thoại không được để trống';
+    } else {
+      const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
+      if (!phoneRegex.test(formData.SoDienThoai)) {
+        newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)';
+      }
+    }
+
+    // Validate Khoa
+    if (!formData.MaKhoa) {
+      newErrors.MaKhoa = 'Vui lòng chọn khoa';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    try {
+      if (editingTeacher) {
+        setConfirmDialog({
+          show: true,
+          message: `Bạn có chắc chắn muốn cập nhật thông tin giảng viên "${formData.HoTen}" (${formData.MaGiangVien}) không?`,
+          onConfirm: async () => {
+            try {
+              await axios.put(`http://localhost:5000/api/teachers/${editingTeacher.MaGiangVien}`, formData);
+              setToast({ show: true, message: 'Cập nhật giảng viên thành công!', type: 'success' });
+              fetchData();
+              handleCloseModal();
+            } catch (error) {
+              console.error('Lỗi lưu dữ liệu:', error);
+              setErrorDialog({ show: true, message: 'Lỗi khi lưu dữ liệu: ' + (error.response?.data?.error || error.message) });
+            }
+          }
+        });
+      } else {
+        // Lấy mã mới nhất ngay trước khi gửi để tránh trùng
+        const selectedFaculty = faculties.find(f => f.MaKhoa === formData.MaKhoa);
+        const khoaId = selectedFaculty?.ID ?? selectedFaculty?.id ?? '';
+        const resCode = await axios.get(`http://localhost:5000/api/teachers/next-code/${khoaId}`);
+        const newMaGV = resCode.data.MaGiangVien;
+        await axios.post('http://localhost:5000/api/teachers', { ...formData, MaGiangVien: newMaGV });
+        setToast({ show: true, message: 'Thêm giảng viên thành công!', type: 'success' });
+        fetchData();
+        handleCloseModal();
+      }
+    } catch (error) {
+      console.error('Lỗi lưu dữ liệu:', error);
+      setErrorDialog({ show: true, message: 'Lỗi khi lưu dữ liệu: ' + (error.response?.data?.error || error.message) });
+    }
   };
   const handleEdit = (teacher) => {
     setEditingTeacher(teacher);
@@ -103,32 +175,18 @@ function TeacherManagement() {
       HoTen: teacher.HoTen,
       Email: teacher.Email || '',
       SoDienThoai: teacher.SoDienThoai || '',
-      MaKhoa: teacher.MaKhoa || ''
+      MaKhoa: teacher.MaKhoa || '',
+      TrangThai: teacher.TrangThai || 'Đang dạy'
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (teacher) => {
-    setConfirmDialog({
-      show: true,
-      message: `Bạn có chắc chắn muốn xóa giảng viên?\n${teacher.HoTen} (${teacher.MaGiangVien})`,
-      onConfirm: async () => {
-        try {
-          await axios.delete(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}`);
-          setTeachers(prev => prev.filter(t => t.MaGiangVien !== teacher.MaGiangVien));
-          setSuccessDialog({ show: true, message: 'Xóa giảng viên thành công!' });
-        } catch (error) {
-          console.error('Error deleting teacher:', error);
-          setSuccessDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi xóa giảng viên!' });
-        }
-      }
-    });
-  };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingTeacher(null);
-    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '' });
+    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy' });
+    setErrors({});
   };
 
   const handleViewDetails = async (teacher) => {
@@ -180,9 +238,22 @@ function TeacherManagement() {
   };
 
   const filteredTeachers = teachers.filter(teacher => {
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    const searchNoTones = removeVietnameseTones(searchLower);
+    const nameLower = teacher.HoTen?.toLowerCase() || '';
+    const nameNoTones = removeVietnameseTones(nameLower);
+    const codeLower = teacher.MaGiangVien?.toLowerCase() || '';
+    const emailLower = teacher.Email?.toLowerCase() || '';
+    const facultyNameLower = teacher.TenKhoa?.toLowerCase() || '';
+    const facultyNameNoTones = removeVietnameseTones(facultyNameLower);
+    
     const matchesSearch = 
-      teacher.HoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      teacher.MaGiangVien.toLowerCase().includes(searchTerm.toLowerCase());
+      nameLower.includes(searchLower) ||
+      nameNoTones.includes(searchNoTones) ||
+      codeLower.includes(searchLower) ||
+      emailLower.includes(searchLower) ||
+      facultyNameLower.includes(searchLower) ||
+      facultyNameNoTones.includes(searchNoTones);
     
     const matchesFaculty = !filters.facultyFilter || teacher.MaKhoa === filters.facultyFilter;
     
@@ -191,6 +262,11 @@ function TeacherManagement() {
 
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setDisplaySearchTerm('');
   };
 
   const handleApplyFilters = () => {
@@ -259,35 +335,39 @@ function TeacherManagement() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm giảng viên theo tên hoặc mã giảng viên..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
+              placeholder="Tìm kiếm giảng viên theo tên, mã, email hoặc khoa..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
+              className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
             />
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-lg transition-colors ${
-                hasActiveFilters ? 'text-orange-600 bg-orange-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
           <div className="flex gap-3">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={handleSearch}
-              className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-100 hover:from-orange-600 hover:to-orange-700 transition-all"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
+                hasActiveFilters 
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-100' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              <Search className="w-5 h-5" />
-              Tìm kiếm
+              <Filter className="w-5 h-5" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
             </motion.button>
             {hasActiveFilters && (
               <motion.button
@@ -358,6 +438,7 @@ function TeacherManagement() {
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Khoa</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Email</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">SĐT</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Trạng thái</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
@@ -385,6 +466,17 @@ function TeacherManagement() {
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-600">{teacher.Email || 'N/A'}</td>
                     <td className="py-4 px-6 text-sm text-gray-600">{teacher.SoDienThoai || 'N/A'}</td>
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                        teacher.TrangThai === 'Đang dạy'
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : teacher.TrangThai === 'Tạm nghỉ'
+                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                          : 'bg-red-100 text-red-700 border border-red-200'
+                      }`}>
+                        {teacher.TrangThai || 'Đang dạy'}
+                      </span>
+                    </td>
                     <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-2">
                         <motion.button
@@ -396,22 +488,13 @@ function TeacherManagement() {
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(teacher)}
-                          className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
                       </div>
                     </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="py-16">
+                  <td colSpan="7" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-orange-200" />
                       <p className="text-lg font-medium text-gray-600">Không tìm thấy giảng viên nào</p>
@@ -456,9 +539,13 @@ function TeacherManagement() {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa chuyên môn</label>
                   <select
                     value={formData.MaKhoa}
-                    onChange={handleKhoaChange}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
-                    required
+                    onChange={(e) => {
+                      handleKhoaChange(e);
+                      if (errors.MaKhoa) setErrors({ ...errors, MaKhoa: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${
+                      errors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    }`}
                   >
                     <option value="">Chọn khoa</option>
                     {faculties.map((faculty) => (
@@ -467,35 +554,67 @@ function TeacherManagement() {
                       </option>
                     ))}
                   </select>
+                  {errors.MaKhoa && <p className="text-red-500 text-sm mt-1">{errors.MaKhoa}</p>}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
                   <input
                     type="text"
                     value={formData.HoTen}
-                    onChange={(e) => setFormData({ ...formData, HoTen: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors"
-                    required
+                    onChange={(e) => {
+                      setFormData({ ...formData, HoTen: e.target.value });
+                      if (errors.HoTen) setErrors({ ...errors, HoTen: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    }`}
                   />
+                  {errors.HoTen && <p className="text-red-500 text-sm mt-1">{errors.HoTen}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                   <input
                     type="email"
                     value={formData.Email}
-                    onChange={(e) => setFormData({ ...formData, Email: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, Email: e.target.value });
+                      if (errors.Email) setErrors({ ...errors, Email: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    }`}
                   />
+                  {errors.Email && <p className="text-red-500 text-sm mt-1">{errors.Email}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
                   <input
                     type="text"
                     value={formData.SoDienThoai}
-                    onChange={(e) => setFormData({ ...formData, SoDienThoai: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, SoDienThoai: e.target.value });
+                      if (errors.SoDienThoai) setErrors({ ...errors, SoDienThoai: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    }`}
                   />
+                  {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
                 </div>
+                {editingTeacher && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
+                    <select
+                      value={formData.TrangThai}
+                      onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
+                    >
+                      <option value="Đang dạy">Đang dạy</option>
+                      <option value="Tạm nghỉ">Tạm nghỉ</option>
+                      <option value="Nghỉ việc">Nghỉ việc</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -518,77 +637,35 @@ function TeacherManagement() {
         </div>
         </ModalPortal>
       )}
-            {confirmDialog.show && (
-        <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/40 backdrop-blur-sm p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
-            >
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                  <Trash2 className="w-8 h-8 text-red-500" />
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa</h3>
-              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center">
-                {confirmDialog.message.split('\n').map((line, i) => (
-                  <p key={i} className={i === 0 ? 'text-sm text-gray-600' : 'font-bold text-gray-800 mt-1'}>{line}</p>
-                ))}
-                <p className="text-xs text-red-500 font-medium mt-2">Hành động này không thể hoàn tác.</p>
-              </div>
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setConfirmDialog({ ...confirmDialog, show: false })}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Hủy
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ ...confirmDialog, show: false }); }}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" /> Xóa
-                </motion.button>
-              </div>
-            </motion.div>
-          </div>
-        </ModalPortal>
-      )}
 
-      {successDialog.show && (
-        <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-green-100 rounded-full p-3">
-                  <UserCheck className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-800">Thông báo</h3>
-              </div>
-              <p className="text-gray-600 mb-6">{successDialog.message}</p>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSuccessDialog({ show: false, message: '' })}
-                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold"
-              >
-                Đóng
-              </motion.button>
-            </motion.div>
-          </div>
-        </ModalPortal>
-      )}
+      {/* Centralized Notification Components */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+      />
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        onConfirm={() => {
+          if (confirmDialog.onConfirm) {
+            confirmDialog.onConfirm();
+          }
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
+        }}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
+      />
+      <SuccessDialog
+        show={successDialog.show}
+        message={successDialog.message}
+        onClose={() => setSuccessDialog({ show: false, message: '' })}
+      />
+      <ErrorDialog
+        show={errorDialog.show}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ show: false, message: '' })}
+      />
 
       {/* Detail Modal */}
       {showDetailModal && selectedTeacher && (

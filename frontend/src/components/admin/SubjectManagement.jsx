@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, Plus, Edit, Trash2, Search, X, Filter, 
@@ -6,7 +6,7 @@ import {
   Award, TrendingUp, AlertCircle, CheckCircle, UserCheck
 } from 'lucide-react';
 import axios from 'axios';
-import ModalPortal from '../ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
 
 function SubjectManagement() {
   
@@ -51,6 +51,39 @@ function SubjectManagement() {
   });
   const [deleteModal, setDeleteModal] = useState({ show: false, subject: null });
 
+  // Validation states
+  const [formErrors, setFormErrors] = useState({
+    MaKhoa: '',
+    TenMonHoc: '',
+    SoTinChi: ''
+  });
+
+  // Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Dialog states
+  const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
+  const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
+
+  // Vietnamese diacritic removal for search
+  const removeVietnameseTones = useCallback((str) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  }, []);
+
+  // Debounced search
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -70,21 +103,86 @@ function SubjectManagement() {
   }
 };
 
+  const validateForm = () => {
+    const errors = {
+      MaKhoa: '',
+      TenMonHoc: '',
+      SoTinChi: ''
+    };
+    let isValid = true;
+
+    if (!formData.MaKhoa) {
+      errors.MaKhoa = 'Vui lòng chọn khoa';
+      isValid = false;
+    }
+
+    if (!formData.TenMonHoc.trim()) {
+      errors.TenMonHoc = 'Vui lòng nhập tên môn học';
+      isValid = false;
+    } else if (formData.TenMonHoc.trim().length < 3) {
+      errors.TenMonHoc = 'Tên môn học phải có ít nhất 3 ký tự';
+      isValid = false;
+    } else if (formData.TenMonHoc.trim().length > 30) {
+      errors.TenMonHoc = 'Tên môn học không được vượt quá 30 ký tự';
+      isValid = false;
+    } else if (/\d/.test(formData.TenMonHoc)) {
+      errors.TenMonHoc = 'Tên môn học không được chứa số';
+      isValid = false;
+    } else if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.TenMonHoc)) {
+      errors.TenMonHoc = 'Tên môn học không được chứa ký tự đặc biệt';
+      isValid = false;
+    } else if (/\s{2,}/.test(formData.TenMonHoc)) {
+      errors.TenMonHoc = 'Tên môn học không được chứa nhiều khoảng trắng liên tiếp';
+      isValid = false;
+    }
+
+    if (!formData.SoTinChi) {
+      errors.SoTinChi = 'Vui lòng nhập số tín chỉ';
+      isValid = false;
+    } else {
+      const credits = Number(formData.SoTinChi);
+      if (isNaN(credits)) {
+        errors.SoTinChi = 'Số tín chỉ phải là số';
+        isValid = false;
+      } else if (!Number.isInteger(credits)) {
+        errors.SoTinChi = 'Số tín chỉ phải là số nguyên';
+        isValid = false;
+      } else if (credits < 1) {
+        errors.SoTinChi = 'Số tín chỉ phải lớn hơn 0';
+        isValid = false;
+      } else if (credits > 9) {
+        errors.SoTinChi = 'Số tín chỉ không được vượt quá 9';
+        isValid = false;
+      }
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e) => {
   e.preventDefault();
+  
+  if (!validateForm()) {
+    return;
+  }
+
   setIsSubmitting(true);
   try {
     if (editingSubject) {
       await axios.put(`http://localhost:5000/api/subjects/${editingSubject.MaMonHoc}`, formData);
+      setToast({ show: true, message: 'Cập nhật môn học thành công!', type: 'success' });
     } else {
       const resCode = await axios.get(`http://localhost:5000/api/subjects/next-code/${formData.MaKhoa}`);
       await axios.post('http://localhost:5000/api/subjects', { ...formData, MaMonHoc: resCode.data.MaMonHoc });
+      setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
     }
     fetchData();
     handleCloseModal();
   } catch (error) {
     console.error('Error saving subject:', error);
-    alert('Lỗi khi lưu môn học!');
+    const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
+    setErrorDialog({ show: true, message: errorMessage });
   } finally {
     setIsSubmitting(false);
   }
@@ -98,6 +196,7 @@ function SubjectManagement() {
       SoTinChi: subject.SoTinChi,
       MaKhoa: subject.MaKhoa || ''
     });
+    setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
     setShowModal(true);
   };
 
@@ -106,6 +205,7 @@ function SubjectManagement() {
   setShowModal(false);
   setEditingSubject(null);
   setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
+  setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
 };
   const handleDelete = (subject) => {
     setDeleteModal({ show: true, subject });
@@ -116,9 +216,11 @@ function SubjectManagement() {
       await axios.delete(`http://localhost:5000/api/subjects/${deleteModal.subject.MaMonHoc}`);
       setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
       setDeleteModal({ show: false, subject: null });
+      setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
     } catch (error) {
       console.error('Error deleting subject:', error);
-      alert(error.response?.data?.message || 'Lỗi khi xóa môn học!');
+      const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
+      setErrorDialog({ show: true, message: errorMessage });
     }
   };
 
@@ -170,9 +272,16 @@ function SubjectManagement() {
   };
 
   const filteredSubjects = subjects.filter(subject => {
+  const searchLower = debouncedSearchTerm.toLowerCase();
+  const searchNoTones = removeVietnameseTones(searchLower);
+  const nameLower = subject.TenMonHoc?.toLowerCase() || '';
+  const nameNoTones = removeVietnameseTones(nameLower);
+  const codeLower = subject.MaMonHoc?.toLowerCase() || '';
+  
   const matchesSearch =
-    subject.TenMonHoc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    subject.MaMonHoc.toLowerCase().includes(searchTerm.toLowerCase());
+    nameLower.includes(searchLower) ||
+    nameNoTones.includes(searchNoTones) ||
+    codeLower.includes(searchLower);
   const matchesFaculty = !filters.facultyFilter || subject.MaKhoa === filters.facultyFilter;
   return matchesSearch && matchesFaculty;
 });
@@ -186,6 +295,12 @@ function SubjectManagement() {
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
     setCurrentPage(1); 
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setDisplaySearchTerm('');
+    setCurrentPage(1);
   };
 
   const handleApplyFilters = () => {
@@ -228,7 +343,10 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(249,115,22,0.2)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
+              setShowModal(true);
+            }}
             className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
           >
             <Plus className="w-5 h-5" />
@@ -238,61 +356,103 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
       </div>
 
       {/* Search and Filters */}
-<div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4">
-  <div className="flex items-center gap-3">
-    <div className="relative w-72">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-      <input
-        type="text"
-        placeholder="Tìm theo tên hoặc mã GV..."
-        value={displaySearchTerm}
-        onChange={(e) => setDisplaySearchTerm(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-        className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700 text-sm"
-      />
-    </div>
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Tìm theo tên hoặc mã môn học..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
+              className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
+            />
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
+                hasActiveFilters
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Filter className="w-5 h-5" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </motion.button>
+            {hasActiveFilters && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={clearFilters}
+                className="px-5 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200/60"
+              >
+                <XCircle className="w-5 h-5" />
+                Xóa lọc
+              </motion.button>
+            )}
+          </div>
+        </div>
 
-    <select
-      value={displayFilters.facultyFilter}
-      onChange={(e) => {
-        setDisplayFilters({ facultyFilter: e.target.value });
-        setFilters({ facultyFilter: e.target.value });
-      }}
-      className="px-3 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700 text-sm"
-    >
-      <option value="">Tất cả khoa</option>
-      {faculties.map((faculty) => (
-        <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-          {faculty.TenKhoa}
-        </option>
-      ))}
-    </select>
-
-    <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={handleSearch}
-      className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-md hover:from-orange-600 hover:to-orange-700 transition-all"
-    >
-      <Search className="w-4 h-4" />
-      Tìm kiếm
-    </motion.button>
-
-    {hasActiveFilters && (
-      <motion.button
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={clearFilters}
-        className="flex items-center gap-1.5 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-colors border-2 border-red-200/60"
-      >
-        <XCircle className="w-4 h-4" />
-        Xóa bộ lọc
-      </motion.button>
-    )}
-  </div>
-</div>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+          >
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+              <select
+                value={displayFilters.facultyFilter}
+                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+              >
+                <option value="">Tất cả khoa</option>
+                {faculties.map((faculty) => (
+                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                    {faculty.TenKhoa}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={handleApplyFilters}
+                className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
+              >
+                Áp dụng bộ lọc
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => setDisplayFilters({ facultyFilter: '' })}
+                className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Đặt lại
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </div>
 
       {/* Table & Pagination */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
@@ -438,7 +598,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
     <select
       value={formData.MaKhoa}
       onChange={handleKhoaChange}
-      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
       required
     >
       <option value="">Chọn khoa</option>
@@ -448,6 +608,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         </option>
       ))}
     </select>
+    {formErrors.MaKhoa && <p className="mt-1 text-sm text-red-500 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{formErrors.MaKhoa}</p>}
   </div>
   <input type="hidden" value={formData.MaMonHoc} />
   <div>
@@ -455,10 +616,15 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
     <input
       type="text"
       value={formData.TenMonHoc}
-      onChange={(e) => setFormData({ ...formData, TenMonHoc: e.target.value })}
-      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+      onChange={(e) => {
+        setFormData({ ...formData, TenMonHoc: e.target.value });
+        if (formErrors.TenMonHoc) setFormErrors({ ...formErrors, TenMonHoc: '' });
+      }}
+      maxLength={30}
+      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenMonHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
       required
     />
+    {formErrors.TenMonHoc && <p className="mt-1 text-sm text-red-500 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{formErrors.TenMonHoc}</p>}
   </div>
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">Số tín chỉ</label>
@@ -466,10 +632,14 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
       type="number"
       min="1" max="10"
       value={formData.SoTinChi}
-      onChange={(e) => setFormData({ ...formData, SoTinChi: e.target.value })}
-      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+      onChange={(e) => {
+        setFormData({ ...formData, SoTinChi: e.target.value });
+        if (formErrors.SoTinChi) setFormErrors({ ...formErrors, SoTinChi: '' });
+      }}
+      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.SoTinChi ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
       required
     />
+    {formErrors.SoTinChi && <p className="mt-1 text-sm text-red-500 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{formErrors.SoTinChi}</p>}
   </div>
   <div className="flex gap-3 pt-2">
   <button
@@ -718,60 +888,38 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         </div>
         </ModalPortal>
       )}
-      {/* Modal Xác nhận Xóa */}
-      <AnimatePresence>
-        {deleteModal.show && (
-          <ModalPortal>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
-              onClick={() => setDeleteModal({ show: false, subject: null })}
-            >
-              <motion.div
-                initial={{ scale: 0.85, y: 20, opacity: 0 }}
-                animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.85, y: 20, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-                className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                    <AlertCircle className="w-8 h-8 text-red-500" />
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa môn học</h3>
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center space-y-1">
-                  <p className="text-sm text-gray-600">Bạn sắp xóa môn học</p>
-                  <p className="font-bold text-gray-800">{deleteModal.subject?.TenMonHoc}</p>
-                  <p className="text-sm text-gray-500">Mã: <span className="font-mono font-semibold text-orange-600">{deleteModal.subject?.MaMonHoc}</span></p>
-                  <p className="text-xs text-red-500 font-medium mt-1">Hành động này không thể hoàn tác.</p>
-                </div>
-                <div className="flex gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setDeleteModal({ show: false, subject: null })}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                  >
-                    Hủy
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleDeleteConfirm}
-                    className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" /> Xóa môn học
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
-          </ModalPortal>
-        )}
-      </AnimatePresence>
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        show={deleteModal.show}
+        message={`Bạn có chắc chắn muốn xóa môn học "${deleteModal.subject?.TenMonHoc}" (${deleteModal.subject?.MaMonHoc})? Hành động này không thể hoàn tác.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteModal({ show: false, subject: null })}
+        title="Xác nhận xóa môn học"
+      />
+
+      {/* Toast Notification */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        show={successDialog.show}
+        message={successDialog.message}
+        onClose={() => setSuccessDialog({ show: false, message: '' })}
+        title="Thành công"
+      />
+
+      {/* Error Dialog */}
+      <ErrorDialog
+        show={errorDialog.show}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ show: false, message: '' })}
+        title="Lỗi"
+      />
     </div>
   );
 }

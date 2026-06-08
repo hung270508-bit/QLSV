@@ -109,7 +109,7 @@ function AdminRequests() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 shadow-lg shadow-blue-200/50 flex items-center gap-4"
+        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 shadow-lg shadow-blue-200/50 flex items-center gap-4"
       >
         <div className="p-3 bg-white/20 rounded-xl">
           <MessageSquare className="w-7 h-7 text-white" />

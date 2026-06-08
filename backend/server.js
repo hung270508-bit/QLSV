@@ -16,7 +16,7 @@ const db = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '1234', 
-    database: process.env.DB_NAME || 'quanlysv'
+    database: process.env.DB_NAME || 'qlsv'
 });
 
 // Kiểm tra kết nối DB
@@ -317,19 +317,19 @@ app.get('/api/students/next-code/:maLop', (req, res) => {
 });
 app.get('/api/students', (req, res) => executeQuery('SELECT s.*, l.TenLop FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop', [], res, 'Lỗi lấy SV!'));
 app.post('/api/students', async (req, res) => {
-    const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop } = req.body;
+    const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai } = req.body;
     try {
         const hashedPassword = await bcrypt.hash('123456aA@', saltRounds);
         db.query('INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)', [MSSV, hashedPassword], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo TK SV!' });
-            db.query('INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop) VALUES (?, ?, ?, ?, ?, ?, ?)', [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop], (err) => {
+            db.query('INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'], (err) => {
                 if (err) return res.status(500).json({ success: false, message: 'Lỗi thêm SV!' });
                 res.json({ success: true, message: 'Thêm sinh viên thành công!' });
             });
         });
     } catch (error) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
-app.put('/api/students/:mssv', (req, res) => executeUpdate('UPDATE sinhvien SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=? WHERE MSSV=?', [req.body.HoTen, req.body.NgaySinh, req.body.GioiTinh, req.body.Email, req.body.SoDienThoai, req.body.MaLop, req.params.mssv], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
+app.put('/api/students/:mssv', (req, res) => executeUpdate('UPDATE sinhvien SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=?, TrangThai=? WHERE MSSV=?', [req.body.HoTen, req.body.NgaySinh, req.body.GioiTinh, req.body.Email, req.body.SoDienThoai, req.body.MaLop, req.body.TrangThai || 'Đang học', req.params.mssv], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
 app.delete('/api/students/:mssv', (req, res) => {
     const mssv = req.params.mssv;
     // Xóa bảng con trước (sinhvien), sau đó xóa bảng cha (users)
@@ -409,19 +409,19 @@ app.get('/api/teachers/next-code/:maKhoa', (req, res) => {
     });
 });
 app.post('/api/teachers', async (req, res) => {
-    const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa } = req.body;
+    const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai } = req.body;
     try {
         const hashedPassword = await bcrypt.hash('gv@2025', saltRounds);
         db.query('INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 2)', [MaGiangVien, hashedPassword], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo TK GV!' });
-            db.query('INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa) VALUES (?, ?, ?, ?, ?)', [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa], (err) => {
+            db.query('INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai) VALUES (?, ?, ?, ?, ?, ?)', [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai || 'Đang dạy'], (err) => {
                 if (err) return res.status(500).json({ success: false, message: 'Lỗi thêm GV!' });
                 res.json({ success: true, message: 'Thêm giảng viên thành công!' });
             });
         });
     } catch(err) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
-app.put('/api/teachers/:maGV', (req, res) => executeUpdate('UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=? WHERE MaGiangVien=?', [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.params.maGV], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
+app.put('/api/teachers/:maGV', (req, res) => executeUpdate('UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=? WHERE MaGiangVien=?', [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.params.maGV], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
 app.delete('/api/teachers/:maGV', (req, res) => executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.maGV], res, 'Xóa thành công!', 'Lỗi xóa!'));
 
 app.get('/api/teachers/:maGV/details', (req, res) => executeQuery('SELECT g.*, k.TenKhoa FROM giangvien g LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa WHERE g.MaGiangVien = ?', [req.params.maGV], res, 'Lỗi lấy chi tiết!'));
@@ -722,58 +722,90 @@ const executeBulkInsert = (query, items, itemParams, res, successMsg, errorMsg) 
 };
 app.post('/api/grades/bulk', (req, res) => executeBulkInsert('INSERT INTO diem (MSSV, MaLopHocPhan, HocKy, DiemChuyenCan, DiemBaiTap, DiemGiuaKy, DiemCuoiKy) VALUES (?, ?, ?, ?, ?, ?, ?)', req.body.grades, g => [g.MSSV, g.MaLopHocPhan, g.HocKy, g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy], res, 'Nhập điểm', 'Lỗi nhập điểm'));
 app.post('/api/attendance/bulk', (req, res) => executeBulkInsert('INSERT INTO diemdanh (MaLichHoc, MSSV, NgayDiemDanh, TrangThai) VALUES (?, ?, ?, ?)', req.body.attendance, a => [a.MaLichHoc, a.MSSV, a.NgayDiemDanh, a.TrangThai], res, 'Điểm danh', 'Lỗi điểm danh'));
-// ==================== [SINH VIÊN] ĐÁNH GIÁ RÈN LUYỆN ====================
-// 1. Lấy lịch sử điểm rèn luyện của 1 sinh viên
-app.get('/api/training-points/student/:mssv', (req, res) => {
-    const query = 'SELECT * FROM danhgia_renluyen WHERE MSSV = ? ORDER BY HocKy DESC';
-    executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm rèn luyện!');
+
+
+// =====================================================================
+// [ADMIN] QUẢN LÝ ĐIỂM RÈN LUYỆN & YÊU CẦU
+// =====================================================================
+
+// 1. Quản lý đợt đánh giá
+app.get('/api/admin/training-periods', (req, res) => {
+    executeQuery('SELECT * FROM dot_danhgia ORDER BY MaDotDanhGia DESC', [], res, 'Lỗi lấy đợt đánh giá!');
 });
 
-// 2. Sinh viên nộp phiếu đánh giá mới
-app.post('/api/training-points', (req, res) => {
-    const { MSSV, HocKy, DiemTuDanhGia } = req.body;
+// NÂNG CẤP: Kiểm tra trùng học kỳ trước khi tạo
+app.post('/api/admin/training-periods', (req, res) => {
+    const { HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai } = req.body;
     
-    // Tự động tính xếp loại tạm thời
-    let xepLoai = 'Yếu';
-    if(DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
-    else if(DiemTuDanhGia >= 80) xepLoai = 'Tốt';
-    else if(DiemTuDanhGia >= 65) xepLoai = 'Khá';
-    else if(DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+    // Kiểm tra xem đã tồn tại đợt cho học kỳ này trong năm học này chưa
+    const checkQuery = 'SELECT MaDotDanhGia FROM dot_danhgia WHERE HocKy = ? AND NamHoc = ?';
+    db.query(checkQuery, [HocKy, NamHoc], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra trùng lặp!' });
+        if (results.length > 0) return res.status(400).json({ success: false, message: 'Đợt đánh giá cho học kỳ này đã tồn tại!' });
 
-    const query = 'INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai) VALUES (?, ?, ?, ?, ?, "Chờ lớp duyệt")';
-    executeInsert(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai], res, 'Nộp đánh giá thành công!', 'Lỗi nộp đánh giá!');
+        const query = 'INSERT INTO dot_danhgia (HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai) VALUES (?, ?, ?, ?, ?)';
+        executeInsert(query, [HocKy, NamHoc, NgayBatDau || null, NgayKetThuc || null, TrangThai || 'Đang tự đánh giá'], res, 'Tạo đợt đánh giá thành công!', 'Lỗi tạo đợt!');
+    });
 });
 
-// 3. Sinh viên cập nhật lại điểm (Khi phiếu còn ở trạng thái Chờ duyệt)
-app.put('/api/training-points/:id', (req, res) => {
-    const { DiemTuDanhGia } = req.body;
+app.put('/api/admin/training-periods/:id/status', (req, res) => {
+    const { TrangThai } = req.body;
+    executeUpdate('UPDATE dot_danhgia SET TrangThai = ? WHERE MaDotDanhGia = ?', [TrangThai, req.params.id], res, 'Cập nhật trạng thái đợt thành công!', 'Lỗi cập nhật đợt!');
+});
+
+// Lấy danh sách đợt đánh giá ĐANG MỞ (Dành cho Sinh viên quét)
+// NÂNG CẤP: Kiểm tra cả trạng thái VÀ khoảng ngày hiện tại (CURDATE)
+app.get('/api/training-periods/active', (req, res) => {
+    const query = `
+        SELECT * FROM dot_danhgia 
+        WHERE TrangThai = 'Đang tự đánh giá' 
+        AND CURDATE() BETWEEN NgayBatDau AND NgayKetThuc 
+        ORDER BY MaDotDanhGia DESC
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy đợt đánh giá đang mở!');
+});
+
+// 2. Xét duyệt điểm rèn luyện (Đã loại bỏ DiemLopDanhGia, chỉ dùng DiemKhoaDanhGia)
+app.get('/api/admin/training-points', (req, res) => {
+    executeQuery('SELECT d.*, s.HoTen, s.MaLop FROM danhgia_renluyen d JOIN sinhvien s ON d.MSSV = s.MSSV ORDER BY d.MaDanhGia DESC', [], res, 'Lỗi lấy điểm RL!');
+});
+
+app.put('/api/admin/training-points/:id', (req, res) => {
+    const { DiemKhoaDanhGia, TongDiem, TrangThai } = req.body; 
     
-    let xepLoai = 'Yếu';
-    if(DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
-    else if(DiemTuDanhGia >= 80) xepLoai = 'Tốt';
-    else if(DiemTuDanhGia >= 65) xepLoai = 'Khá';
-    else if(DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+    // Tính xếp loại dựa trên tổng điểm cuối cùng
+    let xepLoai = 'Yếu'; 
+    const diem = Number(TongDiem);
+    if(diem >= 90) xepLoai = 'Xuất sắc';
+    else if(diem >= 80) xepLoai = 'Tốt';
+    else if(diem >= 65) xepLoai = 'Khá';
+else if(diem >= 50) xepLoai = 'Trung bình';
+    
+    // Cập nhật: Fix cứng DiemLopDanhGia = 0, chỉ lưu điểm khoa
+    const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ? WHERE MaDanhGia = ?';
+    executeUpdate(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, req.params.id], res, 'Đã chốt điểm!', 'Lỗi cập nhật điểm!');
+});
 
-    const query = 'UPDATE danhgia_renluyen SET DiemTuDanhGia=?, TongDiem=?, XepLoai=? WHERE MaDanhGia=?';
-    executeUpdate(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], res, 'Cập nhật điểm thành công!', 'Lỗi cập nhật điểm!');
+// 3. Quản lý Yêu cầu & Phản hồi
+app.get('/api/admin/support-requests', (req, res) => {
+    const query = `
+        SELECT y.*, y.MSSV as NguoiGui, 'SinhVien' as VaiTro, y.ChuDe as TieuDe, 
+        (SELECT HoTen FROM sinhvien WHERE MSSV = y.MSSV) as TenNguoiGui 
+        FROM yeucau_hotro y ORDER BY y.NgayGui DESC
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy yêu cầu!');
+});
+
+app.put('/api/admin/support-requests/:id', (req, res) => {
+    const { TrangThai, PhanHoi } = req.body;
+    executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ? WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
 });
 
 
-// ==================== [SINH VIÊN] YÊU CẦU & HỖ TRỢ ====================
-// 1. Lấy danh sách yêu cầu hỗ trợ mà sinh viên đã gửi
-app.get('/api/support/student/:mssv', (req, res) => {
-    const query = 'SELECT * FROM yeucau_hotro WHERE MSSV = ? ORDER BY NgayGui DESC';
-    executeQuery(query, [req.params.mssv], res, 'Lỗi lấy danh sách yêu cầu!');
-});
 
-// 2. Sinh viên gửi yêu cầu hỗ trợ mới
-app.post('/api/support', (req, res) => {
-    const { MSSV, LoaiYeuCau, ChuDe, NoiDung } = req.body;
-    // Hàm NOW() của MySQL sẽ tự động lấy thời gian hiện tại
-    const query = 'INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), "Đang xử lý")';
-    executeInsert(query, [MSSV, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
-});
-// Khởi chạy server backend
+//=============================================================================
+// Khởi chạy server backend (Không được xóa)
+//=============================================================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server Backend đang chạy tại cổng: http://localhost:${PORT}`);

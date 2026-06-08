@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, BarChart3, BookOpen, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, CheckCircle, UserCheck, Clock, MapPin, Trash2 } from 'lucide-react';
 import axios from 'axios';
-import ModalPortal from '../ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -74,6 +74,30 @@ function ClassManagement() {
     show: false,
     message: ''
   });
+  const [errorDialog, setErrorDialog] = useState({
+    show: false,
+    message: ''
+  });
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Vietnamese diacritic removal for search
+  const removeVietnameseTones = useCallback((str) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  }, []);
+
+  // Debounced search
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchData();
@@ -216,13 +240,13 @@ function ClassManagement() {
             NienKhoa: nienKhoa
           });
         }
-        
-        setSuccessDialog({ show: true, message: 'Thêm lớp học thành công!' });
+
+        setToast({ show: true, message: 'Thêm lớp học thành công!', type: 'success' });
         fetchData();
         handleCloseModal();
       } catch (error) {
         console.error('Error saving class:', error);
-        setSuccessDialog({ show: true, message: 'Lỗi khi thêm lớp học: ' + (error.response?.data?.error || error.message) });
+        setErrorDialog({ show: true, message: 'Lỗi khi thêm lớp học: ' + (error.response?.data?.error || error.message) });
       }
     }
   });
@@ -267,17 +291,11 @@ function ClassManagement() {
       onConfirm: async () => {
         try {
           await axios.delete(`${API_BASE}/classes/${encodeURIComponent(cls.MaLop)}`);
-          setSuccessDialog({
-            show: true,
-            message: 'Xóa lớp học thành công!'
-          });
+          setToast({ show: true, message: 'Xóa lớp học thành công!', type: 'success' });
           fetchData();
         } catch (error) {
           console.error('Error deleting class:', error);
-          setSuccessDialog({
-            show: true,
-            message: 'Lỗi khi xóa lớp học!'
-          });
+          setErrorDialog({ show: true, message: 'Lỗi khi xóa lớp học!' });
         }
       }
     });
@@ -374,9 +392,20 @@ function ClassManagement() {
   };
 
   const filteredClasses = classes.filter(cls => {
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    const searchNoTones = removeVietnameseTones(searchLower);
+    const nameLower = cls.TenLop?.toLowerCase() || '';
+    const nameNoTones = removeVietnameseTones(nameLower);
+    const codeLower = cls.MaLop?.toLowerCase() || '';
+    const facultyNameLower = cls.TenKhoa?.toLowerCase() || '';
+    const facultyNameNoTones = removeVietnameseTones(facultyNameLower);
+    
     const matchesSearch = 
-      cls.TenLop.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cls.MaLop.toLowerCase().includes(searchTerm.toLowerCase());
+      nameLower.includes(searchLower) ||
+      nameNoTones.includes(searchNoTones) ||
+      codeLower.includes(searchLower) ||
+      facultyNameLower.includes(searchLower) ||
+      facultyNameNoTones.includes(searchNoTones);
     
     const matchesFaculty = !filters.facultyFilter || cls.MaKhoa === filters.facultyFilter;
     
@@ -385,6 +414,11 @@ function ClassManagement() {
 
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setDisplaySearchTerm('');
   };
 
   const handleApplyFilters = () => {
@@ -435,54 +469,102 @@ function ClassManagement() {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <div className="flex gap-4">
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm lớp học theo tên hoặc mã lớp..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
+              placeholder="Tìm kiếm lớp học theo tên, mã lớp hoặc khoa..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
+              className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
             />
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          <div className="relative">
-            <select
-              value={filters.facultyFilter}
-              onChange={(e) => setFilters({ ...filters, facultyFilter: e.target.value })}
-              className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors appearance-none pr-10 cursor-pointer"
-            >
-              <option value="">Sắp xếp...</option>
-              {faculties.map((faculty) => (
-                <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                  {faculty.TenKhoa}
-                </option>
-              ))}
-            </select>
-            <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all"
-          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
-          {hasActiveFilters && (
+          <div className="flex gap-3">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={clearFilters}
-              className="px-6 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
+                hasActiveFilters
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              <XCircle className="w-5 h-5" />
-              Xóa bộ lọc
+              <Filter className="w-5 h-5" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
             </motion.button>
-          )}
+            {hasActiveFilters && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={clearFilters}
+                className="px-5 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200/60"
+              >
+                <XCircle className="w-5 h-5" />
+                Xóa lọc
+              </motion.button>
+            )}
+          </div>
         </div>
+
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+          >
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+              <select
+                value={displayFilters.facultyFilter}
+                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+              >
+                <option value="">Tất cả khoa</option>
+                {faculties.map((faculty) => (
+                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                    {faculty.TenKhoa}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={handleApplyFilters}
+                className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
+              >
+                Áp dụng bộ lọc
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => setDisplayFilters({ facultyFilter: '' })}
+                className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Đặt lại
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Table */}
@@ -698,78 +780,34 @@ function ClassManagement() {
         </ModalPortal>
       )}
 
-      {/* Custom Confirmation Dialog */}
-      {confirmDialog.show && (
-        <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/30">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-orange-100 rounded-full p-3">
-                  <AlertCircle className="w-6 h-6 text-orange-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">Xác nhận</h3>
-              </div>
-              <p className="text-gray-600 mb-6">{confirmDialog.message}</p>
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    if (confirmDialog.onConfirm) {
-                      confirmDialog.onConfirm();
-                    }
-                    setConfirmDialog({ show: false, message: '', onConfirm: null });
-                  }}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
-                >
-                  Xác nhận
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-                >
-                  Hủy
-                </motion.button>
-              </div>
-            </motion.div>
-          </div>
-        </ModalPortal>
-      )}
-
-      {/* Custom Success Dialog */}
-      {successDialog.show && (
-        <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/30">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-green-100 rounded-full p-3">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">Thông báo</h3>
-              </div>
-              <p className="text-gray-600 mb-6">{successDialog.message}</p>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSuccessDialog({ show: false, message: '' })}
-                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
-              >
-                Đóng
-              </motion.button>
-            </motion.div>
-          </div>
-        </ModalPortal>
-      )}
+      {/* Centralized Notification Components */}
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        onConfirm={() => {
+          if (confirmDialog.onConfirm) {
+            confirmDialog.onConfirm();
+          }
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
+        }}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
+      />
+      <SuccessDialog
+        show={successDialog.show}
+        message={successDialog.message}
+        onClose={() => setSuccessDialog({ show: false, message: '' })}
+      />
+      <ErrorDialog
+        show={errorDialog.show}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ show: false, message: '' })}
+      />
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+      />
 
       {/* Detail Modal */}
       {showDetailModal && selectedClass && (

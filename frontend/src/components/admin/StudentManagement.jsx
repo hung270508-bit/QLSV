@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Upload, FileText, Calendar, CheckCircle, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, BookOpen, BarChart3, UserCheck, Clock, MapPin } from 'lucide-react';
 import axios from 'axios';
-import ModalPortal from '../ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
 
 function StudentManagement() {
   const [students, setStudents] = useState([]);
@@ -35,15 +35,33 @@ function StudentManagement() {
     GioiTinh: 'Nam',
     Email: '',
     SoDienThoai: '',
-    MaLop: ''
+    MaLop: '',
+    TrangThai: 'Đang học'
   });
   const [errors, setErrors] = useState({});
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null);
-  const [confirmMessage, setConfirmMessage] = useState('');
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState('');
-  const [notificationType, setNotificationType] = useState('success');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
+  const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
+  const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
+
+  // Vietnamese diacritic removal for search
+  const removeVietnameseTones = useCallback((str) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  }, []);
+
+  // Debounced search
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchData();
@@ -137,32 +155,37 @@ function StudentManagement() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const showNotificationMessage = (message, type) => {
-    setNotificationMessage(message);
-    setNotificationType(type);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
-  };
 
  const handleSubmit = async (e) => {
   e.preventDefault();
   if (!validateForm()) return;
-  
-  try {
-    if (editingStudent) {
-      // Bắt buộc dùng editingStudent.MSSV làm URL để không bao giờ bị lỗi 404
-      await axios.put(`http://localhost:5000/api/students/${editingStudent.MSSV}`, formData);
-      showNotificationMessage('Cập nhật sinh viên thành công!', 'success');
-    } else {
-      // Gửi nguyên cục formData (bao gồm cả MSSV đã tự sinh) lên server
+
+  if (editingStudent) {
+    setConfirmDialog({
+      show: true,
+      message: `Bạn có chắc chắn muốn cập nhật thông tin sinh viên "${formData.HoTen}" (${formData.MSSV}) không?`,
+      onConfirm: async () => {
+        try {
+          await axios.put(`http://localhost:5000/api/students/${editingStudent.MSSV}`, formData);
+          setToast({ show: true, message: 'Cập nhật sinh viên thành công!', type: 'success' });
+          fetchData();
+          handleCloseModal();
+        } catch (error) {
+          console.error('Error saving student:', error);
+          setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
+        }
+      }
+    });
+  } else {
+    try {
       await axios.post('http://localhost:5000/api/students', formData);
-      showNotificationMessage('Thêm sinh viên mới thành công!', 'success');
+      setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
+      fetchData();
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving student:', error);
+      setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
     }
-    fetchData();
-    handleCloseModal();
-  } catch (error) {
-    console.error('Error saving student:', error);
-    showNotificationMessage(error.response?.data?.message || 'Lỗi khi lưu sinh viên!', 'error');
   }
 };
 
@@ -175,25 +198,12 @@ function StudentManagement() {
       GioiTinh: student.GioiTinh || 'Nam',
       Email: student.Email || '',
       SoDienThoai: student.SoDienThoai || '',
-      MaLop: student.MaLop || ''
+      MaLop: student.MaLop || '',
+      TrangThai: student.TrangThai || 'Đang học'
     });
     setShowModal(true);
   };
 
- const handleDelete = async (student) => {
-  setConfirmMessage(`Bạn có chắc chắn muốn xóa sinh viên?\n${student.HoTen} (${student.MSSV})`);
-  setConfirmAction(() => async () => {
-    try {
-      await axios.delete(`http://localhost:5000/api/students/${student.MSSV}`);
-      setStudents(prevStudents => prevStudents.filter(s => s.MSSV !== student.MSSV));
-      showNotificationMessage('Xóa sinh viên thành công!', 'success');
-    } catch (error) {
-      console.error('Error deleting student:', error);
-      showNotificationMessage(error.response?.data?.message || 'Lỗi khi xóa sinh viên!', 'error');
-    }
-  });
-  setShowConfirmModal(true);
-};
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -205,25 +215,12 @@ function StudentManagement() {
       GioiTinh: 'Nam',
       Email: '',
       SoDienThoai: '',
-      MaLop: ''
+      MaLop: '',
+      TrangThai: 'Đang học'
     });
     setErrors({});
   };
 
-  const handleConfirmAction = () => {
-    if (confirmAction) {
-      confirmAction();
-    }
-    setShowConfirmModal(false);
-    setConfirmAction(null);
-    setConfirmMessage('');
-  };
-
-  const handleCancelConfirm = () => {
-    setShowConfirmModal(false);
-    setConfirmAction(null);
-    setConfirmMessage('');
-  };
 
   const handleViewDetails = async (student) => {
     setSelectedStudent(student);
@@ -279,9 +276,18 @@ function StudentManagement() {
   };
 
   const filteredStudents = students.filter(student => {
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    const searchNoTones = removeVietnameseTones(searchLower);
+    const nameLower = student.HoTen?.toLowerCase() || '';
+    const nameNoTones = removeVietnameseTones(nameLower);
+    const idLower = student.MSSV?.toLowerCase() || '';
+    const emailLower = student.Email?.toLowerCase() || '';
+    
     const matchesSearch = 
-      student.HoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.MSSV.toLowerCase().includes(searchTerm.toLowerCase());
+      nameLower.includes(searchLower) ||
+      nameNoTones.includes(searchNoTones) ||
+      idLower.includes(searchLower) ||
+      emailLower.includes(searchLower);
     
     const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
     const matchesGender = !filters.genderFilter || student.GioiTinh === filters.genderFilter;
@@ -291,6 +297,11 @@ function StudentManagement() {
 
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setDisplaySearchTerm('');
   };
 
   const handleApplyFilters = () => {
@@ -352,67 +363,74 @@ function StudentManagement() {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-2xl shadow-lg border border-orange-100 p-6">
-        <div className="flex gap-4">
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Tìm kiếm sinh viên theo tên, MSSV hoặc email..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
+              className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
             />
-            <button
-              type="button"
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${
-                hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
+              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
+                hasActiveFilters
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               <Filter className="w-5 h-5" />
+              Bộ lọc
               {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
-            </button>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all"
-          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
-          {hasActiveFilters && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={clearFilters}
-              className="px-6 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200"
-            >
-              <XCircle className="w-5 h-5" />
-              Xóa bộ lọc
             </motion.button>
-          )}
+            {hasActiveFilters && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={clearFilters}
+                className="px-5 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200/60"
+              >
+                <XCircle className="w-5 h-5" />
+                Xóa lọc
+              </motion.button>
+            )}
+          </div>
         </div>
 
         {showFilters && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-orange-50 rounded-xl p-4 space-y-4 relative z-50 w-full mt-4"
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Lọc theo lớp</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
                 <select
                   value={displayFilters.classFilter}
                   onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
                 >
                   <option value="">Tất cả lớp</option>
                   {classes.map((cls) => (
@@ -423,11 +441,11 @@ function StudentManagement() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Lọc theo giới tính</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo giới tính</label>
                 <select
                   value={displayFilters.genderFilter}
                   onChange={(e) => setDisplayFilters({ ...displayFilters, genderFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
                 >
                   <option value="">Tất cả</option>
                   <option value="Nam">Nam</option>
@@ -437,18 +455,18 @@ function StudentManagement() {
             </div>
             <div className="flex gap-3 pt-2">
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
               >
-                Áp dụng lọc
+                Áp dụng bộ lọc
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 onClick={() => setDisplayFilters({ classFilter: '', genderFilter: '' })}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
               </motion.button>
@@ -469,6 +487,7 @@ function StudentManagement() {
                 <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Email</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">SĐT</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
@@ -502,6 +521,17 @@ function StudentManagement() {
                     <td className="py-5 px-6 text-sm text-gray-600">{student.Email || 'N/A'}</td>
                     <td className="py-5 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
                     <td className="py-5 px-6">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                        student.TrangThai === 'Đang học'
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : student.TrangThai === 'Học lại'
+                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                          : 'bg-red-100 text-red-700 border border-red-200'
+                      }`}>
+                        {student.TrangThai || 'Đang học'}
+                      </span>
+                    </td>
+                    <td className="py-5 px-6">
                       <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
@@ -512,22 +542,13 @@ function StudentManagement() {
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(student)}
-                          className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
                       </div>
                     </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-16">
+                  <td colSpan="8" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy sinh viên nào</p>
@@ -663,6 +684,20 @@ function StudentManagement() {
                   </select>
                   {errors.MaLop && <p className="text-red-500 text-sm mt-1">{errors.MaLop}</p>}
                 </div>
+                {editingStudent && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
+                    <select
+                      value={formData.TrangThai}
+                      onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    >
+                      <option value="Đang học">Đang học</option>
+                      <option value="Học lại">Học lại</option>
+                      <option value="Nghỉ học">Nghỉ học</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -956,71 +991,35 @@ function StudentManagement() {
         </ModalPortal>
       )}
 
-      {/* Confirmation Modal */}
-      {showConfirmModal && (
-        <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
-            >
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-8 h-8 text-red-500" />
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa</h3>
-              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center">
-                {confirmMessage.split('\n').map((line, i) => (
-                  <p key={i} className={i === 0 ? 'text-sm text-gray-600' : 'font-bold text-gray-800 mt-1'}>{line}</p>
-                ))}
-                <p className="text-xs text-red-500 font-medium mt-2">Hành động này không thể hoàn tác.</p>
-              </div>
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleCancelConfirm}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Hủy
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleConfirmAction}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" /> Xóa
-                </motion.button>
-              </div>
-            </motion.div>
-          </div>
-        </ModalPortal>
-      )}
 
-      {/* Notification Toast */}
-      <AnimatePresence>
-        {showNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -50, x: '-50%' }}
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 ${
-              notificationType === 'success' ? 'bg-green-500' : 'bg-red-500'
-            } text-white`}
-          >
-            {notificationType === 'success' ? (
-              <CheckCircle className="w-5 h-5" />
-            ) : (
-              <XCircle className="w-5 h-5" />
-            )}
-            <span className="font-semibold">{notificationMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Centralized Notification Components */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+      />
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        onConfirm={() => {
+          if (confirmDialog.onConfirm) {
+            confirmDialog.onConfirm();
+          }
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
+        }}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
+      />
+      <SuccessDialog
+        show={successDialog.show}
+        message={successDialog.message}
+        onClose={() => setSuccessDialog({ show: false, message: '' })}
+      />
+      <ErrorDialog
+        show={errorDialog.show}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ show: false, message: '' })}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: quanlysv
+-- Host: 127.0.0.1    Database: qlsv
 -- ------------------------------------------------------
 -- Server version	9.7.0
 
@@ -21,8 +21,7 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
-SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '77119960-5966-11f1-b0ae-d05f643bfb9a:1-1065,
-d5f339bb-590b-11f1-b192-e4a8dfba5018:1-156';
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ 'd5f339bb-590b-11f1-b192-e4a8dfba5018:1-777';
 
 --
 -- Table structure for table `dangky_hocphan`
@@ -151,6 +150,34 @@ LOCK TABLES `diemdanh` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `dot_danhgia`
+--
+
+DROP TABLE IF EXISTS `dot_danhgia`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dot_danhgia` (
+  `MaDotDanhGia` int NOT NULL AUTO_INCREMENT,
+  `HocKy` varchar(50) DEFAULT NULL,
+  `NamHoc` varchar(50) DEFAULT NULL,
+  `NgayBatDau` date DEFAULT NULL,
+  `NgayKetThuc` date DEFAULT NULL,
+  `TrangThai` varchar(50) DEFAULT 'Đang tự đánh giá',
+  PRIMARY KEY (`MaDotDanhGia`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `dot_danhgia`
+--
+
+LOCK TABLES `dot_danhgia` WRITE;
+/*!40000 ALTER TABLE `dot_danhgia` DISABLE KEYS */;
+INSERT INTO `dot_danhgia` VALUES (1,'HK2_2025_2026','2025-2026','2026-06-09','2026-06-15','Đang tự đánh giá');
+/*!40000 ALTER TABLE `dot_danhgia` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `giangvien`
 --
 
@@ -163,6 +190,7 @@ CREATE TABLE `giangvien` (
   `Email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `SoDienThoai` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `MaKhoa` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `TrangThai` enum('Đang dạy','Tạm nghỉ','Nghỉ việc') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang dạy',
   PRIMARY KEY (`MaGiangVien`),
   KEY `MaKhoa` (`MaKhoa`),
   CONSTRAINT `giangvien_ibfk_1` FOREIGN KEY (`MaGiangVien`) REFERENCES `users` (`TaiKhoan`) ON DELETE CASCADE,
@@ -176,6 +204,7 @@ CREATE TABLE `giangvien` (
 
 LOCK TABLES `giangvien` WRITE;
 /*!40000 ALTER TABLE `giangvien` DISABLE KEYS */;
+INSERT INTO `giangvien` VALUES ('GV5001','asdasdasda','hung270508@gmail.com','091231231','CNTT','Đang dạy'),('GV55002','dsdfsdf','hung270508@gmail.com','123123','CNTT','Đang dạy'),('GV6001','ưdasd','hung270508@gmail.com','123123123','KT','Đang dạy');
 /*!40000 ALTER TABLE `giangvien` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -192,7 +221,7 @@ CREATE TABLE `khoa` (
   `TenKhoa` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`MaKhoa`),
   UNIQUE KEY `ID` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -201,6 +230,7 @@ CREATE TABLE `khoa` (
 
 LOCK TABLES `khoa` WRITE;
 /*!40000 ALTER TABLE `khoa` DISABLE KEYS */;
+INSERT INTO `khoa` VALUES (5,'CNTT','Công nghệ thông tin'),(6,'KT','Kinh tế'),(7,'NN','Ngoại ngữ');
 /*!40000 ALTER TABLE `khoa` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -256,6 +286,7 @@ CREATE TABLE `lophoc` (
 
 LOCK TABLES `lophoc` WRITE;
 /*!40000 ALTER TABLE `lophoc` DISABLE KEYS */;
+INSERT INTO `lophoc` VALUES ('23CNTT1','Kỹ Thuật Phần Mềm 1','CNTT','2023-2027');
 /*!40000 ALTER TABLE `lophoc` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -312,6 +343,7 @@ CREATE TABLE `monhoc` (
 
 LOCK TABLES `monhoc` WRITE;
 /*!40000 ALTER TABLE `monhoc` DISABLE KEYS */;
+INSERT INTO `monhoc` VALUES ('CNTT001','Lập Trình Javascript',7),('CNTT004','lập trình python',9);
 /*!40000 ALTER TABLE `monhoc` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -398,6 +430,7 @@ CREATE TABLE `phanquyen` (
 
 LOCK TABLES `phanquyen` WRITE;
 /*!40000 ALTER TABLE `phanquyen` DISABLE KEYS */;
+INSERT INTO `phanquyen` VALUES (1,'Admin'),(2,'Giảng viên'),(3,'Sinh viên');
 /*!40000 ALTER TABLE `phanquyen` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -416,6 +449,7 @@ CREATE TABLE `sinhvien` (
   `Email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `SoDienThoai` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `MaLop` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `TrangThai` enum('Đang học','Học lại','Nghỉ học') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang học',
   PRIMARY KEY (`MSSV`),
   KEY `MaLop` (`MaLop`),
   CONSTRAINT `sinhvien_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `users` (`TaiKhoan`) ON DELETE CASCADE,
@@ -429,6 +463,7 @@ CREATE TABLE `sinhvien` (
 
 LOCK TABLES `sinhvien` WRITE;
 /*!40000 ALTER TABLE `sinhvien` DISABLE KEYS */;
+INSERT INTO `sinhvien` VALUES ('23050001','Lý Mạc Sầu','1990-11-27','Nam','lymacbook@gmail.com','0923454646','23CNTT1','Đang học'),('23050002','ádasdasd','1999-07-16','Nam','hung270508@gmail.com','0987654232','23CNTT1','Đang học');
 /*!40000 ALTER TABLE `sinhvien` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -516,6 +551,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
+INSERT INTO `users` VALUES ('23050001','$2b$10$8zyqu1z9jYYDiLNDc/p1pOlR1.dki2E/b8Uy9Ae857IOVEdGXbBPy',3,'2026-06-08 09:17:50'),('23050002','$2b$10$xcuIwvpNMhHFd2vi40rqtOD/KLbhQz9RSiy2ty1FH7jueLGppPDKW',3,'2026-06-08 09:56:43'),('admin','admin@123',1,'2026-06-08 08:29:18'),('GV001','gv@123',2,'2026-06-08 08:29:18'),('GV002','gv@123',2,'2026-06-08 08:29:18'),('GV003','gv@123',2,'2026-06-08 08:29:18'),('GV5001','$2b$10$QMCz.IfJMAia1K5wWB4aGuq03kgU2TePg9HBQeU1TJzYqlHnYE7Wa',2,'2026-06-08 12:11:58'),('GV55002','$2b$10$TXMNnAhVG.Fj6hVKumBmEODfRHcQT82pFlBORKW4590OR5C0Gegki',2,'2026-06-08 13:33:45'),('GV6001','$2b$10$3CKcEqknjoiBfKAymIM45OqmrCQ8RmnnYIPjkrXV6by20RepISLzO',2,'2026-06-08 13:34:11'),('SV001','123456aA@',3,'2026-06-08 08:29:18'),('SV002','123456aA@',3,'2026-06-08 08:29:18'),('SV003','123456aA@',3,'2026-06-08 08:29:18');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -560,4 +596,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-08  9:16:51
+-- Dump completed on 2026-06-09  0:13:24
