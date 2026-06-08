@@ -1,0 +1,52 @@
+﻿version: "3.9"
+
+services:
+  db:
+    image: mysql:8.1
+    container_name: qlsv-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: quanlysv
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./quanlysv.sql:/docker-entrypoint-initdb.d/quanlysv.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: .Dockerfile
+    container_name: qlsv-backend
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: 1234
+      DB_NAME: quanlysv
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: .Dockerfile
+    container_name: qlsv-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
