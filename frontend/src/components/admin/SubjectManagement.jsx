@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  BookOpen, Plus, Edit, Search, X, Filter, 
+  BookOpen, Plus, Edit, Trash2, Search, X, Filter, 
   XCircle, Eye, Users, BarChart3, ChevronLeft, ChevronRight,
   Award, TrendingUp, AlertCircle, CheckCircle, UserCheck
 } from 'lucide-react';
@@ -49,6 +49,7 @@ function SubjectManagement() {
     SoTinChi: '',
     TenKhoa: ''
   });
+  const [deleteModal, setDeleteModal] = useState({ show: false, subject: null });
 
   useEffect(() => {
     fetchData();
@@ -106,6 +107,21 @@ function SubjectManagement() {
   setEditingSubject(null);
   setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
 };
+  const handleDelete = (subject) => {
+    setDeleteModal({ show: true, subject });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/api/subjects/${deleteModal.subject.MaMonHoc}`);
+      setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
+      setDeleteModal({ show: false, subject: null });
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      alert(error.response?.data?.message || 'Lỗi khi xóa môn học!');
+    }
+  };
+
   const handleKhoaChange = async (e) => {
     const maKhoa = e.target.value;
     setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '' }));
@@ -322,6 +338,15 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDelete(subject)}
+                          className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </motion.button>
                       </div>
                     </td>
@@ -703,6 +728,60 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         </div>
         </ModalPortal>
       )}
+      {/* Modal Xác nhận Xóa */}
+      <AnimatePresence>
+        {deleteModal.show && (
+          <ModalPortal>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
+              onClick={() => setDeleteModal({ show: false, subject: null })}
+            >
+              <motion.div
+                initial={{ scale: 0.85, y: 20, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.85, y: 20, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-8 h-8 text-red-500" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa môn học</h3>
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center space-y-1">
+                  <p className="text-sm text-gray-600">Bạn sắp xóa môn học</p>
+                  <p className="font-bold text-gray-800">{deleteModal.subject?.TenMonHoc}</p>
+                  <p className="text-sm text-gray-500">Mã: <span className="font-mono font-semibold text-orange-600">{deleteModal.subject?.MaMonHoc}</span></p>
+                  <p className="text-xs text-red-500 font-medium mt-1">Hành động này không thể hoàn tác.</p>
+                </div>
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setDeleteModal({ show: false, subject: null })}
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    Hủy
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleDeleteConfirm}
+                    className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" /> Xóa môn học
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </ModalPortal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

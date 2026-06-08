@@ -180,19 +180,16 @@ function StudentManagement() {
     setShowModal(true);
   };
 
- const handleDelete = async (mssv) => {
-  setConfirmMessage('Bạn có chắc chắn muốn xóa sinh viên này?');
+ const handleDelete = async (student) => {
+  setConfirmMessage(`Bạn có chắc chắn muốn xóa sinh viên?\n${student.HoTen} (${student.MSSV})`);
   setConfirmAction(() => async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/students/${mssv}`);
-      
-      // XÓA fetchData() cũ và THAY BẰNG DÒNG NÀY:
-      setStudents(prevStudents => prevStudents.filter(student => student.MSSV !== mssv));
-      
+      await axios.delete(`http://localhost:5000/api/students/${student.MSSV}`);
+      setStudents(prevStudents => prevStudents.filter(s => s.MSSV !== student.MSSV));
       showNotificationMessage('Xóa sinh viên thành công!', 'success');
     } catch (error) {
       console.error('Error deleting student:', error);
-      showNotificationMessage('Lỗi khi xóa sinh viên!', 'error');
+      showNotificationMessage(error.response?.data?.message || 'Lỗi khi xóa sinh viên!', 'error');
     }
   });
   setShowConfirmModal(true);
@@ -518,7 +515,7 @@ function StudentManagement() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(student.MSSV)}
+                          onClick={() => handleDelete(student)}
                           className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
                           title="Xóa"
                         >
@@ -974,36 +971,42 @@ function StudentManagement() {
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/30">
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl"
+              initial={{ opacity: 0, scale: 0.85, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
             >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                   <AlertCircle className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Xác nhận</h3>
-                <p className="text-gray-600 mb-6">{confirmMessage}</p>
-                <div className="flex gap-3 w-full">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleCancelConfirm}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-                  >
-                    Hủy
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleConfirmAction}
-                    className="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition-colors"
-                  >
-                    Xác nhận
-                  </motion.button>
-                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa</h3>
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center">
+                {confirmMessage.split('\n').map((line, i) => (
+                  <p key={i} className={i === 0 ? 'text-sm text-gray-600' : 'font-bold text-gray-800 mt-1'}>{line}</p>
+                ))}
+                <p className="text-xs text-red-500 font-medium mt-2">Hành động này không thể hoàn tác.</p>
+              </div>
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleCancelConfirm}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  Hủy
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleConfirmAction}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" /> Xóa
+                </motion.button>
               </div>
             </motion.div>
           </div>

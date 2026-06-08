@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 
 function GradesSection({ grades, teachingAssignments, students, user, onRefresh }) {
@@ -19,6 +19,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
   const [lophocphanList, setLophocphanList] = useState([]);
   const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
   const [validationError, setValidationError] = useState('');
+  const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
 
   const initialFormState = {
     MSSV: '', MaLopHocPhan: '', HocKy: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
@@ -188,16 +189,23 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
     }
   };
 
-  const handleDelete = async (maDiem) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa điểm này?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/grades/${maDiem}`);
-        onRefresh();
-        showNotification('success', 'Xóa điểm thành công!');
-      } catch (error) {
-        showNotification('error', error.response?.data?.message || 'Lỗi khi xóa điểm!');
-      }
+  const handleDeleteClick = (grade) => {
+    setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: grade.TenSinhVien || grade.MSSV, tenMonHoc: grade.TenMonHoc || '' });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/api/grades/${deleteModal.maDiem}`);
+      setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
+      onRefresh();
+      showNotification('success', 'Xóa điểm thành công!');
+    } catch (error) {
+      showNotification('error', error.response?.data?.message || 'Lỗi khi xóa điểm!');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
   };
 
   const filteredGrades = myGrades.filter(grade => {
@@ -347,7 +355,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                       <td className="py-4 px-4 text-sm">
                         <div className="flex items-center justify-center gap-2">
                           <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleEdit(grade)} className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"><Edit className="w-4 h-4" /></motion.button>
-                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDelete(grade.MaDiem)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"><Trash2 className="w-4 h-4" /></motion.button>
+                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteClick(grade)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"><Trash2 className="w-4 h-4" /></motion.button>
                         </div>
                       </td>
                     </motion.tr>
@@ -546,6 +554,70 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
           </div>
         </div>
       )}
+
+      {/* Modal Xác nhận Xóa */}
+      <AnimatePresence>
+        {deleteModal.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
+            onClick={handleDeleteCancel}
+          >
+            <motion.div
+              initial={{ scale: 0.85, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.85, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Icon */}
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa điểm</h3>
+
+              {/* Info */}
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center space-y-1">
+                <p className="text-sm text-gray-600">
+                  Bạn sắp xóa điểm của sinh viên
+                </p>
+                <p className="font-bold text-gray-800">{deleteModal.tenSinhVien}</p>
+                {deleteModal.tenMonHoc && (
+                  <p className="text-sm text-gray-500">Môn: <span className="font-semibold text-gray-700">{deleteModal.tenMonHoc}</span></p>
+                )}
+                <p className="text-xs text-red-500 font-medium mt-1">Hành động này không thể hoàn tác.</p>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleDeleteCancel}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  Hủy
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" /> Xóa điểm
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Thông báo Toast */}
       <AnimatePresence>

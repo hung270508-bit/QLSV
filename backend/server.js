@@ -15,8 +15,8 @@ app.use(express.json());
 const db = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '1234', 
-    database: process.env.DB_NAME || 'qlsv'
+    password: process.env.DB_PASSWORD || '123456', 
+    database: process.env.DB_NAME || 'quanlysv'
 });
 
 // Kiểm tra kết nối DB
@@ -315,7 +315,7 @@ app.post('/api/students', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
 app.put('/api/students/:mssv', (req, res) => executeUpdate('UPDATE sinhvien SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=? WHERE MSSV=?', [req.body.HoTen, req.body.NgaySinh, req.body.GioiTinh, req.body.Email, req.body.SoDienThoai, req.body.MaLop, req.params.mssv], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
-app.delete('/api/students/:mssv', (req, res) => executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.mssv], res, 'Xóa thành công!', 'Lỗi xóa!'));
+app.delete('/api/students/:mssv', (req, res) => executeDelete('DELETE FROM sinhvien WHERE MSSV = ?', [req.params.mssv], res, 'Xóa sinh viên thành công!', 'Lỗi xóa sinh viên!'));
 // API tự động sinh MSSV dựa trên Lớp học được chọn
 app.get('/api/students/next-code/:maLop', (req, res) => {
     const { maLop } = req.params;
@@ -396,7 +396,7 @@ app.post('/api/teachers', async (req, res) => {
     } catch(err) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
 app.put('/api/teachers/:maGV', (req, res) => executeUpdate('UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=? WHERE MaGiangVien=?', [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.params.maGV], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
-app.delete('/api/teachers/:maGV', (req, res) => executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.maGV], res, 'Xóa thành công!', 'Lỗi xóa!'));
+app.delete('/api/teachers/:maGV', (req, res) => executeDelete('DELETE FROM giangvien WHERE MaGiangVien = ?', [req.params.maGV], res, 'Xóa giảng viên thành công!', 'Lỗi xóa giảng viên!'));
 
 app.get('/api/teachers/:maGV/details', (req, res) => executeQuery('SELECT g.*, k.TenKhoa FROM giangvien g LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa WHERE g.MaGiangVien = ?', [req.params.maGV], res, 'Lỗi lấy chi tiết!'));
 app.get('/api/teachers/:maGV/teaching-schedule', (req, res) => executeQuery(`SELECT lh.*, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy, mh.TenMonHoc, l.TenLop FROM lichhoc lh LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaGiangVien = ?`, [req.params.maGV], res, 'Lỗi lấy lịch giảng dạy!'));

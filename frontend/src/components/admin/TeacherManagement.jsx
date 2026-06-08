@@ -108,17 +108,18 @@ function TeacherManagement() {
     setShowModal(true);
   };
 
-  const handleDelete = async (maGV) => {
+  const handleDelete = async (teacher) => {
     setConfirmDialog({
       show: true,
-      message: 'Bạn có chắc chắn muốn xóa giảng viên này?',
+      message: `Bạn có chắc chắn muốn xóa giảng viên?\n${teacher.HoTen} (${teacher.MaGiangVien})`,
       onConfirm: async () => {
         try {
-          await axios.delete(`http://localhost:5000/api/teachers/${maGV}`);
-          fetchData();
+          await axios.delete(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}`);
+          setTeachers(prev => prev.filter(t => t.MaGiangVien !== teacher.MaGiangVien));
+          setSuccessDialog({ show: true, message: 'Xóa giảng viên thành công!' });
         } catch (error) {
           console.error('Error deleting teacher:', error);
-          alert('Lỗi khi xóa giảng viên!');
+          setSuccessDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi xóa giảng viên!' });
         }
       }
     });
@@ -398,7 +399,7 @@ function TeacherManagement() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(teacher.MaGiangVien)}
+                          onClick={() => handleDelete(teacher)}
                           className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100"
                           title="Xóa"
                         >
@@ -529,19 +530,42 @@ function TeacherManagement() {
       )}
             {confirmDialog.show && (
         <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/50 p-4">
-            <motion.div className="bg-white rounded-2xl p-6 max-w-sm w-full">
-              <h3 className="text-lg font-bold mb-4">Xác nhận</h3>
-              <p className="text-gray-600 mb-6">{confirmDialog.message}</p>
+          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/40 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            >
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-8 h-8 text-red-500" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa</h3>
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center">
+                {confirmDialog.message.split('\n').map((line, i) => (
+                  <p key={i} className={i === 0 ? 'text-sm text-gray-600' : 'font-bold text-gray-800 mt-1'}>{line}</p>
+                ))}
+                <p className="text-xs text-red-500 font-medium mt-2">Hành động này không thể hoàn tác.</p>
+              </div>
               <div className="flex gap-3">
-                <button 
-                  onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({...confirmDialog, show: false}); }}
-                  className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold"
-                >Xác nhận</button>
-                <button 
-                  onClick={() => setConfirmDialog({...confirmDialog, show: false})}
-                  className="flex-1 bg-gray-200 py-2 rounded-xl font-semibold"
-                >Hủy</button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setConfirmDialog({ ...confirmDialog, show: false })}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  Hủy
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ ...confirmDialog, show: false }); }}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" /> Xóa
+                </motion.button>
               </div>
             </motion.div>
           </div>
