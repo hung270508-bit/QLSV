@@ -33,6 +33,7 @@ function AdminRequests() {
   const [selectedReq, setSelectedReq] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [updateStatus, setUpdateStatus] = useState('');
+  const [replyErrors, setReplyErrors] = useState({});
 
   const fetchRequests = async () => {
     try {
@@ -52,9 +53,28 @@ function AdminRequests() {
     setSelectedReq(req);
     setReplyText(req.PhanHoi || '');
     setUpdateStatus(req.TrangThai === 'Chờ xử lý' ? 'Đang xử lý' : req.TrangThai);
+    setReplyErrors({});
+  };
+
+  const validateReply = () => {
+    const errors = {};
+    if (!updateStatus) {
+      errors.updateStatus = 'Vui lòng chọn trạng thái';
+    }
+    const requiresReply = ['Đã phản hồi', 'Hoàn thành', 'Từ chối'].includes(updateStatus);
+    if (requiresReply && !replyText.trim()) {
+      errors.replyText = 'Vui lòng nhập nội dung phản hồi';
+    } else if (replyText.trim() && replyText.trim().length < 10) {
+      errors.replyText = 'Nội dung phản hồi phải có ít nhất 10 ký tự';
+    } else if (replyText.trim().length > 1000) {
+      errors.replyText = 'Nội dung phản hồi tối đa 1000 ký tự';
+    }
+    setReplyErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleUpdate = async () => {
+    if (!validateReply()) return;
     try {
       await axios.put(`http://localhost:5000/api/admin/support-requests/${selectedReq.MaYeuCau}`, {
         TrangThai: updateStatus,
@@ -62,9 +82,10 @@ function AdminRequests() {
         NguoiTraLoi: 'Admin QLSV'
       });
       setSelectedReq(null);
+      setReplyErrors({});
       fetchRequests();
     } catch (e) {
-      alert('Có lỗi xảy ra khi xử lý!');
+      setReplyErrors({ general: 'Có lỗi xảy ra khi xử lý yêu cầu!' });
     }
   };
 
@@ -248,7 +269,7 @@ function AdminRequests() {
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setSelectedReq(null)}
+                  onClick={() => { setSelectedReq(null); setReplyErrors({}); }}
                   className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -277,30 +298,58 @@ function AdminRequests() {
 
                 <div className="border-t border-gray-100 pt-4 space-y-3">
                   <h4 className="font-semibold text-gray-700 text-sm">Phản hồi:</h4>
-                  <select
-                    value={updateStatus}
-                    onChange={e => setUpdateStatus(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-blue-400 text-sm font-medium text-gray-700 transition-colors"
-                  >
-                    <option value="Đang xử lý">Đang xử lý</option>
-                    <option value="Đã phản hồi">Đã phản hồi</option>
-                    <option value="Hoàn thành">Hoàn thành</option>
-                    <option value="Từ chối">Từ chối</option>
-                  </select>
-                  <textarea
-                    rows={4}
-                    value={replyText}
-                    onChange={e => setReplyText(e.target.value)}
-                    placeholder="Nhập nội dung phản hồi..."
-                    className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-blue-400 resize-none text-sm transition-colors"
-                  />
+                  <div>
+                    <select
+                      value={updateStatus}
+                      onChange={e => {
+                        setUpdateStatus(e.target.value);
+                        if (replyErrors.updateStatus) setReplyErrors(prev => ({ ...prev, updateStatus: '' }));
+                      }}
+                      className={`w-full p-2.5 bg-white border rounded-xl outline-none text-sm font-medium text-gray-700 transition-colors ${replyErrors.updateStatus ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-blue-400'}`}
+                    >
+                      <option value="Đang xử lý">Đang xử lý</option>
+                      <option value="Đã phản hồi">Đã phản hồi</option>
+                      <option value="Hoàn thành">Hoàn thành</option>
+                      <option value="Từ chối">Từ chối</option>
+                    </select>
+                    {replyErrors.updateStatus && (
+                      <p className="text-red-500 text-xs mt-1">{replyErrors.updateStatus}</p>
+                    )}
+                  </div>
+                  <div>
+                    <textarea
+                      rows={4}
+                      value={replyText}
+                      onChange={e => {
+                        setReplyText(e.target.value);
+                        if (replyErrors.replyText) setReplyErrors(prev => ({ ...prev, replyText: '' }));
+                      }}
+                      placeholder={
+                        ['Đã phản hồi', 'Hoàn thành', 'Từ chối'].includes(updateStatus)
+                          ? 'Nội dung phản hồi (bắt buộc)...'
+                          : 'Nhập nội dung phản hồi...'
+                      }
+                      className={`w-full p-3 bg-white border rounded-xl outline-none resize-none text-sm transition-colors ${replyErrors.replyText ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-blue-400'}`}
+                    />
+                    <div className="flex items-center justify-between mt-1">
+                      {replyErrors.replyText
+                        ? <p className="text-red-500 text-xs">{replyErrors.replyText}</p>
+                        : <span />}
+                      <p className="text-xs text-gray-400">{replyText.length}/1000</p>
+                    </div>
+                  </div>
+                  {replyErrors.general && (
+                    <p className="text-red-500 text-xs font-medium text-center bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                      {replyErrors.general}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="bg-gray-50 p-4 border-t border-gray-100 shrink-0 flex justify-end gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={() => setSelectedReq(null)}
+                  onClick={() => { setSelectedReq(null); setReplyErrors({}); }}
                   className="px-5 py-2 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-sm transition-colors"
                 >
                   Hủy

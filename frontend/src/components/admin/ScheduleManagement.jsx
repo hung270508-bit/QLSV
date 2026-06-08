@@ -11,6 +11,7 @@ function ScheduleManagement() {
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({ MaLopHocPhan: '', NgayHoc: '', CaHoc: '', PhongHoc: '' });
+  const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => { fetchData(); }, []);
 
@@ -29,8 +30,33 @@ function ScheduleManagement() {
     }
   };
 
+  const validateScheduleForm = () => {
+    const errors = {};
+    if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
+    if (!formData.NgayHoc) {
+      errors.NgayHoc = 'Vui lòng chọn ngày học';
+    } else {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const selected = new Date(formData.NgayHoc);
+      if (selected < today) errors.NgayHoc = 'Ngày học không được là ngày trong quá khứ';
+    }
+    if (!formData.CaHoc) errors.CaHoc = 'Vui lòng chọn ca học';
+    if (!formData.PhongHoc.trim()) {
+      errors.PhongHoc = 'Phòng học không được để trống';
+    } else if (formData.PhongHoc.trim().length < 2) {
+      errors.PhongHoc = 'Phòng học phải có ít nhất 2 ký tự';
+    } else if (formData.PhongHoc.trim().length > 20) {
+      errors.PhongHoc = 'Phòng học tối đa 20 ký tự';
+    } else if (!/^[a-zA-Z0-9\-._\/]+$/.test(formData.PhongHoc.trim())) {
+      errors.PhongHoc = 'Phòng học chỉ gồm chữ, số và ký tự - . _';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateScheduleForm()) return;
     try {
       if (editingSchedule) {
         await axios.put(`http://localhost:5000/api/schedules/${editingSchedule.MaLichHoc}`, formData);
@@ -69,6 +95,7 @@ function ScheduleManagement() {
     setShowModal(false);
     setEditingSchedule(null);
     setFormData({ MaLopHocPhan: '', NgayHoc: '', CaHoc: '', PhongHoc: '' });
+    setFormErrors({});
   };
 
   const getDayOfWeek = (d) => {
@@ -256,8 +283,11 @@ function ScheduleManagement() {
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Lớp Học Phần</label>
                   <select
                     value={formData.MaLopHocPhan}
-                    onChange={e => setFormData({ ...formData, MaLopHocPhan: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-400 text-sm transition-colors"
+                    onChange={e => {
+                      setFormData({ ...formData, MaLopHocPhan: e.target.value });
+                      if (formErrors.MaLopHocPhan) setFormErrors(prev => ({ ...prev, MaLopHocPhan: '' }));
+                    }}
+                    className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl outline-none text-sm transition-colors ${formErrors.MaLopHocPhan ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-orange-400'}`}
                     required
                   >
                     <option value="">-- Chọn Lớp Học Phần --</option>
@@ -267,6 +297,7 @@ function ScheduleManagement() {
                       </option>
                     ))}
                   </select>
+                  {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -275,20 +306,27 @@ function ScheduleManagement() {
                     <input
                       type="date"
                       value={formData.NgayHoc}
-                      onChange={e => setFormData({ ...formData, NgayHoc: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-400 text-sm transition-colors"
+                      onChange={e => {
+                        setFormData({ ...formData, NgayHoc: e.target.value });
+                        if (formErrors.NgayHoc) setFormErrors(prev => ({ ...prev, NgayHoc: '' }));
+                      }}
+                      className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl outline-none text-sm transition-colors ${formErrors.NgayHoc ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-orange-400'}`}
                       required
                     />
-                    {formData.NgayHoc && (
+                    {formData.NgayHoc && !formErrors.NgayHoc && (
                       <p className="text-xs text-blue-500 mt-1 font-medium">👉 {getDayOfWeek(formData.NgayHoc)}</p>
                     )}
+                    {formErrors.NgayHoc && <p className="text-red-500 text-xs mt-1">{formErrors.NgayHoc}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Ca học</label>
                     <select
                       value={formData.CaHoc}
-                      onChange={e => setFormData({ ...formData, CaHoc: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-400 text-sm transition-colors"
+                      onChange={e => {
+                        setFormData({ ...formData, CaHoc: e.target.value });
+                        if (formErrors.CaHoc) setFormErrors(prev => ({ ...prev, CaHoc: '' }));
+                      }}
+                      className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl outline-none text-sm transition-colors ${formErrors.CaHoc ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-orange-400'}`}
                       required
                     >
                       <option value="">Chọn Ca</option>
@@ -297,6 +335,7 @@ function ScheduleManagement() {
                       <option value="3">Ca 3 (Tiết 7-9)</option>
                       <option value="4">Ca 4 (Tiết 10-12)</option>
                     </select>
+                    {formErrors.CaHoc && <p className="text-red-500 text-xs mt-1">{formErrors.CaHoc}</p>}
                   </div>
                 </div>
 
@@ -306,10 +345,14 @@ function ScheduleManagement() {
                     type="text"
                     placeholder="VD: E1-04.08/1"
                     value={formData.PhongHoc}
-                    onChange={e => setFormData({ ...formData, PhongHoc: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-400 text-sm transition-colors"
+                    onChange={e => {
+                      setFormData({ ...formData, PhongHoc: e.target.value });
+                      if (formErrors.PhongHoc) setFormErrors(prev => ({ ...prev, PhongHoc: '' }));
+                    }}
+                    className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl outline-none text-sm transition-colors ${formErrors.PhongHoc ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-orange-400'}`}
                     required
                   />
+                  {formErrors.PhongHoc && <p className="text-red-500 text-xs mt-1">{formErrors.PhongHoc}</p>}
                 </div>
 
                 <div className="flex gap-3 pt-3 border-t border-gray-100">

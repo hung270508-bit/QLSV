@@ -16,6 +16,7 @@ function TeachingAssignment() {
     MaLopHocPhan: '', MaMonHoc: '', MaLop: '', MaGiangVien: '',
     HocKy: 'HK1_2025_2026', NamHoc: '2025-2026', SoLuongToiDa: 40
   });
+  const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => { fetchData(); }, []);
 
@@ -38,8 +39,32 @@ function TeachingAssignment() {
     }
   };
 
+  const validateAssignmentForm = () => {
+    const errors = {};
+    if (!editingAssignment) {
+      if (!formData.MaLopHocPhan.trim()) {
+        errors.MaLopHocPhan = 'Mã lớp học phần không được để trống';
+      } else if (formData.MaLopHocPhan.trim().length < 3) {
+        errors.MaLopHocPhan = 'Mã lớp học phần phải có ít nhất 3 ký tự';
+      } else if (formData.MaLopHocPhan.trim().length > 20) {
+        errors.MaLopHocPhan = 'Mã lớp học phần tối đa 20 ký tự';
+      } else if (!/^[a-zA-Z0-9_.]+$/.test(formData.MaLopHocPhan.trim())) {
+        errors.MaLopHocPhan = 'Chỉ được dùng chữ, số, dấu chấm và gạch dưới';
+      }
+    }
+    if (!formData.MaMonHoc) errors.MaMonHoc = 'Vui lòng chọn môn học';
+    if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn giảng viên';
+    const soluong = parseInt(formData.SoLuongToiDa);
+    if (!formData.SoLuongToiDa || isNaN(soluong) || soluong < 1 || soluong > 200) {
+      errors.SoLuongToiDa = 'Sĩ số phải từ 1 đến 200';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateAssignmentForm()) return;
     try {
       if (editingAssignment) {
         await axios.put(`http://localhost:5000/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
@@ -76,6 +101,7 @@ function TeachingAssignment() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingAssignment(null);
+    setFormErrors({});
     setFormData({ MaLopHocPhan: '', MaMonHoc: '', MaLop: '', MaGiangVien: '', HocKy: 'HK1_2025_2026', NamHoc: '2025-2026', SoLuongToiDa: 40 });
   };
 
@@ -253,9 +279,13 @@ function TeachingAssignment() {
                     <input
                       type="text" placeholder="VD: IT001_N01"
                       value={formData.MaLopHocPhan}
-                      onChange={e => setFormData({ ...formData, MaLopHocPhan: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-400 text-sm transition-colors"
+                      onChange={e => {
+                        setFormData({ ...formData, MaLopHocPhan: e.target.value });
+                        if (formErrors.MaLopHocPhan) setFormErrors({ ...formErrors, MaLopHocPhan: '' });
+                      }}
+                      className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm outline-none transition-colors ${formErrors.MaLopHocPhan ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-orange-400'}`}
                     />
+                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
                   </div>
                 )}
 

@@ -25,6 +25,7 @@ function AnnouncementManagement() {
     NguoiTao: '',
     MaLop_Nhan: ''
   });
+  const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -46,21 +47,32 @@ function AnnouncementManagement() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const validateAnnouncementForm = () => {
+    const errors = {};
     if (!formData.TieuDe.trim()) {
-      alert('Vui lòng nhập tiêu đề thông báo!');
-      return;
+      errors.TieuDe = 'Tiêu đề không được để trống';
+    } else if (formData.TieuDe.trim().length < 5) {
+      errors.TieuDe = 'Tiêu đề phải có ít nhất 5 ký tự';
+    } else if (formData.TieuDe.trim().length > 200) {
+      errors.TieuDe = 'Tiêu đề tối đa 200 ký tự';
     }
     if (!formData.NoiDung.trim()) {
-      alert('Vui lòng nhập nội dung thông báo!');
-      return;
+      errors.NoiDung = 'Nội dung không được để trống';
+    } else if (formData.NoiDung.trim().length < 10) {
+      errors.NoiDung = 'Nội dung phải có ít nhất 10 ký tự';
+    } else if (formData.NoiDung.trim().length > 2000) {
+      errors.NoiDung = 'Nội dung tối đa 2000 ký tự';
     }
     if (recipientMode === 'custom' && selectedClasses.length === 0) {
-      alert('Vui lòng chọn ít nhất một lớp nhận thông báo!');
-      return;
+      errors.recipient = 'Vui lòng chọn ít nhất một lớp nhận thông báo';
     }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateAnnouncementForm()) return;
 
     const baseData = {
       TieuDe: formData.TieuDe.trim(),
@@ -74,13 +86,11 @@ function AnnouncementManagement() {
           ...baseData,
           MaLop_Nhan: recipientMode === 'all' ? null : selectedClasses[0],
         });
-        alert('Cập nhật thông báo thành công!');
       } else if (recipientMode === 'all') {
         await axios.post('http://localhost:5000/api/announcements', {
           ...baseData,
           MaLop_Nhan: null,
         });
-        alert('Thêm thông báo thành công!');
       } else {
         await Promise.all(
           selectedClasses.map((maLop) =>
@@ -90,17 +100,12 @@ function AnnouncementManagement() {
             })
           )
         );
-        alert(
-          selectedClasses.length > 1
-            ? `Đã thêm thông báo cho ${selectedClasses.length} lớp!`
-            : 'Thêm thông báo thành công!'
-        );
       }
       fetchData();
       handleCloseModal();
     } catch (error) {
       console.error('Error saving announcement:', error);
-      alert('Lỗi khi lưu thông báo: ' + (error.response?.data?.message || error.message));
+      setFormErrors({ general: 'Lỗi khi lưu thông báo: ' + (error.response?.data?.message || error.message) });
     }
   };
 
@@ -108,6 +113,7 @@ function AnnouncementManagement() {
     setEditingAnnouncement(null);
     setRecipientMode('all');
     setSelectedClasses([]);
+    setFormErrors({});
     setFormData({
       TieuDe: '',
       NoiDung: '',
@@ -153,12 +159,22 @@ function AnnouncementManagement() {
     setEditingAnnouncement(null);
     setRecipientMode('all');
     setSelectedClasses([]);
+    setFormErrors({});
     setFormData({
       TieuDe: '',
       NoiDung: '',
       NguoiTao: '',
       MaLop_Nhan: ''
     });
+  };
+
+  const handleClassToggle = (classId) => {
+    setSelectedClasses(prev =>
+      prev.includes(classId)
+        ? prev.filter(id => id !== classId)
+        : [...prev, classId]
+    );
+    if (formErrors.recipient) setFormErrors(prev => ({ ...prev, recipient: '' }));
   };
 
   const handleViewDetail = (announcement) => {
@@ -169,14 +185,6 @@ function AnnouncementManagement() {
   const handleCloseDetailModal = () => {
     setShowDetailModal(false);
     setSelectedAnnouncement(null);
-  };
-
-  const handleClassToggle = (classId) => {
-    setSelectedClasses(prev => 
-      prev.includes(classId) 
-        ? prev.filter(id => id !== classId)
-        : [...prev, classId]
-    );
   };
 
 
@@ -379,26 +387,47 @@ function AnnouncementManagement() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+              {formErrors.general && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium">
+                  {formErrors.general}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Tiêu đề</label>
                 <input
                   type="text"
                   value={formData.TieuDe}
-                  onChange={(e) => setFormData({ ...formData, TieuDe: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none transition-colors"
-                  required
+                  onChange={(e) => {
+                    setFormData({ ...formData, TieuDe: e.target.value });
+                    if (formErrors.TieuDe) setFormErrors(prev => ({ ...prev, TieuDe: '' }));
+                  }}
+                  className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TieuDe ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   placeholder="Nhập tiêu đề thông báo..."
                 />
+                <div className="flex items-center justify-between mt-1">
+                  {formErrors.TieuDe
+                    ? <p className="text-red-500 text-xs">{formErrors.TieuDe}</p>
+                    : <span />}
+                  <p className="text-xs text-gray-400">{formData.TieuDe.length}/200</p>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Nội dung</label>
                 <textarea
                   value={formData.NoiDung}
-                  onChange={(e) => setFormData({ ...formData, NoiDung: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none transition-colors h-40 resize-none"
-                  required
+                  onChange={(e) => {
+                    setFormData({ ...formData, NoiDung: e.target.value });
+                    if (formErrors.NoiDung) setFormErrors(prev => ({ ...prev, NoiDung: '' }));
+                  }}
+                  className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors h-40 resize-none ${formErrors.NoiDung ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   placeholder="Nhập nội dung thông báo..."
                 />
+                <div className="flex items-center justify-between mt-1">
+                  {formErrors.NoiDung
+                    ? <p className="text-red-500 text-xs">{formErrors.NoiDung}</p>
+                    : <span />}
+                  <p className="text-xs text-gray-400">{formData.NoiDung.length}/2000</p>
+                </div>
               </div>
               <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-100">
                 <label className="flex items-center gap-2 text-sm font-semibold text-orange-800 mb-2">
@@ -464,6 +493,9 @@ function AnnouncementManagement() {
                   <p className="text-sm text-gray-500 mt-1">
                     Thông báo sẽ hiển thị cho tất cả sinh viên trên hệ thống.
                   </p>
+                )}
+                {formErrors.recipient && (
+                  <p className="text-red-500 text-xs mt-2 font-medium">{formErrors.recipient}</p>
                 )}
               </div>
 

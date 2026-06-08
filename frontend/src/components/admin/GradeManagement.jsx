@@ -48,6 +48,7 @@ function GradeManagement() {
     DiemGiuaKy: '',
     DiemCuoiKy: ''
   });
+  const [formErrors, setFormErrors] = useState({});
 
 useEffect(() => {
   fetchData(); 
@@ -97,8 +98,25 @@ useEffect(() => {
     return { letter: 'F', gpa: 0.0, text: 'Kém' };
   };
 
+  const validateGradeForm = () => {
+    const errors = {};
+    if (!formData.MSSV) errors.MSSV = 'Vui lòng chọn sinh viên';
+    if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
+    if (!formData.HocKy) errors.HocKy = 'Vui lòng chọn học kỳ';
+    ['DiemChuyenCan','DiemBaiTap','DiemGiuaKy','DiemCuoiKy'].forEach(field => {
+      const val = formData[field];
+      if (val !== '' && val !== null && val !== undefined) {
+        const num = parseFloat(val);
+        if (isNaN(num) || num < 0 || num > 10) errors[field] = 'Điểm phải từ 0 đến 10';
+      }
+    });
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateGradeForm()) return;
     try {
       // Tính toán trực tiếp ở FE trước khi gửi
       const diemTong10 = calculateTotal10(
@@ -169,6 +187,7 @@ useEffect(() => {
       DiemGiuaKy: '',
       DiemCuoiKy: ''
     });
+    setFormErrors({});
   };
 
   const filteredGrades = grades.filter(grade => {
@@ -664,8 +683,11 @@ useEffect(() => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Sinh viên</label>
                   <select
                     value={formData.MSSV}
-                    onChange={(e) => setFormData({ ...formData, MSSV: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, MSSV: e.target.value });
+                      if (formErrors.MSSV) setFormErrors(prev => ({ ...prev, MSSV: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MSSV ? 'border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                     required
                   >
                     <option value="">Chọn sinh viên</option>
@@ -675,14 +697,18 @@ useEffect(() => {
                       </option>
                     ))}
                   </select>
+                  {formErrors.MSSV && <p className="text-red-500 text-xs mt-1">{formErrors.MSSV}</p>}
                 </div>
                 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp học phần</label>
                   <select
                     value={formData.MaLopHocPhan}
-                    onChange={(e) => setFormData({ ...formData, MaLopHocPhan: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, MaLopHocPhan: e.target.value });
+                      if (formErrors.MaLopHocPhan) setFormErrors(prev => ({ ...prev, MaLopHocPhan: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaLopHocPhan ? 'border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                     required
                   >
                     <option value="">Chọn lớp học phần</option>
@@ -692,20 +718,25 @@ useEffect(() => {
                       </option>
                     ))}
                   </select>
+                  {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
                 </div>
                 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Học kỳ</label>
                   <select
                     value={formData.HocKy}
-                    onChange={(e) => setFormData({ ...formData, HocKy: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, HocKy: e.target.value });
+                      if (formErrors.HocKy) setFormErrors(prev => ({ ...prev, HocKy: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.HocKy ? 'border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                     required
                   >
                     <option value="">Chọn học kỳ</option>
                     <option value="HK1_2025_2026">HK1 2025-2026</option>
                     <option value="HK2_2025_2026">HK2 2025-2026</option>
                   </select>
+                  {formErrors.HocKy && <p className="text-red-500 text-xs mt-1">{formErrors.HocKy}</p>}
                 </div>
 
                 {/* Các trường nhập điểm mới */}
@@ -717,9 +748,13 @@ useEffect(() => {
                     min="0"
                     max="10"
                     value={formData.DiemChuyenCan}
-                    onChange={(e) => setFormData({ ...formData, DiemChuyenCan: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, DiemChuyenCan: e.target.value });
+                      if (formErrors.DiemChuyenCan) setFormErrors(prev => ({ ...prev, DiemChuyenCan: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.DiemChuyenCan ? 'border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
+                  {formErrors.DiemChuyenCan && <p className="text-red-500 text-xs mt-1">{formErrors.DiemChuyenCan}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Bài tập (15%)</label>
@@ -729,9 +764,13 @@ useEffect(() => {
                     min="0"
                     max="10"
                     value={formData.DiemBaiTap}
-                    onChange={(e) => setFormData({ ...formData, DiemBaiTap: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, DiemBaiTap: e.target.value });
+                      if (formErrors.DiemBaiTap) setFormErrors(prev => ({ ...prev, DiemBaiTap: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.DiemBaiTap ? 'border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
+                  {formErrors.DiemBaiTap && <p className="text-red-500 text-xs mt-1">{formErrors.DiemBaiTap}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Giữa kỳ (25%)</label>
@@ -741,9 +780,13 @@ useEffect(() => {
                     min="0"
                     max="10"
                     value={formData.DiemGiuaKy}
-                    onChange={(e) => setFormData({ ...formData, DiemGiuaKy: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, DiemGiuaKy: e.target.value });
+                      if (formErrors.DiemGiuaKy) setFormErrors(prev => ({ ...prev, DiemGiuaKy: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.DiemGiuaKy ? 'border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
+                  {formErrors.DiemGiuaKy && <p className="text-red-500 text-xs mt-1">{formErrors.DiemGiuaKy}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Cuối kỳ/Báo cáo (50%)</label>
@@ -753,9 +796,13 @@ useEffect(() => {
                     min="0"
                     max="10"
                     value={formData.DiemCuoiKy}
-                    onChange={(e) => setFormData({ ...formData, DiemCuoiKy: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, DiemCuoiKy: e.target.value });
+                      if (formErrors.DiemCuoiKy) setFormErrors(prev => ({ ...prev, DiemCuoiKy: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.DiemCuoiKy ? 'border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
+                  {formErrors.DiemCuoiKy && <p className="text-red-500 text-xs mt-1">{formErrors.DiemCuoiKy}</p>}
                 </div>
               </div>
 

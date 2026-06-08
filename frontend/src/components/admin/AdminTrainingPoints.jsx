@@ -12,6 +12,7 @@ function AdminTrainingPoints() {
   const [diemLop, setDiemLop] = useState(0);
   const [diemKhoa, setDiemKhoa] = useState(0);
   const [trangThaiDuyet, setTrangThaiDuyet] = useState('Đã xác nhận');
+  const [reviewErrors, setReviewErrors] = useState({});
 
   const fetchPoints = async () => {
     try {
@@ -42,7 +43,26 @@ function AdminTrainingPoints() {
     setTrangThaiDuyet(record.TrangThai === 'Chờ lớp duyệt' ? 'Đã xác nhận' : record.TrangThai);
   };
 
+  const validateReview = () => {
+    const errors = {};
+    const lop = parseInt(diemLop);
+    if (diemLop === '' || diemLop === null || isNaN(lop)) {
+      errors.diemLop = 'Vui lòng nhập điểm lớp';
+    } else if (lop < 0 || lop > 100) {
+      errors.diemLop = 'Điểm lớp phải từ 0 đến 100';
+    }
+    const khoa = parseInt(diemKhoa);
+    if (diemKhoa === '' || diemKhoa === null || isNaN(khoa)) {
+      errors.diemKhoa = 'Vui lòng nhập điểm khoa';
+    } else if (khoa < 0 || khoa > 20) {
+      errors.diemKhoa = 'Điểm khoa phải từ 0 đến 20';
+    }
+    setReviewErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmitReview = async () => {
+    if (!validateReview()) return;
     const tongDiem = Math.min(Number(diemLop) + Number(diemKhoa), 100);
     try {
       await axios.put(`http://localhost:5000/api/admin/training-points/${selectedRecord.MaDanhGia}`, {
@@ -52,9 +72,10 @@ function AdminTrainingPoints() {
         TrangThai: trangThaiDuyet
       });
       setSelectedRecord(null);
+      setReviewErrors({});
       fetchPoints();
     } catch {
-      alert('Có lỗi xảy ra khi duyệt điểm!');
+      setReviewErrors({ general: 'Có lỗi xảy ra khi duyệt điểm!' });
     }
   };
 
@@ -240,7 +261,7 @@ function AdminTrainingPoints() {
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setSelectedRecord(null)}
+                  onClick={() => { setSelectedRecord(null); setReviewErrors({}); }}
                   className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
                 >
                   <X className="w-5 h-5" />
