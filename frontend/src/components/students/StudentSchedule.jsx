@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen, X, MapPin, Clock, Info } from 'lucide-react';
 import axios from 'axios';
 
+// Tự động lấy cấu hình môi trường hoặc mặc định localhost
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+
 function StudentSchedule({ user }) {
-  // Đã mở khóa tính năng viewType: 'week' hoặc 'semester'
   const [viewType, setViewType] = useState('week'); 
   const [currentDate, setCurrentDate] = useState(new Date()); 
   const [allSchedules, setAllSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // States cho tính năng TKB Học Kỳ
   const [activeSemTab, setActiveSemTab] = useState('all');
   const [semesterData, setSemesterData] = useState({});
 
-  // States cho tính năng Tooltip (Hover hiện chi tiết)
   const [tooltipData, setTooltipData] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  // 1. LẤY DỮ LIỆU THẬT VÀ GOM NHÓM
+  // State quản lý việc hiển thị Popup chi tiết môn học
+  const [selectedCourse, setSelectedCourse] = useState(null);
+
   useEffect(() => {
     const fetchSchedule = async () => {
       try {
@@ -37,7 +38,7 @@ function StudentSchedule({ user }) {
           else if (caStr === '4') { tietBatDau = 10; soTiet = 3; }
 
           const d = new Date(item.NgayHoc);
-          const thu = d.getDay() === 0 ? 8 : d.getDay() + 1; // CN = 8, Thứ 2 = 2
+          const thu = d.getDay() === 0 ? 8 : d.getDay() + 1;
 
           return {
             id: item.MaLichHoc || Math.random(),
@@ -50,13 +51,12 @@ function StudentSchedule({ user }) {
             soTiet: soTiet,
             hocKy: item.HocKy || 'HK2_2025_2026', 
             stc: item.SoTinChi || 3,
-            nhom: item.MaLop ? item.MaLop.slice(-2) : '01' // Lấy 2 số cuối của Mã lớp làm Nhóm
+            nhom: item.MaLop ? item.MaLop.slice(-2) : '01'
           };
         });
 
         setAllSchedules(formattedData);
 
-        // THUẬT TOÁN GOM NHÓM CHO TKB HỌC KỲ
         const semMap = {};
         formattedData.forEach(item => {
           const hk = item.hocKy;
@@ -97,7 +97,6 @@ function StudentSchedule({ user }) {
     }
   }, [user]);
 
-  // 2. LOGIC TÍNH TOÁN NGÀY TRONG TUẦN (Cho Tab Tuần)
   const getWeekDates = (date) => {
     const d = new Date(date);
     const day = d.getDay();
@@ -131,12 +130,15 @@ function StudentSchedule({ user }) {
   };
 
   const matrix = Array(12).fill(null).map(() => Array(7).fill(null));
+  let hasScheduleThisWeek = false;
+
   allSchedules.forEach(item => {
     const dayIdx = weekDates.findIndex(date => isSameDate(date, item.ngayHoc));
     if (dayIdx !== -1) {
       const startRow = item.tietBatDau - 1; 
       if (startRow >= 0 && startRow < 12) {
         matrix[startRow][dayIdx] = item;
+        hasScheduleThisWeek = true;
         for (let i = 1; i < item.soTiet; i++) {
           if (startRow + i < 12) matrix[startRow + i][dayIdx] = 'SKIP';
         }
@@ -162,13 +164,13 @@ function StudentSchedule({ user }) {
       
       {/* TOOLTIP HIỂN THỊ KHI HOVER */}
       <AnimatePresence>
-        {tooltipData && viewType === 'week' && (
+        {tooltipData && viewType === 'week' && !selectedCourse && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
-            className="fixed z-50 bg-[#333333] text-white text-sm p-3.5 rounded-lg shadow-xl pointer-events-none min-w-[200px]"
+            className="fixed z-40 bg-[#333333] text-white text-sm p-3.5 rounded-lg shadow-xl pointer-events-none min-w-[200px]"
             style={{ top: tooltipPos.y + 15, left: tooltipPos.x + 15 }}
           >
             <div className="space-y-1.5">
@@ -181,10 +183,78 @@ function StudentSchedule({ user }) {
         )}
       </AnimatePresence>
 
+      {/* POPUP (MODAL) CHI TIẾT HỌC PHẦN */}
+      <AnimatePresence>
+        {selectedCourse && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+            >
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex justify-between items-center">
+                <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                  <Info className="w-5 h-5" /> Chi tiết học phần
+                </h3>
+                <button 
+                  onClick={() => setSelectedCourse(null)} 
+                  className="p-1 hover:bg-white/20 rounded-lg text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div className="flex flex-col gap-1 border-b border-gray-100 pb-4">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Môn học</span>
+                  <span className="text-xl font-bold text-gray-800 leading-snug">{selectedCourse.tenMon}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="text-xs text-gray-500 font-medium">Mã học phần</span>
+                    <div className="font-semibold text-gray-800 mt-1 font-mono text-sm">{selectedCourse.maHP}</div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="text-xs text-gray-500 font-medium">Số tín chỉ</span>
+                    <div className="font-semibold text-blue-600 mt-1">{selectedCourse.stc} tín chỉ</div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="text-xs text-gray-500 font-medium">Phòng học</span>
+                    <div className="font-semibold text-gray-800 mt-1 flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-orange-500" /> {selectedCourse.phong}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="text-xs text-gray-500 font-medium">Giờ học</span>
+                    <div className="font-semibold text-gray-800 mt-1 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-blue-500" />
+                      Tiết {selectedCourse.tietBatDau} - {selectedCourse.tietBatDau + selectedCourse.soTiet - 1}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={() => setSelectedCourse(null)} 
+                    className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Top Controls */}
       <div className="p-4 border-b border-gray-200 flex flex-col xl:flex-row items-center justify-between gap-4">
         
-        {/* Đã Mở Khóa Nút Radio */}
         <div className="flex items-center gap-6">
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
@@ -206,7 +276,6 @@ function StudentSchedule({ user }) {
           </label>
         </div>
 
-        {/* Chỉ hiện điều hướng tuần khi đang ở chế độ Xem TKB Tuần */}
         {viewType === 'week' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
             <button onClick={currentWeek} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-sm">
@@ -228,7 +297,7 @@ function StudentSchedule({ user }) {
       {/* KHU VỰC 1: XEM THEO TUẦN (GRID MA TRẬN) */}
       {/* ======================================= */}
       {viewType === 'week' && (
-        allSchedules.length > 0 ? (
+        hasScheduleThisWeek ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse min-w-[1000px]">
               <thead>
@@ -260,7 +329,9 @@ function StudentSchedule({ user }) {
                             onMouseEnter={(e) => { setTooltipData(cellData); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
                             onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
                             onMouseLeave={() => setTooltipData(null)}
-                            className="border border-gray-200 bg-[#FDE28A] p-3 align-top transition-colors cursor-pointer hover:brightness-95 shadow-sm"
+                            // MỞ POPUP CUSTOM THAY VÌ ALERT
+                            onClick={() => setSelectedCourse(cellData)}
+                            className="border border-gray-200 bg-[#FDE28A] p-3 align-top transition-colors cursor-pointer hover:brightness-95 shadow-sm relative group"
                           >
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full">
                               <span className="font-bold text-gray-800 text-sm mb-2 leading-relaxed">{cellData.tenMon}</span>
@@ -281,8 +352,8 @@ function StudentSchedule({ user }) {
         ) : (
           <div className="flex flex-col items-center justify-center p-16 text-center">
             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4"><BookOpen className="w-10 h-10 text-blue-300" /></div>
-            <h3 className="text-xl font-bold text-gray-700 mb-2">Chưa có lịch học</h3>
-            <p className="text-gray-500 max-w-md">Hệ thống chưa ghi nhận lịch học nào cho tuần này.</p>
+            <h3 className="text-xl font-bold text-gray-700 mb-2">Trống lịch học</h3>
+            <p className="text-gray-500 max-w-md">Không có lịch học trong tuần này. Hãy tận hưởng thời gian nghỉ ngơi nhé!</p>
           </div>
         )
       )}
@@ -341,9 +412,14 @@ function StudentSchedule({ user }) {
                     
                     {/* Danh sách các môn học */}
                     {semesterData[hk].map((course, idx) => (
-                      <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                      <tr 
+                        key={idx} 
+                        // MỞ POPUP CUSTOM THAY VÌ ALERT
+                        onClick={() => setSelectedCourse(course)}
+                        className="border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
                         <td className="p-3 text-sm text-gray-700 font-medium">{course.maHP}</td>
-                        <td className="p-3 text-sm font-semibold text-gray-800">{course.tenMon}</td>
+                        <td className="p-3 text-sm font-semibold text-blue-600 hover:underline">{course.tenMon}</td>
                         <td className="p-3 text-sm text-gray-700 text-center">{course.nhom}</td>
                         <td className="p-3 text-sm text-gray-700 text-center">-</td> {/* TH để trống */}
                         <td className="p-3 text-sm text-gray-700 text-center">{course.stc}</td>

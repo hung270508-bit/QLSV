@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
+
+// Tự động lấy cấu hình môi trường hoặc mặc định localhost
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = `${API_URL}/api`;
 
 function TeacherManagement() {
   const [teachers, setTeachers] = useState([]);
@@ -22,10 +25,12 @@ function TeacherManagement() {
   const [teachingSchedule, setTeachingSchedule] = useState([]);
   const [teachingLoad, setTeachingLoad] = useState([]);
   const [detailTab, setDetailTab] = useState('info'); // 'info', 'schedule', 'load'
+  
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
   const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
   const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
+  
   const [formData, setFormData] = useState({
     MaGiangVien: '',
     HoTen: '',
@@ -36,7 +41,7 @@ function TeacherManagement() {
   });
   const [errors, setErrors] = useState({});
 
-  // Vietnamese diacritic removal for search
+  // Loại bỏ dấu tiếng Việt
   const removeVietnameseTones = useCallback((str) => {
     return str
       .normalize('NFD')
@@ -45,7 +50,14 @@ function TeacherManagement() {
       .replace(/Đ/g, 'D');
   }, []);
 
-  // Debounced search
+  // Hàm chuẩn hóa viết hoa tên riêng (FIX TC_05, TC_12)
+  const formatTitleCase = (str) => {
+    return str.toLowerCase().split(/\s+/).map(word => {
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   useEffect(() => {
@@ -59,11 +71,11 @@ function TeacherManagement() {
     fetchData();
   }, []);
 
-const fetchData = async () => {
+  const fetchData = async () => {
     try {
       const [teachersRes, facultiesRes] = await Promise.all([
-        axios.get(`${API_URL}/api/teachers`),
-        axios.get(`${API_URL}/api/faculties`)
+        axios.get(`${API_BASE}/teachers`),
+        axios.get(`${API_BASE}/faculties`)
       ]);
       setTeachers(teachersRes.data);
       setFaculties(facultiesRes.data);
@@ -74,39 +86,41 @@ const fetchData = async () => {
     }
   };
 
-const handleKhoaChange = async (e) => {
+  const handleKhoaChange = async (e) => {
     const maKhoa = e.target.value;
     setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: '' }));
 
     if (editingTeacher || !maKhoa) return;
 
     try {
-      // Dùng trực tiếp biến maKhoa thay vì đi tìm ID
-      const res = await axios.get(`${API_URL}/api/teachers/next-code/${maKhoa}`);
+      // Dùng trực tiếp maKhoa thay vì tìm ID để không bị lỗi 404
+      const res = await axios.get(`${API_BASE}/teachers/next-code/${maKhoa}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: res.data.MaGiangVien }));
     } catch (err) {
       console.error('Lỗi tạo mã giảng viên:', err);
     }
   };
 
-
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate Họ tên
-    if (!formData.HoTen.trim()) {
+    // Validate Họ tên (FIX TC_05)
+    const formattedName = formatTitleCase(formData.HoTen.trim());
+    if (!formattedName) {
       newErrors.HoTen = 'Họ tên không được để trống';
-    } else if (formData.HoTen.length < 2) {
+    } else if (formattedName.length < 2) {
       newErrors.HoTen = 'Họ tên phải có ít nhất 2 ký tự';
+    } else if (!/^[a-zA-Z\u00C0-\u1EF9\s]+$/.test(formattedName)) {
+      newErrors.HoTen = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
     }
 
-    // Validate Email
+    // Validate Email (FIX TC_04)
     if (!formData.Email.trim()) {
       newErrors.Email = 'Email không được để trống';
     } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(formData.Email)) {
-        newErrors.Email = 'Email không đúng định dạng';
+        newErrors.Email = 'Email không đúng định dạng (VD: @gmail.com)';
       }
     }
 
@@ -132,14 +146,19 @@ const handleKhoaChange = async (e) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
+    // Chuẩn hóa tên trước khi gửi
+    const formattedName = formatTitleCase(formData.HoTen.trim());
+    const dataToSubmit = { ...formData, HoTen: formattedName };
+
     try {
       if (editingTeacher) {
         setConfirmDialog({
           show: true,
-          message: `Bạn có chắc chắn muốn cập nhật thông tin giảng viên "${formData.HoTen}" (${formData.MaGiangVien}) không?`,
+          message: `Bạn có chắc chắn muốn cập nhật thông tin giảng viên "${dataToSubmit.HoTen}" (${dataToSubmit.MaGiangVien}) không?`,
           onConfirm: async () => {
             try {
-              await axios.put(`${API_URL}/api/teachers/${editingTeacher.MaGiangVien}`, formData);
+              await axios.put(`${API_BASE}/teachers/${editingTeacher.MaGiangVien}`, dataToSubmit);
               setToast({ show: true, message: 'Cập nhật giảng viên thành công!', type: 'success' });
               fetchData();
               handleCloseModal();
@@ -150,11 +169,10 @@ const handleKhoaChange = async (e) => {
           }
         });
       } else {
-        // Gọi API sinh mã mới bằng formData.MaKhoa thay vì tìm ID
-        const resCode = await axios.get(`${API_URL}/api/teachers/next-code/${formData.MaKhoa}`);
+        const resCode = await axios.get(`${API_BASE}/teachers/next-code/${formData.MaKhoa}`);
         const newMaGV = resCode.data.MaGiangVien;
         
-        await axios.post(`${API_URL}/api/teachers`, { ...formData, MaGiangVien: newMaGV });
+        await axios.post(`${API_BASE}/teachers`, { ...dataToSubmit, MaGiangVien: newMaGV });
         setToast({ show: true, message: 'Thêm giảng viên thành công!', type: 'success' });
         fetchData();
         handleCloseModal();
@@ -164,6 +182,7 @@ const handleKhoaChange = async (e) => {
       setErrorDialog({ show: true, message: 'Lỗi khi lưu dữ liệu: ' + (error.response?.data?.error || error.message) });
     }
   };
+
   const handleEdit = (teacher) => {
     setEditingTeacher(teacher);
     setFormData({
@@ -176,7 +195,6 @@ const handleKhoaChange = async (e) => {
     });
     setShowModal(true);
   };
-
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -192,9 +210,9 @@ const handleKhoaChange = async (e) => {
     
     try {
       const [detailsRes, scheduleRes, loadRes] = await Promise.all([
-        axios.get(`${API_URL}/api/teachers/${teacher.MaGiangVien}/details`),
-        axios.get(`${API_URL}/api/teachers/${teacher.MaGiangVien}/teaching-schedule`),
-        axios.get(`${API_URL}/api/teachers/${teacher.MaGiangVien}/teaching-load`)
+        axios.get(`${API_BASE}/teachers/${teacher.MaGiangVien}/details`),
+        axios.get(`${API_BASE}/teachers/${teacher.MaGiangVien}/teaching-schedule`),
+        axios.get(`${API_BASE}/teachers/${teacher.MaGiangVien}/teaching-load`)
       ]);
       
       setTeacherDetails(detailsRes.data[0] || null);
@@ -233,9 +251,20 @@ const handleKhoaChange = async (e) => {
     link.click();
   };
 
+  // Loại bỏ các khoa rác/trùng lặp (FIX TC_09)
+  const uniqueFaculties = Array.from(
+    new Map(faculties.filter(f => f && f.MaKhoa && f.TenKhoa).map(f => [f.MaKhoa, f])).values()
+  );
+
   const filteredTeachers = teachers.filter(teacher => {
-    const searchLower = debouncedSearchTerm.toLowerCase();
+    // FIX TC_06: Nhập khoảng trắng toàn bộ sẽ bị chặn trả về rỗng
+    if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') {
+      return false; 
+    }
+
+    const searchLower = debouncedSearchTerm.trim().toLowerCase();
     const searchNoTones = removeVietnameseTones(searchLower);
+    
     const nameLower = teacher.HoTen?.toLowerCase() || '';
     const nameNoTones = removeVietnameseTones(nameLower);
     const codeLower = teacher.MaGiangVien?.toLowerCase() || '';
@@ -277,8 +306,8 @@ const handleKhoaChange = async (e) => {
     setDisplaySearchTerm('');
   };
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || searchTerm;
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || searchTerm.trim();
 
   if (loading) {
     return (
@@ -289,8 +318,7 @@ const handleKhoaChange = async (e) => {
   }
 
   return (
-    /* THAY ĐỔI TẠI ĐÂY: Thay max-w-7xl thành max-w-screen-2xl để khung tổng rộng ra */
-    <div className="space-y-8 p-4 max-w-screen-3xl mx-auto W-full">
+    <div className="space-y-8 p-4 max-w-screen-3xl mx-auto w-full">
       {/* Header Section */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl shadow-orange-500/10">
         <div className="flex items-center justify-between">
@@ -314,7 +342,7 @@ const handleKhoaChange = async (e) => {
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '' }); setShowModal(true); }}
+              onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy' }); setShowModal(true); }}
               className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
             >
               <Plus className="w-5 h-5" />
@@ -394,7 +422,7 @@ const handleKhoaChange = async (e) => {
                 className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
               >
                 <option value="">Tất cả khoa</option>
-                {faculties.map((faculty) => (
+                {uniqueFaculties.map((faculty) => (
                   <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
                     {faculty.TenKhoa}
                   </option>
@@ -456,7 +484,10 @@ const handleKhoaChange = async (e) => {
                       <div className="font-semibold text-gray-800">{teacher.HoTen}</div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      <span 
+                        title={teacher.TenKhoa}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+                      >
                         {teacher.TenKhoa || 'Chưa xếp khoa'}
                       </span>
                     </td>
@@ -544,7 +575,7 @@ const handleKhoaChange = async (e) => {
                     }`}
                   >
                     <option value="">Chọn khoa</option>
-                    {faculties.map((faculty) => (
+                    {uniqueFaculties.map((faculty) => (
                       <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
                         {faculty.TenKhoa}
                       </option>
@@ -560,6 +591,10 @@ const handleKhoaChange = async (e) => {
                     onChange={(e) => {
                       setFormData({ ...formData, HoTen: e.target.value });
                       if (errors.HoTen) setErrors({ ...errors, HoTen: '' });
+                    }}
+                    onBlur={(e) => {
+                      const formatted = formatTitleCase(e.target.value.trim());
+                      setFormData(prev => ({ ...prev, HoTen: formatted }));
                     }}
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
                       errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'

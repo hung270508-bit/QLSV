@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, Plus, Edit, Trash2, Search, X, Filter, 
@@ -42,13 +41,13 @@ function SubjectManagement() {
     averageGrade: 0,
     fail: 0
   });
-  const [detailTab, setDetailTab] = useState('classes'); // 'classes', 'teachers', 'stats'
+  const [detailTab, setDetailTab] = useState('classes'); 
   
   const [formData, setFormData] = useState({
     MaMonHoc: '',
     TenMonHoc: '',
     SoTinChi: '',
-    TenKhoa: ''
+    MaKhoa: ''
   });
   const [deleteModal, setDeleteModal] = useState({ show: false, subject: null });
 
@@ -66,7 +65,7 @@ function SubjectManagement() {
   const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
   const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
 
-  // Vietnamese diacritic removal for search
+  // Loại bỏ dấu tiếng Việt để tìm kiếm
   const removeVietnameseTones = useCallback((str) => {
     return str
       .normalize('NFD')
@@ -75,7 +74,14 @@ function SubjectManagement() {
       .replace(/Đ/g, 'D');
   }, []);
 
-  // Debounced search
+  // Hàm Format chuỗi lộn xộn thành Title Case (FIX TC_16)
+  const formatTitleCase = (str) => {
+    return str.toLowerCase().split(' ').map(word => {
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   useEffect(() => {
@@ -89,20 +95,34 @@ function SubjectManagement() {
     fetchData();
   }, []);
 
+  // FIX TC_15: Lắng nghe phím Enter để Xác nhận Xóa môn học
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && deleteModal.show) {
+        e.preventDefault();
+        handleDeleteConfirm();
+      }
+    };
+    if (deleteModal.show) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deleteModal.show, deleteModal.subject]);
+
   const fetchData = async () => {
-  try {
-    const [subjectsRes, facultiesRes] = await Promise.all([
-      axios.get(`${API_URL}/api/subjects`),
-      axios.get(`${API_URL}/api/faculties`)
-    ]);
-    setSubjects(subjectsRes.data);
-    setFaculties(facultiesRes.data);
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  } finally {
-    loading && setLoading(false);
-  }
-};
+    try {
+      const [subjectsRes, facultiesRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/subjects'),
+        axios.get('http://localhost:5000/api/faculties')
+      ]);
+      setSubjects(subjectsRes.data);
+      setFaculties(facultiesRes.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      loading && setLoading(false);
+    }
+  };
 
   const validateForm = () => {
     const errors = {
@@ -111,30 +131,43 @@ function SubjectManagement() {
       SoTinChi: ''
     };
     let isValid = true;
+    
+    // Tự động format lại tên trước khi validate
+    const tenMonHocFormatted = formatTitleCase(formData.TenMonHoc.trim());
 
     if (!formData.MaKhoa) {
       errors.MaKhoa = 'Vui lòng chọn khoa';
       isValid = false;
     }
 
-    if (!formData.TenMonHoc.trim()) {
+    if (!tenMonHocFormatted) {
       errors.TenMonHoc = 'Vui lòng nhập tên môn học';
       isValid = false;
-    } else if (formData.TenMonHoc.trim().length < 3) {
+    } else if (tenMonHocFormatted.length < 3) {
       errors.TenMonHoc = 'Tên môn học phải có ít nhất 3 ký tự';
       isValid = false;
-    } else if (formData.TenMonHoc.trim().length > 30) {
-      errors.TenMonHoc = 'Tên môn học không được vượt quá 30 ký tự';
+    } else if (tenMonHocFormatted.length > 50) { // FIX TC_12: Tăng độ dài hợp lý và chặn chính xác
+      errors.TenMonHoc = 'Tên môn học không được vượt quá 50 ký tự';
       isValid = false;
-    } else if (/\d/.test(formData.TenMonHoc)) {
+    } else if (/\d/.test(tenMonHocFormatted)) {
       errors.TenMonHoc = 'Tên môn học không được chứa số';
       isValid = false;
-    } else if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.TenMonHoc)) {
+    } else if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(tenMonHocFormatted)) {
       errors.TenMonHoc = 'Tên môn học không được chứa ký tự đặc biệt';
       isValid = false;
-    } else if (/\s{2,}/.test(formData.TenMonHoc)) {
+    } else if (/\s{2,}/.test(tenMonHocFormatted)) {
       errors.TenMonHoc = 'Tên môn học không được chứa nhiều khoảng trắng liên tiếp';
       isValid = false;
+    } else {
+      // FIX TC_03: Kiểm tra trùng tên môn học trong hệ thống
+      const duplicateSubject = subjects.find(
+        s => s.TenMonHoc.toLowerCase() === tenMonHocFormatted.toLowerCase() && 
+             (!editingSubject || s.MaMonHoc !== editingSubject.MaMonHoc)
+      );
+      if (duplicateSubject) {
+        errors.TenMonHoc = 'Tên môn học này đã tồn tại!';
+        isValid = false;
+      }
     }
 
     if (!formData.SoTinChi) {
@@ -162,32 +195,36 @@ function SubjectManagement() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    return;
-  }
-
-  setIsSubmitting(true);
-  try {
-    if (editingSubject) {
-      await axios.put(`${API_URL}/api/subjects/${editingSubject.MaMonHoc}`, formData);
-      setToast({ show: true, message: 'Cập nhật môn học thành công!', type: 'success' });
-    } else {
-      const resCode = await axios.get(`${API_URL}/api/subjects/next-code/${formData.MaKhoa}`);
-      await axios.post(`${API_URL}/api/subjects`, { ...formData, MaMonHoc: resCode.data.MaMonHoc });
-      setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
     }
-    fetchData();
-    handleCloseModal();
-  } catch (error) {
-    console.error('Error saving subject:', error);
-    const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
-    setErrorDialog({ show: true, message: errorMessage });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+
+    // Đảm bảo tên môn học được format chuẩn trước khi đẩy lên server
+    const formattedName = formatTitleCase(formData.TenMonHoc.trim());
+    const dataToSubmit = { ...formData, TenMonHoc: formattedName };
+
+    setIsSubmitting(true);
+    try {
+      if (editingSubject) {
+        await axios.put(`http://localhost:5000/api/subjects/${editingSubject.MaMonHoc}`, dataToSubmit);
+        setToast({ show: true, message: 'Cập nhật môn học thành công!', type: 'success' });
+      } else {
+        const resCode = await axios.get(`http://localhost:5000/api/subjects/next-code/${formData.MaKhoa}`);
+        await axios.post('http://localhost:5000/api/subjects', { ...dataToSubmit, MaMonHoc: resCode.data.MaMonHoc });
+        setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
+      }
+      fetchData();
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving subject:', error);
+      const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
+      setErrorDialog({ show: true, message: errorMessage });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleEdit = (subject) => {
     setEditingSubject(subject);
@@ -201,20 +238,20 @@ function SubjectManagement() {
     setShowModal(true);
   };
 
-
   const handleCloseModal = () => {
-  setShowModal(false);
-  setEditingSubject(null);
-  setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
-  setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
-};
+    setShowModal(false);
+    setEditingSubject(null);
+    setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
+    setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
+  };
+  
   const handleDelete = (subject) => {
     setDeleteModal({ show: true, subject });
   };
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`${API_URL}/api/subjects/${deleteModal.subject.MaMonHoc}`);
+      await axios.delete(`http://localhost:5000/api/subjects/${deleteModal.subject.MaMonHoc}`);
       setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
       setDeleteModal({ show: false, subject: null });
       setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
@@ -231,12 +268,13 @@ function SubjectManagement() {
     if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
     if (editingSubject || !maKhoa) return;
     try {
-      const res = await axios.get(`${API_URL}/api/subjects/next-code/${maKhoa}`);
+      const res = await axios.get(`http://localhost:5000/api/subjects/next-code/${maKhoa}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: res.data.MaMonHoc }));
     } catch (err) {
       console.error('Lỗi tạo mã môn học:', err);
     }
   };
+
   const handleViewDetails = async (subject) => {
     setSelectedSubject(subject);
     setShowDetailModal(true);
@@ -244,9 +282,9 @@ function SubjectManagement() {
     
     try {
       const [classesRes, teachersRes, statsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/subjects/${subject.MaMonHoc}/classes`),
-        axios.get(`${API_URL}/api/subjects/${subject.MaMonHoc}/teachers`),
-        axios.get(`${API_URL}/api/subjects/${subject.MaMonHoc}/grade-stats`)
+        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/classes`),
+        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/teachers`),
+        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/grade-stats`)
       ]);
       
       setSubjectClasses(classesRes.data);
@@ -274,19 +312,19 @@ function SubjectManagement() {
   };
 
   const filteredSubjects = subjects.filter(subject => {
-  const searchLower = debouncedSearchTerm.toLowerCase();
-  const searchNoTones = removeVietnameseTones(searchLower);
-  const nameLower = subject.TenMonHoc?.toLowerCase() || '';
-  const nameNoTones = removeVietnameseTones(nameLower);
-  const codeLower = subject.MaMonHoc?.toLowerCase() || '';
-  
-  const matchesSearch =
-    nameLower.includes(searchLower) ||
-    nameNoTones.includes(searchNoTones) ||
-    codeLower.includes(searchLower);
-  const matchesFaculty = !filters.facultyFilter || subject.MaKhoa === filters.facultyFilter;
-  return matchesSearch && matchesFaculty;
-});
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    const searchNoTones = removeVietnameseTones(searchLower);
+    const nameLower = subject.TenMonHoc?.toLowerCase() || '';
+    const nameNoTones = removeVietnameseTones(nameLower);
+    const codeLower = subject.MaMonHoc?.toLowerCase() || '';
+    
+    const matchesSearch =
+      nameLower.includes(searchLower) ||
+      nameNoTones.includes(searchNoTones) ||
+      codeLower.includes(searchLower);
+    const matchesFaculty = !filters.facultyFilter || subject.MaKhoa === filters.facultyFilter;
+    return matchesSearch && matchesFaculty;
+  });
 
   // Logic Phân trang
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -312,15 +350,15 @@ function SubjectManagement() {
   };
 
   const clearFilters = () => {
-  setFilters({ facultyFilter: '' });
-  setDisplayFilters({ facultyFilter: '' });
-  setSearchTerm('');
-  setDisplaySearchTerm('');
-  setCurrentPage(1);
-};
+    setFilters({ facultyFilter: '' });
+    setDisplayFilters({ facultyFilter: '' });
+    setSearchTerm('');
+    setDisplaySearchTerm('');
+    setCurrentPage(1);
+  };
 
-const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-const hasActiveFilters = filters.facultyFilter || searchTerm;
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || searchTerm;
 
   if (loading) {
     return (
@@ -626,7 +664,12 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         setFormData({ ...formData, TenMonHoc: e.target.value });
         if (formErrors.TenMonHoc) setFormErrors({ ...formErrors, TenMonHoc: '' });
       }}
-      maxLength={30}
+      // FIX TC_16: Chuẩn hóa tự động khi click ra ngoài input
+      onBlur={(e) => {
+        const formatted = formatTitleCase(e.target.value.trim());
+        setFormData(prev => ({ ...prev, TenMonHoc: formatted }));
+      }}
+      maxLength={50} // FIX TC_12: Đảm bảo độ dài lớn và hợp lý
       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenMonHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
     />
     {formErrors.TenMonHoc && <p className="text-red-500 text-xs mt-1">{formErrors.TenMonHoc}</p>}

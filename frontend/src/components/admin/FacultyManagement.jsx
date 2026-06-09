@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import API_URL from '../../api';
-import { motion} from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal from '../ModalPortal';
+
+// Tự động lấy cấu hình môi trường hoặc mặc định localhost
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
 
 function FacultyManagement() {
   const [faculties, setFaculties] = useState([]);
@@ -13,7 +15,7 @@ function FacultyManagement() {
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('default'); // 'default', 'asc', 'desc'
+  const [sortBy, setSortBy] = useState('default'); 
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ facultyFilter: '' });
   const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '' });
@@ -22,8 +24,8 @@ function FacultyManagement() {
     TenKhoa: ''
   });
   const [errors, setErrors] = useState({
-  TenKhoa: ''
-});
+    TenKhoa: ''
+  });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedFaculty, setSelectedFaculty] = useState(null);
   const [facultyTeachers, setFacultyTeachers] = useState([]);
@@ -34,8 +36,8 @@ function FacultyManagement() {
     totalStudents: 0,
     totalClasses: 0
   });
+  const [detailTab, setDetailTab] = useState('teachers');
 
-  // Vietnamese diacritic removal for search
   const removeVietnameseTones = (str) => {
     return str
       .normalize('NFD')
@@ -44,7 +46,14 @@ function FacultyManagement() {
       .replace(/Đ/g, 'D');
   };
 
-  // Debounced search with Vietnamese diacritic support
+  // Hàm Format chuỗi lộn xộn thành Title Case (VD: "cƠ kHí" -> "Cơ Khí")
+  const formatTitleCase = (str) => {
+    return str.toLowerCase().split(' ').map(word => {
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   useEffect(() => {
@@ -54,83 +63,34 @@ function FacultyManagement() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const executeAddFaculty = async () => {
-  try {
-    const response = await axios.post(`${API_URL}/api/faculties`, formData);
-    if (response.data.success) {
-      setShowConfirmModal(false);
-      setShowModal(false);
-      setFormData({ MaKhoa: '', TenKhoa: '' });
-      fetchData(); // Cập nhật danh sách ngay lập tức
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/faculties`);
+      setFaculties(response.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    alert(error.response?.data?.message || 'Có lỗi xảy ra!');
-  }
-};
-  const [detailTab, setDetailTab] = useState('teachers');
-  const filteredFaculties = [...faculties]
-    .filter(f => {
-      const searchLower = debouncedSearchTerm.toLowerCase();
-      const searchNoTones = removeVietnameseTones(searchLower);
-      const nameLower = f.TenKhoa.toLowerCase();
-      const nameNoTones = removeVietnameseTones(nameLower);
-      const codeLower = f.MaKhoa.toLowerCase();
+  };
 
-      const matchesSearch =
-        nameLower.includes(searchLower) ||
-        nameNoTones.includes(searchNoTones) ||
-        codeLower.includes(searchLower);
-
-      const matchesFaculty = !filters.facultyFilter || f.MaKhoa === filters.facultyFilter;
-
-      return matchesSearch && matchesFaculty;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'asc') return a.TenKhoa.localeCompare(b.TenKhoa);
-      if (sortBy === 'desc') return b.TenKhoa.localeCompare(a.TenKhoa);
-      return 0;
-    });
   useEffect(() => {
     fetchData();
   }, []);
 
-const validateFacultyName = (value) => {
-  value = value.trim();
-
-  if (!value) {
-    return 'Tên khoa không được để trống';
-  }
-
-  if (value.length < 3) {
-    return 'Tên khoa phải có ít nhất 3 ký tự';
-  }
-
-  if (value.length > 30) {
-    return 'Tên khoa không được quá 30 ký tự';
-  }
-
-  if (/\d/.test(value)) {
-    return 'Tên khoa không được chứa số';
-  }
-
-  if (!/[A-Za-zÀ-ỹ]/.test(value)) {
-    return 'Tên khoa phải chứa ít nhất một chữ cái';
-  }
-
-  if (!/^[A-Za-zÀ-ỹ\s-]+$/.test(value)) {
-    return 'Tên khoa không được chứa ký tự đặc biệt';
-  }
-
-  if (/\s{2,}/.test(value)) {
-    return 'Chỉ được nhập 1 khoảng trắng giữa các từ';
-  }
-
-  if (/--+/.test(value)) {
-    return 'Không được nhập nhiều dấu gạch nối liên tiếp';
-  }
-
-  return '';
-};
+  const validateFacultyName = (value) => {
+    value = value.trim();
+    if (!value) return 'Tên khoa không được để trống';
+    // FIX TC_09: Yêu cầu từ 2 ký tự trở lên
+    if (value.length < 2) return 'Tên khoa phải có ít nhất 2 ký tự';
+    if (value.length > 30) return 'Tên khoa không được quá 30 ký tự';
+    if (/\d/.test(value)) return 'Tên khoa không được chứa số';
+    if (!/[A-Za-zÀ-ỹ]/.test(value)) return 'Tên khoa phải chứa ít nhất một chữ cái';
+    if (!/^[A-Za-zÀ-ỹ\s-]+$/.test(value)) return 'Tên khoa không được chứa ký tự đặc biệt';
+    if (/\s{2,}/.test(value)) return 'Chỉ được nhập 1 khoảng trắng giữa các từ';
+    if (/--+/.test(value)) return 'Không được nhập nhiều dấu gạch nối liên tiếp';
+    return '';
+  };
 
   const generateMaKhoa = (tenKhoa) => {
     return removeVietnameseTones(
@@ -144,102 +104,64 @@ const validateFacultyName = (value) => {
       .toUpperCase();
   };
 
-  
-  const fetchData = async () => {
+  const handleFacultyNameChange = (e) => {
+    let value = e.target.value.replace(/\s+/g, ' ');
+    setFormData({
+      ...formData,
+      TenKhoa: value
+    });
+    setErrors({ TenKhoa: '' });
+  };
+
+  // Gộp Logic Kiểm Tra & Báo Lỗi trước khi hiện Modal Confirm (FIX TC_08, TC_21, TC_22)
+  const validateAndConfirm = () => {
+    let tenKhoa = formatTitleCase(formData.TenKhoa.trim());
+    
+    // Kiểm tra tính hợp lệ cơ bản
+    const error = validateFacultyName(tenKhoa);
+    if (error) {
+      setErrors({ TenKhoa: error });
+      return;
+    }
+
+    // Kiểm tra trùng lặp tên khoa
+    const duplicateName = faculties.find(
+      faculty =>
+        faculty.TenKhoa.toLowerCase() === tenKhoa.toLowerCase() &&
+        (!editingFaculty || faculty.MaKhoa !== editingFaculty.MaKhoa)
+    );
+
+    if (duplicateName) {
+      setErrors({ TenKhoa: 'Tên khoa đã tồn tại!' });
+      return;
+    }
+
+    // Cập nhật lại chuỗi đã được chuẩn hóa (Viết hoa chữ cái đầu)
+    setFormData(prev => ({
+      ...prev,
+      TenKhoa: tenKhoa,
+      MaKhoa: generateMaKhoa(tenKhoa)
+    }));
+    
+    setErrors({ TenKhoa: '' });
+    setShowConfirmModal(true);
+  };
+
+  // Hàm gọi API khi nhấn CÓ trên Popup Confirm
+  const executeSubmit = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/faculties`);
-      setFaculties(response.data);
+      if (editingFaculty) {
+        await axios.put(`${API_URL}/api/faculties/${editingFaculty.MaKhoa}`, formData);
+      } else {
+        await axios.post(`${API_URL}/api/faculties`, formData);
+      }
+      setShowConfirmModal(false);
+      handleCloseModal();
+      fetchData(); // FIX TC_13: Real-time update danh sách
     } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
+      alert(error.response?.data?.message || 'Có lỗi xảy ra!');
     }
   };
-
-    const handleFacultyNameChange = (e) => {
-      let value = e.target.value;
-
-      // Nhiều khoảng trắng liên tiếp -> 1 khoảng trắng
-      value = value.replace(/\s+/g, ' ');
-
-      setFormData({
-        TenKhoa: value,
-        MaKhoa: generateMaKhoa(value.trim())
-      });
-
-      setErrors({
-        TenKhoa: ''
-      });
-    };
-
-
-  const handleSubmit = async () => {
-  const tenKhoa = formData.TenKhoa.trim();
-
-  const error = validateFacultyName(tenKhoa);
-
-  if (error) {
-    setErrors({
-      TenKhoa: error
-    });
-    return;
-  }
-
-  const submitData = {
-    ...formData,
-    TenKhoa: tenKhoa,
-    MaKhoa: generateMaKhoa(tenKhoa)
-  };
-
-  const duplicateName = faculties.find(
-    faculty =>
-      faculty.TenKhoa.trim().toLowerCase() ===
-      formData.TenKhoa.trim().toLowerCase() &&
-      (!editingFaculty ||
-        faculty.MaKhoa !== editingFaculty.MaKhoa)
-  );
-
-  if (duplicateName) {
-    setErrors({
-      TenKhoa: 'Tên khoa đã tồn tại'
-    });
-    return;
-  }
-
-  const duplicateCode = faculties.find(
-    faculty =>
-      faculty.MaKhoa === formData.MaKhoa &&
-      (!editingFaculty ||
-        faculty.MaKhoa !== editingFaculty.MaKhoa)
-  );
-
-  if (duplicateCode) {
-    setErrors({
-      TenKhoa: 'Mã khoa đã tồn tại'
-    });
-    return;
-  }
-
-  try {
-    if (editingFaculty) {
-      await axios.put(
-        `${API_URL}/api/faculties/${editingFaculty.MaKhoa}`,
-        formData
-      );
-    } else {
-      await axios.post(
-        `${API_URL}/api/faculties`,
-        formData
-      );
-    }
-
-    fetchData();
-    handleCloseModal();
-  } catch (error) {
-    console.error(error);
-    alert('Lỗi khi lưu khoa!');
-  }
-};
 
   const handleEdit = (faculty) => {
     setEditingFaculty(faculty);
@@ -250,20 +172,12 @@ const validateFacultyName = (value) => {
     setShowModal(true);
   };
 
-
   const handleCloseModal = () => {
-  setShowModal(false);
-  setEditingFaculty(null);
-
-  setFormData({
-    MaKhoa: '',
-    TenKhoa: ''
-  });
-
-  setErrors({
-    TenKhoa: ''
-  });
-};
+    setShowModal(false);
+    setEditingFaculty(null);
+    setFormData({ MaKhoa: '', TenKhoa: '' });
+    setErrors({ TenKhoa: '' });
+  };
 
   const handleViewDetails = async (faculty) => {
     setSelectedFaculty(faculty);
@@ -298,7 +212,6 @@ const validateFacultyName = (value) => {
     setDetailTab('teachers');
   };
 
-  // Thay đổi logic lọc/sắp xếp faculties
   const filteredAndSortedFaculties = [...faculties]
   .filter(f => {
     const searchLower = debouncedSearchTerm.toLowerCase();
@@ -317,13 +230,9 @@ const validateFacultyName = (value) => {
     return 0;
   });
 
-  const handleSearch = () => {
-    setSearchTerm(displaySearchTerm);
-  };
-
   const handleClearSearch = () => {
     setSearchTerm('');
-    setDisplaySearchTerm('');
+    setDebouncedSearchTerm('');
   };
 
   const handleApplyFilters = () => {
@@ -335,7 +244,7 @@ const validateFacultyName = (value) => {
     setFilters({ facultyFilter: '' });
     setDisplayFilters({ facultyFilter: '' });
     setSearchTerm('');
-    setDisplaySearchTerm('');
+    setDebouncedSearchTerm('');
   };
 
   const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
@@ -370,7 +279,6 @@ const validateFacultyName = (value) => {
             <Plus className="w-5 h-5" />
             Thêm khoa
           </motion.button>
-          
         </div>
       </div>
 
@@ -384,7 +292,10 @@ const validateFacultyName = (value) => {
               placeholder="Tìm kiếm theo tên hoặc mã khoa..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') handleClearSearch();
+                if (e.key === 'Enter') setDebouncedSearchTerm(searchTerm); // FIX TC_18: Phím Enter tìm ngay
+              }}
               className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
             />
             {searchTerm && (
@@ -485,8 +396,8 @@ const validateFacultyName = (value) => {
               </tr>
             </thead>
             <tbody>
-              {filteredFaculties.length > 0 ? (
-                filteredFaculties.map((faculty, index) => (
+              {filteredAndSortedFaculties.length > 0 ? (
+                filteredAndSortedFaculties.map((faculty, index) => (
                   <motion.tr
                     key={faculty.MaKhoa}
                     initial={{ opacity: 0, y: 20 }}
@@ -556,49 +467,45 @@ const validateFacultyName = (value) => {
               </button>
             </div>
             <form
-                    onSubmit={(e) => e.preventDefault()}
-                    className="p-6 space-y-4 overflow-y-auto"
-                  >
+              onSubmit={(e) => e.preventDefault()}
+              className="p-6 space-y-4 overflow-y-auto"
+            >
               
               <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tên khoa
-              </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tên khoa
+                </label>
 
-              <input
-                type="text"
-                placeholder="Nhập tên khoa..."
-                value={formData.TenKhoa}
-                onChange={handleFacultyNameChange}
-                onFocus={() =>
-                  setErrors({
-                    TenKhoa: ''
-                  })
-                }
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const error = validateFacultyName(formData.TenKhoa.trim());
-                    if (error) {
-                      setErrors({ TenKhoa: error });
-                      return;
+                <input
+                  type="text"
+                  placeholder="Nhập tên khoa..."
+                  value={formData.TenKhoa}
+                  onChange={handleFacultyNameChange}
+                  onFocus={() => setErrors({ TenKhoa: '' })}
+                  onBlur={() => {
+                    // FIX TC_12: Khi người dùng bấm ra ngoài ô nhập liệu, tự động chuẩn hóa viết hoa
+                    const formatted = formatTitleCase(formData.TenKhoa.trim());
+                    setFormData(prev => ({ ...prev, TenKhoa: formatted, MaKhoa: generateMaKhoa(formatted) }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      validateAndConfirm(); // FIX TC_22: Enter kích hoạt validate và hiện confirm
                     }
-                    setShowConfirmModal(true);
-                  }
-                }}
-                className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none ${
-                  errors.TenKhoa
-                    ? 'border-red-500'
-                    : 'border-gray-200 focus:border-orange-500'
-                }`}
-              />
+                  }}
+                  className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${
+                    errors.TenKhoa
+                      ? 'border-red-500'
+                      : 'border-gray-200 focus:border-orange-500'
+                  }`}
+                />
 
-              {errors.TenKhoa && (
-                <p className="mt-2 text-sm text-red-500">
-                  {errors.TenKhoa}
-                </p>
-              )}
-            </div>
+                {errors.TenKhoa && (
+                  <p className="mt-2 text-sm text-red-500 font-medium">
+                    {errors.TenKhoa}
+                  </p>
+                )}
+              </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
@@ -607,20 +514,9 @@ const validateFacultyName = (value) => {
                 >
                   Hủy
                 </button>
-                {/* Sửa đoạn này trong form */}
                 <button
                   type="button"
-                  // Thay onClick={handleSubmit} bằng đoạn logic sau:
-                  onClick={() => {
-                    // 1. Kiểm tra lỗi trước khi cho phép xác nhận
-                    const error = validateFacultyName(formData.TenKhoa.trim());
-                    if (error) {
-                      setErrors({ TenKhoa: error });
-                      return;
-                    }
-                    // 2. Nếu không lỗi, mở popup xác nhận
-                    setShowConfirmModal(true);
-                  }}
+                  onClick={validateAndConfirm}
                   className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
                 >
                   {editingFaculty ? 'Lưu thay đổi' : 'Thêm khoa'}
@@ -631,35 +527,37 @@ const validateFacultyName = (value) => {
         </div>
         </ModalPortal>
       )}
-      {/* Modal xác nhận thêm */}
-{showConfirmModal && (
-  <ModalPortal>
-    <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/40">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
-      >
-        <h3 className="text-xl font-bold text-gray-800 mb-2">Xác nhận</h3>
-        <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn thêm khoa <strong>{formData.TenKhoa}</strong> không?</p>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => setShowConfirmModal(false)}
-            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200"
-          >
-            Không
-          </button>
-          <button 
-            onClick={executeAddFaculty}
-            className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg"
-          >
-            Có
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  </ModalPortal>
-)}
+
+      {/* Modal xác nhận thêm/sửa */}
+      {showConfirmModal && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/40">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Xác nhận</h3>
+              <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn {editingFaculty ? 'cập nhật' : 'thêm'} khoa <strong className="text-orange-600">{formData.TenKhoa}</strong> không?</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200"
+                >
+                  Không
+                </button>
+                <button 
+                  onClick={executeSubmit}
+                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg"
+                >
+                  Có
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </ModalPortal>
+      )}
+
       {/* Detail Modal */}
       {showDetailModal && selectedFaculty && (
         <ModalPortal>
@@ -894,7 +792,6 @@ const validateFacultyName = (value) => {
             </div>
           </motion.div>
         </div>
-        
         </ModalPortal>
       )}
     </div>

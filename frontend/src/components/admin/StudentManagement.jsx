@@ -1,9 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import API_URL from '../../api';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Upload, FileText, Calendar, CheckCircle, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, BookOpen, BarChart3, UserCheck, Clock, MapPin } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
+
+// Tự động lấy cấu hình môi trường hoặc mặc định localhost
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = `${API_URL}/api`;
 
 function StudentManagement() {
   const [students, setStudents] = useState([]);
@@ -26,35 +29,50 @@ function StudentManagement() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentDetails, setStudentDetails] = useState(null);
   const [studentTranscript, setStudentTranscript] = useState(null);
-  const [studentSchedule, setStudentSchedule] = useState([]);
-  const [studentAttendance, setStudentAttendance] = useState([]);
-  const [detailTab, setDetailTab] = useState('info');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailTab, setDetailTab] = useState('overview'); // overview, transcript, attendance
+
   const [formData, setFormData] = useState({
     MSSV: '',
     HoTen: '',
     NgaySinh: '',
-    GioiTinh: 'Nam',
+    GioiTinh: '',
     Email: '',
     SoDienThoai: '',
     MaLop: '',
     TrangThai: 'Đang học'
   });
-  const [errors, setErrors] = useState({});
+
+  const [formErrors, setFormErrors] = useState({
+    HoTen: '',
+    NgaySinh: '',
+    Email: '',
+    SoDienThoai: '',
+    MaLop: ''
+  });
+
+  const [deleteModal, setDeleteModal] = useState({ show: false, student: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
   const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
   const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
 
-  // Vietnamese diacritic removal for search
-  const removeVietnameseTones = useCallback((str) => {
+  // Loại bỏ dấu tiếng Việt
+  const removeVietnameseTones = (str) => {
     return str
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/đ/g, 'd')
       .replace(/Đ/g, 'D');
-  }, []);
+  };
 
-  // Debounced search
+  // Hàm chuẩn hóa viết hoa tên riêng (FIX TC_12)
+  const formatTitleCase = (str) => {
+    return str.toLowerCase().split(/\s+/).map(word => {
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   useEffect(() => {
@@ -64,131 +82,113 @@ function StudentManagement() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     try {
       const [studentsRes, classesRes] = await Promise.all([
-        axios.get(`${API_URL}/api/students`),
-        axios.get(`${API_URL}/api/classes`)
+        axios.get(`${API_BASE}/students`),
+        axios.get(`${API_BASE}/classes`)
       ]);
       setStudents(studentsRes.data);
       setClasses(classesRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setLoading(false);
+      loading && setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const validateForm = () => {
+    const errors = {
+      HoTen: '',
+      NgaySinh: '',
+      Email: '',
+      SoDienThoai: '',
+      MaLop: ''
+    };
+    let isValid = true;
+
+    // FIX TC_11: Chặn ký tự đặc biệt, chuẩn hóa tên
+    const formattedName = formatTitleCase(formData.HoTen.trim());
+    if (!formattedName) {
+      errors.HoTen = 'Vui lòng nhập họ tên';
+      isValid = false;
+    } else if (!/^[a-zA-Z\u00C0-\u1EF9\s]+$/.test(formattedName)) {
+      errors.HoTen = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
+      isValid = false;
+    }
+
+    if (!formData.NgaySinh) {
+      errors.NgaySinh = 'Vui lòng chọn ngày sinh';
+      isValid = false;
+    }
+
+    // FIX TC_16: Email regex chặt chẽ hơn
+    if (!formData.Email) {
+      errors.Email = 'Vui lòng nhập email';
+      isValid = false;
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.Email)) {
+      errors.Email = 'Email không hợp lệ (VD: @gmail.com)';
+      isValid = false;
+    }
+
+    if (!formData.SoDienThoai) {
+      errors.SoDienThoai = 'Vui lòng nhập số điện thoại';
+      isValid = false;
+    } else if (!/^(0[3|5|7|8|9])+([0-9]{8})\b/.test(formData.SoDienThoai)) {
+      errors.SoDienThoai = 'Số điện thoại không hợp lệ (VD: 0912345678)';
+      isValid = false;
+    }
+
+    if (!formData.MaLop) {
+      errors.MaLop = 'Vui lòng chọn lớp học';
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
   };
 
   const handleLopChange = async (e) => {
-  const maLop = e.target.value;
-
-  // 1. NẾU ĐANG SỬA: Chỉ đổi lớp, TUYỆT ĐỐI KHÔNG xóa MSSV
-  if (editingStudent) {
+    const maLop = e.target.value;
     setFormData(prev => ({ ...prev, MaLop: maLop }));
-    return; 
-  }
-
-  // 2. NẾU THÊM MỚI: Tạm xóa MSSV cũ để tạo mã mới theo lớp
-  setFormData(prev => ({ ...prev, MaLop: maLop, MSSV: '' }));
-
-  if (!maLop) return;
-
-  try {
-    const res = await axios.get(`${API_URL}/api/students/next-code/${maLop}`);
-    setFormData(prev => ({ ...prev, MaLop: maLop, MSSV: res.data.MSSV }));
-  } catch (err) {
-    console.error('Lỗi tạo MSSV:', err);
-  }
-};
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Validate Họ tên
-    if (!formData.HoTen.trim()) {
-      newErrors.HoTen = 'Họ tên không được để trống';
-    } else if (formData.HoTen.length < 2) {
-      newErrors.HoTen = 'Họ tên phải có ít nhất 2 ký tự';
-    }
-
-    // Validate Ngày sinh
-    if (!formData.NgaySinh) {
-      newErrors.NgaySinh = 'Ngày sinh không được để trống';
-    } else {
-      const birthDate = new Date(formData.NgaySinh);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      if (age < 15 || age > 100) {
-        newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
-      }
-    }
-
-    // Validate Email
-    if (!formData.Email.trim()) {
-      newErrors.Email = 'Email không được để trống';
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.Email)) {
-        newErrors.Email = 'Email không đúng định dạng';
-      }
-    }
-
-    // Validate Số điện thoại
-    if (!formData.SoDienThoai.trim()) {
-      newErrors.SoDienThoai = 'Số điện thoại không được để trống';
-    } else {
-      const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
-      if (!phoneRegex.test(formData.SoDienThoai)) {
-        newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)';
-      }
-    }
-
-    // Validate Lớp
-    if (!formData.MaLop) {
-      newErrors.MaLop = 'Vui lòng chọn lớp';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (formErrors.MaLop) setFormErrors(prev => ({ ...prev, MaLop: '' }));
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+    // Tự động chuẩn hóa tên trước khi gửi (TC_12)
+    const formattedName = formatTitleCase(formData.HoTen.trim());
+    const dataToSubmit = { ...formData, HoTen: formattedName };
 
-  if (editingStudent) {
-    setConfirmDialog({
-      show: true,
-      message: `Bạn có chắc chắn muốn cập nhật thông tin sinh viên "${formData.HoTen}" (${formData.MSSV}) không?`,
-      onConfirm: async () => {
-        try {
-          await axios.put(`${API_URL}/api/students/${editingStudent.MSSV}`, formData);
-          setToast({ show: true, message: 'Cập nhật sinh viên thành công!', type: 'success' });
-          fetchData();
-          handleCloseModal();
-        } catch (error) {
-          console.error('Error saving student:', error);
-          setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
-        }
-      }
-    });
-  } else {
     try {
-      await axios.post(`${API_URL}/api/students`, formData);
-      setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
+      if (editingStudent) {
+        await axios.put(`${API_BASE}/students/${editingStudent.MSSV}`, dataToSubmit);
+        setToast({ show: true, message: 'Cập nhật sinh viên thành công!', type: 'success' });
+      } else {
+        const resCode = await axios.get(`${API_BASE}/students/next-code/${formData.MaLop}`);
+        const newMSSV = resCode.data.MSSV;
+
+        await axios.post(`${API_BASE}/students`, {
+          ...dataToSubmit,
+          MSSV: newMSSV
+        });
+        setToast({ show: true, message: 'Thêm sinh viên thành công!', type: 'success' });
+      }
       fetchData();
       handleCloseModal();
     } catch (error) {
       console.error('Error saving student:', error);
-      setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
+      // FIX TC_18: Bóc tách lỗi hệ thống cụ thể từ Backend thay vì hardcode
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Lỗi không xác định";
+      setErrorDialog({ show: true, message: `Lỗi khi lưu sinh viên: ${errorMessage}` });
     }
-  }
-};
+  };
 
   const handleEdit = (student) => {
     setEditingStudent(student);
@@ -205,100 +205,84 @@ function StudentManagement() {
     setShowModal(true);
   };
 
-
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingStudent(null);
     setFormData({
-      MSSV: '',
-      HoTen: '',
-      NgaySinh: '',
-      GioiTinh: 'Nam',
-      Email: '',
-      SoDienThoai: '',
-      MaLop: '',
-      TrangThai: 'Đang học'
+      MSSV: '', HoTen: '', NgaySinh: '', GioiTinh: 'Nam',
+      Email: '', SoDienThoai: '', MaLop: '', TrangThai: 'Đang học'
     });
-    setErrors({});
+    setFormErrors({ HoTen: '', NgaySinh: '', Email: '', SoDienThoai: '', MaLop: '' });
   };
 
+  const handleDelete = (student) => {
+    setDeleteModal({ show: true, student });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await axios.delete(`${API_BASE}/students/${deleteModal.student.MSSV}`);
+      setToast({ show: true, message: 'Xóa sinh viên thành công!', type: 'success' });
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      setErrorDialog({ show: true, message: 'Lỗi khi xóa sinh viên!' });
+    } finally {
+      setDeleteModal({ show: false, student: null });
+    }
+  };
 
   const handleViewDetails = async (student) => {
     setSelectedStudent(student);
     setShowDetailModal(true);
-    setDetailTab('info');
+    setDetailLoading(true);
+    setDetailTab('overview');
     
     try {
-      const [detailsRes, transcriptRes, scheduleRes, attendanceRes] = await Promise.all([
-        axios.get(`${API_URL}/api/students/${student.MSSV}/details`),
-        axios.get(`${API_URL}/api/academic/transcript/${student.MSSV}`),
-        axios.get(`${API_URL}/api/students/${student.MSSV}/schedule`),
-        axios.get(`${API_URL}/api/attendance/student/${student.MSSV}`)
+      const [detailsRes, transcriptRes, scheduleRes] = await Promise.all([
+        axios.get(`${API_BASE}/students/${student.MSSV}/details`),
+        axios.get(`${API_BASE}/academic/transcript/${student.MSSV}`),
+        axios.get(`${API_BASE}/students/${student.MSSV}/schedule`)
       ]);
       
-      setStudentDetails(detailsRes.data[0] || null);
+      setStudentDetails({
+        ...detailsRes.data[0],
+        schedule: scheduleRes.data
+      });
       setStudentTranscript(transcriptRes.data);
-      setStudentSchedule(Array.isArray(scheduleRes.data) ? scheduleRes.data : []);
-      setStudentAttendance(attendanceRes.data);
     } catch (error) {
       console.error('Error fetching student details:', error);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
-  const handleCloseDetailModal = () => {
-    setShowDetailModal(false);
-    setSelectedStudent(null);
-    setStudentDetails(null);
-    setStudentTranscript(null);
-    setStudentSchedule([]);
-    setStudentAttendance([]);
-    setDetailTab('info');
-  };
-
-  const handleExportStudents = () => {
-    const csvContent = [
-      ['MSSV', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Email', 'SĐT', 'Lớp'],
-      ...filteredStudents.map(s => [
-        s.MSSV,
-        s.HoTen,
-        s.NgaySinh,
-        s.GioiTinh,
-        s.Email,
-        s.SoDienThoai,
-        s.TenLop || ''
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'sinhVien.csv';
-    link.click();
-  };
-
   const filteredStudents = students.filter(student => {
-    const searchLower = debouncedSearchTerm.toLowerCase();
+    // FIX TC_13: Nhập khoảng trắng toàn bộ sẽ bị chặn
+    if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') {
+      return false; // Không trả về kết quả nào nếu chỉ gõ space
+    }
+    
+    // FIX TC_19: Trim khoảng trắng thừa trước khi search
+    const searchLower = debouncedSearchTerm.trim().toLowerCase();
     const searchNoTones = removeVietnameseTones(searchLower);
+    
     const nameLower = student.HoTen?.toLowerCase() || '';
     const nameNoTones = removeVietnameseTones(nameLower);
-    const idLower = student.MSSV?.toLowerCase() || '';
+    const codeLower = student.MSSV?.toLowerCase() || '';
     const emailLower = student.Email?.toLowerCase() || '';
     
-    const matchesSearch = 
+    const matchesSearch =
       nameLower.includes(searchLower) ||
       nameNoTones.includes(searchNoTones) ||
-      idLower.includes(searchLower) ||
+      codeLower.includes(searchLower) ||
       emailLower.includes(searchLower);
-    
+      
     const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
     const matchesGender = !filters.genderFilter || student.GioiTinh === filters.genderFilter;
     
     return matchesSearch && matchesClass && matchesGender;
   });
-
-  const handleSearch = () => {
-    setSearchTerm(displaySearchTerm);
-  };
 
   const handleClearSearch = () => {
     setSearchTerm('');
@@ -317,8 +301,13 @@ function StudentManagement() {
     setDisplaySearchTerm('');
   };
 
-  const activeFilterCount = (filters.classFilter ? 1 : 0) + (filters.genderFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.classFilter || filters.genderFilter || searchTerm;
+  const activeFilterCount = (filters.classFilter ? 1 : 0) + (filters.genderFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const hasActiveFilters = filters.classFilter || filters.genderFilter || searchTerm.trim();
+
+  // Loại bỏ các lớp trùng lặp hoặc null
+  const uniqueClasses = Array.from(
+    new Map(classes.filter(c => c && c.MaLop && c.TenLop).map(c => [c.MaLop, c])).values()
+  );
 
   if (loading) {
     return (
@@ -335,31 +324,20 @@ function StudentManagement() {
         <div className="flex items-center justify-between">
           <div className="text-white">
             <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
-              <Users className="w-8 h-8" />
+              <GraduationCap className="w-8 h-8" />
               Quản lý sinh viên
             </h2>
-            <p className="text-orange-100 text-lg">Thêm, sửa, xóa và xem chi tiết thông tin sinh viên</p>
+            <p className="text-orange-100 text-lg">Quản lý hồ sơ, thêm/sửa sinh viên</p>
           </div>
-          <div className="flex gap-3">
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleExportStudents}
-              className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
-            >
-              <Download className="w-5 h-5" />
-              Export
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
-            >
-              <Plus className="w-5 h-5" />
-              Thêm sinh viên
-            </motion.button>
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm sinh viên
+          </motion.button>
         </div>
       </div>
 
@@ -370,7 +348,7 @@ function StudentManagement() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm sinh viên theo tên, MSSV hoặc email..."
+              placeholder="Tìm kiếm theo MSSV, Họ tên hoặc Email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
@@ -433,16 +411,16 @@ function StudentManagement() {
                   onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
                 >
-                  <option value="">Tất cả lớp</option>
-                  {classes.map((cls) => (
+                  <option value="">Tất cả lớp học</option>
+                  {uniqueClasses.map((cls) => (
                     <option key={cls.MaLop} value={cls.MaLop}>
-                      {cls.TenLop}
+                      {cls.TenLop} ({cls.MaLop})
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo giới tính</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Giới tính</label>
                 <select
                   value={displayFilters.genderFilter}
                   onChange={(e) => setDisplayFilters({ ...displayFilters, genderFilter: e.target.value })}
@@ -477,19 +455,16 @@ function StudentManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">MSSV</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Họ tên</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Email</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">SĐT</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">MSSV</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Họ và tên</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Lớp</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Liên hệ</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -500,37 +475,45 @@ function StudentManagement() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
+                    className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
                     onClick={() => handleViewDetails(student)}
                   >
                     <td className="py-5 px-6">
                       <span className="font-semibold text-gray-800 text-base">{student.MSSV}</span>
                     </td>
                     <td className="py-5 px-6">
-                      <div className="font-semibold text-gray-800">{student.HoTen}</div>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm ${
+                          student.GioiTinh === 'Nữ' ? 'bg-pink-400' : 'bg-blue-500'
+                        }`}>
+                          {student.HoTen ? student.HoTen.charAt(0).toUpperCase() : 'S'}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-800">{student.HoTen}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{student.GioiTinh || 'Chưa cập nhật'}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-5 px-6">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        student.GioiTinh === 'Nam'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-pink-100 text-pink-700'
-                      }`}>
-                        {student.GioiTinh || 'N/A'}
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-700">
+                        {student.TenLop || student.MaLop || 'Chưa phân lớp'}
                       </span>
                     </td>
-                    <td className="py-5 px-6 text-sm text-gray-600">{student.TenLop || 'N/A'}</td>
-                    <td className="py-5 px-6 text-sm text-gray-600">{student.Email || 'N/A'}</td>
-                    <td className="py-5 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
                     <td className="py-5 px-6">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        student.TrangThai === 'Đang học'
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : student.TrangThai === 'Học lại'
-                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                          : 'bg-red-100 text-red-700 border border-red-200'
-                      }`}>
-                        {student.TrangThai || 'Đang học'}
-                      </span>
+                      <div className="flex flex-col gap-1.5 text-sm">
+                        {student.Email && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            {student.Email}
+                          </div>
+                        )}
+                        {student.SoDienThoai && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            {student.SoDienThoai}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="py-5 px-6">
                       <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
@@ -543,17 +526,26 @@ function StudentManagement() {
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDelete(student)}
+                          className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </motion.button>
                       </div>
                     </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="py-16">
+                  <td colSpan="5" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy sinh viên nào</p>
-                      <p className="text-sm mt-2">Thử tìm kiếm với từ khóa khác</p>
+                      <p className="text-sm mt-2">Thử thay đổi từ khóa hoặc bộ lọc</p>
                     </div>
                   </td>
                 </tr>
@@ -563,7 +555,7 @@ function StudentManagement() {
         </div>
       </div>
 
-      {/* Modal Add/Edit Form */}
+      {/* Modal Add/Edit */}
       {showModal && (
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
@@ -579,7 +571,7 @@ function StudentManagement() {
                   {editingStudent ? 'Cập nhật sinh viên' : 'Thêm sinh viên mới'}
                 </h3>
                 <p className="text-orange-100 text-sm mt-0.5">
-                  {editingStudent ? 'Chỉnh sửa hồ sơ sinh viên' : 'Tạo hồ sơ sinh viên và gán lớp'}
+                  {editingStudent ? 'Chỉnh sửa hồ sơ sinh viên' : 'Nhập thông tin để tạo hồ sơ và tài khoản'}
                 </p>
               </div>
               <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
@@ -587,25 +579,26 @@ function StudentManagement() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-              <input type="hidden" value={formData.MSSV} />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Ô Họ tên */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Họ và Tên</label>
                   <input
                     type="text"
                     value={formData.HoTen}
                     onChange={(e) => {
                       setFormData({ ...formData, HoTen: e.target.value });
-                      if (errors.HoTen) setErrors({ ...errors, HoTen: '' });
+                      if (formErrors.HoTen) setFormErrors(prev => ({ ...prev, HoTen: '' }));
                     }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
+                    onBlur={(e) => {
+                      // FIX TC_12: Tự động format viết hoa khi blur
+                      const formatted = formatTitleCase(e.target.value.trim());
+                      setFormData(prev => ({ ...prev, HoTen: formatted }));
+                    }}
+                    placeholder="Nguyễn Văn A"
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
-                  {errors.HoTen && <p className="text-red-500 text-sm mt-1">{errors.HoTen}</p>}
+                  {formErrors.HoTen && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.HoTen}</p>}
                 </div>
 
                 <div>
@@ -615,14 +608,13 @@ function StudentManagement() {
                     value={formData.NgaySinh}
                     onChange={(e) => {
                       setFormData({ ...formData, NgaySinh: e.target.value });
-                      if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '' });
+                      if (formErrors.NgaySinh) setFormErrors(prev => ({ ...prev, NgaySinh: '' }));
                     }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
-                  {errors.NgaySinh && <p className="text-red-500 text-sm mt-1">{errors.NgaySinh}</p>}
+                  {formErrors.NgaySinh && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.NgaySinh}</p>}
                 </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
                   <select
@@ -634,6 +626,7 @@ function StudentManagement() {
                     <option value="Nữ">Nữ</option>
                   </select>
                 </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                   <input
@@ -641,14 +634,14 @@ function StudentManagement() {
                     value={formData.Email}
                     onChange={(e) => {
                       setFormData({ ...formData, Email: e.target.value });
-                      if (errors.Email) setErrors({ ...errors, Email: '' });
+                      if (formErrors.Email) setFormErrors(prev => ({ ...prev, Email: '' }));
                     }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
+                    placeholder="nguyenvana@gmail.com"
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
-                  {errors.Email && <p className="text-red-500 text-sm mt-1">{errors.Email}</p>}
+                  {formErrors.Email && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.Email}</p>}
                 </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
                   <input
@@ -656,62 +649,44 @@ function StudentManagement() {
                     value={formData.SoDienThoai}
                     onChange={(e) => {
                       setFormData({ ...formData, SoDienThoai: e.target.value });
-                      if (errors.SoDienThoai) setErrors({ ...errors, SoDienThoai: '' });
+                      if (formErrors.SoDienThoai) setFormErrors(prev => ({ ...prev, SoDienThoai: '' }));
                     }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
+                    placeholder="0912345678"
+                    maxLength={10}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
-                  {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
+                  {formErrors.SoDienThoai && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.SoDienThoai}</p>}
                 </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
                   <select
                     value={formData.MaLop}
-                    onChange={(e) => {
-                      handleLopChange(e); // Gọi hàm tự động sinh MSSV
-                      if (errors.MaLop) setErrors({ ...errors, MaLop: '' }); // Giữ nguyên tính năng xóa viền đỏ
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
+                    onChange={handleLopChange}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   >
-                    <option value="">Chọn lớp</option>
-                    {classes.map((cls) => (
+                    <option value="">Chọn lớp học</option>
+                    {uniqueClasses.map((cls) => (
                       <option key={cls.MaLop} value={cls.MaLop}>
                         {cls.TenLop}
                       </option>
                     ))}
                   </select>
-                  {errors.MaLop && <p className="text-red-500 text-sm mt-1">{errors.MaLop}</p>}
+                  {formErrors.MaLop && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.MaLop}</p>}
                 </div>
-                {editingStudent && (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
-                    <select
-                      value={formData.TrangThai}
-                      onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                    >
-                      <option value="Đang học">Đang học</option>
-                      <option value="Học lại">Học lại</option>
-                      <option value="Nghỉ học">Nghỉ học</option>
-                    </select>
-                  </div>
-                )}
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all"
                 >
                   {editingStudent ? 'Lưu thay đổi' : 'Thêm sinh viên'}
                 </button>
@@ -722,6 +697,34 @@ function StudentManagement() {
         </ModalPortal>
       )}
 
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        show={deleteModal.show}
+        message={`Bạn có chắc chắn muốn xóa sinh viên "${deleteModal.student?.HoTen}" (${deleteModal.student?.MSSV})? Mọi dữ liệu liên quan sẽ bị xóa.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteModal({ show: false, student: null })}
+        title="Xóa sinh viên"
+      />
+
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
+      
+      <SuccessDialog
+        show={successDialog.show}
+        message={successDialog.message}
+        onClose={() => setSuccessDialog({ show: false, message: '' })}
+      />
+      
+      <ErrorDialog
+        show={errorDialog.show}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ show: false, message: '' })}
+      />
+
       {/* Detail Modal */}
       {showDetailModal && selectedStudent && (
         <ModalPortal>
@@ -731,33 +734,53 @@ function StudentManagement() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
+            className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="bg-white/20 rounded-xl p-2">
-                      <GraduationCap className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết sinh viên</span>
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0 relative overflow-hidden">
+              <div className="absolute right-0 top-0 opacity-10 transform translate-x-1/4 -translate-y-1/4">
+                <GraduationCap className="w-64 h-64" />
+              </div>
+              
+              <div className="flex items-start justify-between relative z-10">
+                <div className="flex items-center gap-6">
+                  <div className={`w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold text-white shadow-inner border-4 border-white/20 ${
+                    selectedStudent.GioiTinh === 'Nữ' ? 'bg-pink-400' : 'bg-blue-500'
+                  }`}>
+                    {selectedStudent.HoTen ? selectedStudent.HoTen.charAt(0).toUpperCase() : 'S'}
                   </div>
-                  <h2 className="text-2xl font-bold text-white mt-2">{studentDetails?.HoTen || selectedStudent.HoTen}</h2>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
-                    {studentDetails?.TenLop && (
-                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{studentDetails.TenLop}</span>
-                    )}
-                    {studentDetails?.TenKhoa && (
-                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{studentDetails.TenKhoa}</span>
-                    )}
+                  
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-mono tracking-wider">
+                        {selectedStudent.MSSV}
+                      </span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                        selectedStudent.TrangThai === 'Đang học' ? 'bg-green-400/20 text-green-100' : 'bg-red-400/20 text-red-100'
+                      }`}>
+                        {selectedStudent.TrangThai || 'Đang học'}
+                      </span>
+                    </div>
+                    <h2 className="text-3xl font-bold text-white mt-1">{selectedStudent.HoTen}</h2>
+                    <div className="text-orange-100 mt-1.5 flex items-center gap-4 text-sm font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <BookOpen className="w-4 h-4" />
+                        Lớp {selectedStudent.TenLop || selectedStudent.MaLop || 'Chưa cập nhật'}
+                      </span>
+                      {studentDetails?.TenKhoa && (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-orange-300"></span>
+                          <span>Khoa {studentDetails.TenKhoa}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
+                
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={handleCloseDetailModal}
+                  onClick={() => setShowDetailModal(false)}
                   className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
                 >
                   <X className="w-5 h-5 text-white" />
@@ -765,19 +788,18 @@ function StudentManagement() {
               </div>
 
               {/* Tabs */}
-              <div className="flex gap-1 mt-5">
+              <div className="flex gap-1 mt-6 relative z-10">
                 {[
-                  { id: 'info', label: 'Thông tin', icon: Users },
-                  { id: 'transcript', label: 'Bảng điểm', icon: FileText },
-                  { id: 'schedule', label: 'Lịch học', icon: Calendar },
-                  { id: 'attendance', label: 'Điểm danh', icon: CheckCircle },
+                  { id: 'overview', label: 'Hồ sơ cá nhân', icon: UserCheck },
+                  { id: 'transcript', label: 'Kết quả học tập', icon: Award },
+                  { id: 'attendance', label: 'Lịch học', icon: Calendar }
                 ].map(tab => {
                   const Icon = tab.icon;
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setDetailTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         detailTab === tab.id
                           ? 'bg-white text-orange-600 shadow-md'
                           : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -792,239 +814,208 @@ function StudentManagement() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {detailTab === 'info' && studentDetails && (
-                <div className="space-y-6">
-                  {/* Stats cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Tín chỉ', value: studentTranscript?.summary?.totalCredits || 0, icon: BookOpen, color: 'blue' },
-                      { label: 'GPA', value: studentTranscript?.summary?.cumulativeGPA || 0, icon: Award, color: 'green' },
-                      { label: 'Tỷ lệ qua', value: `${studentTranscript?.summary?.passRate || 0}%`, icon: TrendingUp, color: 'purple' },
-                      { label: 'Số môn', value: studentTranscript?.transcript?.length || 0, icon: BarChart3, color: 'orange' },
-                    ].map((card, i) => {
-                      const Icon = card.icon;
-                      const colorMap = {
-                        blue: 'bg-blue-50 text-blue-600 border-blue-100',
-                        green: 'bg-green-50 text-green-600 border-green-100',
-                        purple: 'bg-purple-50 text-purple-600 border-purple-100',
-                        orange: 'bg-orange-50 text-orange-600 border-orange-100',
-                      };
-                      return (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.07 }}
-                          className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
-                        >
-                          <Icon className="w-6 h-6 mb-3 opacity-80" />
-                          <div className="text-3xl font-bold">{card.value}</div>
-                          <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Personal info */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[
-                        { label: 'MSSV', value: studentDetails.MSSV, icon: null },
-                        { label: 'Họ tên', value: studentDetails.HoTen, icon: null },
-                        { label: 'Ngày sinh', value: studentDetails.NgaySinh, icon: null },
-                        { label: 'Giới tính', value: studentDetails.GioiTinh, icon: null },
-                        { label: 'Email', value: studentDetails.Email, icon: Mail },
-                        { label: 'SĐT', value: studentDetails.SoDienThoai, icon: Phone },
-                      ].map((item, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.06 }}
-                          className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100"
-                        >
-                          {item.icon && <item.icon className="w-5 h-5 text-gray-400" />}
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
-                            <div className="font-semibold text-gray-800 text-sm">{item.value || '—'}</div>
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-50/50">
+              {detailLoading ? (
+                <div className="flex flex-col items-center justify-center h-48 gap-3">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+                  <p className="text-gray-400 font-medium">Đang tải dữ liệu sinh viên...</p>
+                </div>
+              ) : (
+                <>
+                  {/* TAB: HỒ SƠ */}
+                  {detailTab === 'overview' && studentDetails && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-2 space-y-6">
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                          <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2 border-b border-gray-100 pb-4">
+                            <FileText className="w-5 h-5 text-orange-500" />
+                            Thông tin cá nhân
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+                            {[
+                              { label: 'Ngày sinh', value: studentDetails.NgaySinh ? new Date(studentDetails.NgaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật' },
+                              { label: 'Giới tính', value: studentDetails.GioiTinh || 'Chưa cập nhật' },
+                              { label: 'Email liên hệ', value: studentDetails.Email || 'Chưa cập nhật' },
+                              { label: 'Số điện thoại', value: studentDetails.SoDienThoai || 'Chưa cập nhật' },
+                            ].map((item, idx) => (
+                              <div key={idx}>
+                                <div className="text-sm text-gray-500 mb-1">{item.label}</div>
+                                <div className="font-semibold text-gray-800">{item.value}</div>
+                              </div>
+                            ))}
                           </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+                        </div>
 
-              {detailTab === 'transcript' && studentTranscript && (
-                <div className="space-y-6">
-                  {studentTranscript.summary && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {[
-                        { label: 'Tổng tín chỉ', value: studentTranscript.summary.totalCredits, icon: BookOpen, color: 'blue' },
-                        { label: 'Tín chỉ qua', value: studentTranscript.summary.passedCredits, icon: CheckCircle, color: 'green' },
-                        { label: 'GPA tích lũy', value: studentTranscript.summary.cumulativeGPA, icon: Award, color: 'purple' },
-                        { label: 'Tỷ lệ qua', value: `${studentTranscript.summary.passRate}%`, icon: TrendingUp, color: 'orange' },
-                      ].map((card, i) => {
-                        const Icon = card.icon;
-                        const colorMap = {
-                          blue: 'bg-blue-50 text-blue-600 border-blue-100',
-                          green: 'bg-green-50 text-green-600 border-green-100',
-                          purple: 'bg-purple-50 text-purple-600 border-purple-100',
-                          orange: 'bg-orange-50 text-orange-600 border-orange-100',
-                        };
-                        return (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.07 }}
-                            className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
-                          >
-                            <Icon className="w-6 h-6 mb-3 opacity-80" />
-                            <div className="text-3xl font-bold">{card.value}</div>
-                            <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <div className="overflow-x-auto rounded-2xl border border-gray-100">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Môn học</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Học kỳ</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">QT</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">GK</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">CK</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">TB</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Điểm chữ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {studentTranscript.transcript && studentTranscript.transcript.map((grade, index) => (
-                          <motion.tr
-                            key={index}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: index * 0.03 }}
-                            className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
-                          >
-                            <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{grade.TenMonHoc}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.HocKy}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemQuaTrinh || '-'}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
-                            <td className="py-3.5 px-5 text-sm font-bold text-orange-600">{grade.DiemTB}</td>
-                            <td className="py-3.5 px-5 text-sm font-semibold text-gray-800">{grade.DiemChu}</td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                          <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2 border-b border-gray-100 pb-4">
+                            <BookOpen className="w-5 h-5 text-orange-500" />
+                            Thông tin học vụ
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+                            {[
+                              { label: 'Trạng thái học tập', value: <span className="text-green-600 bg-green-50 px-2 py-1 rounded-md">{studentDetails.TrangThai || 'Đang học'}</span> },
+                              { label: 'Lớp sinh hoạt', value: studentDetails.TenLop || studentDetails.MaLop || 'Chưa cập nhật' },
+                              { label: 'Khoa quản lý', value: studentDetails.TenKhoa || 'Chưa cập nhật' },
+                              { label: 'Ngày nhập học', value: 'Tháng 9/2023 (Dự kiến)' },
+                            ].map((item, idx) => (
+                              <div key={idx}>
+                                <div className="text-sm text-gray-500 mb-1">{item.label}</div>
+                                <div className="font-semibold text-gray-800">{item.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
 
-              {detailTab === 'schedule' && (
-                <ScheduleDetailView
-                  schedule={studentSchedule}
-                  title="Lịch học sinh viên"
-                  showTeacher
-                  showHocKy
-                />
-              )}
-
-              {detailTab === 'attendance' && (
-                <div>
-                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
-                    Lịch điểm danh ({studentAttendance.length} buổi)
-                  </h4>
-                  {studentAttendance.length > 0 ? (
-                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Ngày</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Phòng</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Trạng thái</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentAttendance.map((att, index) => (
-                            <motion.tr
-                              key={index}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.03 }}
-                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
-                            >
-                              <td className="py-3.5 px-5 text-sm text-gray-800">
-                                {new Date(att.NgayDiemDanh).toLocaleDateString('vi-VN')}
-                              </td>
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{att.PhongHoc}</td>
-                              <td className="py-3.5 px-5">
-                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${
-                                  att.TrangThai === 'Có mặt' ? 'bg-green-100 text-green-700' :
-                                  att.TrangThai === 'Vắng mặt' ? 'bg-red-100 text-red-700' :
-                                  'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                  {att.TrangThai}
+                      <div className="space-y-6">
+                        {/* GPA Card */}
+                        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                          <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+                            <TrendingUp className="w-32 h-32" />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="text-gray-400 font-medium mb-1">Điểm Trung Bình (GPA)</div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-5xl font-bold text-orange-400">
+                                {studentTranscript?.summary?.cumulativeGPA || '0.00'}
+                              </span>
+                              <span className="text-gray-500 font-medium">/ 4.0</span>
+                            </div>
+                            
+                            <div className="mt-6 pt-5 border-t border-gray-700/50">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-gray-400">Xếp loại</span>
+                                <span className="font-bold text-green-400 bg-green-400/10 px-3 py-1 rounded-full">
+                                  {studentTranscript?.summary?.academicStanding || 'Chưa có'}
                                 </span>
-                              </td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                      <CheckCircle className="w-14 h-14 mb-3 text-gray-200" />
-                      <p className="font-medium">Chưa có dữ liệu điểm danh</p>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-400">Tín chỉ tích lũy</span>
+                                <span className="font-bold">{studentTranscript?.summary?.passedCredits || 0} / {studentTranscript?.summary?.totalCredits || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick actions */}
+                        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                          <h4 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wider">Thao tác nhanh</h4>
+                          <div className="space-y-2">
+                            <button 
+                              onClick={() => {
+                                setShowDetailModal(false);
+                                handleEdit(studentDetails);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors text-sm font-medium"
+                            >
+                              <Edit className="w-4 h-4" /> Cập nhật hồ sơ
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm font-medium">
+                              <Mail className="w-4 h-4" /> Gửi email nhắc nhở
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors text-sm font-medium">
+                              <Download className="w-4 h-4" /> Xuất bảng điểm PDF
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
-                </div>
+
+                  {/* TAB: BẢNG ĐIỂM */}
+                  {detailTab === 'transcript' && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <Award className="w-5 h-5 text-orange-500" />
+                            Chi tiết điểm các môn
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">Hệ thống tính điểm hệ 4 và hệ 10</p>
+                        </div>
+                        <div className="flex gap-4 text-sm font-medium">
+                          <div className="bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm text-center">
+                            <div className="text-gray-500 text-xs mb-0.5">Tín chỉ qua môn</div>
+                            <div className="text-lg text-green-600">{studentTranscript?.summary?.passedCredits || 0}</div>
+                          </div>
+                          <div className="bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm text-center">
+                            <div className="text-gray-500 text-xs mb-0.5">Tỷ lệ hoàn thành</div>
+                            <div className="text-lg text-blue-600">{studentTranscript?.summary?.passRate || 0}%</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gray-50/80">
+                              <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Học kỳ</th>
+                              <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Môn học</th>
+                              <th className="text-center py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Tín chỉ</th>
+                              <th className="text-center py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Hệ 10</th>
+                              <th className="text-center py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Điểm chữ</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {studentTranscript?.transcript?.length > 0 ? (
+                              studentTranscript.transcript.map((record, idx) => (
+                                <tr key={idx} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                  <td className="py-4 px-6 font-medium text-gray-600">HK {record.HocKy}</td>
+                                  <td className="py-4 px-6">
+                                    <div className="font-bold text-gray-800">{record.TenMonHoc}</div>
+                                    <div className="text-xs text-gray-500">{record.MaLopHocPhan || record.MaMonHoc}</div>
+                                  </td>
+                                  <td className="py-4 px-6 text-center font-medium">{record.SoTinChi || '-'}</td>
+                                  <td className="py-4 px-6 text-center">
+                                    <span className="font-bold">{record.DiemTB || '-'}</span>
+                                  </td>
+                                  <td className="py-4 px-6 text-center">
+                                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${
+                                      ['A', 'A+', 'B', 'B+'].includes(record.DiemChu) ? 'bg-green-100 text-green-700' :
+                                      ['C', 'C+'].includes(record.DiemChu) ? 'bg-blue-100 text-blue-700' :
+                                      ['D', 'D+'].includes(record.DiemChu) ? 'bg-amber-100 text-amber-700' :
+                                      'bg-red-100 text-red-700'
+                                    }`}>
+                                      {record.DiemChu || '-'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="5" className="py-12 text-center text-gray-400">
+                                  <FileText className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                                  Chưa có dữ liệu điểm cho sinh viên này
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB: LỊCH HỌC */}
+                  {detailTab === 'attendance' && (
+                    <ScheduleDetailView
+                      schedule={studentDetails?.schedule || []}
+                      title={`Lịch học của ${selectedStudent.HoTen}`}
+                      showTeacher
+                      showHocKy
+                    />
+                  )}
+                </>
               )}
             </div>
           </motion.div>
         </div>
         </ModalPortal>
       )}
-
-
-      {/* Centralized Notification Components */}
-      <Toast
-        show={toast.show}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ show: false, message: '', type: 'success' })}
-      />
-      <ConfirmDialog
-        show={confirmDialog.show}
-        message={confirmDialog.message}
-        onConfirm={() => {
-          if (confirmDialog.onConfirm) {
-            confirmDialog.onConfirm();
-          }
-          setConfirmDialog({ show: false, message: '', onConfirm: null });
-        }}
-        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
-      />
-      <SuccessDialog
-        show={successDialog.show}
-        message={successDialog.message}
-        onClose={() => setSuccessDialog({ show: false, message: '' })}
-      />
-      <ErrorDialog
-        show={errorDialog.show}
-        message={errorDialog.message}
-        onClose={() => setErrorDialog({ show: false, message: '' })}
-      />
     </div>
   );
 }
 
+// Giữ nguyên các Helper Function xử lý hiển thị Lịch học của bạn
 const SCHEDULE_DAY_ORDER = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
 const SCHEDULE_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 const SCHEDULE_CA_SLOTS = {

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, BarChart3, BookOpen, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, CheckCircle, UserCheck, Clock, MapPin, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
 
+// Tự động lấy cấu hình môi trường hoặc mặc định localhost
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
 const API_BASE = `${API_URL}/api`;
 
 const emptyGradeStats = () => ({
@@ -64,7 +65,8 @@ function ClassManagement() {
   const [formErrors, setFormErrors] = useState({
     startYear: '',
     endYear: '',
-    TenLop: ''
+    TenLop: '',
+    MaKhoa: ''
   });
   const [confirmDialog, setConfirmDialog] = useState({
     show: false,
@@ -81,7 +83,6 @@ function ClassManagement() {
   });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  // Vietnamese diacritic removal for search
   const removeVietnameseTones = useCallback((str) => {
     return str
       .normalize('NFD')
@@ -90,7 +91,6 @@ function ClassManagement() {
       .replace(/Đ/g, 'D');
   }, []);
 
-  // Debounced search
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   useEffect(() => {
@@ -103,32 +103,23 @@ function ClassManagement() {
   useEffect(() => {
     fetchData();
   }, []);
+
   const handleKhoaChange = async (e) => {
-  const maKhoa = e.target.value;
+    const maKhoa = e.target.value;
 
-  setFormData(prev => ({
-    ...prev,
-    MaKhoa: maKhoa
-  }));
+    setFormData(prev => ({ ...prev, MaKhoa: maKhoa }));
+    if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
 
-  if (editingClass) return;
+    if (editingClass) return;
 
-  // Only generate MaLop if both startYear and MaKhoa are selected
-  if (formData.startYear && maKhoa) {
-    try {
-      const res = await axios.get(
-        `${API_BASE}/classes/next-code/${formData.startYear}/${maKhoa}`
-      );
-
-      setFormData(prev => ({
-        ...prev,
-        MaKhoa: maKhoa,
-        MaLop: res.data.MaLop
-      }));
-    } catch (err) {
-      console.error(err);
+    if (formData.startYear && maKhoa) {
+      try {
+        const res = await axios.get(
+          `${API_BASE}/classes/next-code/${formData.startYear}/${maKhoa}`
+        );
+        setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaLop: res.data.MaLop }));
+      } catch (err) { console.error(err); }
     }
-  }
   };
 
   const validateForm = () => {
@@ -142,32 +133,51 @@ function ClassManagement() {
       newErrors.startYear = 'Năm bắt đầu phải có 4 chữ số';
     } else {
       const startYearInt = parseInt(formData.startYear, 10);
-      if (isNaN(startYearInt)) {
-        newErrors.startYear = 'Năm bắt đầu phải là số';
-      } else if (startYearInt < 2023) {
-        newErrors.startYear = 'Năm bắt đầu phải từ 2023 trở đi';
-      } else if (startYearInt > currentYear) {
-        newErrors.startYear = 'Năm bắt đầu không được vượt quá năm hiện tại';
+      if (isNaN(startYearInt) || startYearInt <= 0) {
+        newErrors.startYear = 'Năm bắt đầu phải là số dương';
+      } else if (startYearInt < 2020) {
+        newErrors.startYear = 'Năm bắt đầu quá cũ (yêu cầu >= 2020)';
       }
     }
 
-    // Validate endYear
+    // Validate endYear & TC_11 Logic
     if (!formData.endYear.trim()) {
       newErrors.endYear = 'Năm kết thúc không được để trống';
     } else if (formData.endYear.length !== 4) {
       newErrors.endYear = 'Năm kết thúc phải có 4 chữ số';
+    } else {
+      const start = parseInt(formData.startYear, 10);
+      const end = parseInt(formData.endYear, 10);
+      if (!isNaN(start) && !isNaN(end)) {
+        if (start >= end) {
+          newErrors.endYear = 'Năm kết thúc phải lớn hơn năm bắt đầu';
+        }
+      }
     }
 
-    // Validate TenLop
-    if (!formData.TenLop.trim()) {
+    // Validate TenLop (TC_13, TC_14)
+    const tenLopTrimmed = formData.TenLop.trim();
+    if (!tenLopTrimmed) {
       newErrors.TenLop = 'Tên lớp không được để trống';
-    } else if (formData.TenLop.length < 2) {
+    } else if (tenLopTrimmed.length < 2) {
       newErrors.TenLop = 'Tên lớp phải có ít nhất 2 ký tự';
     }
 
     // Validate MaKhoa
     if (!formData.MaKhoa) {
-      newErrors.MaKhoa = 'Vui lòng chọn khoa';
+      newErrors.MaKhoa = 'Vui lòng chọn Khoa cho lớp học!';
+    }
+
+    // Lỗi trùng lặp (TC_32 & Lỗi dòng 3)
+    if (tenLopTrimmed && formData.MaKhoa) {
+      const duplicateClass = classes.find(
+        c => c.TenLop.trim().toLowerCase() === tenLopTrimmed.toLowerCase() &&
+             c.MaKhoa === formData.MaKhoa &&
+             (!editingClass || c.MaLop !== editingClass.MaLop)
+      );
+      if (duplicateClass) {
+        newErrors.TenLop = 'Tên lớp học đã tồn tại trong khoa này!';
+      }
     }
 
     setFormErrors(newErrors);
@@ -175,52 +185,33 @@ function ClassManagement() {
   };
 
   const handleStartYearChange = async (e) => {
-  const value = e.target.value;
-  // Chỉ cho phép nhập số
-  if (/^\d*$/.test(value)) {
-    // Tính toán năm kết thúc = năm bắt đầu + 3
-    const startYearInt = parseInt(value, 10);
-    const endYear = !isNaN(startYearInt) && value.length === 4 ? (startYearInt + 4).toString() : '';
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) {
+      const startYearInt = parseInt(value, 10);
+      const endYear = !isNaN(startYearInt) && value.length === 4 ? (startYearInt + 4).toString() : '';
 
-    setFormData(prev => ({
-      ...prev,
-      startYear: value,
-      endYear: endYear // Tự động cập nhật năm kết thúc
-    }));
+      setFormData(prev => ({ ...prev, startYear: value, endYear: endYear }));
+      if (formErrors.startYear) setFormErrors(prev => ({ ...prev, startYear: '' }));
 
-    if (formErrors.startYear) setFormErrors(prev => ({ ...prev, startYear: '' }));
+      if (editingClass) return;
 
-    if (editingClass) return;
-
-    // Logic gọi API để tạo mã lớp (giữ nguyên)
-    if (value && value.length === 4 && formData.MaKhoa) {
-      try {
-        const res = await axios.get(
-          `${API_BASE}/classes/next-code/${value}/${formData.MaKhoa}`
-        );
-        setFormData(prev => ({
-          ...prev,
-          MaLop: res.data.MaLop
-        }));
-      } catch (err) {
-        console.error(err);
+      if (value && value.length === 4 && formData.MaKhoa) {
+        try {
+          const res = await axios.get(`${API_BASE}/classes/next-code/${value}/${formData.MaKhoa}`);
+          setFormData(prev => ({ ...prev, MaLop: res.data.MaLop }));
+        } catch (err) { console.error(err); }
       }
     }
-  }
-};
+  };
 
   const handleEndYearChange = (e) => {
-  const value = e.target.value;
-  // Only allow numbers
-  if (/^\d*$/.test(value)) {
-    setFormData(prev => ({
-      ...prev,
-      endYear: value
-    }));
-
-    if (formErrors.endYear) setFormErrors(prev => ({ ...prev, endYear: '' }));
-  }
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) {
+      setFormData(prev => ({ ...prev, endYear: value }));
+      if (formErrors.endYear) setFormErrors(prev => ({ ...prev, endYear: '' }));
+    }
   };
+
   const fetchData = async () => {
     try {
       const [classesRes, facultiesRes] = await Promise.all([
@@ -237,59 +228,50 @@ function ClassManagement() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+    e.preventDefault();
+    if (!validateForm()) return;
 
-  setConfirmDialog({
-    show: true,
-    message: editingClass
-      ? `Bạn có chắc chắn muốn cập nhật lớp "${formData.TenLop}" không?`
-      : `Bạn có chắc chắn muốn thêm lớp mới không?`,
-    onConfirm: async () => {
-      const nienKhoa = `${formData.startYear}-${formData.endYear}`;
+    setConfirmDialog({
+      show: true,
+      message: editingClass
+        ? `Bạn có chắc chắn muốn cập nhật lớp "${formData.TenLop.trim()}" không?`
+        : `Bạn có chắc chắn muốn thêm lớp mới không?`,
+      onConfirm: async () => {
+        const nienKhoa = `${formData.startYear}-${formData.endYear}`;
+        const finalTenLop = formData.TenLop.trim();
 
-      try {
-        if (editingClass) {
-          await axios.put(`${API_BASE}/classes/${encodeURIComponent(editingClass.MaLop)}`, {
-            ...formData,
-            NienKhoa: nienKhoa
-          });
-        } else {
-          // --- FIX Ở ĐÂY ---
-          // 1. Lấy mã mới nhất ngay trước khi gửi để đảm bảo không bị trùng
-          const resCode = await axios.get(`${API_BASE}/classes/next-code/${formData.startYear}/${formData.MaKhoa}`);
-          const newMaLop = resCode.data.MaLop;
+        try {
+          if (editingClass) {
+            await axios.put(`${API_BASE}/classes/${encodeURIComponent(editingClass.MaLop)}`, {
+              ...formData,
+              TenLop: finalTenLop,
+              NienKhoa: nienKhoa
+            });
+          } else {
+            const resCode = await axios.get(`${API_BASE}/classes/next-code/${formData.startYear}/${formData.MaKhoa}`);
+            const newMaLop = resCode.data.MaLop;
 
-          // 2. Tương tự cho tên lớp nếu cần
-          let finalTenLop = formData.TenLop;
-          try {
-            const resName = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(formData.TenLop)}`);
-            finalTenLop = resName.data.TenLop;
-          } catch (err) { /* giữ nguyên tên nếu lỗi */ }
+            await axios.post(`${API_BASE}/classes`, {
+              MaLop: newMaLop,
+              TenLop: finalTenLop,
+              MaKhoa: formData.MaKhoa,
+              NienKhoa: nienKhoa
+            });
+          }
 
-          // 3. Gửi request với mã đã chắc chắn mới nhất
-          await axios.post(`${API_BASE}/classes`, {
-            MaLop: newMaLop, // Đảm bảo gửi mã này lên
-            TenLop: finalTenLop,
-            MaKhoa: formData.MaKhoa,
-            NienKhoa: nienKhoa
-          });
+          setToast({ show: true, message: editingClass ? 'Cập nhật thành công!' : 'Thêm lớp học thành công!', type: 'success' });
+          fetchData();
+          handleCloseModal();
+        } catch (error) {
+          console.error('Error saving class:', error);
+          setErrorDialog({ show: true, message: 'Lỗi khi lưu lớp học: ' + (error.response?.data?.error || error.message) });
         }
-
-        setToast({ show: true, message: 'Thêm lớp học thành công!', type: 'success' });
-        fetchData();
-        handleCloseModal();
-      } catch (error) {
-        console.error('Error saving class:', error);
-        setErrorDialog({ show: true, message: 'Lỗi khi thêm lớp học: ' + (error.response?.data?.error || error.message) });
       }
-    }
-  });
-};
+    });
+  };
 
   const handleEdit = (cls) => {
     setEditingClass(cls);
-    // Split NienKhoa into startYear and endYear
     const years = cls.NienKhoa ? cls.NienKhoa.split('-') : ['', ''];
     setFormData({
       MaLop: cls.MaLop,
@@ -301,22 +283,11 @@ function ClassManagement() {
     setShowModal(true);
   };
 
-
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingClass(null);
-    setFormData({
-      MaLop: '',
-      TenLop: '',
-      MaKhoa: '',
-      startYear: '',
-      endYear: ''
-    });
-    setFormErrors({
-      startYear: '',
-      endYear: '',
-      TenLop: ''
-    });
+    setFormData({ MaLop: '', TenLop: '', MaKhoa: '', startYear: '', endYear: '' });
+    setFormErrors({ startYear: '', endYear: '', TenLop: '', MaKhoa: '' });
   };
 
   const handleDelete = (cls) => {
@@ -357,20 +328,11 @@ function ClassManagement() {
       }
     });
 
-    return {
-      students,
-      schedule,
-      teachers,
-      gradeStats: normalizeGradeStats(statsRaw)
-    };
+    return { students, schedule, teachers, gradeStats: normalizeGradeStats(statsRaw) };
   };
 
   const handleViewDetails = async (cls) => {
-    if (!cls?.MaLop) {
-      alert('Không xác định được mã lớp học!');
-      return;
-    }
-
+    if (!cls?.MaLop) { alert('Không xác định được mã lớp học!'); return; }
     setSelectedClass(cls);
     setShowDetailModal(true);
     setDetailTab('overview');
@@ -406,8 +368,7 @@ function ClassManagement() {
         setDetailError('Không tải được danh sách sinh viên. Hãy khởi động lại backend (npm start trong thư mục backend).');
       }
     } catch (error) {
-      console.error('Error fetching class details:', error);
-      setDetailError('Không thể tải chi tiết lớp học. Kiểm tra backend đang chạy tại cổng 5000.');
+      setDetailError('Không thể tải chi tiết lớp học. Kiểm tra backend đang chạy.');
       setClassGradeStats(emptyGradeStats());
     } finally {
       setDetailLoading(false);
@@ -427,7 +388,8 @@ function ClassManagement() {
   };
 
   const filteredClasses = classes.filter(cls => {
-    const searchLower = debouncedSearchTerm.toLowerCase();
+    // TC_22: Thêm .trim() để ngăn ngừa tìm kiếm khoảng trắng
+    const searchLower = debouncedSearchTerm.trim().toLowerCase();
     const searchNoTones = removeVietnameseTones(searchLower);
     const nameLower = cls.TenLop?.toLowerCase() || '';
     const nameNoTones = removeVietnameseTones(nameLower);
@@ -447,29 +409,18 @@ function ClassManagement() {
     return matchesSearch && matchesFaculty;
   });
 
-  const handleSearch = () => {
-    setSearchTerm(displaySearchTerm);
-  };
+  const handleSearch = () => setSearchTerm(displaySearchTerm);
+  const handleClearSearch = () => { setSearchTerm(''); setDisplaySearchTerm(''); };
+  const handleApplyFilters = () => { setFilters({ ...displayFilters }); setShowFilters(false); };
+  const clearFilters = () => { setFilters({ facultyFilter: '' }); setDisplayFilters({ facultyFilter: '' }); setSearchTerm(''); setDisplaySearchTerm(''); };
 
-  const handleClearSearch = () => {
-    setSearchTerm('');
-    setDisplaySearchTerm('');
-  };
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || searchTerm.trim();
 
-  const handleApplyFilters = () => {
-    setFilters({ ...displayFilters });
-    setShowFilters(false);
-  };
-
-  const clearFilters = () => {
-    setFilters({ facultyFilter: '' });
-    setDisplayFilters({ facultyFilter: '' });
-    setSearchTerm('');
-    setDisplaySearchTerm('');
-  };
-
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || searchTerm;
+  // Xử lý data cho thẻ select Khoa để chặn rác
+  const uniqueFaculties = Array.from(
+    new Map(faculties.filter(f => f && f.MaKhoa && f.TenKhoa).map(f => [f.MaKhoa, f])).values()
+  );
 
   if (loading) {
     return (
@@ -573,7 +524,7 @@ function ClassManagement() {
                 className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
               >
                 <option value="">Tất cả khoa</option>
-                {faculties.map((faculty) => (
+                {uniqueFaculties.map((faculty) => (
                   <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
                     {faculty.TenKhoa}
                   </option>
@@ -630,8 +581,9 @@ function ClassManagement() {
                     <td className="py-5 px-6">
                       <span className="font-semibold text-gray-800 text-base">{cls.MaLop}</span>
                     </td>
-                    <td className="py-5 px-6">
-                      <div className="font-semibold text-gray-800">{cls.TenLop}</div>
+                    {/* TC_37: Chặn tràn hàng nếu tên lớp quá dài */}
+                    <td className="py-5 px-6 min-w-[150px] max-w-xs">
+                      <div className="font-semibold text-gray-800 break-words line-clamp-2" title={cls.TenLop}>{cls.TenLop}</div>
                     </td>
                     <td className="py-5 px-6">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-700">
@@ -712,12 +664,8 @@ function ClassManagement() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}>
+            {/* TC_17: Chỉ dùng onSubmit của form để đón phím Enter, xóa bỏ onKeyDown dư thừa */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
                 <div className="flex gap-3">
@@ -731,7 +679,7 @@ function ClassManagement() {
                       maxLength={4}
                     />
                     {formErrors.startYear && (
-                      <p className="text-red-500 text-xs mt-1">{formErrors.startYear}</p>
+                      <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.startYear}</p>
                     )}
                   </div>
                   <span className="flex items-center text-gray-500 font-semibold">-</span>
@@ -741,12 +689,11 @@ function ClassManagement() {
                       value={formData.endYear}
                       onChange={handleEndYearChange}
                       placeholder="Năm kết thúc"
-                      readOnly
                       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                       maxLength={4}
                     />
                     {formErrors.endYear && (
-                      <p className="text-red-500 text-xs mt-1">{formErrors.endYear}</p>
+                      <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.endYear}</p>
                     )}
                   </div>
                 </div>
@@ -757,21 +704,17 @@ function ClassManagement() {
                   type="text"
                   value={formData.TenLop}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    // Disallow special characters and numbers, allow only single spaces between words
-                    // Allows Vietnamese characters, letters, and single spaces
-                    const cleanedValue = value
-                      .replace(/[^a-zA-Z\u00C0-\u1EF9\s]/g, '') // Remove special characters and numbers, keep Vietnamese letters and spaces
-                      .replace(/\s\s+/g, ' '); // Replace multiple spaces with a single space
-                    setFormData({ ...formData, TenLop: cleanedValue });
-
+                    let value = e.target.value;
+                    // Lỗi 4: Loại bỏ các ký tự đặc biệt, nhưng vẫn cho phép số và chữ tiếng Việt
+                    value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
+                    setFormData({ ...formData, TenLop: value });
                     if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
                   }}
                   placeholder="Nhập tên lớp học"
                   className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                 />
                 {formErrors.TenLop && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
+                  <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.TenLop}</p>
                 )}
               </div>
               <div>
@@ -780,19 +723,18 @@ function ClassManagement() {
                   value={formData.MaKhoa}
                   onChange={(e) => {
                     handleKhoaChange(e);
-                    if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
                   }}
                   className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                 >
                   <option value="">Chọn khoa</option>
-                  {faculties.map((faculty) => (
+                  {uniqueFaculties.map((faculty) => (
                     <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
                       {faculty.TenKhoa}
                     </option>
                   ))}
                 </select>
                 {formErrors.MaKhoa && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.MaKhoa}</p>
+                  <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.MaKhoa}</p>
                 )}
               </div>
 
