@@ -12,11 +12,14 @@ app.use(cors());
 app.use(express.json());
 
 // Cấu hình kết nối đến MySQL sử dụng biến môi trường từ file .env
-const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '1234', 
-    database: process.env.DB_NAME || 'qlsv'
+//  // Hoặc 'mysql' tùy thư viện bạn dùng
+
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 18628
 });
 
 // Kiểm tra kết nối DB
@@ -32,7 +35,7 @@ db.connect((err) => {
 
 
 app.use(cors({
-    origin: https://hung270508-bit.github.io/QLSV/, // Thay bằng link GitHub Pages chính xác của bạn
+    origin: 'https://hung270508-bit.github.io/QLSV/', // Thay bằng link GitHub Pages chính xác của bạn
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
