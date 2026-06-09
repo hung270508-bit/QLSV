@@ -14,23 +14,28 @@ app.use(express.json());
 // Cấu hình kết nối đến MySQL sử dụng biến môi trường từ file .env
 //  // Hoặc 'mysql' tùy thư viện bạn dùng
 
-const pool = mysql.createPool({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 18628
+    port: process.env.DB_PORT || 18628,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
 // Kiểm tra kết nối DB
-db.connect((err) => {
+db.getConnection((err, connection) => {
     if (err) {
         console.error('Lỗi kết nối MySQL: ' + err.stack);
         return;
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
-    // Tắt kiểm tra khóa ngoại để sửa triệt để lỗi 500
-    db.query('SET FOREIGN_KEY_CHECKS = 0;'); 
+    connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
+        connection.release();
+        if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
+    });
 });
 
 
