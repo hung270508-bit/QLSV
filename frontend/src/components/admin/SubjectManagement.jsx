@@ -894,7 +894,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         show={deleteModal.show}
-        message={`Bạn có chắc chắn muốn xóa môn học "${deleteModal.subject?.TenMonHoc}" (${deleteModal.subject?.MaMonHoc})? Hành động này không thể hoàn tác.`}
+        message={`Bạn có chắc chắn muốn xóa vĩnh viễn "${deleteModal.subject?.TenMonHoc}" "${deleteModal.subject?.MaMonHoc}"? Hành động này không thể hoàn tác.`}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteModal({ show: false, subject: null })}
         title="Xác nhận xóa môn học"

@@ -21,6 +21,8 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ 'd5f339bb-590b-11f1-b192-e4a8dfba5018:1-789';
+
 --
 -- Table structure for table `dangky_hocphan`
 --
@@ -188,7 +190,7 @@ CREATE TABLE `giangvien` (
   `Email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `SoDienThoai` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `MaKhoa` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `TrangThai` enum('Đang dạy','Tạm nghỉ','Nghỉ việc') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang dạy',
+  `TrangThai` enum('Đang dạy','Tạm nghỉ','Nghỉ việc') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang dạy',
   PRIMARY KEY (`MaGiangVien`),
   KEY `MaKhoa` (`MaKhoa`),
   CONSTRAINT `giangvien_ibfk_1` FOREIGN KEY (`MaGiangVien`) REFERENCES `users` (`TaiKhoan`) ON DELETE CASCADE,
@@ -331,7 +333,10 @@ CREATE TABLE `monhoc` (
   `MaMonHoc` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `TenMonHoc` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `SoTinChi` int NOT NULL,
-  PRIMARY KEY (`MaMonHoc`)
+  `MaKhoa` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`MaMonHoc`),
+  KEY `MaKhoa` (`MaKhoa`),
+  CONSTRAINT `monhoc_ibfk_1` FOREIGN KEY (`MaKhoa`) REFERENCES `khoa` (`MaKhoa`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -341,7 +346,7 @@ CREATE TABLE `monhoc` (
 
 LOCK TABLES `monhoc` WRITE;
 /*!40000 ALTER TABLE `monhoc` DISABLE KEYS */;
-INSERT INTO `monhoc` VALUES ('CNTT001','Lập Trình Javascript',7),('CNTT004','lập trình python',9);
+INSERT INTO `monhoc` VALUES ('CNTT001','Lập Trình Javascript',7,'CNTT'),('CNTT004','lập trình python',9,'CNTT'),('NN001','Tiếng Anh',5,NULL);
 /*!40000 ALTER TABLE `monhoc` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -447,7 +452,7 @@ CREATE TABLE `sinhvien` (
   `Email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `SoDienThoai` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `MaLop` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `TrangThai` enum('Đang học','Học lại','Nghỉ học') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang học',
+  `TrangThai` enum('Đang học','Học lại','Nghỉ học') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang học',
   PRIMARY KEY (`MSSV`),
   KEY `MaLop` (`MaLop`),
   CONSTRAINT `sinhvien_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `users` (`TaiKhoan`) ON DELETE CASCADE,
@@ -594,4 +599,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-09  0:13:24
+-- Dump completed on 2026-06-09 11:08:37

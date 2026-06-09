@@ -321,7 +321,7 @@ function ClassManagement() {
   const handleDelete = (cls) => {
     setConfirmDialog({
       show: true,
-      message: `Bạn có chắc chắn muốn xóa lớp học "${cls.TenLop}" (${cls.MaLop}) không? Hành động này không thể hoàn tác.`,
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn "${cls.TenLop}" "${cls.MaLop}"? Hành động này không thể hoàn tác.`,
       onConfirm: async () => {
         try {
           await axios.delete(`${API_BASE}/classes/${encodeURIComponent(cls.MaLop)}`);
