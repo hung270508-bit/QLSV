@@ -1,4 +1,13 @@
-require('dotenv').config();
+const path = require('path');
+
+// Kiểm tra xem lệnh khởi động có truyền thêm chữ "--cloud" hay không
+const isCloud = process.argv.includes('--cloud');
+const envFile = isCloud ? '.env.aiven' : '.env.local';
+
+// Tự động nạp đúng file cấu hình tương ứng
+require('dotenv').config({ path: path.join(__dirname, envFile) });
+
+// --- Các đoạn code phía dưới của bạn (express, cors, mysql...) giữ nguyên hoàn toàn ---
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
