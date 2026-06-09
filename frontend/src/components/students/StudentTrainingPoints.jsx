@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { Award, PlusCircle, CheckCircle2, Clock, Loader2, X, FileSignature, Edit, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -94,7 +95,7 @@ function StudentTrainingPoints({ user }) {
   const fetchPoints = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/training-points/student/${user?.username}`);
+      const res = await axios.get(`${API_URL}/api/training-points/student/${user?.username}`);
       setPoints(res.data);
     } catch (error) {
       console.error(error);
@@ -137,13 +138,13 @@ function StudentTrainingPoints({ user }) {
     try {
       if (editingRecord) {
         // GỌI API PUT ĐỂ SỬA
-        await axios.put(`http://localhost:5000/api/training-points/${editingRecord.MaDanhGia}`, { 
+        await axios.put(`${API_URL}/api/training-points/${editingRecord.MaDanhGia}`, { 
           DiemTuDanhGia: currentTotalScore 
         });
         alert("Cập nhật điểm đánh giá thành công!");
       } else {
         // GỌI API POST ĐỂ THÊM MỚI
-        await axios.post('http://localhost:5000/api/training-points', { 
+        await axios.post(`${API_URL}/api/training-points`, { 
           MSSV: user.username, 
           HocKy: selectedSemester,
           DiemTuDanhGia: currentTotalScore 

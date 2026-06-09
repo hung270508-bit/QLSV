@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import {
   LayoutDashboard,
   BookOpen,
@@ -60,7 +61,7 @@ function TeacherDashboard({ user, onLogout }) {
 
   useEffect(() => {
     if (user?.id) {
-      axios.get(`http://localhost:5000/api/teachers/${user.id}/details`)
+      axios.get(`${API_URL}/api/teachers/${user.id}/details`)
         .then(res => {
           if (res.data.length > 0) {
             setProfile(res.data[0]);
@@ -80,11 +81,11 @@ function TeacherDashboard({ user, onLogout }) {
   const fetchTeacherData = async () => {
     try {
       const [assignmentsRes, studentsRes, gradesRes, announcementsRes, scheduleRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/course-sections/teacher/${user.id}`),
-        axios.get('http://localhost:5000/api/students'),
-        axios.get('http://localhost:5000/api/grades'),
-        axios.get('http://localhost:5000/api/announcements'),
-        axios.get(`http://localhost:5000/api/teachers/${user.id}/teaching-schedule`)
+        axios.get(`${API_URL}/api/course-sections/teacher/${user.id}`),
+        axios.get(`${API_URL}/api/students`),
+        axios.get(`${API_URL}/api/grades`),
+        axios.get(`${API_URL}/api/announcements`),
+        axios.get(`${API_URL}/api/teachers/${user.id}/teaching-schedule`)
       ]);
 
       setTeachingAssignments(assignmentsRes.data);

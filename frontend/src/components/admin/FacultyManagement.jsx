@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import API_URL from '../../api';
 import { motion} from 'framer-motion';
 import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
 import axios from 'axios';
@@ -55,7 +56,7 @@ function FacultyManagement() {
 
   const executeAddFaculty = async () => {
   try {
-    const response = await axios.post('http://localhost:5000/api/faculties', formData);
+    const response = await axios.post(`${API_URL}/api/faculties`, formData);
     if (response.data.success) {
       setShowConfirmModal(false);
       setShowModal(false);
@@ -146,7 +147,7 @@ const validateFacultyName = (value) => {
   
   const fetchData = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/faculties');
+      const response = await axios.get(`${API_URL}/api/faculties`);
       setFaculties(response.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -222,12 +223,12 @@ const validateFacultyName = (value) => {
   try {
     if (editingFaculty) {
       await axios.put(
-        `http://localhost:5000/api/faculties/${editingFaculty.MaKhoa}`,
+        `${API_URL}/api/faculties/${editingFaculty.MaKhoa}`,
         formData
       );
     } else {
       await axios.post(
-        'http://localhost:5000/api/faculties',
+        `${API_URL}/api/faculties`,
         formData
       );
     }
@@ -270,9 +271,9 @@ const validateFacultyName = (value) => {
     setDetailTab('teachers');
     try {
       const [teachersRes, studentsRes, classesRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/faculties/${faculty.MaKhoa}/teachers`),
-        axios.get(`http://localhost:5000/api/faculties/${faculty.MaKhoa}/students`),
-        axios.get(`http://localhost:5000/api/faculties/${faculty.MaKhoa}/classes`)
+        axios.get(`${API_URL}/api/faculties/${faculty.MaKhoa}/teachers`),
+        axios.get(`${API_URL}/api/faculties/${faculty.MaKhoa}/students`),
+        axios.get(`${API_URL}/api/faculties/${faculty.MaKhoa}/classes`)
       ]);
       setFacultyTeachers(teachersRes.data);
       setFacultyStudents(studentsRes.data);

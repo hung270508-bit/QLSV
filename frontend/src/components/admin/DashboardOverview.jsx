@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, BookOpen, Building2, GraduationCap, Activity, ArrowUpRight } from 'lucide-react';
 import axios from 'axios';
@@ -109,10 +110,10 @@ function DashboardOverview({ onNavigate }) {
   const fetchDashboardData = async () => {
     try {
       const [statsRes, facultyRes, teachersRes, allStudentsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/dashboard/stats'),
-        axios.get('http://localhost:5000/api/dashboard/stats-by-faculty'),
-        axios.get('http://localhost:5000/api/teachers'),
-        axios.get('http://localhost:5000/api/students')
+        axios.get(`${API_URL}/api/dashboard/stats`),
+        axios.get(`${API_URL}/api/dashboard/stats-by-faculty`),
+        axios.get(`${API_URL}/api/teachers`),
+        axios.get(`${API_URL}/api/students`)
       ]);
       setStats(statsRes.data);
       setFacultyStats(facultyRes.data);

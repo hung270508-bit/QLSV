@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen } from 'lucide-react';
 import axios from 'axios';
@@ -23,7 +24,7 @@ function StudentSchedule({ user }) {
     const fetchSchedule = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:5000/api/students/${user?.username || user?.id}/schedule`);
+        const response = await axios.get(`${API_URL}/api/students/${user?.username || user?.id}/schedule`);
         
         const formattedData = response.data.map(item => {
           let tietBatDau = 1;
