@@ -41,8 +41,8 @@ function ScheduleManagement() {
     try {
       setLoading(true);
       const [schedRes, lhpRes] = await Promise.all([
-        axios.get('${API_URL}/api/schedules'),
-        axios.get('${API_URL}/api/teaching-assignments')
+        axios.get(`${API_URL}/api/schedules`),
+        axios.get(`${API_URL}/api/teaching-assignments`)
       ]);
       // Sắp xếp lịch học từ mới nhất
       const sortedSchedules = schedRes.data.sort((a, b) => new Date(b.NgayHoc) - new Date(a.NgayHoc));

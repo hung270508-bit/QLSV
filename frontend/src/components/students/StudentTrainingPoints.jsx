@@ -102,7 +102,7 @@ function StudentTrainingPoints({ user }) {
       setLoading(true);
       const [pointsRes, periodsRes] = await Promise.all([
         axios.get(`${API_URL}/api/training-points/student/${user?.username}`),
-        axios.get('${API_URL}/api/training-periods/active')
+        axios.get(`${API_URL}/api/training-periods/active`)
       ]);
       setPoints(pointsRes.data);
       setActivePeriods(periodsRes.data);
