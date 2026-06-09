@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 // Thêm MapPin, CalendarDays vào danh sách import
 import { BookPlus, Plus, Trash2, Loader2, Clock, CheckCircle2, XCircle, MapPin, CalendarDays } from 'lucide-react';
 import axios from 'axios';
@@ -12,9 +13,9 @@ function StudentCourseRegistration({ user }) {
     try {
       setLoading(true);
       const [availRes, myRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/enrollment/available/${user.username}`),
+        axios.get(`${API_URL}/api/enrollment/available/${user.username}`),
         // ĐÃ ĐỔI SANG GỌI API BẢNG ĐĂNG KÝ CHUẨN
-        axios.get(`http://localhost:5000/api/enrollment/my-courses/${user.username}`) 
+        axios.get(`${API_URL}/api/enrollment/my-courses/${user.username}`) 
       ]);
       setAvailableCourses(availRes.data);
       setMyCourses(myRes.data);
@@ -27,7 +28,7 @@ function StudentCourseRegistration({ user }) {
     if(course.DaDangKy >= (course.SoLuongToiDa || 40)) return alert("Lớp này đã đầy!");
     if(!window.confirm(`Xác nhận gửi yêu cầu đăng ký môn ${course.TenMonHoc}?`)) return;
     try {
-      await axios.post('http://localhost:5000/api/enrollment', { MSSV: user.username, MaLopHocPhan: course.MaLopHocPhan, HocKy: course.HocKy });
+      await axios.post(`${API_URL}/api/enrollment`, { MSSV: user.username, MaLopHocPhan: course.MaLopHocPhan, HocKy: course.HocKy });
       alert("Đã gửi yêu cầu đăng ký! Vui lòng chờ duyệt.");
       fetchData();
     } catch (error) { alert("Lỗi khi đăng ký môn!"); }
@@ -39,7 +40,7 @@ function StudentCourseRegistration({ user }) {
     }
     if(!window.confirm(`Xác nhận HỦY đăng ký lớp ${maLHP}?`)) return;
     try {
-      await axios.delete(`http://localhost:5000/api/enrollment/${user.username}/${maLHP}`);
+      await axios.delete(`${API_URL}/api/enrollment/${user.username}/${maLHP}`);
       alert("Hủy môn thành công!");
       fetchData();
     } catch (error) { alert("Lỗi khi hủy môn!"); }

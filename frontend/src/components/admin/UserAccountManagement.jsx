@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Search, X, Eye, EyeOff, RefreshCw, Check, AlertCircle, Lock } from 'lucide-react';
 import axios from 'axios';
@@ -32,8 +33,8 @@ function UserAccountManagement() {
   const fetchData = useCallback(async () => {
     try {
       const [usersRes, rolesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/users'),
-        axios.get('http://localhost:5000/api/roles')
+        axios.get(`${API_URL}/api/users`),
+        axios.get(`${API_URL}/api/roles`)
       ]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
@@ -112,7 +113,7 @@ function UserAccountManagement() {
 
     try {
       if (editingUser) {
-        await axios.put(`http://localhost:5000/api/users/${editingUser.TaiKhoan}`, {
+        await axios.put(`${API_URL}/api/users/${editingUser.TaiKhoan}`, {
           password: formData.password,
           MaQuyen: formData.MaQuyen
         });
@@ -126,7 +127,7 @@ function UserAccountManagement() {
           return;
         }
         
-        await axios.post('http://localhost:5000/api/users', formData);
+        await axios.post(`${API_URL}/api/users`, formData);
         showNotification('success', 'Thêm tài khoản thành công!');
       }
       fetchData();
@@ -160,7 +161,7 @@ function UserAccountManagement() {
     
     if (window.confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/users/${taiKhoan}`);
+        await axios.delete(`${API_URL}/api/users/${taiKhoan}`);
         showNotification('success', 'Xóa tài khoản thành công!');
         fetchData();
       } catch (error) {

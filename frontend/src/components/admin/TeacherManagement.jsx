@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin, CheckCircle } from 'lucide-react';
 import axios from 'axios';
@@ -61,8 +62,8 @@ function TeacherManagement() {
   const fetchData = async () => {
     try {
       const [teachersRes, facultiesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/teachers'),
-        axios.get('http://localhost:5000/api/faculties')
+        axios.get(`${API_URL}/api/teachers`),
+        axios.get(`${API_URL}/api/faculties`)
       ]);
       setTeachers(teachersRes.data);
       setFaculties(facultiesRes.data);
@@ -85,7 +86,7 @@ function TeacherManagement() {
     if (!khoaId) return;
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/teachers/next-code/${khoaId}`);
+      const res = await axios.get(`${API_URL}/api/teachers/next-code/${khoaId}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: res.data.MaGiangVien }));
     } catch (err) {
       console.error('Lỗi tạo mã giảng viên:', err);
@@ -142,7 +143,7 @@ function TeacherManagement() {
           message: `Bạn có chắc chắn muốn cập nhật thông tin giảng viên "${formData.HoTen}" (${formData.MaGiangVien}) không?`,
           onConfirm: async () => {
             try {
-              await axios.put(`http://localhost:5000/api/teachers/${editingTeacher.MaGiangVien}`, formData);
+              await axios.put(`${API_URL}/api/teachers/${editingTeacher.MaGiangVien}`, formData);
               setToast({ show: true, message: 'Cập nhật giảng viên thành công!', type: 'success' });
               fetchData();
               handleCloseModal();
@@ -156,9 +157,9 @@ function TeacherManagement() {
         // Lấy mã mới nhất ngay trước khi gửi để tránh trùng
         const selectedFaculty = faculties.find(f => f.MaKhoa === formData.MaKhoa);
         const khoaId = selectedFaculty?.ID ?? selectedFaculty?.id ?? '';
-        const resCode = await axios.get(`http://localhost:5000/api/teachers/next-code/${khoaId}`);
+        const resCode = await axios.get(`${API_URL}/api/teachers/next-code/${khoaId}`);
         const newMaGV = resCode.data.MaGiangVien;
-        await axios.post('http://localhost:5000/api/teachers', { ...formData, MaGiangVien: newMaGV });
+        await axios.post(`${API_URL}/api/teachers`, { ...formData, MaGiangVien: newMaGV });
         setToast({ show: true, message: 'Thêm giảng viên thành công!', type: 'success' });
         fetchData();
         handleCloseModal();
@@ -196,9 +197,9 @@ function TeacherManagement() {
     
     try {
       const [detailsRes, scheduleRes, loadRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}/details`),
-        axios.get(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}/teaching-schedule`),
-        axios.get(`http://localhost:5000/api/teachers/${teacher.MaGiangVien}/teaching-load`)
+        axios.get(`${API_URL}/api/teachers/${teacher.MaGiangVien}/details`),
+        axios.get(`${API_URL}/api/teachers/${teacher.MaGiangVien}/teaching-schedule`),
+        axios.get(`${API_URL}/api/teachers/${teacher.MaGiangVien}/teaching-load`)
       ]);
       
       setTeacherDetails(detailsRes.data[0] || null);

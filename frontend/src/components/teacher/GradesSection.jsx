@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
@@ -148,9 +149,9 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
       };
 
       if (editingGrade) {
-        await axios.put(`http://localhost:5000/api/grades/${editingGrade.MaDiem}`, payload);
+        await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
       } else {
-        await axios.post('http://localhost:5000/api/grades', payload);
+        await axios.post(`${API_URL}/api/grades`, payload);
       }
       onRefresh();
       handleCloseAddModal();
@@ -172,9 +173,9 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
           DiemTong: total, DiemGPA: gpaData.gpa, DiemChu: gpaData.letter, XepLoai: gpaData.classification
         };
 
-        if (data.MaDiem) return axios.put(`http://localhost:5000/api/grades/${data.MaDiem}`, payload);
+        if (data.MaDiem) return axios.put(`${API_URL}/api/grades/${data.MaDiem}`, payload);
         if (data.DiemChuyenCan || data.DiemBaiTap || data.DiemGiuaKy || data.DiemCuoiKy) {
-          return axios.post('http://localhost:5000/api/grades', payload);
+          return axios.post(`${API_URL}/api/grades`, payload);
         }
         return Promise.resolve();
       });
@@ -195,7 +196,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/grades/${deleteModal.maDiem}`);
+      await axios.delete(`${API_URL}/api/grades/${deleteModal.maDiem}`);
       setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
       onRefresh();
       showNotification('success', 'Xóa điểm thành công!');

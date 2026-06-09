@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, Download, FileText, BarChart3 } from 'lucide-react';
 import axios from 'axios';
@@ -57,10 +58,10 @@ useEffect(() => {
   const fetchData = async () => {
     try {
       const [gradesRes, studentsRes, courseSectionsRes, subjectsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/grades'),
-        axios.get('http://localhost:5000/api/students'),
-        axios.get('http://localhost:5000/api/course-sections'),
-        axios.get('http://localhost:5000/api/subjects')
+        axios.get(`${API_URL}/api/grades`),
+        axios.get(`${API_URL}/api/students`),
+        axios.get(`${API_URL}/api/course-sections`),
+        axios.get(`${API_URL}/api/subjects`)
       ]);
       setGrades(gradesRes.data);
       setStudents(studentsRes.data);
@@ -137,9 +138,9 @@ useEffect(() => {
       };
 
       if (editingGrade) {
-        await axios.put(`http://localhost:5000/api/grades/${editingGrade.MaDiem}`, payload);
+        await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
       } else {
-        await axios.post('http://localhost:5000/api/grades', payload);
+        await axios.post(`${API_URL}/api/grades`, payload);
       }
       fetchData();
       handleCloseModal();
@@ -166,7 +167,7 @@ useEffect(() => {
   const handleDelete = async (maDiem) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa điểm này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/grades/${maDiem}`);
+        await axios.delete(`${API_URL}/api/grades/${maDiem}`);
         fetchData();
       } catch (error) {
         console.error('Error deleting grade:', error);
@@ -336,7 +337,7 @@ useEffect(() => {
         };
       });
 
-      await axios.post('http://localhost:5000/api/grades/bulk', { grades: gradesWithCalculation });
+      await axios.post(`${API_URL}/api/grades/bulk`, { grades: gradesWithCalculation });
       alert('Nhập điểm hàng loạt thành công!');
       setShowBulkModal(false);
       fetchData();

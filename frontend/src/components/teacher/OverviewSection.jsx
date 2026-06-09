@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion } from 'framer-motion';
 import { 
   BookOpen, Users, Calendar, TrendingUp, 
@@ -26,8 +27,8 @@ function OverviewSection({ user, setActiveMenu }) {
         
         // 1. Lấy danh sách lớp HP và Lịch dạy
         const [coursesRes, schedulesRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/course-sections/teacher/${user.username}`),
-          axios.get(`http://localhost:5000/api/teachers/${user.username}/teaching-schedule`)
+          axios.get(`${API_URL}/api/course-sections/teacher/${user.username}`),
+          axios.get(`${API_URL}/api/teachers/${user.username}/teaching-schedule`)
         ]);
 
         const courses = coursesRes.data;
@@ -45,7 +46,7 @@ function OverviewSection({ user, setActiveMenu }) {
 
         // 3. Tính tổng số sinh viên duy nhất đang dạy (Gọi API lấy SV cho từng lớp HP)
         const studentPromises = courses.map(c => 
-          axios.get(`http://localhost:5000/api/course-sections/${c.MaLopHocPhan}/students`).catch(() => ({ data: [] }))
+          axios.get(`${API_URL}/api/course-sections/${c.MaLopHocPhan}/students`).catch(() => ({ data: [] }))
         );
         const studentsResponses = await Promise.all(studentPromises);
         const uniqueStudents = new Set();

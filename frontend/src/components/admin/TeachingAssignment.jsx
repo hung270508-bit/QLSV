@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Search, X, RefreshCw, UserCheck, Users, ClipboardCheck, BookOpen, Wand2 } from 'lucide-react';
 import axios from 'axios';
@@ -87,11 +88,11 @@ function TeachingAssignment() {
   const fetchData = async () => {
     try {
       const [assRes, subRes, teachRes, classRes, khoaRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/teaching-assignments'),
-        axios.get('http://localhost:5000/api/subjects'),
-        axios.get('http://localhost:5000/api/teachers'),
-        axios.get('http://localhost:5000/api/classes'),
-        axios.get('http://localhost:5000/api/faculties')
+        axios.get(`${API_URL}/api/teaching-assignments`),
+        axios.get(`${API_URL}/api/subjects`),
+        axios.get(`${API_URL}/api/teachers`),
+        axios.get(`${API_URL}/api/classes`),
+        axios.get(`${API_URL}/api/faculties`)
       ]);
       setAssignments(assRes.data);
       setSubjects(subRes.data);
@@ -133,9 +134,9 @@ function TeachingAssignment() {
     if (!validateAssignmentForm()) return;
     try {
       if (editingAssignment) {
-        await axios.put(`http://localhost:5000/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
+        await axios.put(`${API_URL}/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
       } else {
-        await axios.post('http://localhost:5000/api/teaching-assignments', formData);
+        await axios.post(`${API_URL}/api/teaching-assignments`, formData);
       }
       fetchData();
       handleCloseModal();
@@ -157,7 +158,7 @@ function TeachingAssignment() {
   const handleDelete = async (id) => {
     if (!window.confirm('Xoa lop hoc phan nay?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/teaching-assignments/${id}`);
+      await axios.delete(`${API_URL}/api/teaching-assignments/${id}`);
       fetchData();
     } catch {
       alert('Loi khi xoa!');
