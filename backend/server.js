@@ -40,7 +40,13 @@ db.getConnection((err, connection) => {
 
 
 app.use(cors({
-    origin: 'https://hung270508-bit.github.io', // Chỉ giữ lại tên miền sạch như thế này thôi bạn nhé!
+    origin: [
+        'https://hung270508-bit.github.io', // Khi chạy online trên GitHub Pages
+        'http://localhost:5173',            // Khi chạy local bằng Vite (Mặc định)
+        'http://localhost:3000',            // Dự phòng nếu local chạy cổng 3000
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
