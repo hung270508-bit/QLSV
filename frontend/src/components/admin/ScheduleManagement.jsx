@@ -129,7 +129,7 @@ function ScheduleManagement() {
           const promises = previewDates.map(dateObj => {
             // Fix timezone offset khi toISOString
             const localDate = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-            return axios.post('${API_URL}/api/schedules', {
+            return axios.post(`${API_URL}/api/schedules`, {
               MaLopHocPhan: formData.MaLopHocPhan,
               NgayHoc: localDate,
               CaHoc: formData.CaHoc,
@@ -140,7 +140,7 @@ function ScheduleManagement() {
           showToast(`Đã xếp thành công ${previewDates.length} buổi học!`, 'success');
         } else {
           // Tạo 1 buổi duy nhất
-          await axios.post('${API_URL}/api/schedules', {
+          await axios.post(`${API_URL}/api/schedules`, {
              MaLopHocPhan: formData.MaLopHocPhan, NgayHoc: formData.NgayHoc, CaHoc: formData.CaHoc, PhongHoc: formData.PhongHoc
           });
           showToast('Thêm lịch học thành công!', 'success');
