@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookPlus, Plus, Trash2, Loader2, Clock, CheckCircle2, XCircle, MapPin, CalendarDays, X, AlertCircle, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import API_URL from '../../api';
 
 function StudentCourseRegistration({ user }) {
   const [availableCourses, setAvailableCourses] = useState([]);

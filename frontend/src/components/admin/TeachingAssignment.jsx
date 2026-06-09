@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Search, X, RefreshCw, UserCheck, Users, ClipboardCheck, BookOpen, Clock, Building2, BookMarked, Users2 } from 'lucide-react';
 import axios from 'axios';
+import API_URL from '../../api';
 
 function TeachingAssignment() {
   const [assignments, setAssignments] = useState([]);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Award, PlusCircle, CheckCircle2, Clock, Loader2, X, FileSignature, Edit, Lock, AlertTriangle, AlertCircle, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import API_URL from '../../api';
 
 const EVALUATION_CRITERIA = [
   {

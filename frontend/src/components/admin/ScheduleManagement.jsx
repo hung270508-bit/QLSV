@@ -5,6 +5,7 @@ import {
   RefreshCw, CheckCircle2, AlertCircle, Clock, MapPin, BookOpen, Repeat, CalendarDays
 } from 'lucide-react';
 import axios from 'axios';
+import API_URL from '../../api';
 
 function ScheduleManagement() {
   const [schedules, setSchedules] = useState([]);
