@@ -227,6 +227,7 @@ function SubjectManagement() {
   const handleKhoaChange = async (e) => {
     const maKhoa = e.target.value;
     setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '' }));
+    if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
     if (editingSubject || !maKhoa) return;
     try {
       const res = await axios.get(`http://localhost:5000/api/subjects/next-code/${maKhoa}`);
@@ -592,14 +593,18 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}>
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
     <select
       value={formData.MaKhoa}
       onChange={handleKhoaChange}
       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-      required
     >
       <option value="">Chọn khoa</option>
       {faculties.map((faculty) => (
@@ -608,7 +613,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         </option>
       ))}
     </select>
-    {formErrors.MaKhoa && <p className="mt-1 text-sm text-red-500 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{formErrors.MaKhoa}</p>}
+    {formErrors.MaKhoa && <p className="text-red-500 text-xs mt-1">{formErrors.MaKhoa}</p>}
   </div>
   <input type="hidden" value={formData.MaMonHoc} />
   <div>
@@ -622,9 +627,8 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
       }}
       maxLength={30}
       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenMonHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-      required
     />
-    {formErrors.TenMonHoc && <p className="mt-1 text-sm text-red-500 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{formErrors.TenMonHoc}</p>}
+    {formErrors.TenMonHoc && <p className="text-red-500 text-xs mt-1">{formErrors.TenMonHoc}</p>}
   </div>
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">Số tín chỉ</label>
@@ -637,9 +641,8 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         if (formErrors.SoTinChi) setFormErrors({ ...formErrors, SoTinChi: '' });
       }}
       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.SoTinChi ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-      required
     />
-    {formErrors.SoTinChi && <p className="mt-1 text-sm text-red-500 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{formErrors.SoTinChi}</p>}
+    {formErrors.SoTinChi && <p className="text-red-500 text-xs mt-1">{formErrors.SoTinChi}</p>}
   </div>
   <div className="flex gap-3 pt-2">
   <button

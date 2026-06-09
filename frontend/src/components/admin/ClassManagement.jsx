@@ -130,6 +130,49 @@ function ClassManagement() {
   }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    const currentYear = new Date().getFullYear();
+
+    // Validate startYear
+    if (!formData.startYear.trim()) {
+      newErrors.startYear = 'Năm bắt đầu không được để trống';
+    } else if (formData.startYear.length !== 4) {
+      newErrors.startYear = 'Năm bắt đầu phải có 4 chữ số';
+    } else {
+      const startYearInt = parseInt(formData.startYear, 10);
+      if (isNaN(startYearInt)) {
+        newErrors.startYear = 'Năm bắt đầu phải là số';
+      } else if (startYearInt < 2023) {
+        newErrors.startYear = 'Năm bắt đầu phải từ 2023 trở đi';
+      } else if (startYearInt > currentYear) {
+        newErrors.startYear = 'Năm bắt đầu không được vượt quá năm hiện tại';
+      }
+    }
+
+    // Validate endYear
+    if (!formData.endYear.trim()) {
+      newErrors.endYear = 'Năm kết thúc không được để trống';
+    } else if (formData.endYear.length !== 4) {
+      newErrors.endYear = 'Năm kết thúc phải có 4 chữ số';
+    }
+
+    // Validate TenLop
+    if (!formData.TenLop.trim()) {
+      newErrors.TenLop = 'Tên lớp không được để trống';
+    } else if (formData.TenLop.length < 2) {
+      newErrors.TenLop = 'Tên lớp phải có ít nhất 2 ký tự';
+    }
+
+    // Validate MaKhoa
+    if (!formData.MaKhoa) {
+      newErrors.MaKhoa = 'Vui lòng chọn khoa';
+    }
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleStartYearChange = async (e) => {
   const value = e.target.value;
   // Chỉ cho phép nhập số
@@ -144,12 +187,7 @@ function ClassManagement() {
       endYear: endYear // Tự động cập nhật năm kết thúc
     }));
 
-    // Validate: phải đủ 4 chữ số
-    if (value && value.length !== 4) {
-      setFormErrors(prev => ({ ...prev, startYear: 'Năm bắt đầu phải có 4 chữ số' }));
-    } else {
-      setFormErrors(prev => ({ ...prev, startYear: '' }));
-    }
+    if (formErrors.startYear) setFormErrors(prev => ({ ...prev, startYear: '' }));
 
     if (editingClass) return;
 
@@ -179,12 +217,7 @@ function ClassManagement() {
       endYear: value
     }));
 
-    // Validate: must be 4 digits
-    if (value && value.length !== 4) {
-      setFormErrors(prev => ({ ...prev, endYear: 'Năm kết thúc phải có 4 chữ số' }));
-    } else {
-      setFormErrors(prev => ({ ...prev, endYear: '' }));
-    }
+    if (formErrors.endYear) setFormErrors(prev => ({ ...prev, endYear: '' }));
   }
   };
   const fetchData = async () => {
@@ -204,6 +237,7 @@ function ClassManagement() {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
+  if (!validateForm()) return;
 
   setConfirmDialog({
     show: true,
@@ -677,7 +711,12 @@ function ClassManagement() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
                 <div className="flex gap-3">
@@ -688,7 +727,6 @@ function ClassManagement() {
                       onChange={handleStartYearChange}
                       placeholder="Năm bắt đầu"
                       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                      required
                       maxLength={4}
                     />
                     {formErrors.startYear && (
@@ -704,7 +742,6 @@ function ClassManagement() {
                       placeholder="Năm kết thúc"
                       readOnly
                       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                      required
                       maxLength={4}
                     />
                     {formErrors.endYear && (
@@ -727,16 +764,10 @@ function ClassManagement() {
                       .replace(/\s\s+/g, ' '); // Replace multiple spaces with a single space
                     setFormData({ ...formData, TenLop: cleanedValue });
 
-                    // Validate: must not be empty
-                    if (!cleanedValue.trim()) {
-                      setFormErrors(prev => ({ ...prev, TenLop: 'Tên lớp không được để trống' }));
-                    } else {
-                      setFormErrors(prev => ({ ...prev, TenLop: '' }));
-                    }
+                    if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
                   }}
                   placeholder="Nhập tên lớp học"
                   className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                  required
                 />
                 {formErrors.TenLop && (
                   <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
@@ -746,9 +777,11 @@ function ClassManagement() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
                 <select
                   value={formData.MaKhoa}
-                  onChange={handleKhoaChange}
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  required
+                  onChange={(e) => {
+                    handleKhoaChange(e);
+                    if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
+                  }}
+                  className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                 >
                   <option value="">Chọn khoa</option>
                   {faculties.map((faculty) => (
@@ -757,6 +790,9 @@ function ClassManagement() {
                     </option>
                   ))}
                 </select>
+                {formErrors.MaKhoa && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.MaKhoa}</p>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">

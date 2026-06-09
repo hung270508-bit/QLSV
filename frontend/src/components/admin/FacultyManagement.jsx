@@ -58,9 +58,9 @@ function FacultyManagement() {
     const response = await axios.post('http://localhost:5000/api/faculties', formData);
     if (response.data.success) {
       setShowConfirmModal(false);
-      setShowModal(false); // Đóng form chính
-      setFormData({ MaKhoa: '', TenKhoa: '' }); // Reset form
-      // Gọi lại hàm load danh sách khoa của bạn ở đây (ví dụ: fetchFaculties())
+      setShowModal(false);
+      setFormData({ MaKhoa: '', TenKhoa: '' });
+      fetchData(); // Cập nhật danh sách ngay lập tức
     }
   } catch (error) {
     alert(error.response?.data?.message || 'Có lỗi xảy ra!');
@@ -98,6 +98,14 @@ const validateFacultyName = (value) => {
 
   if (!value) {
     return 'Tên khoa không được để trống';
+  }
+
+  if (value.length < 3) {
+    return 'Tên khoa phải có ít nhất 3 ký tự';
+  }
+
+  if (value.length > 30) {
+    return 'Tên khoa không được quá 30 ký tự';
   }
 
   if (/\d/.test(value)) {
@@ -566,6 +574,17 @@ const validateFacultyName = (value) => {
                     TenKhoa: ''
                   })
                 }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const error = validateFacultyName(formData.TenKhoa.trim());
+                    if (error) {
+                      setErrors({ TenKhoa: error });
+                      return;
+                    }
+                    setShowConfirmModal(true);
+                  }
+                }}
                 className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none ${
                   errors.TenKhoa
                     ? 'border-red-500'
