@@ -40,7 +40,7 @@ db.getConnection((err, connection) => {
 
 
 app.use(cors({
-    origin: 'https://hung270508-bit.github.io/QLSV/', // Thay bằng link GitHub Pages chính xác của bạn
+    origin: 'https://hung270508-bit.github.io', // Chỉ giữ lại tên miền sạch như thế này thôi bạn nhé!
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
