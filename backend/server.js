@@ -563,7 +563,7 @@ app.get('/api/classes/:maLop/grade-stats', (req, res) => {
 });
 
 // ==================== LỚP HỌC PHẦN ====================
-app.get('/api/teaching-assignments', (req, res) => executeQuery('SELECT lhp.*, gv.HoTen as TenGiangVien, mh.TenMonHoc, l.TenLop FROM lophocphan lhp LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop', [], res, 'Lỗi lấy Lớp học phần!'));
+app.get('/api/teaching-assignments', (req, res) => executeQuery('SELECT lhp.*, gv.HoTen as TenGiangVien, mh.TenMonHoc, mh.SoTinChi, l.TenLop FROM lophocphan lhp LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop', [], res, 'Lỗi lấy Lớp học phần!'));
 app.get('/api/lophocphan/teacher/:maGV', (req, res) => executeQuery('SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop FROM lophocphan lhp LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaGiangVien = ?', [req.params.maGV], res, 'Lỗi!'));
 app.get('/api/course-sections/teacher/:maGV', (req, res) => executeQuery('SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop, gv.HoTen as TenGiangVien FROM lophocphan lhp LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien WHERE lhp.MaGiangVien = ?', [req.params.maGV], res, 'Lỗi!'));
 app.get('/api/course-sections/:maLhp/students', (req, res) => executeQuery('SELECT DISTINCT s.MSSV, s.HoTen, s.MaLop FROM diem d JOIN sinhvien s ON d.MSSV = s.MSSV WHERE d.MaLopHocPhan = ?', [req.params.maLhp], res, 'Lỗi!'));
@@ -616,20 +616,34 @@ app.get('/api/enrollment/available/:mssv', (req, res) => {
         (SELECT MAX(NgayHoc) FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan) as NgayKetThuc,
         (SELECT PhongHoc FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan LIMIT 1) as PhongHoc,
         (SELECT CaHoc FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan LIMIT 1) as CaHoc
-        FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        FROM lophocphan lhp 
+        JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc 
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
         WHERE lhp.MaLopHocPhan NOT IN (SELECT MaLopHocPhan FROM dangky_hocphan WHERE MSSV = ? AND TrangThai != 'Từ chối')
+          AND lhp.MaLopHocPhan NOT IN (SELECT MaLopHocPhan FROM diem WHERE MSSV = ?)
+          AND lhp.MaMonHoc NOT IN (SELECT lhp2.MaMonHoc FROM diem d JOIN lophocphan lhp2 ON d.MaLopHocPhan = lhp2.MaLopHocPhan WHERE d.MSSV = ? AND lhp2.HocKy = lhp.HocKy)
     `;
-    executeQuery(query, [req.params.mssv, req.params.mssv], res, 'Lỗi lấy danh sách lớp đang mở!');
-});
-app.get('/api/enrollment/my-courses/:mssv', (req, res) => executeQuery('SELECT dk.*, lhp.MaMonHoc, mh.TenMonHoc, mh.SoTinChi FROM dangky_hocphan dk JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE dk.MSSV = ? ORDER BY dk.NgayDangKy DESC', [req.params.mssv], res, 'Lỗi!'));
-app.post('/api/enrollment', (req, res) => executeInsert('INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [req.body.MSSV, req.body.MaLopHocPhan, req.body.HocKy], res, 'Gửi yêu cầu đăng ký thành công!', 'Lỗi!'));
-app.delete('/api/enrollment/:mssv/:maLhp', (req, res) => executeDelete('DELETE FROM dangky_hocphan WHERE MSSV = ? AND MaLopHocPhan = ? AND TrangThai = "Chờ duyệt"', [req.params.mssv, req.params.maLhp], res, 'Hủy môn thành công!', 'Lỗi!'));
+    // Tổng cộng truyền vào 4 tham số mssv tương ứng với 4 dấu hỏi chấm (?) trong câu lệnh SQL bảo mật
+    executeQuery(query, [req.params.mssv, req.params.mssv, req.params.mssv, req.params.mssv], res, 'Lỗi lấy danh sách lớp đang mở!');});
 
-app.get('/api/schedules', (req, res) => executeQuery('SELECT lh.*, lhp.MaGiangVien, lhp.MaMonHoc, lhp.HocKy, gv.HoTen as TenGiangVien, mh.TenMonHoc, lhp.MaLop, l.TenLop FROM lichhoc lh LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop', [], res, 'Lỗi!'));
-app.get('/api/schedule/student/:mssv', (req, res) => executeQuery('SELECT lh.*, mh.TenMonHoc FROM diem d JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan JOIN lichhoc lh ON lh.MaLopHocPhan = lhp.MaLopHocPhan JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE d.MSSV = ?', [req.params.mssv], res, 'Lỗi!'));
-app.post('/api/schedules', (req, res) => executeInsert('INSERT INTO lichhoc (MaLopHocPhan, NgayHoc, CaHoc, PhongHoc) VALUES (?, ?, ?, ?)', [req.body.MaLopHocPhan, req.body.NgayHoc, req.body.CaHoc, req.body.PhongHoc], res, 'Thêm lịch thành công', 'Lỗi thêm lịch'));
-app.put('/api/schedules/:maLichHoc', (req, res) => executeUpdate('UPDATE lichhoc SET MaLopHocPhan=?, NgayHoc=?, CaHoc=?, PhongHoc=? WHERE MaLichHoc=?', [req.body.MaLopHocPhan, req.body.NgayHoc, req.body.CaHoc, req.body.PhongHoc, req.params.maLichHoc], res, 'Cập nhật thành công', 'Lỗi cập nhật'));
-app.delete('/api/schedules/:maLichHoc', (req, res) => executeDelete('DELETE FROM lichhoc WHERE MaLichHoc=?', [req.params.maLichHoc], res, 'Xóa thành công', 'Lỗi xóa'));
+app.post('/api/enrollment', (req, res) => {const { MSSV, MaLopHocPhan, HocKy } = req.body;
+    
+    // Bước 1: Thêm trực tiếp vào bảng đăng ký với trạng thái 'Đã duyệt' thay vì để 'Chờ duyệt'
+    const queryDK = "INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai) VALUES (?, ?, ?, 'Đã duyệt')";
+    
+    db.query(queryDK, [MSSV, MaLopHocPhan, HocKy], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi ghi nhận đăng ký học phần!', error: err.message });
+        
+        // Bước 2: Đồng bộ lập tức sinh viên vào bảng `diem` để hệ thống Học vụ / Lịch học nhận diện được ngay buổi học
+        const queryDiem = "INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)";
+        
+        db.query(queryDiem, [MSSV, MaLopHocPhan, HocKy], (errDiem) => {
+            if (errDiem) return res.status(500).json({ success: false, message: 'Lỗi đồng bộ lịch học học vụ!', error: errDiem.message });
+            
+            res.json({ success: true, message: 'Đăng ký     học phần thành công! Lịch học đã được cập nhật tại tab Học vụ.' });
+        });
+    });
+});
 
 // ==================== GRADES & ACADEMIC ====================
 app.get('/api/grades', (req, res) => executeQuery('SELECT d.*, s.HoTen as TenSinhVien, IFNULL(lhp.MaMonHoc, d.MaLopHocPhan) as MaMonHoc, mh.TenMonHoc FROM diem d LEFT JOIN sinhvien s ON d.MSSV = s.MSSV LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN monhoc mh ON mh.MaMonHoc = IFNULL(lhp.MaMonHoc, d.MaLopHocPhan)', [], res, 'Lỗi!'));
@@ -754,82 +768,55 @@ app.post('/api/grades/bulk', (req, res) => executeBulkInsert('INSERT INTO diem (
 app.post('/api/attendance/bulk', (req, res) => executeBulkInsert('INSERT INTO diemdanh (MaLichHoc, MSSV, NgayDiemDanh, TrangThai) VALUES (?, ?, ?, ?)', req.body.attendance, a => [a.MaLichHoc, a.MSSV, a.NgayDiemDanh, a.TrangThai], res, 'Điểm danh', 'Lỗi điểm danh'));
 
 
-// =====================================================================
-// [ADMIN] QUẢN LÝ ĐIỂM RÈN LUYỆN & YÊU CẦU
-// =====================================================================
-
-// 1. Quản lý đợt đánh giá
-app.get('/api/admin/training-periods', (req, res) => {
-    executeQuery('SELECT * FROM dot_danhgia ORDER BY MaDotDanhGia DESC', [], res, 'Lỗi lấy đợt đánh giá!');
+// ==================== [SINH VIÊN] ĐÁNH GIÁ RÈN LUYỆN ====================
+// 1. Lấy lịch sử điểm rèn luyện của 1 sinh viên
+app.get('/api/training-points/student/:mssv', (req, res) => {
+    const query = 'SELECT * FROM danhgia_renluyen WHERE MSSV = ? ORDER BY HocKy DESC';
+    executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm rèn luyện!');
 });
 
-// NÂNG CẤP: Kiểm tra trùng học kỳ trước khi tạo
-app.post('/api/admin/training-periods', (req, res) => {
-    const { HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai } = req.body;
-    
-    // Kiểm tra xem đã tồn tại đợt cho học kỳ này trong năm học này chưa
-    const checkQuery = 'SELECT MaDotDanhGia FROM dot_danhgia WHERE HocKy = ? AND NamHoc = ?';
-    db.query(checkQuery, [HocKy, NamHoc], (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra trùng lặp!' });
-        if (results.length > 0) return res.status(400).json({ success: false, message: 'Đợt đánh giá cho học kỳ này đã tồn tại!' });
+// 2. Sinh viên nộp phiếu đánh giá mới
+app.post('/api/training-points', (req, res) => {
+    const { MSSV, HocKy, DiemTuDanhGia } = req.body;
+    let xepLoai = 'Yếu';
+    if(DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
+    else if(DiemTuDanhGia >= 80) xepLoai = 'Tốt';
+    else if(DiemTuDanhGia >= 65) xepLoai = 'Khá';
+    else if(DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
-        const query = 'INSERT INTO dot_danhgia (HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai) VALUES (?, ?, ?, ?, ?)';
-        executeInsert(query, [HocKy, NamHoc, NgayBatDau || null, NgayKetThuc || null, TrangThai || 'Đang tự đánh giá'], res, 'Tạo đợt đánh giá thành công!', 'Lỗi tạo đợt!');
-    });
+    const query = 'INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai) VALUES (?, ?, ?, ?, ?, "Chờ lớp duyệt")';
+    executeInsert(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai], res, 'Nộp đánh giá thành công!', 'Lỗi nộp đánh giá!');
 });
 
-app.put('/api/admin/training-periods/:id/status', (req, res) => {
-    const { TrangThai } = req.body;
-    executeUpdate('UPDATE dot_danhgia SET TrangThai = ? WHERE MaDotDanhGia = ?', [TrangThai, req.params.id], res, 'Cập nhật trạng thái đợt thành công!', 'Lỗi cập nhật đợt!');
+// 3. Sinh viên cập nhật lại điểm (Khi phiếu còn ở trạng thái Chờ duyệt)
+app.put('/api/training-points/:id', (req, res) => {
+    const { DiemTuDanhGia } = req.body;
+    let xepLoai = 'Yếu';
+    if(DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
+    else if(DiemTuDanhGia >= 80) xepLoai = 'Tốt';
+    else if(DiemTuDanhGia >= 65) xepLoai = 'Khá';
+    else if(DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+
+    const query = 'UPDATE danhgia_renluyen SET DiemTuDanhGia=?, TongDiem=?, XepLoai=? WHERE MaDanhGia=?';
+    executeUpdate(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], res, 'Cập nhật điểm thành công!', 'Lỗi cập nhật điểm!');
+});
+app.get('/api/training-points/student/:mssv', (req, res) => { const query = 'SELECT * FROM danhgia_renluyen WHERE MSSV = ? ORDER BY HocKy DESC'; executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm rèn luyện!'); });
+
+
+// ==================== [SINH VIÊN] YÊU CẦU & HỖ TRỢ ====================
+// 1. Lấy danh sách yêu cầu hỗ trợ mà sinh viên đã gửi
+app.get('/api/support/student/:mssv', (req, res) => {
+    const query = 'SELECT * FROM yeucau_hotro WHERE MSSV = ? ORDER BY NgayGui DESC';
+    executeQuery(query, [req.params.mssv], res, 'Lỗi lấy danh sách yêu cầu!');
 });
 
-// Lấy danh sách đợt đánh giá ĐANG MỞ (Dành cho Sinh viên quét)
-// NÂNG CẤP: Kiểm tra cả trạng thái VÀ khoảng ngày hiện tại (CURDATE)
-app.get('/api/training-periods/active', (req, res) => {
-    const query = `
-        SELECT * FROM dot_danhgia 
-        WHERE TrangThai = 'Đang tự đánh giá' 
-        AND CURDATE() BETWEEN NgayBatDau AND NgayKetThuc 
-        ORDER BY MaDotDanhGia DESC
-    `;
-    executeQuery(query, [], res, 'Lỗi lấy đợt đánh giá đang mở!');
+// 2. Sinh viên gửi yêu cầu hỗ trợ mới
+app.post('/api/support', (req, res) => {
+    const { MSSV, LoaiYeuCau, ChuDe, NoiDung } = req.body;
+    const query = 'INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), "Đang xử lý")';
+    executeInsert(query, [MSSV, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 
-// 2. Xét duyệt điểm rèn luyện (Đã loại bỏ DiemLopDanhGia, chỉ dùng DiemKhoaDanhGia)
-app.get('/api/admin/training-points', (req, res) => {
-    executeQuery('SELECT d.*, s.HoTen, s.MaLop FROM danhgia_renluyen d JOIN sinhvien s ON d.MSSV = s.MSSV ORDER BY d.MaDanhGia DESC', [], res, 'Lỗi lấy điểm RL!');
-});
-
-app.put('/api/admin/training-points/:id', (req, res) => {
-    const { DiemKhoaDanhGia, TongDiem, TrangThai } = req.body; 
-    
-    // Tính xếp loại dựa trên tổng điểm cuối cùng
-    let xepLoai = 'Yếu'; 
-    const diem = Number(TongDiem);
-    if(diem >= 90) xepLoai = 'Xuất sắc';
-    else if(diem >= 80) xepLoai = 'Tốt';
-    else if(diem >= 65) xepLoai = 'Khá';
-else if(diem >= 50) xepLoai = 'Trung bình';
-    
-    // Cập nhật: Fix cứng DiemLopDanhGia = 0, chỉ lưu điểm khoa
-    const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ? WHERE MaDanhGia = ?';
-    executeUpdate(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, req.params.id], res, 'Đã chốt điểm!', 'Lỗi cập nhật điểm!');
-});
-
-// 3. Quản lý Yêu cầu & Phản hồi
-app.get('/api/admin/support-requests', (req, res) => {
-    const query = `
-        SELECT y.*, y.MSSV as NguoiGui, 'SinhVien' as VaiTro, y.ChuDe as TieuDe, 
-        (SELECT HoTen FROM sinhvien WHERE MSSV = y.MSSV) as TenNguoiGui 
-        FROM yeucau_hotro y ORDER BY y.NgayGui DESC
-    `;
-    executeQuery(query, [], res, 'Lỗi lấy yêu cầu!');
-});
-
-app.put('/api/admin/support-requests/:id', (req, res) => {
-    const { TrangThai, PhanHoi } = req.body;
-    executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ? WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
-});
 
 
 
