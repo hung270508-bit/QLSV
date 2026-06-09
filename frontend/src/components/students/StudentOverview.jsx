@@ -1,5 +1,5 @@
 // npm install recharts lệnh cài thư viện vẽ biểu đồ, lưu ý không xóa nó 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CalendarDays, 
@@ -46,9 +46,9 @@ function StudentOverview({ user, setActiveMenu }) {
     try {
       setLoading(true);
       const [gradesRes, scheduleRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/grades/student/${user?.username}`),
+        axios.get(`/api/grades/student/${user?.username}`),
         // Đã giữ nguyên API mới của bạn:
-        axios.get(`http://localhost:5000/api/students/${user.id}/schedule`) 
+        axios.get(`/api/students/${user.id}/schedule`) 
       ]);
 
       const grades = gradesRes.data;

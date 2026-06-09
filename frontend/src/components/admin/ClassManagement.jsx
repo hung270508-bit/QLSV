@@ -4,7 +4,7 @@ import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, BarChart3, Boo
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 const emptyGradeStats = () => ({
   totalGrades: 0,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Building2, GraduationCap, BookOpen, Users, UserCheck,
   LogOut, ChevronRight, Calendar, FileText, Bell, ClipboardCheck,

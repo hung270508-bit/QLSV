@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   UserCircle,
@@ -56,7 +56,7 @@ function StudentDashboard({ user, onLogout }) {
 
   useEffect(() => {
     if (user?.username) {
-      axios.get(`http://localhost:5000/api/students/${user.username}/details`)
+      axios.get(`/api/students/${user.username}/details`)
         .then(res => {
           if (res.data.length > 0) {
             setProfile(res.data[0]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar as CalendarIcon, Plus, Edit, Trash2, Search, X, RefreshCw } from 'lucide-react';
 import axios from 'axios';
@@ -18,8 +18,8 @@ function ScheduleManagement() {
   const fetchData = async () => {
     try {
       const [schedRes, lhpRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/schedules'),
-        axios.get('http://localhost:5000/api/teaching-assignments')
+        axios.get('/api/schedules'),
+        axios.get('/api/teaching-assignments')
       ]);
       setSchedules(schedRes.data);
       setLhpList(lhpRes.data);
@@ -59,9 +59,9 @@ function ScheduleManagement() {
     if (!validateScheduleForm()) return;
     try {
       if (editingSchedule) {
-        await axios.put(`http://localhost:5000/api/schedules/${editingSchedule.MaLichHoc}`, formData);
+        await axios.put(`/api/schedules/${editingSchedule.MaLichHoc}`, formData);
       } else {
-        await axios.post('http://localhost:5000/api/schedules', formData);
+        await axios.post('/api/schedules', formData);
       }
       fetchData();
       handleCloseModal();
@@ -84,7 +84,7 @@ function ScheduleManagement() {
   const handleDelete = async (id) => {
     if (!window.confirm('Xóa lịch học này?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/schedules/${id}`);
+      await axios.delete(`/api/schedules/${id}`);
       fetchData();
     } catch {
       alert('Lỗi khi xóa!');

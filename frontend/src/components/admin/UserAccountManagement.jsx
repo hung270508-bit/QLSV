@@ -32,8 +32,8 @@ function UserAccountManagement() {
   const fetchData = useCallback(async () => {
     try {
       const [usersRes, rolesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/users'),
-        axios.get('http://localhost:5000/api/roles')
+        axios.get('/api/users'),
+        axios.get('/api/roles')
       ]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
@@ -112,7 +112,7 @@ function UserAccountManagement() {
 
     try {
       if (editingUser) {
-        await axios.put(`http://localhost:5000/api/users/${editingUser.TaiKhoan}`, {
+        await axios.put(`/api/users/${editingUser.TaiKhoan}`, {
           password: formData.password,
           MaQuyen: formData.MaQuyen
         });
@@ -126,7 +126,7 @@ function UserAccountManagement() {
           return;
         }
         
-        await axios.post('http://localhost:5000/api/users', formData);
+        await axios.post('/api/users', formData);
         showNotification('success', 'Thêm tài khoản thành công!');
       }
       fetchData();
@@ -160,7 +160,7 @@ function UserAccountManagement() {
     
     if (window.confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/users/${taiKhoan}`);
+        await axios.delete(`/api/users/${taiKhoan}`);
         showNotification('success', 'Xóa tài khoản thành công!');
         fetchData();
       } catch (error) {

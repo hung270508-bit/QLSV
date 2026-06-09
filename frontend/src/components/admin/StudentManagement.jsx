@@ -70,8 +70,8 @@ function StudentManagement() {
   const fetchData = async () => {
     try {
       const [studentsRes, classesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/students'),
-        axios.get('http://localhost:5000/api/classes')
+        axios.get('/api/students'),
+        axios.get('/api/classes')
       ]);
       setStudents(studentsRes.data);
       setClasses(classesRes.data);
@@ -97,7 +97,7 @@ function StudentManagement() {
   if (!maLop) return;
 
   try {
-    const res = await axios.get(`http://localhost:5000/api/students/next-code/${maLop}`);
+    const res = await axios.get(`/api/students/next-code/${maLop}`);
     setFormData(prev => ({ ...prev, MaLop: maLop, MSSV: res.data.MSSV }));
   } catch (err) {
     console.error('Lỗi tạo MSSV:', err);
@@ -166,7 +166,7 @@ function StudentManagement() {
       message: `Bạn có chắc chắn muốn cập nhật thông tin sinh viên "${formData.HoTen}" (${formData.MSSV}) không?`,
       onConfirm: async () => {
         try {
-          await axios.put(`http://localhost:5000/api/students/${editingStudent.MSSV}`, formData);
+          await axios.put(`/api/students/${editingStudent.MSSV}`, formData);
           setToast({ show: true, message: 'Cập nhật sinh viên thành công!', type: 'success' });
           fetchData();
           handleCloseModal();
@@ -178,7 +178,7 @@ function StudentManagement() {
     });
   } else {
     try {
-      await axios.post('http://localhost:5000/api/students', formData);
+      await axios.post('/api/students', formData);
       setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
       fetchData();
       handleCloseModal();
@@ -229,10 +229,10 @@ function StudentManagement() {
     
     try {
       const [detailsRes, transcriptRes, scheduleRes, attendanceRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/students/${student.MSSV}/details`),
-        axios.get(`http://localhost:5000/api/academic/transcript/${student.MSSV}`),
-        axios.get(`http://localhost:5000/api/students/${student.MSSV}/schedule`),
-        axios.get(`http://localhost:5000/api/attendance/student/${student.MSSV}`)
+        axios.get(`/api/students/${student.MSSV}/details`),
+        axios.get(`/api/academic/transcript/${student.MSSV}`),
+        axios.get(`/api/students/${student.MSSV}/schedule`),
+        axios.get(`/api/attendance/student/${student.MSSV}`)
       ]);
       
       setStudentDetails(detailsRes.data[0] || null);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, CheckCircle2, 
@@ -21,8 +21,8 @@ function StudentAttendance({ user }) {
       try {
         setLoading(true);
         const [gradesRes, attendanceRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/grades/student/${user?.username}`),
-          axios.get(`http://localhost:5000/api/attendance/student/${user?.username}`)
+          axios.get(`/api/grades/student/${user?.username}`),
+          axios.get(`/api/attendance/student/${user?.username}`)
         ]);
 
         setSubjects(gradesRes.data);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ClipboardCheck, Calendar, ArrowLeft, Clock, 
@@ -44,7 +44,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
 
   const fetchScheduleAttendance = async (maLopHocPhan, dateString) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/attendance/course/${maLopHocPhan}/date/${dateString}`);
+      const res = await axios.get(`/api/attendance/course/${maLopHocPhan}/date/${dateString}`);
       const records = Array.isArray(res.data) ? res.data : [];
       if (records.length > 0) {
         const restored = {};
@@ -66,7 +66,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
     setClassStudents([]);
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/course-sections/${schedule.MaLopHocPhan}/students`);
+      const res = await axios.get(`/api/course-sections/${schedule.MaLopHocPhan}/students`);
       const enrolledStudents = res.data;
       setClassStudents(enrolledStudents);
 
@@ -116,7 +116,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
         return alert("Vui lòng điểm danh ít nhất 1 sinh viên trước khi lưu!");
       }
 
-      await axios.post(`http://localhost:5000/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${todayDate}`, { 
+      await axios.post(`/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${todayDate}`, { 
         attendance: attendanceData 
       });
 

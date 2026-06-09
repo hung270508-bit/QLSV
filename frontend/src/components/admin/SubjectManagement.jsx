@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, Plus, Edit, Trash2, Search, X, Filter, 
@@ -91,8 +91,8 @@ function SubjectManagement() {
   const fetchData = async () => {
   try {
     const [subjectsRes, facultiesRes] = await Promise.all([
-      axios.get('http://localhost:5000/api/subjects'),
-      axios.get('http://localhost:5000/api/faculties')
+      axios.get('/api/subjects'),
+      axios.get('/api/faculties')
     ]);
     setSubjects(subjectsRes.data);
     setFaculties(facultiesRes.data);
@@ -170,11 +170,11 @@ function SubjectManagement() {
   setIsSubmitting(true);
   try {
     if (editingSubject) {
-      await axios.put(`http://localhost:5000/api/subjects/${editingSubject.MaMonHoc}`, formData);
+      await axios.put(`/api/subjects/${editingSubject.MaMonHoc}`, formData);
       setToast({ show: true, message: 'Cập nhật môn học thành công!', type: 'success' });
     } else {
-      const resCode = await axios.get(`http://localhost:5000/api/subjects/next-code/${formData.MaKhoa}`);
-      await axios.post('http://localhost:5000/api/subjects', { ...formData, MaMonHoc: resCode.data.MaMonHoc });
+      const resCode = await axios.get(`/api/subjects/next-code/${formData.MaKhoa}`);
+      await axios.post('/api/subjects', { ...formData, MaMonHoc: resCode.data.MaMonHoc });
       setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
     }
     fetchData();
@@ -213,7 +213,7 @@ function SubjectManagement() {
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/subjects/${deleteModal.subject.MaMonHoc}`);
+      await axios.delete(`/api/subjects/${deleteModal.subject.MaMonHoc}`);
       setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
       setDeleteModal({ show: false, subject: null });
       setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
@@ -230,7 +230,7 @@ function SubjectManagement() {
     if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
     if (editingSubject || !maKhoa) return;
     try {
-      const res = await axios.get(`http://localhost:5000/api/subjects/next-code/${maKhoa}`);
+      const res = await axios.get(`/api/subjects/next-code/${maKhoa}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: res.data.MaMonHoc }));
     } catch (err) {
       console.error('Lỗi tạo mã môn học:', err);
@@ -243,9 +243,9 @@ function SubjectManagement() {
     
     try {
       const [classesRes, teachersRes, statsRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/classes`),
-        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/teachers`),
-        axios.get(`http://localhost:5000/api/subjects/${subject.MaMonHoc}/grade-stats`)
+        axios.get(`/api/subjects/${subject.MaMonHoc}/classes`),
+        axios.get(`/api/subjects/${subject.MaMonHoc}/teachers`),
+        axios.get(`/api/subjects/${subject.MaMonHoc}/grade-stats`)
       ]);
       
       setSubjectClasses(classesRes.data);

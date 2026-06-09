@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, Megaphone, Calendar } from 'lucide-react';
 import axios from 'axios';
@@ -16,7 +16,7 @@ function AnnouncementsSection({ announcements, user, onRefresh }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/announcements', {
+      await axios.post('/api/announcements', {
         ...formData,
         NguoiTao: user.id
       });

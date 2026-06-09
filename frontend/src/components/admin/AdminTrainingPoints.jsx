@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator, 
@@ -40,8 +40,8 @@ function AdminTrainingPoints() {
     try {
       setLoading(true);
       const [pointsRes, periodsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/admin/training-points'),
-        axios.get('http://localhost:5000/api/admin/training-periods')
+        axios.get('/api/admin/training-points'),
+        axios.get('/api/admin/training-periods')
       ]);
       setPointsData(pointsRes.data);
       setPeriods(periodsRes.data);
@@ -67,7 +67,7 @@ function AdminTrainingPoints() {
     try {
       const formattedHocKy = `${periodForm.HocKy}_${periodForm.NamHoc.replace('-', '_')}`;
       
-      const response = await axios.post('http://localhost:5000/api/admin/training-periods', {
+      const response = await axios.post('/api/admin/training-periods', {
         HocKy: formattedHocKy,
         NamHoc: periodForm.NamHoc,
         NgayBatDau: periodForm.NgayBatDau,
@@ -95,7 +95,7 @@ function AdminTrainingPoints() {
     const newStatus = currentStatus === 'Đang tự đánh giá' ? 'Đã đóng đợt' : 'Đang tự đánh giá';
     if (!window.confirm(`Bạn có chắc muốn chuyển trạng thái thành: "${newStatus}"?`)) return;
     try {
-      await axios.put(`http://localhost:5000/api/admin/training-periods/${id}/status`, { TrangThai: newStatus });
+      await axios.put(`/api/admin/training-periods/${id}/status`, { TrangThai: newStatus });
       fetchData();
       showToast(`Đã chuyển trạng thái thành: ${newStatus}`, 'success');
     } catch (error) {
@@ -152,7 +152,7 @@ function AdminTrainingPoints() {
     const tongDiem = diemSV + diemCong;
 
     try {
-      await axios.put(`http://localhost:5000/api/admin/training-points/${selectedRecord.MaDanhGia}`, {
+      await axios.put(`/api/admin/training-points/${selectedRecord.MaDanhGia}`, {
         DiemKhoaDanhGia: diemCong,
         TongDiem: tongDiem,
         TrangThai: trangThaiDuyet

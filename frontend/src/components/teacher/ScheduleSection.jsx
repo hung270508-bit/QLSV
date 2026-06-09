@@ -23,7 +23,7 @@ function ScheduleSection({ user }) {
       try {
         setLoading(true);
         // Gọi API dành riêng cho giảng viên
-        const response = await axios.get(`http://localhost:5000/api/teachers/${user?.username || user?.id}/teaching-schedule`);
+        const response = await axios.get(`/api/teachers/${user?.username || user?.id}/teaching-schedule`);
         
         const formattedData = response.data.map(item => {
           let tietBatDau = 1;

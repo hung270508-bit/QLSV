@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search
@@ -38,7 +38,7 @@ function AdminRequests() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/admin/support-requests');
+      const res = await axios.get('/api/admin/support-requests');
       setRequests(res.data);
     } catch (e) {
       console.error(e);
@@ -76,7 +76,7 @@ function AdminRequests() {
   const handleUpdate = async () => {
     if (!validateReply()) return;
     try {
-      await axios.put(`http://localhost:5000/api/admin/support-requests/${selectedReq.MaYeuCau}`, {
+      await axios.put(`/api/admin/support-requests/${selectedReq.MaYeuCau}`, {
         TrangThai: updateStatus,
         PhanHoi: replyText,
         NguoiTraLoi: 'Admin QLSV'

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   HelpCircle, MessageSquare, FileText, Send, 
@@ -20,7 +20,7 @@ function StudentSupport({ user }) {
   const fetchSupportData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/support/student/${user?.username}`);
+      const res = await axios.get(`/api/support/student/${user?.username}`);
       setSupportList(res.data);
     } catch (error) {
       console.error("Lỗi lấy dữ liệu hỗ trợ:", error);
@@ -37,7 +37,7 @@ function StudentSupport({ user }) {
   const handleQuickRequest = async (chude) => {
     if (!window.confirm(`Bạn có chắc chắn muốn gửi yêu cầu: "${chude}" không?`)) return;
     try {
-      await axios.post('http://localhost:5000/api/support', {
+      await axios.post('/api/support', {
         MSSV: user.username,
         LoaiYeuCau: 'Hành chính',
         ChuDe: chude,
@@ -58,7 +58,7 @@ function StudentSupport({ user }) {
     }
     try {
       setSubmitting(true);
-      await axios.post('http://localhost:5000/api/support', {
+      await axios.post('/api/support', {
         MSSV: user.username,
         LoaiYeuCau: 'Hỏi đáp',
         ChuDe: formData.chuDe,

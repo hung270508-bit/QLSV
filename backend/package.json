@@ -1,10 +1,9 @@
 {
-  "name": "backend",
+  "name": "qlsv-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend API (Express + MySQL) cho he thong Quan ly sinh vien (QLSV)",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "keywords": [],

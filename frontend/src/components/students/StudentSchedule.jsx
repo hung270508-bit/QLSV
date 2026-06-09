@@ -23,7 +23,7 @@ function StudentSchedule({ user }) {
     const fetchSchedule = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:5000/api/students/${user?.username || user?.id}/schedule`);
+        const response = await axios.get(`/api/students/${user?.username || user?.id}/schedule`);
         
         const formattedData = response.data.map(item => {
           let tietBatDau = 1;

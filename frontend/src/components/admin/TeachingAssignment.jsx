@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Search, X, RefreshCw, UserCheck, Users, ClipboardCheck, BookOpen, Wand2 } from 'lucide-react';
 import axios from 'axios';
@@ -87,11 +87,11 @@ function TeachingAssignment() {
   const fetchData = async () => {
     try {
       const [assRes, subRes, teachRes, classRes, khoaRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/teaching-assignments'),
-        axios.get('http://localhost:5000/api/subjects'),
-        axios.get('http://localhost:5000/api/teachers'),
-        axios.get('http://localhost:5000/api/classes'),
-        axios.get('http://localhost:5000/api/faculties')
+        axios.get('/api/teaching-assignments'),
+        axios.get('/api/subjects'),
+        axios.get('/api/teachers'),
+        axios.get('/api/classes'),
+        axios.get('/api/faculties')
       ]);
       setAssignments(assRes.data);
       setSubjects(subRes.data);
@@ -133,9 +133,9 @@ function TeachingAssignment() {
     if (!validateAssignmentForm()) return;
     try {
       if (editingAssignment) {
-        await axios.put(`http://localhost:5000/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
+        await axios.put(`/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
       } else {
-        await axios.post('http://localhost:5000/api/teaching-assignments', formData);
+        await axios.post('/api/teaching-assignments', formData);
       }
       fetchData();
       handleCloseModal();
@@ -157,7 +157,7 @@ function TeachingAssignment() {
   const handleDelete = async (id) => {
     if (!window.confirm('Xoa lop hoc phan nay?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/teaching-assignments/${id}`);
+      await axios.delete(`/api/teaching-assignments/${id}`);
       fetchData();
     } catch {
       alert('Loi khi xoa!');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Calendar, Megaphone, Loader2, Users, Pin } from 'lucide-react';
 import axios from 'axios';
@@ -11,7 +11,7 @@ function StudentAnnouncements({ user }) {
     const fetchAnnouncements = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:5000/api/announcements/student/${user.username}`);
+        const res = await axios.get(`/api/announcements/student/${user.username}`);
         setAnnouncements(res.data);
       } catch (error) {
         console.error("Lỗi tải thông báo:", error);
