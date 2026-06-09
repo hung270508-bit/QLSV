@@ -197,8 +197,8 @@ function TeachingAssignment() {
             <ClipboardCheck className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Quan ly Phan cong & Mo lop</h2>
-            <p className="text-orange-100 text-sm mt-0.5">Tao lop hoc phan, tu dong xep danh sach sinh vien</p>
+            <h2 className="text-xl font-bold text-white">Quản lý Phân công & Mở lớp</h2>
+            <p className="text-orange-100 text-sm mt-0.5">Tạo lớp học phần, tự động xếp danh sách sinh viên</p>
           </div>
         </div>
         <motion.button
@@ -206,7 +206,7 @@ function TeachingAssignment() {
           onClick={() => setShowModal(true)}
           className="bg-white text-orange-600 px-5 py-2.5 rounded-xl flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-shadow text-sm"
         >
-          <Plus className="w-4 h-4" /> Mo lop hoc phan
+          <Plus className="w-4 h-4" /> Mở lớp học phần
         </motion.button>
       </motion.div>
 
@@ -221,7 +221,7 @@ function TeachingAssignment() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Tim theo ma lop, ten mon, giang vien..."
+            placeholder="Tìm theo mã lớp, tên môn, giảng viên..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-orange-400 focus:bg-white outline-none text-sm transition-all"
@@ -246,7 +246,7 @@ function TeachingAssignment() {
         <table className="w-full">
           <thead className="bg-gray-50/80 border-b border-gray-100">
             <tr>
-              {['Ma Lop HP', 'Mon hoc', 'Giang vien', 'Lop tham gia', 'Hoc ky', 'Thao tac'].map(h => (
+              {['Mã Lớp HP', 'Tên Môn Học', 'Giảng Viên', 'Lớp Tham Gia', 'Học Kỳ', 'Thao Tác'].map(h => (
                 <th key={h} className={`py-3.5 px-5 text-xs font-bold text-gray-500 uppercase tracking-wide ${h === 'Thao tac' || h === 'Hoc ky' ? 'text-center' : 'text-left'}`}>{h}</th>
               ))}
             </tr>
@@ -327,7 +327,7 @@ function TeachingAssignment() {
               <div className="flex justify-between items-center mb-5">
                 <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <ClipboardCheck className="w-5 h-5 text-orange-500" />
-                  {editingAssignment ? 'Cap nhat Lop hoc phan' : 'Mo Lop hoc phan moi'}
+                  {editingAssignment ? 'Cập nhật Lớp học phần' : 'Mở Lớp học phần mới'}
                 </h3>
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }}
@@ -339,26 +339,12 @@ function TeachingAssignment() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {!editingAssignment && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mã Lớp Học Phần</label>
-                    <input
-                      type="text" placeholder="VD: IT001_N01"
-                      value={formData.MaLopHocPhan}
-                      onChange={e => {
-                        setFormData({ ...formData, MaLopHocPhan: e.target.value });
-                        if (formErrors.MaLopHocPhan) setFormErrors({ ...formErrors, MaLopHocPhan: '' });
-                      }}
-                      className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm outline-none transition-colors ${formErrors.MaLopHocPhan ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-orange-400'}`}
-                    />
-                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
-                  </div>
-                )}
+              
 
                 {/* BUOC 1: Hoc ky & Nam hoc */}
                 <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
                   <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5" /> 1 — Hoc ky & Nam hoc
+                    <BookOpen className="w-3.5 h-3.5" /> 1 — Học kỳ & Năm học
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -392,7 +378,7 @@ function TeachingAssignment() {
                   </div>
                   {formData.HocKy && (
                     <div className="mt-2.5 px-3 py-1.5 bg-white rounded-lg border border-orange-200 text-xs text-orange-700 font-mono">
-                      Ma hoc ky: <span className="font-bold">{formData.HocKy}</span>
+                      Mã học kỳ: <span className="font-bold">{formData.HocKy}</span>
                     </div>
                   )}
                 </div>
@@ -400,7 +386,7 @@ function TeachingAssignment() {
                 {/* BUOC 2: Khoa & Lop */}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
                   <p className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" /> 2 — Khoa &amp; Lop tham gia
+                    <Users className="w-3.5 h-3.5" /> 2 — Khoa &amp; Lớp tham gia
                   </p>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Khoa <span className="text-red-400">*</span></label>
@@ -409,12 +395,12 @@ function TeachingAssignment() {
                       onChange={e => { setSelectedKhoa(e.target.value); setFormData(f => ({ ...f, MaLop: '' })); }}
                       className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl outline-none focus:border-blue-400 text-sm"
                     >
-                      <option value="">-- Chon Khoa --</option>
+                      <option value="">-- Chọn Khoa --</option>
                       {khoas.map(k => <option key={k.MaKhoa} value={k.MaKhoa}>{k.TenKhoa}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Lop <span className="text-gray-400 font-normal">(khong bat buoc)</span></label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Lớp <span className="text-gray-400 font-normal">(không bắt buộc)</span></label>
                     <select
                       value={formData.MaLop}
                       onChange={e => setFormData({ ...formData, MaLop: e.target.value })}
@@ -422,11 +408,11 @@ function TeachingAssignment() {
                       className={`w-full px-3 py-2 border rounded-xl text-sm outline-none transition-colors
                         ${selectedKhoa ? 'bg-white border-blue-200 focus:border-blue-400' : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'}`}
                     >
-                      <option value="">{selectedKhoa ? '-- Lop tu do --' : '-- Chon Khoa truoc --'}</option>
+                      <option value="">{selectedKhoa ? '-- Lớp tự do --' : '-- Chọn Khoa trước --'}</option>
                       {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
                     </select>
                     {selectedKhoa && filteredClasses.length === 0 && (
-                      <p className="text-xs text-blue-400 mt-1">Khong co lop nao thuoc khoa nay</p>
+                      <p className="text-xs text-blue-400 mt-1">Không có lớp nào thuộc khoa này</p>
                     )}
                   </div>
                 </div>
@@ -434,7 +420,7 @@ function TeachingAssignment() {
                 {/* BUOC 3: Mon hoc */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    3 — Mon hoc <span className="text-red-400">*</span>
+                    3 — Môn học <span className="text-red-400">*</span>
                   </label>
                   <select
                     value={formData.MaMonHoc}
@@ -442,42 +428,22 @@ function TeachingAssignment() {
                     className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400 transition-colors"
                     required
                   >
-                    <option value="">-- Chon Mon hoc --</option>
+                    <option value="">-- Chọn Môn học --</option>
                     {subjects.map(s => <option key={s.MaMonHoc} value={s.MaMonHoc}>{s.TenMonHoc} ({s.MaMonHoc})</option>)}
                   </select>
                 </div>
 
                 {/* Ma lop HP auto-generated */}
-                {!editingAssignment && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                      <Wand2 className="w-3.5 h-3.5 text-orange-400" />
-                      Ma Lop Hoc Phan
-                      <span className="text-xs font-normal text-gray-400">(tu dong, co the sua)</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Chon Mon + Hoc ky de tu sinh ma..."
-                      value={formData.MaLopHocPhan}
-                      onChange={e => setFormData({ ...formData, MaLopHocPhan: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl outline-none focus:border-orange-400 text-sm font-mono transition-colors"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Mau: <span className="font-mono text-orange-500">
-                        {formData.MaMonHoc || 'MAMON'}.{hocKySo ? (hocKySo === '3' ? 'HKP' : `HK${hocKySo}`) : 'HKx'}{namBatDau.slice(-2) || 'xx'}{namKetThuc.slice(-2) || 'xx'}.HP01
-                      </span>
-                    </p>
-                  </div>
-                )}
+      
 
                     {/* BUOC 4: Giang vien (Chi hien thi khi da chon khoa) */}
               {/* BUOC 4: Giang vien (Danh sach filter & scroll) */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">4 — Giang vien <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">4 — Giảng viên <span className="text-red-400">*</span></label>
                 
                 {!selectedKhoa ? (
                   <div className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500">
-                    Vui long chon Khoa o buoc 2...
+                    Vui lòng chọn Khoa 
                   </div>
                 ) : (
                   <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
@@ -525,7 +491,7 @@ function TeachingAssignment() {
 
                 {/* Si so */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Si so toi da</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Sĩ số tối đa</label>
                   <input
                     type="number" min="1"
                     value={formData.SoLuongToiDa}
@@ -547,7 +513,7 @@ function TeachingAssignment() {
                     disabled={!!hocKyError}
                     className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingAssignment ? 'Luu thay doi' : 'Tao lop & Len danh sach'}
+                    {editingAssignment ? 'Lưu thay đổi' : 'Tạo lớp & lên danh sách'}
                   </motion.button>
                 </div>
               </form>

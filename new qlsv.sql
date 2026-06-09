@@ -21,8 +21,6 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
-SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ 'd5f339bb-590b-11f1-b192-e4a8dfba5018:1-777';
-
 --
 -- Table structure for table `dangky_hocphan`
 --
