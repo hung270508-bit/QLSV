@@ -101,11 +101,11 @@ const currentYear = new Date().getFullYear();
     try {
       setLoading(true);
       const [assRes, subRes, teachRes, classRes, khoaRes] = await Promise.all([
-        axios.get('${API_URL}/api/teaching-assignments'),
-        axios.get('${API_URL}/api/subjects'),
-        axios.get('${API_URL}/api/teachers'),
-        axios.get('${API_URL}/api/classes'),
-        axios.get('${API_URL}/api/faculties')
+        axios.get(`${API_URL}/api/teaching-assignments`),
+        axios.get(`${API_URL}/api/subjects`),
+        axios.get(`${API_URL}/api/teachers`),
+        axios.get(`${API_URL}/api/classes`),
+        axios.get(`${API_URL}/api/faculties`)
       ]);
       setAssignments(assRes.data);
       setSubjects(subRes.data);
