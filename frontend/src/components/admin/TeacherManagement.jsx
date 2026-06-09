@@ -59,7 +59,7 @@ function TeacherManagement() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+const fetchData = async () => {
     try {
       const [teachersRes, facultiesRes] = await Promise.all([
         axios.get(`${API_URL}/api/teachers`),
@@ -74,19 +74,15 @@ function TeacherManagement() {
     }
   };
 
-  const handleKhoaChange = async (e) => {
+const handleKhoaChange = async (e) => {
     const maKhoa = e.target.value;
     setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: '' }));
 
     if (editingTeacher || !maKhoa) return;
 
-    // Lấy ID của khoa từ danh sách đã load
-    const selectedFaculty = faculties.find(f => f.MaKhoa === maKhoa);
-    const khoaId = selectedFaculty?.ID ?? selectedFaculty?.id ?? '';
-    if (!khoaId) return;
-
     try {
-      const res = await axios.get(`${API_URL}/api/teachers/next-code/${khoaId}`);
+      // Dùng trực tiếp biến maKhoa thay vì đi tìm ID
+      const res = await axios.get(`${API_URL}/api/teachers/next-code/${maKhoa}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: res.data.MaGiangVien }));
     } catch (err) {
       console.error('Lỗi tạo mã giảng viên:', err);
@@ -154,11 +150,10 @@ function TeacherManagement() {
           }
         });
       } else {
-        // Lấy mã mới nhất ngay trước khi gửi để tránh trùng
-        const selectedFaculty = faculties.find(f => f.MaKhoa === formData.MaKhoa);
-        const khoaId = selectedFaculty?.ID ?? selectedFaculty?.id ?? '';
-        const resCode = await axios.get(`${API_URL}/api/teachers/next-code/${khoaId}`);
+        // Gọi API sinh mã mới bằng formData.MaKhoa thay vì tìm ID
+        const resCode = await axios.get(`${API_URL}/api/teachers/next-code/${formData.MaKhoa}`);
         const newMaGV = resCode.data.MaGiangVien;
+        
         await axios.post(`${API_URL}/api/teachers`, { ...formData, MaGiangVien: newMaGV });
         setToast({ show: true, message: 'Thêm giảng viên thành công!', type: 'success' });
         fetchData();
