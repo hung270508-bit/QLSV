@@ -139,7 +139,7 @@ const currentYear = new Date().getFullYear();
       if (editingAssignment) {
         await axios.put(`${API_URL}/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
       } else {
-        await axios.post('${API_URL}/api/teaching-assignments', formData);
+        await axios.post(`${API_URL}/api/teaching-assignments`, formData);
       }
       fetchData();
       handleCloseModal();

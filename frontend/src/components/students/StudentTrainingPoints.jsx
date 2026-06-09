@@ -148,7 +148,7 @@ function StudentTrainingPoints({ user }) {
             await axios.put(`${API_URL}/api/training-points/${editingRecord.MaDanhGia}`, { DiemTuDanhGia: currentTotalScore });
             showToast("Cập nhật thành công!", "success");
           } else {
-            await axios.post('${API_URL}/api/training-points', { MSSV: user.username, HocKy: selectedSemester, DiemTuDanhGia: currentTotalScore });
+            await axios.post(`${API_URL}/api/training-points`, { MSSV: user.username, HocKy: selectedSemester, DiemTuDanhGia: currentTotalScore });
             showToast("Nộp phiếu thành công!", "success");
           }
           setIsModalOpen(false); 
