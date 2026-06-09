@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, CheckCircle2, 
@@ -21,8 +22,8 @@ function StudentAttendance({ user }) {
       try {
         setLoading(true);
         const [gradesRes, attendanceRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/grades/student/${user?.username}`),
-          axios.get(`http://localhost:5000/api/attendance/student/${user?.username}`)
+          axios.get(`${API_URL}/api/grades/student/${user?.username}`),
+          axios.get(`${API_URL}/api/attendance/student/${user?.username}`)
         ]);
 
         setSubjects(gradesRes.data);

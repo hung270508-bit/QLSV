@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen } from 'lucide-react';
 import axios from 'axios';
@@ -23,7 +24,7 @@ function ScheduleSection({ user }) {
       try {
         setLoading(true);
         // Gọi API dành riêng cho giảng viên
-        const response = await axios.get(`http://localhost:5000/api/teachers/${user?.username || user?.id}/teaching-schedule`);
+        const response = await axios.get(`${API_URL}/api/teachers/${user?.username || user?.id}/teaching-schedule`);
         
         const formattedData = response.data.map(item => {
           let tietBatDau = 1;

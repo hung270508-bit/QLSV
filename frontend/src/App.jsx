@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import API_URL from './api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, GraduationCap, School, ShieldAlert, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 import axios from 'axios';
@@ -26,7 +27,7 @@ function App() {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await axios.post('http://localhost:5000/api/login', {
+      const response = await axios.post(`${API_URL}/api/login`, {
         username,
         password
       });
@@ -75,7 +76,7 @@ function App() {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await axios.post('http://localhost:5000/api/forgot-password', {
+      const response = await axios.post(`${API_URL}/api/forgot-password`, {
         email: forgotEmail
       });
 

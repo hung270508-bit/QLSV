@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion } from 'framer-motion';
 import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
@@ -34,8 +35,8 @@ function AnnouncementManagement() {
   const fetchData = async () => {
     try {
       const [announcementsRes, classesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/announcements'),
-        axios.get('http://localhost:5000/api/classes')
+        axios.get(`${API_URL}/api/announcements`),
+        axios.get(`${API_URL}/api/classes`)
       ]);
       setAnnouncements(announcementsRes.data);
       setClasses(classesRes.data);
@@ -82,19 +83,19 @@ function AnnouncementManagement() {
 
     try {
       if (editingAnnouncement) {
-        await axios.put(`http://localhost:5000/api/announcements/${editingAnnouncement.MaThongBao}`, {
+        await axios.put(`${API_URL}/api/announcements/${editingAnnouncement.MaThongBao}`, {
           ...baseData,
           MaLop_Nhan: recipientMode === 'all' ? null : selectedClasses[0],
         });
       } else if (recipientMode === 'all') {
-        await axios.post('http://localhost:5000/api/announcements', {
+        await axios.post(`${API_URL}/api/announcements`, {
           ...baseData,
           MaLop_Nhan: null,
         });
       } else {
         await Promise.all(
           selectedClasses.map((maLop) =>
-            axios.post('http://localhost:5000/api/announcements', {
+            axios.post(`${API_URL}/api/announcements`, {
               ...baseData,
               MaLop_Nhan: maLop,
             })
@@ -144,7 +145,7 @@ function AnnouncementManagement() {
   const handleDelete = async (maThongBao) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa thông báo này?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/announcements/${maThongBao}`);
+        await axios.delete(`${API_URL}/api/announcements/${maThongBao}`);
         alert('Xóa thông báo thành công!');
         fetchData();
       } catch (error) {

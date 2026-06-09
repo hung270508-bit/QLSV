@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../../api';
 import { motion } from 'framer-motion';
 import { BookOpen, Award, TrendingUp, Calendar, Loader2 } from 'lucide-react';
 import axios from 'axios';
@@ -10,7 +11,7 @@ function StudentGrades({ user }) {
   useEffect(() => {
     const fetchMyGrades = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/grades/student/${user.username}`);
+        const response = await axios.get(`${API_URL}/api/grades/student/${user.username}`);
         setGrades(response.data);
       } catch (error) {
         console.error('Lỗi khi tải điểm:', error);
