@@ -30,6 +30,13 @@ db.connect((err) => {
     db.query('SET FOREIGN_KEY_CHECKS = 0;'); 
 });
 
+
+app.use(cors({
+    origin: https://hung270508-bit.github.io/QLSV/, // Thay bằng link GitHub Pages chính xác của bạn
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
+
 // ==================== HELPER FUNCTIONS ====================
 const executeQuery = (query, params, res, errorMessage) => {
     db.query(query, params, (err, results) => {
