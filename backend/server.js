@@ -265,43 +265,95 @@ app.put('/api/users/:taiKhoan/reset-password', async (req, res) => {
 });
 
 // ==================== STUDENTS ====================
-app.get('/api/students', (req, res) => executeQuery('SELECT s.*, l.TenLop FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop', [], res, 'Lỗi lấy SV!'));
+app.get('/api/students', (req, res) =>
+  executeQuery(
+    `SELECT 
+      s.MSSV, 
+      s.HoTen, 
+      s.NgaySinh, 
+      s.GioiTinh, 
+      s.Email, 
+      s.SoDienThoai, 
+      s.MaLop, 
+      s.TrangThai,
+      l.MaKhoa,    -- Lấy đích danh MaKhoa từ bảng lophoc
+      l.TenLop,
+      l.NienKhoa,
+      k.TenKhoa 
+    FROM sinhvien s
+    LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+    LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa`,
+    [],
+    res,
+    'Lỗi lấy danh sách sinh viên!'
+  )
+);
 app.post('/api/students', async (req, res) => {
+    // Không lấy MaKhoa để insert vào database nữa vì DB không có cột này
     const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai } = req.body;
     try {
         const hashedPassword = await bcrypt.hash('123456aA@', saltRounds);
-        
-        // BƯỚC 1: TẠO TÀI KHOẢN TRƯỚC (Vì users là bảng Cha)
-        db.query('INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)', [MSSV, hashedPassword], (errUser) => {
-            if (errUser) {
-                return res.status(500).json({ 
-                    success: false, 
-                    message: 'Lỗi tạo TK SV: ' + errUser.sqlMessage 
+        db.query(
+            'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)',
+            [MSSV, hashedPassword],
+            (err) => {
+                if (err) {
+                    if (err.code === 'ER_DUP_ENTRY') {
+                        return res.status(400).json({ success: false, message: `Tài khoản ${MSSV} đã tồn tại` });
+                    }
+                    return res.status(500).json({ success: false, message: err.sqlMessage });
+                }
+                
+                // Viết rõ tên các cột thay vì dùng (...)
+                db.query(
+                    'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+                    [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'],
+                    (err) => {
+                        if (err) {
+                            console.error('SINHVIEN INSERT ERROR:', err);
+                            return res.status(500).json({ success: false, message: err.sqlMessage || err.message });
+                        }
+                        res.json({ success: true, message: 'Thêm sinh viên thành công!' });
+                    }
+                );
+            }
+        );
+    } catch (error) { 
+        res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); 
+    }
+});
+app.put('/api/students/:mssv', (req, res) => {
+    const data = req.body;
+
+    db.query(
+        `UPDATE sinhvien
+         SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=?, TrangThai=?
+         WHERE MSSV=?`,
+        [
+            data.HoTen,
+            data.NgaySinh,
+            data.GioiTinh,
+            data.Email,
+            data.SoDienThoai,
+            data.MaLop,
+            data.TrangThai,
+            req.params.mssv
+        ],
+        (err, result) => {
+            if (err) {
+                console.error('SQL ERROR:', err);
+                return res.status(500).json({
+                    message: err.sqlMessage || err.message
                 });
             }
 
-            // BƯỚC 2: TẠO SINH VIÊN (Bảng Con)
-            db.query('INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
-            [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'], 
-            (errSv) => {
-                if (errSv) {
-                    // QUAN TRỌNG: Nếu lỗi thêm SV, tự động XÓA tài khoản vừa tạo ở Bước 1
-                    db.query('DELETE FROM users WHERE TaiKhoan = ?', [MSSV], () => {
-                        return res.status(500).json({ 
-                            success: false, 
-                            message: 'Lỗi thêm SV: ' + errSv.sqlMessage 
-                        });
-                    });
-                } else {
-                    res.json({ success: true, message: 'Thêm sinh viên thành công!' });
-                }
+            res.json({
+                success: true,
+                message: 'Cập nhật thành công'
             });
-        });
-    } catch (error) { 
-        res.status(500).json({ success: false, message: 'Lỗi hệ thống!' }); 
-    }
+        }
+    );
 });
-app.put('/api/students/:mssv', (req, res) => executeUpdate('UPDATE sinhvien SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=?, TrangThai=? WHERE MSSV=?', [req.body.HoTen, req.body.NgaySinh, req.body.GioiTinh, req.body.Email, req.body.SoDienThoai, req.body.MaLop, req.body.TrangThai || 'Đang học', req.params.mssv], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
 app.delete('/api/students/:mssv', (req, res) => {
     const mssv = req.params.mssv;
     db.query('DELETE FROM sinhvien WHERE MSSV = ?', [mssv], (err) => {

@@ -11,6 +11,8 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
 const API_BASE = `${API_URL}/api`;
 
 function StudentManagement() {
+  
+  const [faculties, setFaculties] = useState([]);
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,8 @@ function StudentManagement() {
     Email: '',
     SoDienThoai: '',
     MaLop: '',
-    TrangThai: 'Đang học'
+    TrangThai: 'Đang học',
+    MaKhoa: ''
   });
 
   const [formErrors, setFormErrors] = useState({
@@ -86,12 +89,15 @@ function StudentManagement() {
 
   const fetchData = async () => {
     try {
-      const [studentsRes, classesRes] = await Promise.all([
-        axios.get(`${API_BASE}/students`),
-        axios.get(`${API_BASE}/classes`)
-      ]);
-      setStudents(studentsRes.data);
-      setClasses(classesRes.data);
+      const [studentsRes, classesRes, facultiesRes] = await Promise.all([
+          axios.get(`${API_BASE}/students`),
+          axios.get(`${API_BASE}/classes`),
+          axios.get(`${API_BASE}/faculties`)
+        ]);
+
+        setStudents(studentsRes.data);
+        setClasses(classesRes.data);
+        setFaculties(facultiesRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -213,19 +219,24 @@ function StudentManagement() {
   };
 
   const handleEdit = (student) => {
-    setEditingStudent(student);
-    setFormData({
-      MSSV: student.MSSV,
-      HoTen: student.HoTen,
-      NgaySinh: student.NgaySinh ? student.NgaySinh.split('T')[0] : '',
-      GioiTinh: student.GioiTinh || 'Nam',
-      Email: student.Email || '',
-      SoDienThoai: student.SoDienThoai || '',
-      MaLop: student.MaLop || '',
-      TrangThai: student.TrangThai || 'Đang học'
-    });
-    setShowModal(true);
-  };
+  setEditingStudent(student);
+  
+  // Tìm MaKhoa từ danh sách lớp (classes) dựa trên MaLop của sinh viên
+  const foundClass = classes.find(c => c.MaLop === student.MaLop);
+  
+  setFormData({
+    MSSV: student.MSSV,
+    HoTen: student.HoTen,
+    NgaySinh: student.NgaySinh ? student.NgaySinh.split('T')[0] : '',
+    GioiTinh: student.GioiTinh || 'Nam',
+    Email: student.Email || '',
+    SoDienThoai: student.SoDienThoai || '',
+    MaKhoa: foundClass ? foundClass.MaKhoa : '', // Gán MaKhoa từ lớp tìm được
+    MaLop: student.MaLop || '',
+    TrangThai: student.TrangThai || 'Đang học'
+  });
+  setShowModal(true);
+};
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -679,7 +690,31 @@ function StudentManagement() {
                   />
                   {formErrors.SoDienThoai && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.SoDienThoai}</p>}
                 </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Khoa
+                      </label>
 
+                      <select
+                        value={formData.MaKhoa}
+                        onChange={(e) => {
+                          const selectedMaKhoa = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            MaKhoa: selectedMaKhoa,
+                            MaLop: '' // Reset lại lớp khi đổi khoa
+                          }));
+                        }}
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                      >
+                        <option value="">Chọn khoa</option>
+                        {faculties.map((faculty) => (
+                          <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                            {faculty.TenKhoa}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
                   <select
@@ -688,7 +723,12 @@ function StudentManagement() {
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   >
                     <option value="">Chọn lớp học</option>
-                    {uniqueClasses.map((cls) => (
+                    {uniqueClasses
+                      .filter(cls =>
+                        !formData.MaKhoa ||
+                        cls.MaKhoa === formData.MaKhoa
+                      )
+                      .map((cls) =>  (
                       <option key={cls.MaLop} value={cls.MaLop}>
                         {cls.TenLop}
                       </option>
