@@ -53,7 +53,8 @@ function StudentManagement() {
     NgaySinh: '',
     Email: '',
     SoDienThoai: '',
-    MaLop: ''
+    MaLop: '',
+    MaKhoa: ''
   });
 
   const [deleteModal, setDeleteModal] = useState({ show: false, student: null });
@@ -115,17 +116,29 @@ function StudentManagement() {
       NgaySinh: '',
       Email: '',
       SoDienThoai: '',
-      MaLop: ''
+      MaLop: '',
+      MaKhoa: ''
     };
     let isValid = true;
-
-    // FIX TC_11: Chặn ký tự đặc biệt, chuẩn hóa tên
     const formattedName = formatTitleCase(formData.HoTen.trim());
+    // FIX TC_11: Chặn ký tự đặc biệt, chuẩn hóa tên
     if (!formattedName) {
       errors.HoTen = 'Vui lòng nhập họ tên';
       isValid = false;
     } else if (!/^[a-zA-Z\u00C0-\u1EF9\s]+$/.test(formattedName)) {
       errors.HoTen = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
+      isValid = false;
+    } else if (formattedName.split(/\s+/).length < 2) {
+      // Yêu cầu phải có ít nhất 2 từ (Họ và Tên) để tránh nhập "Test", "Asdf"
+      errors.HoTen = 'Vui lòng nhập đầy đủ Họ và Tên (ít nhất 2 từ)';
+      isValid = false;
+    } else if (/(.)\1{2,}/.test(formattedName.toLowerCase())) {
+      // Chặn nhập các ký tự lặp lại liên tiếp vô nghĩa (VD: aaaa, bbbb)
+      errors.HoTen = 'Họ tên không hợp lệ (chứa ký tự lặp lại bất thường)';
+      isValid = false;
+    } else if (!/[aeiouyàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ]/i.test(formattedName.toLowerCase())) {
+      // Chặn các chuỗi không có nguyên âm (VD: qwrty, sdfgh)
+      errors.HoTen = 'Họ tên không hợp lệ (chuỗi ký tự vô nghĩa)';
       isValid = false;
     }
 
@@ -158,8 +171,8 @@ function StudentManagement() {
     if (!formData.Email) {
       errors.Email = 'Vui lòng nhập email';
       isValid = false;
-    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.Email)) {
-      errors.Email = 'Email không hợp lệ (VD: @gmail.com)';
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|vn|edu\.vn|net|org)$/i.test(formData.Email.trim())) {
+      errors.Email = 'Email không hợp lệ (VD: @gmail.com, @...edu.vn)';
       isValid = false;
     }
 
@@ -720,14 +733,20 @@ function StudentManagement() {
                   <select
                     value={formData.MaLop}
                     onChange={handleLopChange}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                    disabled={!formData.MaKhoa} // Khóa ô Lớp nếu chưa chọn Khoa
+                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors 
+                      ${!formData.MaKhoa ? 'bg-gray-100 cursor-not-allowed text-gray-400 border-gray-200' : 'bg-gray-50'} 
+                      ${formErrors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}
+                    `}
                   >
-                    <option value="">Chọn lớp học</option>
+                    {/* Đổi câu thông báo tùy theo trạng thái đã chọn Khoa hay chưa */}
+                    <option value="">
+                      {!formData.MaKhoa ? '-- Vui lòng chọn Khoa trước --' : 'Chọn lớp học'}
+                    </option>
+                    
+                    {/* Bỏ điều kiện (!formData.MaKhoa), chỉ hiển thị lớp của Khoa đã chọn */}
                     {uniqueClasses
-                      .filter(cls =>
-                        !formData.MaKhoa ||
-                        cls.MaKhoa === formData.MaKhoa
-                      )
+                      .filter(cls => cls.MaKhoa === formData.MaKhoa)
                       .map((cls) =>  (
                       <option key={cls.MaLop} value={cls.MaLop}>
                         {cls.TenLop}
