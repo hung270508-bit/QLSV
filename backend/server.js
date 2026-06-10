@@ -270,14 +270,36 @@ app.post('/api/students', async (req, res) => {
     const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai } = req.body;
     try {
         const hashedPassword = await bcrypt.hash('123456aA@', saltRounds);
-        db.query('INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)', [MSSV, hashedPassword], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo TK SV!' });
-            db.query('INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'], (err) => {
-                if (err) return res.status(500).json({ success: false, message: 'Lỗi thêm SV!' });
-                res.json({ success: true, message: 'Thêm sinh viên thành công!' });
+        
+        // BƯỚC 1: TẠO TÀI KHOẢN TRƯỚC (Vì users là bảng Cha)
+        db.query('INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)', [MSSV, hashedPassword], (errUser) => {
+            if (errUser) {
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Lỗi tạo TK SV: ' + errUser.sqlMessage 
+                });
+            }
+
+            // BƯỚC 2: TẠO SINH VIÊN (Bảng Con)
+            db.query('INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+            [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'], 
+            (errSv) => {
+                if (errSv) {
+                    // QUAN TRỌNG: Nếu lỗi thêm SV, tự động XÓA tài khoản vừa tạo ở Bước 1
+                    db.query('DELETE FROM users WHERE TaiKhoan = ?', [MSSV], () => {
+                        return res.status(500).json({ 
+                            success: false, 
+                            message: 'Lỗi thêm SV: ' + errSv.sqlMessage 
+                        });
+                    });
+                } else {
+                    res.json({ success: true, message: 'Thêm sinh viên thành công!' });
+                }
             });
         });
-    } catch (error) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
+    } catch (error) { 
+        res.status(500).json({ success: false, message: 'Lỗi hệ thống!' }); 
+    }
 });
 app.put('/api/students/:mssv', (req, res) => executeUpdate('UPDATE sinhvien SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=?, TrangThai=? WHERE MSSV=?', [req.body.HoTen, req.body.NgaySinh, req.body.GioiTinh, req.body.Email, req.body.SoDienThoai, req.body.MaLop, req.body.TrangThai || 'Đang học', req.params.mssv], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
 app.delete('/api/students/:mssv', (req, res) => {
