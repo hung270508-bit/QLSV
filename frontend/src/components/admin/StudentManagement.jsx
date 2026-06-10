@@ -123,11 +123,31 @@ function StudentManagement() {
       isValid = false;
     }
 
+ // Kiểm tra Ngày sinh và độ tuổi (18 - 60)
     if (!formData.NgaySinh) {
       errors.NgaySinh = 'Vui lòng chọn ngày sinh';
       isValid = false;
-    }
+    } else {
+      const dob = new Date(formData.NgaySinh);
+      const today = new Date();
+      
+      // Tính tuổi
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      
+      // Nếu chưa tới tháng sinh nhật, hoặc cùng tháng nhưng chưa tới ngày sinh nhật trong năm nay thì trừ đi 1 tuổi
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
 
+      if (age < 18) {
+        errors.NgaySinh = 'Sinh viên chưa đủ 18 tuổi để nhập học';
+        isValid = false;
+      } else if (age > 60) {
+        errors.NgaySinh = 'Độ tuổi vượt quá giới hạn cho phép (tối đa 60 tuổi)';
+        isValid = false;
+      }
+    }
     // FIX TC_16: Email regex chặt chẽ hơn
     if (!formData.Email) {
       errors.Email = 'Vui lòng nhập email';
