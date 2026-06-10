@@ -126,20 +126,25 @@ function ClassManagement() {
   const validateForm = () => {
     const newErrors = {};
     const currentYear = new Date().getFullYear();
-
+    
     // Validate startYear
     if (!formData.startYear.trim()) {
-      newErrors.startYear = 'Năm bắt đầu không được để trống';
-    } else if (formData.startYear.length !== 4) {
-      newErrors.startYear = 'Năm bắt đầu phải có 4 chữ số';
-    } else {
-      const startYearInt = parseInt(formData.startYear, 10);
-      if (isNaN(startYearInt) || startYearInt <= 0) {
-        newErrors.startYear = 'Năm bắt đầu phải là số dương';
-      } else if (startYearInt < 2020) {
-        newErrors.startYear = 'Năm bắt đầu quá cũ (yêu cầu >= 2020)';
-      }
-    }
+  newErrors.startYear = 'Năm bắt đầu không được để trống';
+} else if (formData.startYear.length !== 4) {
+  newErrors.startYear = 'Năm bắt đầu phải có 4 chữ số';
+} else {
+  const startYearInt = parseInt(formData.startYear, 10);
+  const minYear = currentYear - 3;
+  const maxYear = currentYear + 4;
+
+  if (isNaN(startYearInt) || startYearInt <= 0) {
+    newErrors.startYear = 'Năm bắt đầu phải là số dương';
+  } else if (startYearInt < minYear) {
+    newErrors.startYear = `Năm bắt đầu phải từ ${minYear} trở đi`;
+  } else if (startYearInt > maxYear) {
+    newErrors.startYear = `Năm bắt đầu không được lớn hơn ${maxYear}`;
+  }
+}
 
     // Validate endYear & TC_11 Logic
     if (!formData.endYear.trim()) {
@@ -153,6 +158,7 @@ function ClassManagement() {
         if (start >= end) {
           newErrors.endYear = 'Năm kết thúc phải lớn hơn năm bắt đầu';
         }
+        
       }
     }
 
