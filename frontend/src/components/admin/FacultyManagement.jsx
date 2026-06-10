@@ -6,7 +6,7 @@ import ModalPortal from '../ModalPortal';
 
 // Tự động lấy cấu hình môi trường hoặc mặc định localhost
 const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-
+const API_BASE = `${API_URL}/api`;
 function FacultyManagement() {
   const [faculties, setFaculties] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
