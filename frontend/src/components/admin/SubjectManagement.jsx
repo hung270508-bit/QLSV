@@ -224,7 +224,7 @@ function SubjectManagement() {
     if (editingSubject || !maKhoa) return;
     try {
       // SỬ DỤNG API_BASE TẠI ĐÂY
-      const res = await axios.get(`${API_BASE}/subjects/next-code/${maKhoa}`);
+    const res = await axios.get(`${API_BASE}/subjects/next-code/${khoaId}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: res.data.MaMonHoc }));
     } catch (err) {
       console.error('Lỗi tạo mã môn học:', err);
