@@ -50,7 +50,7 @@ function StudentCourseRegistration({ user }) {
       action: async () => {
         try {
           // Nhờ API mới bên server.js, trạng thái sẽ tự động duyệt và lên lịch ngay
-          const res = await axios.post('${API_URL}/api/enrollment', { MSSV: user.username, MaLopHocPhan: course.MaLopHocPhan, HocKy: course.HocKy });
+          const res = await axios.post(`${API_URL}/api/enrollment`, { MSSV: user.username, MaLopHocPhan: course.MaLopHocPhan, HocKy: course.HocKy });
           showToast(res.data.message || "Đăng ký thành công!", "success");
           setConfirmDialog({ show: false });
           fetchData();
