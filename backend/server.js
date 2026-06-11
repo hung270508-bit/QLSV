@@ -41,8 +41,33 @@ db.getConnection((err, connection) => {
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
-        connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
+        
+        // Tạo bảng yeucau_hotro nếu chưa tồn tại
+        const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS yeucau_hotro (
+                MaYeuCau int NOT NULL AUTO_INCREMENT,
+                MSSV varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                LoaiYeuCau varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                ChuDe varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                NoiDung text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                NgayGui datetime DEFAULT NULL,
+                TrangThai varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Đang xử lý',
+                PhanHoi text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                PRIMARY KEY (MaYeuCau),
+                KEY MSSV (MSSV),
+                CONSTRAINT yeucau_hotro_ibfk_1 FOREIGN KEY (MSSV) REFERENCES sinhvien (MSSV) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `;
+        
+        connection.query(createTableQuery, (err) => {
+            connection.release();
+            if (err) {
+                console.error('Lỗi tạo bảng yeucau_hotro:', err);
+            } else {
+                console.log('Đã kiểm tra/tạo bảng yeucau_hotro thành công.');
+            }
+        });
     });
 });
 
