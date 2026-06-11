@@ -524,7 +524,7 @@ function ClassManagement() {
             className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
           >
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
               <select
                 value={displayFilters.facultyFilter}
                 onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}

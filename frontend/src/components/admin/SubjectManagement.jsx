@@ -371,9 +371,9 @@ function SubjectManagement() {
         {showFilters && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
               <select value={displayFilters.facultyFilter} onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })} className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700">
-                <option value="">Tất cả khoa</option>
+                <option value="">Tất cả lớp</option>
                 {faculties.map((faculty) => (
                   <option key={faculty.MaKhoa} value={faculty.MaKhoa}>{faculty.TenKhoa}</option>
                 ))}
