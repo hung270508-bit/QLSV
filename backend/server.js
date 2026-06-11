@@ -34,7 +34,7 @@ const db = mysql.createPool({
 });
 
 // Kiểm tra kết nối DB
-b.getConnection((err, connection) => {
+db.getConnection((err, connection) => {
     if (err) {
         console.error('Lỗi kết nối MySQL: ' + err.stack);
         return;
