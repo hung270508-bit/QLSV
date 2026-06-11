@@ -32,7 +32,12 @@ function TeachingAssignment() {
     () => selectedKhoa ? classes.filter(c => c.MaKhoa === selectedKhoa) : [],
     [classes, selectedKhoa]
   );
-
+    // Môn học theo khoa
+    // Môn học theo khoa
+  const filteredSubjects = useMemo(() => {
+    if (!selectedKhoa) return [];
+    return subjects.filter(s => s.MaKhoa === selectedKhoa || !s.MaKhoa);
+  }, [subjects, selectedKhoa]);
   const filteredGV = useMemo(() =>
     teachers.filter(t =>
       t.HoTen?.toLowerCase().includes(searchGV.toLowerCase()) ||
@@ -96,7 +101,15 @@ const currentYear = new Date().getFullYear();
   };
 
   useEffect(() => { fetchData(); }, []);
-
+  useEffect(() => {
+  if (formData.MaLop) {
+    const selectedClass = classes.find(c => c.MaLop === formData.MaLop);
+    if (selectedClass?.NienKhoa) {
+      const startYearFromClass = selectedClass.NienKhoa.split('-')[0];
+      setNamBatDau(startYearFromClass);
+    }
+  }
+}, [formData.MaLop, classes]);
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -120,33 +133,94 @@ const currentYear = new Date().getFullYear();
   };
 
   const validateAssignmentForm = () => {
-    const errors = {};
-    if (!editingAssignment && !formData.MaLopHocPhan.trim()) errors.MaLopHocPhan = 'Lỗi tạo mã LHP';
-    if (!formData.MaMonHoc) errors.MaMonHoc = 'Vui lòng chọn môn học';
-    if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn giảng viên';
-    const soluong = parseInt(formData.SoLuongToiDa);
-    if (!formData.SoLuongToiDa || isNaN(soluong) || soluong < 1 || soluong > 200) {
-      errors.SoLuongToiDa = 'Sĩ số từ 1-200';
+  const errors = {};
+  const year = parseInt(namBatDau);
+
+  // ================== RÀNG BUỘC NĂM HỌC ==================
+  if (!namBatDau || namBatDau.trim() === '') {
+    errors.namBatDau = 'Năm bắt đầu không được để trống';
+  } else if (namBatDau.length !== 4) {
+    errors.namBatDau = 'Năm bắt đầu phải có đúng 4 chữ số';
+  } else if (isNaN(year) || year <= 0) {
+    errors.namBatDau = 'Năm bắt đầu phải là số hợp lệ';
+  } else {
+    const minYear = currentYear - 3;
+    const maxYear = currentYear + 4;
+    
+    if (year < minYear) {
+      errors.namBatDau = `Năm bắt đầu phải từ ${minYear} trở đi`;
+    } else if (year > maxYear) {
+      errors.namBatDau = `Năm bắt đầu không được lớn hơn ${maxYear}`;
     }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+  }
+
+  // ================== RÀNG BUỘC SO VỚI NIÊN KHÓA CỦA LỚP ==================
+  if (formData.MaLop && namBatDau.length === 4) {
+    const selectedClass = classes.find(c => c.MaLop === formData.MaLop);
+    if (selectedClass && selectedClass.NienKhoa) {
+      const classStartYear = parseInt(selectedClass.NienKhoa.split('-')[0]);
+      if (!isNaN(classStartYear) && year < classStartYear) {
+        errors.namBatDau = `Năm bắt đầu phải lớn hơn hoặc bằng năm bắt đầu của lớp (${classStartYear})`;
+      }
+    }
+  }
+
+  // ================== Các validation khác ==================
+  if (!hocKySo) {
+    errors.hocKy = 'Vui lòng chọn học kỳ';
+  }
+
+  if (!formData.MaMonHoc) {
+    errors.MaMonHoc = 'Vui lòng chọn môn học';
+  }
+
+  if (selectedKhoa && 
+    teachers.filter(t => t.MaKhoa === selectedKhoa).length > 0 && 
+    !formData.MaGiangVien) {
+  errors.MaGiangVien = 'Vui lòng chọn giảng viên';
+}
+  const soluong = parseInt(formData.SoLuongToiDa);
+  if (!formData.SoLuongToiDa || isNaN(soluong) || soluong < 1 || soluong > 200) {
+    errors.SoLuongToiDa = 'Sĩ số phải từ 1 đến 200';
+  }
+
+  setFormErrors(errors);
+  return Object.keys(errors).length === 0;
+};
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateAssignmentForm()) return;
-    try {
-      if (editingAssignment) {
-        await axios.put(`${API_URL}/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
-      } else {
-        await axios.post(`${API_URL}/api/teaching-assignments`, formData);
-      }
-      fetchData();
-      handleCloseModal();
-    } catch {
-      alert('Lỗi khi lưu phân công!');
+  e.preventDefault();
+  if (!validateAssignmentForm()) return;
+
+  // Kiểm tra nếu khoa không có giảng viên
+  if (selectedKhoa && teachers.filter(t => t.MaKhoa === selectedKhoa).length === 0) {
+    alert('Không thể tạo lớp học phần vì khoa này chưa có giảng viên nào!');
+    return;
+  }
+
+  try {
+    if (editingAssignment) {
+      await axios.put(`${API_URL}/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, formData);
+      alert('Cập nhật lớp học phần thành công!');
+    } else {
+      await axios.post(`${API_URL}/api/teaching-assignments`, formData);
+      alert('Thêm lớp học phần thành công!');
     }
-  };
+
+    fetchData();           // Refresh danh sách
+    handleCloseModal();    // Đóng modal sau khi thành công
+
+  } catch (err) {
+    console.error(err);
+    const errorMsg = err.response?.data?.error || err.message;
+    
+    if (errorMsg.includes('foreign key') || errorMsg.includes('MaGiangVien')) {
+      alert('Tạo không thành công!\n\nLý do: Khoa này chưa có giảng viên nào.\nVui lòng thêm giảng viên trước khi tạo lớp học phần.');
+    } else {
+      alert('Lỗi khi lưu phân công: ' + errorMsg);
+    }
+  }
+};
 
   const handleEdit = (a) => {
     setEditingAssignment(a);
@@ -408,24 +482,28 @@ const currentYear = new Date().getFullYear();
                         {hocKyInfo && !hocKyError && <p className="text-xs text-emerald-600 mt-1.5 font-medium">{hocKyInfo}</p>}
                       </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Năm học <span className="text-red-500">*</span></label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number" 
-                            placeholder={currentYear.toString()} 
-                            value={namBatDau} 
-                            onChange={handleNamBatDauChange}
-                            onBlur={handleNamBatDauBlur}
-                            max={currentYear}
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
-                          />
-                          <span className="text-slate-400 font-bold">-</span>
-                          <input
-                            readOnly value={namKetThuc} placeholder={(currentYear + 1).toString()}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-100 text-slate-500 cursor-not-allowed font-medium"
-                          />
-                        </div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Năm bắt đầu <span className="text-red-500">*</span></label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          maxLength={4}
+                          placeholder={currentYear.toString()}
+                          value={namBatDau}
+                          onChange={handleNamBatDauChange}
+                          className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-orange-500/20
+                            ${formErrors.namBatDau ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-orange-500'}`}
+                        />
+                        <span className="text-slate-400 font-bold">-</span>
+                        <input
+                          readOnly
+                          value={namKetThuc}
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-100 text-slate-500 cursor-not-allowed font-medium"
+                        />
                       </div>
+                      {formErrors.namBatDau && (
+                        <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.namBatDau}</p>
+                      )}
+                    </div>
                     </div>
                   </div>
 
@@ -437,54 +515,100 @@ const currentYear = new Date().getFullYear();
                     <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-5">
                       
                       {/* Khoa & Lớp */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400"/> Khoa quản lý <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={selectedKhoa} onChange={e => { setSelectedKhoa(e.target.value); setFormData(f => ({ ...f, MaLop: '' })); }}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
-                          >
-                            <option value="">-- Chọn Khoa --</option>
-                            {khoas.map(k => <option key={k.MaKhoa} value={k.MaKhoa}>{k.TenKhoa}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5 text-slate-400"/> Lớp sinh viên <span className="text-slate-400 font-normal">(Tùy chọn)</span>
-                          </label>
-                          <select
-                            value={formData.MaLop} onChange={e => setFormData({ ...formData, MaLop: e.target.value })} disabled={!selectedKhoa}
-                            className={`w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all font-medium
-                              ${selectedKhoa ? 'bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700' : 'bg-slate-100 border border-transparent text-slate-400 cursor-not-allowed'}`}
-                          >
-                            <option value="">{selectedKhoa ? '-- Lớp tự do (Cho phép ĐK) --' : 'Chọn Khoa trước'}</option>
-                            {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
-                          </select>
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400"/> Khoa quản lý <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedKhoa} 
+                    onChange={e => { 
+                      setSelectedKhoa(e.target.value); 
+                      setFormData(f => ({ ...f, MaLop: '', MaMonHoc: '' })); 
+                    }}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+                  >
+                    <option value="">-- Chọn Khoa --</option>
+                    {khoas.map(k => <option key={k.MaKhoa} value={k.MaKhoa}>{k.TenKhoa}</option>)}
+                  </select>
+                </div>
 
-                      {/* Môn & Sĩ số */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-2">
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5">Môn học <span className="text-red-500">*</span></label>
-                          <select
-                            value={formData.MaMonHoc} onChange={e => setFormData({ ...formData, MaMonHoc: e.target.value })}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium text-slate-700"
-                          >
-                            <option value="">-- Chọn Môn học --</option>
-                            {subjects.map(s => <option key={s.MaMonHoc} value={s.MaMonHoc}>{s.TenMonHoc} ({s.SoTinChi} TC)</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5">Sĩ số tối đa</label>
-                          <input
-                            type="number" min="1" value={formData.SoLuongToiDa} onChange={e => setFormData({ ...formData, SoLuongToiDa: e.target.value })}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-bold text-slate-800 text-center"
-                          />
-                        </div>
-                      </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-slate-400"/> Lớp sinh viên <span className="text-slate-400 font-normal">(Tùy chọn)</span>
+                  </label>
+                  <select
+                      value={formData.MaLop} 
+                      onChange={e => setFormData({ ...formData, MaLop: e.target.value, MaMonHoc: '' })}
+                      disabled={!selectedKhoa}
+                      className={`w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all font-medium
+                        ${selectedKhoa ? 'bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700' 
+                                      : 'bg-slate-100 border border-transparent text-slate-400 cursor-not-allowed'}`}
+                    >
+                      <option value="">
+                        {selectedKhoa ? '-- Chọn lớp --' : 'Vui lòng chọn khoa trước'}
+                      </option>
+                      {filteredClasses.map(c => (
+                        <option key={c.MaLop} value={c.MaLop}>
+                          {c.TenLop} ({c.MaLop}) - {c.NienKhoa}
+                        </option>
+                      ))}
+                    </select>
+
+                  {selectedKhoa && filteredClasses.length === 0 && (
+                    <p className="text-amber-600 text-xs mt-1 font-medium">
+                      Không có lớp nào trong khoa này
+                    </p>
+                  )}
+                </div>
+              </div>
+      {/* Môn & Sĩ số */}
+      <div className="grid grid-cols-3 gap-4">
+        {/* Môn học */}
+          {/* Môn học */}
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Môn học <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.MaMonHoc} 
+                  onChange={e => setFormData({ ...formData, MaMonHoc: e.target.value })}
+                  disabled={!formData.MaLop}
+                  className={`w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all font-medium
+                    ${formData.MaLop 
+                      ? 'bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-700' 
+                      : 'bg-slate-100 border border-transparent text-slate-400 cursor-not-allowed'}`}
+                >
+                  <option value="">-- Chọn Môn học --</option>
+                  {filteredSubjects.map(s => (
+                    <option key={s.MaMonHoc} value={s.MaMonHoc}>
+                      {s.TenMonHoc} ({s.SoTinChi} TC)
+                    </option>
+                  ))}
+                </select>
+
+                {!formData.MaLop ? (
+                  <p className="text-slate-400 text-xs mt-1 italic">
+                    Vui lòng chọn Lớp trước khi chọn môn học
+                  </p>
+                ) : filteredSubjects.length === 0 ? (
+                  <p className="text-amber-600 text-xs mt-1 font-medium">
+                    Không có môn học nào thuộc khoa của lớp này
+                  </p>
+                ) : null}
+              </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5">Sĩ số tối đa</label>
+          <input
+            type="number" 
+            min="1" 
+            value={formData.SoLuongToiDa} 
+            onChange={e => setFormData({ ...formData, SoLuongToiDa: e.target.value })}
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-bold text-slate-800 text-center"
+          />
+        </div>
+      </div>
 
                       {/* Preview Mã LHP */}
                       {formData.MaLopHocPhan && !editingAssignment && (
@@ -494,52 +618,78 @@ const currentYear = new Date().getFullYear();
                         </div>
                       )}
 
-                      {/* Giảng viên */}
+                        {/* Giảng viên */}
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                          <Users2 className="w-3.5 h-3.5 text-slate-400"/> Phân công Giảng viên <span className="text-red-500">*</span>
+                          <Users2 className="w-3.5 h-3.5 text-slate-400"/> 
+                          Phân công Giảng viên <span className="text-red-500">*</span>
                         </label>
+
                         {!selectedKhoa ? (
                           <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 border-dashed rounded-xl text-sm text-slate-400 font-medium text-center italic">
                             Vui lòng chọn Khoa ở trên để tải danh sách Giảng viên
                           </div>
                         ) : (
-                          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                            <div className="p-2 border-b border-slate-100 bg-slate-50 relative">
-                              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                              <input 
-                                placeholder="Tìm tên giảng viên..." value={searchGV} onChange={(e) => setSearchGV(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 bg-white rounded-lg text-sm font-medium outline-none border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                              />
-                            </div>
-                            <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                              {teachers.filter(t => t.MaKhoa === selectedKhoa).filter(t => t.HoTen?.toLowerCase().includes(searchGV.toLowerCase())).map(t => (
-                                <div
-                                  key={t.MaGiangVien}
-                                  onClick={() => setFormData(f => ({ ...f, MaGiangVien: t.MaGiangVien }))}
-                                  className={`p-3 cursor-pointer border-b border-slate-50 flex items-center justify-between transition-all
-                                    ${formData.MaGiangVien === t.MaGiangVien ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
-                                      ${formData.MaGiangVien === t.MaGiangVien ? 'bg-blue-500 text-white shadow-md shadow-blue-200' : 'bg-slate-100 text-slate-500'}`}>
-                                      {t.HoTen.charAt(0)}
-                                    </div>
-                                    <span className={`text-sm ${formData.MaGiangVien === t.MaGiangVien ? 'font-bold text-blue-700' : 'font-medium text-slate-700'}`}>
-                                      {t.HoTen}
-                                    </span>
-                                  </div>
-                                  {formData.MaGiangVien === t.MaGiangVien && (
-                                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                    </div>
-                                  )}
+                          <>
+                            {teachers.filter(t => t.MaKhoa === selectedKhoa).length === 0 ? (
+                              <div className="w-full px-5 py-8 bg-amber-50 border border-amber-200 rounded-xl text-center">
+                                <Users2 className="w-10 h-10 mx-auto text-amber-400 mb-3" />
+                                <p className="text-amber-700 font-medium text-base">
+                                  Không có giảng viên thuộc khoa này
+                                </p>
+                                <p className="text-amber-600 text-sm mt-1">
+                                  Vui lòng thêm giảng viên vào khoa trước khi phân công
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                                <div className="p-2 border-b border-slate-100 bg-slate-50 relative">
+                                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                  <input 
+                                    placeholder="Tìm tên giảng viên..." 
+                                    value={searchGV} 
+                                    onChange={(e) => setSearchGV(e.target.value)}
+                                    className="w-full pl-9 pr-3 py-2 bg-white rounded-lg text-sm font-medium outline-none border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                  />
                                 </div>
-                              ))}
-                            </div>
-                          </div>
+                                <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                                  {teachers
+                                    .filter(t => t.MaKhoa === selectedKhoa)
+                                    .filter(t => t.HoTen?.toLowerCase().includes(searchGV.toLowerCase()))
+                                    .map(t => (
+                                      <div
+                                        key={t.MaGiangVien}
+                                        onClick={() => setFormData(f => ({ ...f, MaGiangVien: t.MaGiangVien }))}
+                                        className={`p-3 cursor-pointer border-b border-slate-50 flex items-center justify-between transition-all
+                                          ${formData.MaGiangVien === t.MaGiangVien ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
+                                            ${formData.MaGiangVien === t.MaGiangVien ? 'bg-blue-500 text-white shadow-md shadow-blue-200' : 'bg-slate-100 text-slate-500'}`}>
+                                            {t.HoTen?.charAt(0) || '?'}
+                                          </div>
+                                          <span className={`text-sm ${formData.MaGiangVien === t.MaGiangVien ? 'font-bold text-blue-700' : 'font-medium text-slate-700'}`}>
+                                            {t.HoTen}
+                                          </span>
+                                        </div>
+                                        {formData.MaGiangVien === t.MaGiangVien && (
+                                          <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
-                        {formErrors.MaGiangVien && <p className="text-xs text-red-500 mt-1.5 font-medium">{formErrors.MaGiangVien}</p>}
+
+                        {formErrors.MaGiangVien && (
+                          <p className="text-xs text-red-500 mt-1.5 font-medium">{formErrors.MaGiangVien}</p>
+                        )}
                       </div>
                     </div>
                   </div>
