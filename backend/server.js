@@ -2,7 +2,7 @@ const path = require('path');
 
 // Kiểm tra xem lệnh khởi động có truyền thêm chữ "--cloud" hay không
 const isCloud = process.argv.includes('--cloud');
-const envFile = isCloud ? '.env' : '.env.local';
+const envFile = isCloud ? '.env.aiven' : '.env.local';
 
 // Tự động nạp đúng file cấu hình tương ứng
 require('dotenv').config({ path: path.join(__dirname, envFile) });
