@@ -33,6 +33,7 @@ function FacultyManagement() {
   const [facultyTeachers, setFacultyTeachers] = useState([]);
   const [facultyStudents, setFacultyStudents] = useState([]);
   const [facultyClasses, setFacultyClasses] = useState([]);
+  const [displaySortBy, setDisplaySortBy] = useState('default');
   const [facultyStats, setFacultyStats] = useState({
     totalTeachers: 0,
     totalStudents: 0,
@@ -239,7 +240,9 @@ function FacultyManagement() {
 
   const handleApplyFilters = () => {
     setFilters({ ...displayFilters });
+    setSortBy(displaySortBy);
     setShowFilters(false);
+    
   };
 
   const clearFilters = () => {
@@ -247,6 +250,8 @@ function FacultyManagement() {
     setDisplayFilters({ facultyFilter: '' });
     setSearchTerm('');
     setDebouncedSearchTerm('');
+    setSortBy('default'); // Thêm dòng này
+    setDisplaySortBy('default'); // Thêm dòng này
   };
 
   const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
@@ -341,29 +346,46 @@ function FacultyManagement() {
             )}
           </div>
         </div>
-
-        {showFilters && (
+{showFilters && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
           >
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
-              <select
-                value={displayFilters.facultyFilter}
-                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
-                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
-              >
-                <option value="">Tất cả khoa</option>
-                {faculties.map((faculty) => (
-                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                    {faculty.TenKhoa}
-                  </option>
-                ))}
-              </select>
+            {/* Sử dụng grid để chia 2 cột */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+                <select
+                  value={displayFilters.facultyFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                >
+                  <option value="">Tất cả khoa</option>
+                  {faculties.map((faculty) => (
+                    <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                      {faculty.TenKhoa}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Thêm mới Box Sắp xếp */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sắp xếp theo tên</label>
+                <select
+                  value={displaySortBy}
+                  onChange={(e) => setDisplaySortBy(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                >
+                  <option value="default">Mặc định</option>
+                  <option value="asc">Từ A - Z</option>
+                  <option value="desc">Từ Z - A</option>
+                </select>
+              </div>
             </div>
+
             <div className="flex gap-3 pt-2">
               <motion.button
                 whileHover={{ scale: 1.01 }}
@@ -376,7 +398,10 @@ function FacultyManagement() {
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                onClick={() => setDisplayFilters({ facultyFilter: '' })}
+                onClick={() => {
+                  setDisplayFilters({ facultyFilter: '' });
+                  setDisplaySortBy('default'); // Đặt lại Select box sắp xếp
+                }}
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
