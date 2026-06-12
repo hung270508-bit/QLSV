@@ -41,12 +41,75 @@ function StudentManagement() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailTab, setDetailTab] = useState('overview'); // overview, transcript, attendance
   
+  const [searchError, setSearchError] = useState('');
   const handleSearch = () => {
-    setAppliedSearchTerm(searchTerm);
+    const value = searchTerm;
+
+    if (/\s{2,}/.test(value)) {
+      setSearchError('Không được nhập nhiều khoảng trắng liên tiếp.');
+      return;
+    }
+
+    const trimmed = value.trim();
+
+    // Cho phép chữ (có dấu), số, khoảng trắng, @ . _ -
+    if (/[^a-zA-Z0-9À-ỹ\s@._-]/.test(trimmed)) {
+      setSearchError('Không được nhập ký tự đặc biệt.');
+      return;
+    }
+
+    if (trimmed === '') {
+      setSearchError('');
+      setAppliedSearchTerm('');
+      return;
+    }
+
+    const searchLower = trimmed.toLowerCase();
+    const searchNoTones = removeVietnameseTones(searchLower);
+    const isNumeric = /^\d+$/.test(trimmed);
+    const looksLikeEmail = trimmed.includes('@');
+
+    // Nếu nhập dạng email thì phải đúng định dạng email Gmail
+    if (looksLikeEmail) {
+      const gmailRegex = /^[a-zA-Z0-9._-]+@gmail\.com$/;
+      if (!gmailRegex.test(searchLower)) {
+        setSearchError('Email không hợp lệ, vui lòng nhập đúng định dạng @gmail.com.');
+        return;
+      }
+    }
+
+    const found = students.some(student => {
+      const nameLower = student.HoTen?.toLowerCase() || '';
+      const nameNoTones = removeVietnameseTones(nameLower);
+      const codeLower = student.MSSV?.toLowerCase() || '';
+      const emailLower = student.Email?.toLowerCase() || '';
+      return (
+        nameLower.includes(searchLower) ||
+        nameNoTones.includes(searchNoTones) ||
+        codeLower.includes(searchLower) ||
+        emailLower.includes(searchLower)
+      );
+    });
+
+    if (!found) {
+      setSearchError(
+        looksLikeEmail
+          ? 'Không tìm thấy email sinh viên.'
+          : isNumeric
+            ? 'Không tìm thấy MSSV.'
+            : 'Không tìm thấy tên sinh viên.'
+      );
+      setAppliedSearchTerm(trimmed);
+      return;
+    }
+
+    setSearchError('');
+    setAppliedSearchTerm(trimmed);
   };
   const handleClearSearch = () => {
     setSearchTerm('');
     setAppliedSearchTerm('');
+    setSearchError('');
   };
   const [formData, setFormData] = useState({
     MSSV: '',
@@ -70,6 +133,8 @@ function StudentManagement() {
   });
   
   const [deleteModal, setDeleteModal] = useState({ show: false, student: null });
+  const [exportModal, setExportModal] = useState({ show: false, classInfo: null });
+  const [classViewModal, setClassViewModal] = useState({ show: false, classInfo: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
   const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
@@ -347,8 +412,7 @@ function StudentManagement() {
     setAppliedSearchTerm('');
   };
 
-  const activeFilterCount = (filters.classFilter ? 1 : 0) + 
-                          (filters.facultyFilter ? 1 : 0) + 
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + 
                           (filters.nienKhoaFilter ? 1 : 0) + 
                           (searchTerm.trim() ? 1 : 0);
   const hasActiveFilters = filters.classFilter || filters.genderFilter || searchTerm.trim();
@@ -360,16 +424,50 @@ function StudentManagement() {
 
   // Thống kê số lượng sinh viên theo từng lớp
   const classStats = useMemo(() => {
-    return uniqueClasses.map(cls => ({
-      ...cls,
-      count: students.filter(s => s.MaLop === cls.MaLop).length
-    })).sort((a, b) => (a.TenLop || '').localeCompare(b.TenLop || ''));
-  }, [uniqueClasses, students]);
+    return uniqueClasses
+      .filter(cls => !filters.facultyFilter || cls.MaKhoa === filters.facultyFilter)
+      .map(cls => ({
+        ...cls,
+        count: students.filter(s => s.MaLop === cls.MaLop).length
+      })).sort((a, b) => (a.TenLop || '').localeCompare(b.TenLop || ''));
+  }, [uniqueClasses, students, filters.facultyFilter]);
 
   const handleSelectClassFilter = (cls) => {
-    const newFilters = { ...filters, classFilter: cls.MaLop };
-    setFilters(newFilters);
-    setDisplayFilters(newFilters);
+    if (!cls) return;
+    setClassViewModal({ show: true, classInfo: cls });
+  };
+
+  const classViewStudents = classViewModal.classInfo
+    ? students.filter(s => s.MaLop === classViewModal.classInfo.MaLop)
+    : [];
+
+  const handleExportClass = (cls, e) => {
+    e.stopPropagation();
+    setExportModal({ show: true, classInfo: cls });
+  };
+
+  const handleExportConfirm = () => {
+    const cls = exportModal.classInfo;
+    const list = students.filter(s => s.MaLop === cls.MaLop);
+
+    const headers = ['MSSV', 'Họ tên', 'Giới tính', 'Email', 'Số điện thoại', 'Mã lớp', 'Tên lớp'];
+    const rows = list.map(s => [s.MSSV, s.HoTen, s.GioiTinh || '', s.Email || '', s.SoDienThoai || '', cls.MaLop, cls.TenLop]);
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `DanhSachSinhVien_${cls.MaLop}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setExportModal({ show: false, classInfo: null });
+    setSuccessDialog({ show: true, message: `Xuất danh sách sinh viên lớp "${cls.TenLop}" (${list.length} sinh viên) thành công!` });
   };
 
   if (loading) {
@@ -407,6 +505,7 @@ function StudentManagement() {
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 flex flex-col gap-1">
           <div className="relative flex-1 flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -414,9 +513,11 @@ function StudentManagement() {
                 type="text"
                 placeholder="Tìm kiếm theo MSSV, Họ tên hoặc Email..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setSearchError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()} // Cho phép nhấn Enter
-                className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
+                className={`w-full pl-12 pr-10 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none focus:bg-white transition-all text-gray-700 ${
+                  searchError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                }`}
               />
               {searchTerm && (
                 <button
@@ -434,6 +535,13 @@ function StudentManagement() {
             >
               Tìm kiếm
             </button>
+          </div>
+          {searchError && (
+            <p className="text-sm text-red-500 px-1 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {searchError}
+            </p>
+          )}
           </div>
           <div className="flex gap-3">
             <motion.button
@@ -465,23 +573,6 @@ function StudentManagement() {
     className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
   >
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Lọc theo Lớp */}
-      <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp</label>
-        <select
-          value={displayFilters.classFilter}
-          onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
-          className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
-        >
-          <option value="">Tất cả lớp</option>
-          {uniqueClasses.map((cls) => (
-            <option key={cls.MaLop} value={cls.MaLop}>
-              {cls.TenLop} ({cls.MaLop})
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Lọc theo Khoa */}
       <div>
         <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Khoa</label>
@@ -537,7 +628,7 @@ function StudentManagement() {
 
       {/* Bảng số lượng sinh viên theo lớp */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-orange-500" />
             Danh sách lớp &amp; số lượng sinh viên
@@ -551,20 +642,20 @@ function StudentManagement() {
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên lớp</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Niên khóa</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Số lượng sinh viên</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Xuất file</th>
               </tr>
             </thead>
             <tbody>
               {classStats.length > 0 ? (
-                classStats.map((cls, index) => (
+                <>
+                {classStats.map((cls, index) => (
                   <motion.tr
                     key={cls.MaLop}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleSelectClassFilter(cls)}
-                    className={`border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer ${
-                      filters.classFilter === cls.MaLop ? 'bg-orange-50/70' : ''
-                    }`}
+                    className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
                   >
                     <td className="py-5 px-6">
                       <span className="font-semibold text-gray-800 text-base">{cls.MaLop}</span>
@@ -581,11 +672,23 @@ function StudentManagement() {
                         {cls.count}
                       </span>
                     </td>
+                    <td className="py-5 px-6 text-center">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={(e) => handleExportClass(cls, e)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-green-50 text-green-700 border-2 border-green-100 hover:border-green-300 transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export
+                      </motion.button>
+                    </td>
                   </motion.tr>
-                ))
+                ))}
+                </>
               ) : (
                 <tr>
-                  <td colSpan="4" className="py-12 text-center text-gray-400">
+                  <td colSpan="5" className="py-12 text-center text-gray-400">
                     <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                     Chưa có dữ liệu lớp học
                   </td>
@@ -596,8 +699,15 @@ function StudentManagement() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Danh sách toàn thể sinh viên */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Users className="w-5 h-5 text-orange-500" />
+            Danh sách toàn thể sinh viên
+            <span className="ml-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-sm">{filteredStudents.length}</span>
+          </h3>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
@@ -614,16 +724,14 @@ function StudentManagement() {
                 filteredStudents.map((student, index) => (
                   <motion.tr
                     key={student.MSSV}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
+                    transition={{ delay: index * 0.02 }}
+                    className="border-b border-gray-100 hover:bg-orange-50/50 transition-colors cursor-pointer"
                     onClick={() => handleViewDetails(student)}
                   >
-                    <td className="py-5 px-6">
-                      <span className="font-semibold text-gray-800 text-base">{student.MSSV}</span>
-                    </td>
-                    <td className="py-5 px-6">
+                    <td className="py-4 px-6 font-medium text-gray-800">{student.MSSV}</td>
+                    <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm ${
                           student.GioiTinh === 'Nữ' ? 'bg-pink-400' : 'bg-blue-500'
@@ -636,43 +744,33 @@ function StudentManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-5 px-6">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-700">
-                        {student.TenLop || student.MaLop || 'Chưa phân lớp'}
-                      </span>
-                    </td>
-                    <td className="py-5 px-6">
-                      <div className="flex flex-col gap-1.5 text-sm">
+                    <td className="py-4 px-6 text-gray-700">{student.MaLop}</td>
+                    <td className="py-4 px-6">
+                      <div className="text-sm text-gray-600 space-y-1">
                         {student.Email && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            {student.Email}
-                          </div>
+                          <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{student.Email}</div>
                         )}
                         {student.SoDienThoai && (
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            {student.SoDienThoai}
-                          </div>
+                          <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{student.SoDienThoai}</div>
                         )}
                       </div>
                     </td>
-                    <td className="py-5 px-6">
-                      <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center justify-center gap-2">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(student)}
-                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
-                          title="Chỉnh sửa"
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => { e.stopPropagation(); handleEdit(student); }}
+                          className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
+                          title="Sửa"
                         >
                           <Edit className="w-4 h-4" />
                         </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(student)}
-                          className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(student); }}
+                          className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                           title="Xóa"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -683,12 +781,9 @@ function StudentManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="py-16">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      <Users className="w-16 h-16 mb-4 text-gray-300" />
-                      <p className="text-lg font-medium">Không tìm thấy sinh viên nào</p>
-                      <p className="text-sm mt-2">Thử thay đổi từ khóa hoặc bộ lọc</p>
-                    </div>
+                  <td colSpan="5" className="py-12 text-center text-gray-400">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                    Không tìm thấy sinh viên nào
                   </td>
                 </tr>
               )}
@@ -697,7 +792,6 @@ function StudentManagement() {
         </div>
       </div>
 
-      {/* Modal Add/Edit */}
       {showModal && (
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
@@ -883,6 +977,15 @@ function StudentManagement() {
         title="Xóa sinh viên"
       />
 
+      {/* Export Confirmation Dialog */}
+      <ConfirmDialog
+        show={exportModal.show}
+        message={`Xuất danh sách sinh viên lớp "${exportModal.classInfo?.TenLop}" (${exportModal.classInfo ? students.filter(s => s.MaLop === exportModal.classInfo.MaLop).length : 0} sinh viên) ra file CSV?`}
+        onConfirm={handleExportConfirm}
+        onCancel={() => setExportModal({ show: false, classInfo: null })}
+        title="Xuất danh sách sinh viên"
+      />
+
       <Toast
         show={toast.show}
         message={toast.message}
@@ -957,7 +1060,12 @@ function StudentManagement() {
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setShowDetailModal(false)}
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    if (classViewModal.classInfo) {
+                      setClassViewModal(prev => ({ ...prev, show: true }));
+                    }
+                  }}
                   className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
                 >
                   <X className="w-5 h-5 text-white" />
@@ -1186,6 +1294,82 @@ function StudentManagement() {
             </div>
           </motion.div>
         </div>
+        </ModalPortal>
+      )}
+
+      {/* Portal: Danh sách sinh viên của lớp */}
+      {classViewModal.show && (
+        <ModalPortal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-orange-500 to-orange-600">
+                <div className="text-white">
+                  <h3 className="text-xl font-bold">{classViewModal.classInfo?.TenLop}</h3>
+                  <p className="text-orange-100 text-sm">
+                    Mã lớp: {classViewModal.classInfo?.MaLop} · {classViewStudents.length} sinh viên
+                  </p>
+                </div>
+                <button
+                  onClick={() => setClassViewModal({ show: false, classInfo: null })}
+                  className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1">
+                {classViewStudents.length > 0 ? (
+                  <table className="w-full">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">MSSV</th>
+                        <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Họ tên</th>
+                        <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Giới tính</th>
+                        <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                        <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">SĐT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classViewStudents.map((student) => (
+                        <tr
+                          key={student.MSSV}
+                          onClick={() => {
+                            setClassViewModal(prev => ({ ...prev, show: false }));
+                            handleViewDetails(student);
+                          }}
+                          className="border-b border-gray-100 hover:bg-orange-50 transition-colors cursor-pointer"
+                        >
+                          <td className="py-3 px-6 font-medium text-gray-800">{student.MSSV}</td>
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-sm ${
+                                student.GioiTinh === 'Nữ' ? 'bg-pink-400' : 'bg-blue-500'
+                              }`}>
+                                {student.HoTen ? student.HoTen.charAt(0).toUpperCase() : 'S'}
+                              </div>
+                              <span className="font-medium text-gray-700">{student.HoTen}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6 text-gray-600">{student.GioiTinh || '—'}</td>
+                          <td className="py-3 px-6 text-gray-600">{student.Email || '—'}</td>
+                          <td className="py-3 px-6 text-gray-600">{student.SoDienThoai || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="py-16 text-center text-gray-400">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                    Lớp này chưa có sinh viên nào
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
         </ModalPortal>
       )}
     </div>
