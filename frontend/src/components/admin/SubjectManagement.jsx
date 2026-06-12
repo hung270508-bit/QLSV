@@ -27,8 +27,11 @@ function SubjectManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ facultyFilter: '' });
-  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '' });
+  const [filters, setFilters] = useState({ facultyFilter: '', creditsFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '', creditsFilter: '' });
+  // Thêm state cho tính năng Sắp xếp
+  const [sortOrder, setSortOrder] = useState('default');
+  const [displaySortOrder, setDisplaySortOrder] = useState('default');
 
   // States cho Phân trang (Pagination)
   const [currentPage, setCurrentPage] = useState(1);
@@ -173,8 +176,14 @@ function SubjectManagement() {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving subject:', error);
-      const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
-      setErrorDialog({ show: true, message: errorMessage });
+      
+      // THAY ĐỔI Ở ĐÂY: Ưu tiên lấy chi tiết lỗi (error) từ Backend trả về
+      const errorMessage = error.response?.data?.error 
+                        || error.response?.data?.message 
+                        || error.message 
+                        || 'Lỗi không xác định khi lưu môn học!';
+                        
+      setErrorDialog({ show: true, message: `Chi tiết lỗi: ${errorMessage}` });
     } finally {
       setIsSubmitting(false);
     }
@@ -212,8 +221,14 @@ function SubjectManagement() {
       setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
     } catch (error) {
       console.error('Error deleting subject:', error);
-      const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
-      setErrorDialog({ show: true, message: errorMessage });
+      
+      // THAY ĐỔI Ở ĐÂY: Ưu tiên lấy chi tiết lỗi (error) từ Backend trả về
+      const errorMessage = error.response?.data?.error 
+                        || error.response?.data?.message 
+                        || error.message 
+                        || 'Lỗi không xác định khi xóa môn học!';
+                        
+      setErrorDialog({ show: true, message: `Chi tiết lỗi: ${errorMessage}` });
     }
   };
 
@@ -224,7 +239,7 @@ function SubjectManagement() {
     if (editingSubject || !maKhoa) return;
     try {
       // SỬ DỤNG API_BASE TẠI ĐÂY
-    const res = await axios.get(`${API_BASE}/subjects/next-code/${khoaId}`);
+    const res = await axios.get(`${API_BASE}/subjects/next-code/${maKhoa}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: res.data.MaMonHoc }));
     } catch (err) {
       console.error('Lỗi tạo mã môn học:', err);
@@ -273,21 +288,60 @@ function SubjectManagement() {
       nameNoTones.includes(searchNoTones) ||
       codeLower.includes(searchLower);
     const matchesFaculty = !filters.facultyFilter || subject.MaKhoa === filters.facultyFilter;
-    return matchesSearch && matchesFaculty;
-  });
+    
+    // Thêm điều kiện lọc theo số tín chỉ
+    const matchesCredits = !filters.creditsFilter || subject.SoTinChi?.toString() === filters.creditsFilter;
 
+    return matchesSearch && matchesFaculty && matchesCredits;
+  }).sort((a, b) => {
+    // Thêm logic sắp xếp
+    if (sortOrder === 'asc') return a.TenMonHoc.localeCompare(b.TenMonHoc);
+    if (sortOrder === 'desc') return b.TenMonHoc.localeCompare(a.TenMonHoc);
+    return 0;
+  });
+  const [expandedFaculty, setExpandedFaculty] = useState(null);
+
+  // 2. TÍNH TOÁN LẠI DỮ LIỆU: Gom các môn học (đã lọc) vào từng khoa
+  // Chỉ hiển thị khoa nào có môn học
+  const groupedFaculties = faculties.map(faculty => {
+    const facultySubjects = filteredSubjects.filter(s => s.MaKhoa === faculty.MaKhoa);
+    return { ...faculty, facultySubjects };
+  }); 
+  // 3. SỬA LẠI LOGIC PHÂN TRANG (Áp dụng cho số lượng Khoa, thay vì Môn học)
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredSubjects.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
+  const currentItems = groupedFaculties.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(groupedFaculties.length / itemsPerPage);
+  // --- THÊM MỚI: Tính toán danh sách khoa kèm số môn học ---
+  const facultiesWithSubjects = faculties.map(faculty => {
+    const count = subjects.filter(s => s.MaKhoa === faculty.MaKhoa).length;
+    return { ...faculty, totalSubjects: count };
+  }).filter(f => f.totalSubjects > 0); // Chỉ lấy những khoa có môn học
+
+  // Điều kiện để hiển thị bảng (Khi đã chọn khoa HOẶC khi đang gõ tìm kiếm)
+  const shouldShowTable = filters.facultyFilter !== '' || debouncedSearchTerm.trim() !== '';
 
   const handleSearch = () => { setSearchTerm(displaySearchTerm); setCurrentPage(1); };
   const handleClearSearch = () => { setSearchTerm(''); setDisplaySearchTerm(''); setCurrentPage(1); };
-  const handleApplyFilters = () => { setFilters({ ...displayFilters }); setShowFilters(false); setCurrentPage(1); };
-  const clearFilters = () => { setFilters({ facultyFilter: '' }); setDisplayFilters({ facultyFilter: '' }); setSearchTerm(''); setDisplaySearchTerm(''); setCurrentPage(1); };
+  const handleApplyFilters = () => { 
+    setFilters({ ...displayFilters }); 
+    setSortOrder(displaySortOrder);
+    setShowFilters(false); 
+    setCurrentPage(1); 
+  };
+  
+  const clearFilters = () => { 
+    setFilters({ facultyFilter: '', creditsFilter: '' }); 
+    setDisplayFilters({ facultyFilter: '', creditsFilter: '' }); 
+    setSortOrder('default');
+    setDisplaySortOrder('default');
+    setSearchTerm(''); 
+    setDisplaySearchTerm(''); 
+    setCurrentPage(1); 
+  };
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || searchTerm;
+  const activeFilterCount = (filters.creditsFilter ? 1 : 0) + (sortOrder !== 'default' ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || filters.creditsFilter || sortOrder !== 'default' || searchTerm;
 
   if (loading) {
     return (
@@ -349,7 +403,7 @@ function SubjectManagement() {
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
               className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                hasActiveFilters ? 'bg-orange-500 text-white shadow-lg shadow-orange-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                (filters.creditsFilter || sortOrder !== 'default') ? 'bg-orange-500 text-white shadow-lg shadow-orange-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               <Filter className="w-5 h-5" /> Bộ lọc
@@ -368,58 +422,157 @@ function SubjectManagement() {
           </div>
         </div>
 
-        {showFilters && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
-              <select value={displayFilters.facultyFilter} onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })} className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700">
-                <option value="">Tất cả lớp</option>
-                {faculties.map((faculty) => (
-                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>{faculty.TenKhoa}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={handleApplyFilters} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm">Áp dụng bộ lọc</motion.button>
-              <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={() => setDisplayFilters({ facultyFilter: '' })} className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors">Đặt lại</motion.button>
-            </div>
-          </motion.div>
-        )}
+        {showFilters && (() => {
+          // Lấy danh sách số tín chỉ duy nhất từ data để cho vào thẻ Select
+          const uniqueCredits = Array.from(new Set(subjects.map(s => s.SoTinChi))).filter(Boolean).sort((a, b) => a - b);
+          
+          return (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Bộ lọc Số tín chỉ */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Số tín chỉ</label>
+                  <select 
+                    value={displayFilters.creditsFilter} 
+                    onChange={(e) => setDisplayFilters({ ...displayFilters, creditsFilter: e.target.value })} 
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  >
+                    <option value="">Tất cả số tín chỉ</option>
+                    {uniqueCredits.map(credit => (
+                      <option key={credit} value={credit}>{credit} tín chỉ</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Bộ lọc Sắp xếp */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sắp xếp tên môn</label>
+                  <select 
+                    value={displaySortOrder} 
+                    onChange={(e) => setDisplaySortOrder(e.target.value)} 
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  >
+                    <option value="default">Mặc định</option>
+                    <option value="asc">Từ A - Z</option>
+                    <option value="desc">Từ Z - A</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={handleApplyFilters} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm">
+                  Áp dụng
+                </motion.button>
+                <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={() => { setDisplayFilters({ ...displayFilters, creditsFilter: '' }); setDisplaySortOrder('default'); }} className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+                  Đặt lại
+                </motion.button>
+              </div>
+            </motion.div>
+          );
+        })()}
       </div>
 
-      {/* Table & Pagination */}
+      {/* Table & Pagination (Dạng Mở rộng - Accordion) */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100/40">
               <tr>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã môn</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên môn học</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Số tín chỉ</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên khoa</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tổng số môn</th>
               </tr>
             </thead>
             <tbody>
               {currentItems.length > 0 ? (
-                currentItems.map((subject, index) => (
-                  <motion.tr key={subject.MaMonHoc} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-orange-100/30 transition-all cursor-pointer" onClick={() => handleViewDetails(subject)}>
-                    <td className="py-5 px-6"><span className="font-semibold text-gray-800 text-base">{subject.MaMonHoc}</span></td>
-                    <td className="py-5 px-6"><div className="font-semibold text-gray-800">{subject.TenMonHoc}</div></td>
-                    <td className="py-5 px-6"><span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-50 text-orange-600 border border-orange-100">{subject.SoTinChi} tín chỉ</span></td>
-                    <td className="py-5 px-6">
-                      <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
-                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleEdit(subject)} className="p-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all shadow-sm border border-orange-100" title="Chỉnh sửa"><Edit className="w-4 h-4" /></motion.button>
-                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDelete(subject)} className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100" title="Xóa"><Trash2 className="w-4 h-4" /></motion.button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
+                currentItems.map((faculty, index) => {
+                  const isExpanded = expandedFaculty === faculty.MaKhoa;
+                  
+                  return (
+                    <React.Fragment key={faculty.MaKhoa}>
+                      {/* --- BẢNG CẤP 1: HIỂN THỊ KHOA --- */}
+                      <motion.tr
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        onClick={() => setExpandedFaculty(isExpanded ? null : faculty.MaKhoa)}
+                        className={`border-b border-gray-100 transition-all cursor-pointer ${
+                          isExpanded ? 'bg-orange-50/50' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <td className="py-5 px-6">
+                          <span className="font-semibold text-gray-800 text-base">{faculty.MaKhoa}</span>
+                        </td>
+                        <td className="py-5 px-6">
+                          <div className="font-semibold text-gray-800">{faculty.TenKhoa}</div>
+                        </td>
+                        <td className="py-5 px-6 text-center">
+                          <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700">
+                            {faculty.facultySubjects.length} môn
+                          </span>
+                        </td>
+                      </motion.tr>
+
+                      {/* --- BẢNG CẤP 2: DANH SÁCH MÔN HỌC (HIỆN RA BÊN DƯỚI KHI CLICK) --- */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan="3" className="p-0 border-b border-gray-200">
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="bg-gray-50 p-6 shadow-inner overflow-hidden"
+                              >
+                                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                  <table className="w-full">
+                                    <thead className="bg-gray-50 border-b border-gray-200">
+                                      <tr>
+                                        <th className="text-left py-3 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Mã môn</th>
+                                        <th className="text-left py-3 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Tên môn học</th>
+                                        <th className="text-center py-3 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Tín chỉ</th>
+                                        <th className="text-center py-3 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Thao tác</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {faculty.facultySubjects.map((subject) => (
+                                        <tr 
+                                          key={subject.MaMonHoc} 
+                                          className="border-b border-gray-50 hover:bg-orange-50/40 transition-colors cursor-pointer"
+                                          onClick={() => handleViewDetails(subject)}
+                                        >
+                                          <td className="py-3 px-5 font-semibold text-gray-700">{subject.MaMonHoc}</td>
+                                          <td className="py-3 px-5 font-medium text-gray-800">{subject.TenMonHoc}</td>
+                                          <td className="py-3 px-5 text-center">
+                                            <span className="px-3 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-600">
+                                              {subject.SoTinChi}
+                                            </span>
+                                          </td>
+                                          <td className="py-3 px-5">
+                                            <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                              <button onClick={() => handleEdit(subject)} className="p-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors" title="Sửa"><Edit className="w-4 h-4" /></button>
+                                              <button onClick={() => handleDelete(subject)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors" title="Xóa"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </motion.div>
+                            </td>
+                          </tr>
+                        )}
+                      </AnimatePresence>
+                    </React.Fragment>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan="4" className="py-16">
+                  <td colSpan="3" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <BookOpen className="w-16 h-16 mb-4 text-orange-200" />
-                      <p className="text-lg font-medium">Không tìm thấy môn học nào</p>
+                      <p className="text-lg font-medium">Không tìm thấy dữ liệu</p>
                       <p className="text-sm mt-2">Thử tìm kiếm hoặc đổi bộ lọc khác</p>
                     </div>
                   </td>
@@ -429,11 +582,11 @@ function SubjectManagement() {
           </table>
         </div>
 
-        {/* Component Phân trang */}
+        {/* --- COMPONENT PHÂN TRANG KHOA --- */}
         {totalPages > 1 && (
           <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
             <div className="text-sm text-gray-500">
-              Hiển thị <span className="font-medium text-gray-700">{indexOfFirstItem + 1}</span> đến <span className="font-medium text-gray-700">{Math.min(indexOfLastItem, filteredSubjects.length)}</span> trong số <span className="font-medium text-gray-700">{filteredSubjects.length}</span> môn học
+              Hiển thị <span className="font-medium text-gray-700">{indexOfFirstItem + 1}</span> đến <span className="font-medium text-gray-700">{Math.min(indexOfLastItem, groupedFaculties.length)}</span> trong số <span className="font-medium text-gray-700">{groupedFaculties.length}</span> khoa
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"><ChevronLeft className="w-5 h-5" /></button>

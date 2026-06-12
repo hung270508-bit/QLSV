@@ -454,8 +454,28 @@ app.get('/api/subjects/next-code/:maKhoa', (req, res) => {
         res.json({ MaMonHoc: `${prefix}${String(nextNum).padStart(3, '0')}` });
     });
 });
-app.post('/api/subjects', (req, res) => executeInsert('INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi) VALUES (?, ?, ?)', [req.body.MaMonHoc, req.body.TenMonHoc, req.body.SoTinChi], res, 'Thêm môn thành công!', 'Lỗi thêm!'));
-app.put('/api/subjects/:maMH', (req, res) => executeUpdate('UPDATE monhoc SET TenMonHoc=?, SoTinChi=? WHERE MaMonHoc=?', [req.body.TenMonHoc, req.body.SoTinChi, req.params.maMH], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
+// Đã sửa: Bổ sung trường MaKhoa vào câu lệnh INSERT và mảng tham số
+app.post('/api/subjects', (req, res) => {
+    console.log("Dữ liệu nhận được từ Frontend:", req.body);
+    executeInsert(
+        'INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi, MaKhoa) VALUES (?, ?, ?, ?)', 
+        [req.body.MaMonHoc, req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa], 
+        res, 
+        'Thêm môn thành công!', 
+        'Lỗi thêm!'
+    );
+});
+
+// Đã sửa: Bổ sung cập nhật trường MaKhoa vào câu lệnh UPDATE và mảng tham số
+app.put('/api/subjects/:maMH', (req, res) => 
+    executeUpdate(
+        'UPDATE monhoc SET TenMonHoc=?, SoTinChi=?, MaKhoa=? WHERE MaMonHoc=?', 
+        [req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa, req.params.maMH], 
+        res, 
+        'Cập nhật thành công!', 
+        'Lỗi cập nhật!'
+    )
+);
 app.delete('/api/subjects/:maMH', (req, res) => executeDelete('DELETE FROM monhoc WHERE MaMonHoc=?', [req.params.maMH], res, 'Xóa thành công!', 'Lỗi xóa!'));
 app.get('/api/subjects/:maMH/classes', (req, res) => executeQuery('SELECT DISTINCT l.MaLop, l.TenLop, (SELECT COUNT(*) FROM sinhvien sv WHERE sv.MaLop = l.MaLop) as SoSinhVien FROM lophocphan lhp JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaMonHoc = ?', [req.params.maMH], res, 'Lỗi lấy danh sách lớp!'));
 app.get('/api/subjects/:maMH/teachers', (req, res) => executeQuery('SELECT DISTINCT gv.MaGiangVien, gv.HoTen FROM lophocphan lhp JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien WHERE lhp.MaMonHoc = ?', [req.params.maMH], res, 'Lỗi lấy danh sách GV!'));
