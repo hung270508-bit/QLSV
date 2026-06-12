@@ -21,14 +21,14 @@ function OverviewSection({ user, setActiveMenu }) {
 
   useEffect(() => {
     const fetchOverviewData = async () => {
-      if (!user?.username) return;
+      if (!user?.id) return;
       try {
         setLoading(true);
         
         // 1. Lấy danh sách lớp HP và Lịch dạy
         const [coursesRes, schedulesRes] = await Promise.all([
-          axios.get(`${API_URL}/api/course-sections/teacher/${user.username}`),
-          axios.get(`${API_URL}/api/teachers/${user.username}/teaching-schedule`)
+          axios.get(`${API_URL}/api/course-sections/teacher/${user.id}`),
+          axios.get(`${API_URL}/api/teachers/${user.id}/teaching-schedule`)
         ]);
 
         const courses = coursesRes.data;

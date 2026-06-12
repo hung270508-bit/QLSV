@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { 
   UserCircle, Mail, Phone, Building, 
-  Briefcase, Loader2, BookOpen, GraduationCap
+  Briefcase, Loader2, BookOpen, GraduationCap, Calendar, User
 } from 'lucide-react';
 
 function TeacherProfileManagement({ profile, loading, user, onLogout }) {
@@ -27,7 +27,9 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
       MaGiangVien: user?.id || user?.username || 'Chưa cập nhật',
       Email: user?.email || 'Chưa cập nhật',
       SoDienThoai: user?.soDienThoai || 'Chưa cập nhật',
-      TenKhoa: user?.tenKhoa || 'Chưa cập nhật'
+      TenKhoa: user?.tenKhoa || 'Chưa cập nhật',
+      NgaySinh: user?.ngaySinh || 'Chưa cập nhật',
+      GioiTinh: user?.gioiTinh || 'Chưa cập nhật'
     };
     return (
       <div className="max-w-5xl mx-auto space-y-6">
@@ -35,7 +37,6 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
           initial={{ opacity: 0, y: 30, scale: 0.95 }} 
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 200 }}
-          whileHover={{ y: -5, scale: 1.01 }}
           className="bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 rounded-3xl p-8 sm:p-10 text-white shadow-2xl relative overflow-hidden"
         >
           <div className="absolute top-4 right-4 opacity-10">
@@ -67,7 +68,6 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
             initial={{ opacity: 0, y: 30, scale: 0.95 }} 
             animate={{ opacity: 1, y: 0, scale: 1 }} 
             transition={{ delay: 0.1, type: "spring" }}
-            whileHover={{ y: -5, scale: 1.01 }}
             className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
           >
             <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -95,6 +95,26 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                   <p className="text-gray-800 font-semibold text-lg">{fallbackProfile.SoDienThoai}</p>
                 </div>
               </div>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center flex-shrink-0 text-pink-600 shadow-md">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-500">Ngày sinh</p>
+                  <p className="text-gray-800 font-semibold text-lg">
+                    {fallbackProfile.NgaySinh ? new Date(fallbackProfile.NgaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center flex-shrink-0 text-indigo-600 shadow-md">
+                  <User className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-500">Giới tính</p>
+                  <p className="text-gray-800 font-semibold text-lg">{fallbackProfile.GioiTinh}</p>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -102,7 +122,6 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
             initial={{ opacity: 0, y: 30, scale: 0.95 }} 
             animate={{ opacity: 1, y: 0, scale: 1 }} 
             transition={{ delay: 0.2, type: "spring" }}
-            whileHover={{ y: -5, scale: 1.01 }}
             className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
           >
             <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -145,7 +164,6 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
         initial={{ opacity: 0, y: 30, scale: 0.95 }} 
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 200 }}
-        whileHover={{ y: -5, scale: 1.01 }}
         className="bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 rounded-3xl p-8 sm:p-10 text-white shadow-2xl relative overflow-hidden"
       >
         <div className="absolute top-4 right-4 opacity-10">
@@ -182,7 +200,6 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
           initial={{ opacity: 0, y: 30, scale: 0.95 }} 
           animate={{ opacity: 1, y: 0, scale: 1 }} 
           transition={{ delay: 0.1, type: "spring" }}
-          whileHover={{ y: -5, scale: 1.01 }}
           className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
         >
           <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -211,6 +228,26 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 <p className="text-gray-800 font-semibold text-lg">{profile.SoDienThoai || 'Chưa cập nhật'}</p>
               </div>
             </div>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center flex-shrink-0 text-pink-600 shadow-md">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-500">Ngày sinh</p>
+                <p className="text-gray-800 font-semibold text-lg">
+                  {profile.NgaySinh ? new Date(profile.NgaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center flex-shrink-0 text-indigo-600 shadow-md">
+                <User className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-500">Giới tính</p>
+                <p className="text-gray-800 font-semibold text-lg">{profile.GioiTinh || 'Chưa cập nhật'}</p>
+              </div>
+            </div>
           </div>
         </motion.div>
 
@@ -219,7 +256,6 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
           initial={{ opacity: 0, y: 30, scale: 0.95 }} 
           animate={{ opacity: 1, y: 0, scale: 1 }} 
           transition={{ delay: 0.2, type: "spring" }}
-          whileHover={{ y: -5, scale: 1.01 }}
           className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
         >
           <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">

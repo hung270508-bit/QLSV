@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, Megaphone, Calendar } from 'lucide-react';
+import { X, Bell, Megaphone, Calendar, Shield } from 'lucide-react';
 import axios from 'axios';
 
-function AnnouncementsSection({ announcements, user, onRefresh }) {
+function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
   const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     TieuDe: '',
     NoiDung: '',
@@ -13,9 +14,17 @@ function AnnouncementsSection({ announcements, user, onRefresh }) {
   });
 
   const myAnnouncements = announcements.filter(a => a.NguoiTao === user?.id);
+  
+  // Filter admin announcements - those created by admin and relevant to teacher's classes
+  const teacherClassIds = classes ? [...new Set(classes.map(cls => cls.MaLop))] : [];
+  const adminAnnouncements = announcements.filter(a => 
+    a.NguoiTao === 'admin' && 
+    (a.MaLop_Nhan === null || teacherClassIds.includes(a.MaLop_Nhan))
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       await axios.post(`${API_URL}/api/announcements`, {
         ...formData,
@@ -27,7 +36,7 @@ function AnnouncementsSection({ announcements, user, onRefresh }) {
       onRefresh();
     } catch (error) {
       console.error('Error creating announcement:', error);
-      alert('Lỗi khi tạo thông báo!');
+      setError(error.response?.data?.message || 'Lỗi khi tạo thông báo. Vui lòng thử lại!');
     }
   };
 
@@ -46,7 +55,10 @@ function AnnouncementsSection({ announcements, user, onRefresh }) {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setShowModal(true);
+            setError('');
+          }}
           className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl shadow-lg transition-all"
         >
           <Bell className="w-5 h-5" />
@@ -54,12 +66,68 @@ function AnnouncementsSection({ announcements, user, onRefresh }) {
         </motion.button>
       </motion.div>
 
+      {/* Admin Announcements Section */}
+      {adminAnnouncements.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-bold text-gray-800">Thông báo từ Admin</h3>
+          </div>
+          {adminAnnouncements.map((announcement, index) => (
+            <motion.div
+              key={announcement.MaThongBao}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              whileHover={{ y: -2 }}
+              className="bg-gradient-to-r from-blue-50 to-blue-100/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-blue-200/50"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 flex-shrink-0">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-lg font-bold text-gray-800">{announcement.TieuDe}</h3>
+                    <span className="px-2 py-1 bg-blue-200 text-blue-700 text-xs font-bold rounded-full">Admin</span>
+                  </div>
+                  <p className="text-gray-600 mb-4">{announcement.NoiDung}</p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      {new Date(announcement.NgayTao).toLocaleString('vi-VN')}
+                    </div>
+                    {announcement.TenLop && (
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">
+                          Lớp {announcement.TenLop}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* My Announcements Section */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
         className="space-y-4"
       >
+        <div className="flex items-center gap-2 mb-4">
+          <Megaphone className="w-5 h-5 text-orange-600" />
+          <h3 className="text-lg font-bold text-gray-800">Thông báo của bạn</h3>
+        </div>
         {myAnnouncements.length > 0 ? (
           myAnnouncements.map((announcement, index) => (
             <motion.div
@@ -129,12 +197,25 @@ function AnnouncementsSection({ announcements, user, onRefresh }) {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3"
+                  >
+                    <X className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-700 text-sm font-medium">{error}</p>
+                  </motion.div>
+                )}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Tiêu đề</label>
                   <input
                     type="text"
                     value={formData.TieuDe}
-                    onChange={(e) => setFormData({ ...formData, TieuDe: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, TieuDe: e.target.value });
+                      setError('');
+                    }}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all"
                     required
                   />
@@ -143,10 +224,36 @@ function AnnouncementsSection({ announcements, user, onRefresh }) {
                   <label className="block text-sm font-bold text-gray-700 mb-2">Nội dung</label>
                   <textarea
                     value={formData.NoiDung}
-                    onChange={(e) => setFormData({ ...formData, NoiDung: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, NoiDung: e.target.value });
+                      setError('');
+                    }}
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all h-32"
                     required
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Gửi đến lớp</label>
+                  <select
+                    value={formData.MaLop_Nhan}
+                    onChange={(e) => {
+                      setFormData({ ...formData, MaLop_Nhan: e.target.value });
+                      setError('');
+                    }}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all"
+                    required
+                  >
+                    <option value="">-- Chọn lớp --</option>
+                    {classes && classes.length > 0 ? (
+                      [...new Set(classes.map(cls => cls.MaLop))].map((maLop) => (
+                        <option key={maLop} value={maLop}>
+                          Lớp {maLop}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>Không có lớp nào</option>
+                    )}
+                  </select>
                 </div>
                 <div className="flex gap-3 pt-4">
                   <motion.button

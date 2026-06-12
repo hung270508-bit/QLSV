@@ -125,7 +125,7 @@ function TeacherDashboard({ user, onLogout }) {
       case 'hoso':
         return <TeacherProfileManagement user={user} onLogout={onLogout} profile={profile} loading={loadingProfile} />;
       case 'thongbao':
-        return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} />;
+        return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} classes={teachingAssignments} />;
       default:
         return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} />;
     }
