@@ -1,15 +1,25 @@
 import React, { useState } from 'react';
 import API_URL from './api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, GraduationCap, School, ShieldAlert, Loader2, Eye, EyeOff, Mail } from 'lucide-react';
+import { User, Lock, GraduationCap, School, ShieldAlert, Loader2, Eye, EyeOff, Mail, ChevronDown, X } from 'lucide-react';
 import axios from 'axios';
 import AdminDashboard from './components/admin/AdminDashboard';
 import StudentDashboard from './components/students/StudentDashboard';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
 
 function App() {
+  const getSavedAccounts = () => {
+    try {
+      return JSON.parse(localStorage.getItem('savedAccounts') || '[]');
+    } catch {
+      return [];
+    }
+  };
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [savedAccounts, setSavedAccounts] = useState(getSavedAccounts);
+  const [showAccountList, setShowAccountList] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -20,6 +30,19 @@ function App() {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  const handleSelectAccount = (acc) => {
+    setUsername(acc.username);
+    setPassword(acc.password);
+    setShowAccountList(false);
+  };
+
+  const handleRemoveAccount = (e, accUsername) => {
+    e.stopPropagation();
+    const accounts = getSavedAccounts().filter(acc => acc.username !== accUsername);
+    localStorage.setItem('savedAccounts', JSON.stringify(accounts));
+    setSavedAccounts(accounts);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -37,6 +60,14 @@ function App() {
           type: 'success',
           text: response.data.message
       });
+
+      if (rememberMe) {
+        const accounts = getSavedAccounts().filter(acc => acc.username !== username);
+        accounts.unshift({ username, password, role: response.data.user.role, tenQuyen: response.data.user.tenQuyen });
+        const trimmed = accounts.slice(0, 5);
+        localStorage.setItem('savedAccounts', JSON.stringify(trimmed));
+        setSavedAccounts(trimmed);
+      }
 
       localStorage.setItem(
         'user',
@@ -187,10 +218,53 @@ function App() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
+                      onFocus={() => savedAccounts.length > 0 && setShowAccountList(true)}
+                      className="w-full pl-12 pr-10 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                       placeholder="Nhập MSSV hoặc Mã GV..."
                       required
                     />
+                    {savedAccounts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAccountList(!showAccountList)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <ChevronDown className={`w-5 h-5 transition-transform ${showAccountList ? 'rotate-180' : ''}`} />
+                      </button>
+                    )}
+
+                    {showAccountList && savedAccounts.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute left-0 right-0 mt-2 bg-white border-2 border-orange-100 rounded-2xl shadow-xl z-20 overflow-hidden"
+                      >
+                        {savedAccounts.map((acc) => (
+                          <div
+                            key={acc.username}
+                            onClick={() => handleSelectAccount(acc)}
+                            className="flex items-center justify-between gap-2 px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0">
+                                <User className="w-4 h-4" />
+                              </div>
+                              <div className="text-left overflow-hidden">
+                                <div className="font-semibold text-gray-700 text-sm truncate">{acc.username}</div>
+                                <div className="text-xs text-gray-400 truncate">{acc.tenQuyen || acc.role || 'Tài khoản'}</div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => handleRemoveAccount(e, acc.username)}
+                              className="p-1.5 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
                   </div>
                 </motion.div>
 
@@ -228,13 +302,25 @@ function App() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="text-right"
+                  className="flex items-center justify-between"
                 >
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400 cursor-pointer"
+                    />
+                    Lưu thông tin đăng nhập
+                  </label>
                   <motion.button
                     type="button"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={handleLogout}
+                    onClick={() => {
+                      setShowForgotPassword(true);
+                      setMessage({ type: '', text: '' });
+                    }}
                     className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors"
                   >
                     Quên mật khẩu?
@@ -364,12 +450,7 @@ function App() {
             </div>
 
             <button
-              onClick={() => {
-                setLoggedInUser(null);
-                setUsername('');
-                setPassword('');
-                setMessage({ type: '', text: '' });
-              }}
+              onClick={handleLogout}
               className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors underline bg-transparent border-none cursor-pointer"
             >
               Đăng xuất khỏi tài khoản
