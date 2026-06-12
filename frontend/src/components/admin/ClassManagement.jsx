@@ -41,12 +41,6 @@ function ClassManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    facultyFilter: ''
-  });
-  const [displayFilters, setDisplayFilters] = useState({
-    facultyFilter: ''
-  });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [classStudents, setClassStudents] = useState([]);
@@ -62,6 +56,14 @@ function ClassManagement() {
     MaKhoa: '',
     startYear: '',
     endYear: ''
+  });
+  const [filters, setFilters] = useState({
+    facultyFilter: '',
+    nienKhoaFilter: '' // Thêm mới
+  });
+  const [displayFilters, setDisplayFilters] = useState({
+    facultyFilter: '',
+    nienKhoaFilter: '' // Thêm mới
   });
   const [formErrors, setFormErrors] = useState({
     startYear: '',
@@ -91,7 +93,26 @@ function ClassManagement() {
       .replace(/đ/g, 'd')
       .replace(/Đ/g, 'D');
   }, []);
+  // Xử lý data cho thẻ select Khoa để chặn rác
+  const uniqueFaculties = Array.from(
+    new Map(faculties.filter(f => f && f.MaKhoa && f.TenKhoa).map(f => [f.MaKhoa, f])).values()
+  );
 
+  // Thêm mới: Lấy danh sách Niên khóa duy nhất và sắp xếp giảm dần
+  const uniqueNienKhoa = Array.from(
+    new Set(classes.map(c => c.NienKhoa).filter(Boolean))
+  ).sort((a, b) => b.localeCompare(a));
+
+  // Cập nhật hàm xóa lọc
+  const clearFilters = () => { 
+    setFilters({ facultyFilter: '', nienKhoaFilter: '' }); 
+    setDisplayFilters({ facultyFilter: '', nienKhoaFilter: '' }); 
+    setSearchTerm(''); 
+    setDisplaySearchTerm(''); 
+  };
+
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.nienKhoaFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || filters.nienKhoaFilter || searchTerm.trim();
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   useEffect(() => {
@@ -395,7 +416,6 @@ function ClassManagement() {
   };
 
   const filteredClasses = classes.filter(cls => {
-    // TC_22: Thêm .trim() để ngăn ngừa tìm kiếm khoảng trắng
     const searchLower = debouncedSearchTerm.trim().toLowerCase();
     const searchNoTones = removeVietnameseTones(searchLower);
     const nameLower = cls.TenLop?.toLowerCase() || '';
@@ -412,21 +432,21 @@ function ClassManagement() {
       facultyNameNoTones.includes(searchNoTones);
     
     const matchesFaculty = !filters.facultyFilter || cls.MaKhoa === filters.facultyFilter;
+    // Thêm mới: Điều kiện lọc niên khóa
+    const matchesNienKhoa = !filters.nienKhoaFilter || cls.NienKhoa === filters.nienKhoaFilter;
     
-    return matchesSearch && matchesFaculty;
+    return matchesSearch && matchesFaculty && matchesNienKhoa;
   });
 
   const handleSearch = () => setSearchTerm(displaySearchTerm);
   const handleClearSearch = () => { setSearchTerm(''); setDisplaySearchTerm(''); };
   const handleApplyFilters = () => { setFilters({ ...displayFilters }); setShowFilters(false); };
-  const clearFilters = () => { setFilters({ facultyFilter: '' }); setDisplayFilters({ facultyFilter: '' }); setSearchTerm(''); setDisplaySearchTerm(''); };
-
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || searchTerm.trim();
 
   // Xử lý data cho thẻ select Khoa để chặn rác
-  const uniqueFaculties = Array.from(
-    new Map(faculties.filter(f => f && f.MaKhoa && f.TenKhoa).map(f => [f.MaKhoa, f])).values()
+
+  // Xử lý data cho thẻ select Niên khóa để chặn rác
+  const uniqueNienKhoas = Array.from(
+    new Set(classes.map(cls => cls.NienKhoa).filter(Boolean))
   );
 
   if (loading) {
@@ -463,12 +483,14 @@ function ClassManagement() {
 
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
+        {/* Thay flex-col md:flex-row bằng justify-between để đẩy button sang phải */}
+        <div className="flex flex-col md:flex-row gap-4 justify-between">
+          {/* Rút ngắn thanh tìm kiếm bằng w-full md:max-w-md (hoặc md:w-1/3) thay vì flex-1 */}
+          <div className="relative w-full md:max-w-md">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm lớp học theo tên, mã lớp hoặc khoa..."
+              placeholder="Tìm kiếm lớp học..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
@@ -523,21 +545,41 @@ function ClassManagement() {
             exit={{ opacity: 0, height: 0 }}
             className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
           >
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
-              <select
-                value={displayFilters.facultyFilter}
-                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
-                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
-              >
-                <option value="">Tất cả khoa</option>
-                {uniqueFaculties.map((faculty) => (
-                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                    {faculty.TenKhoa}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+                <select
+                  value={displayFilters.facultyFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                >
+                  <option value="">Tất cả khoa</option>
+                  {uniqueFaculties.map((faculty) => (
+                    <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                      {faculty.TenKhoa}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Thêm mới Box Niên khóa */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo niên khóa</label>
+                <select
+                  value={displayFilters.nienKhoaFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, nienKhoaFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                >
+                  <option value="">Tất cả niên khóa</option>
+                  {uniqueNienKhoa.map((nk) => (
+                    <option key={nk} value={nk}>
+                      {nk}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
             <div className="flex gap-3 pt-2">
               <motion.button
                 whileHover={{ scale: 1.01 }}
@@ -550,7 +592,7 @@ function ClassManagement() {
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                onClick={() => setDisplayFilters({ facultyFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', nienKhoaFilter: '' })}
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
