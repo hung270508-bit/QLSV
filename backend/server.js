@@ -49,9 +49,12 @@ db.getConnection((err, connection) => {
 app.use(cors({
     origin: [
         'https://hung270508-bit.github.io', // Khi chạy online trên GitHub Pages
+        'https://qlsv-huq1.onrender.com',
         'http://localhost:5173',            // Khi chạy local bằng Vite (Mặc định)
+        'http://localhost:5174',            // Khi chạy local bằng Vite (Cổng thay thế)
         'http://localhost:3000',            // Dự phòng nếu local chạy cổng 3000
         'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
         'http://127.0.0.1:3000'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
