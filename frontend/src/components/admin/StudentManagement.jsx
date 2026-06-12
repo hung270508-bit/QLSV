@@ -19,15 +19,20 @@ function StudentManagement() {
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     classFilter: '',
-    genderFilter: ''
+    genderFilter: '',
+    facultyFilter: '',    // Thêm
+    nienKhoaFilter: ''    // Thêm
   });
   const [displayFilters, setDisplayFilters] = useState({
     classFilter: '',
-    genderFilter: ''
+    genderFilter: '',
+    facultyFilter: '',
+    nienKhoaFilter: ''
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -35,7 +40,14 @@ function StudentManagement() {
   const [studentTranscript, setStudentTranscript] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailTab, setDetailTab] = useState('overview'); // overview, transcript, attendance
-
+  
+  const handleSearch = () => {
+    setAppliedSearchTerm(searchTerm);
+  };
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setAppliedSearchTerm('');
+  };
   const [formData, setFormData] = useState({
     MSSV: '',
     HoTen: '',
@@ -56,7 +68,7 @@ function StudentManagement() {
     MaLop: '',
     MaKhoa: ''
   });
-
+  
   const [deleteModal, setDeleteModal] = useState({ show: false, student: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
@@ -78,15 +90,6 @@ function StudentManagement() {
       return word.charAt(0).toUpperCase() + word.slice(1);
     }).join(' ');
   };
-
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
 
   const fetchData = async () => {
     try {
@@ -304,56 +307,70 @@ function StudentManagement() {
   };
 
   const filteredStudents = students.filter(student => {
-    // FIX TC_13: Nhập khoảng trắng toàn bộ sẽ bị chặn
-    if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') {
-      return false; // Không trả về kết quả nào nếu chỉ gõ space
-    }
-    
-    // FIX TC_19: Trim khoảng trắng thừa trước khi search
-    const searchLower = debouncedSearchTerm.trim().toLowerCase();
+    const searchLower = appliedSearchTerm.trim().toLowerCase();
     const searchNoTones = removeVietnameseTones(searchLower);
     
+    // Tìm thông tin lớp để lấy Khoa và Niên khóa
+    const studentClass = classes.find(c => c.MaLop === student.MaLop);
+    const maKhoa = studentClass?.MaKhoa || '';
+    const nienKhoa = studentClass?.NienKhoa || '';
+
     const nameLower = student.HoTen?.toLowerCase() || '';
     const nameNoTones = removeVietnameseTones(nameLower);
     const codeLower = student.MSSV?.toLowerCase() || '';
     const emailLower = student.Email?.toLowerCase() || '';
     
     const matchesSearch =
+      searchLower === '' ||
       nameLower.includes(searchLower) ||
       nameNoTones.includes(searchNoTones) ||
       codeLower.includes(searchLower) ||
       emailLower.includes(searchLower);
       
     const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
-    const matchesGender = !filters.genderFilter || student.GioiTinh === filters.genderFilter;
+    const matchesFaculty = !filters.facultyFilter || maKhoa === filters.facultyFilter; // Mới
+    const matchesNienKhoa = !filters.nienKhoaFilter || nienKhoa === filters.nienKhoaFilter; // Mới
     
-    return matchesSearch && matchesClass && matchesGender;
+    return matchesSearch && matchesClass && matchesFaculty && matchesNienKhoa;
   });
-
-  const handleClearSearch = () => {
-    setSearchTerm('');
-    setDisplaySearchTerm('');
-  };
-
   const handleApplyFilters = () => {
     setFilters({ ...displayFilters });
     setShowFilters(false);
   };
 
+  const emptyFilters = { classFilter: '', genderFilter: '', facultyFilter: '', nienKhoaFilter: '' };
+
   const clearFilters = () => {
-    setFilters({ classFilter: '', genderFilter: '' });
-    setDisplayFilters({ classFilter: '', genderFilter: '' });
+    setFilters({ ...emptyFilters });
+    setDisplayFilters({ ...emptyFilters });
     setSearchTerm('');
-    setDisplaySearchTerm('');
+    setAppliedSearchTerm('');
   };
 
-  const activeFilterCount = (filters.classFilter ? 1 : 0) + (filters.genderFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const activeFilterCount = (filters.classFilter ? 1 : 0) + 
+                          (filters.facultyFilter ? 1 : 0) + 
+                          (filters.nienKhoaFilter ? 1 : 0) + 
+                          (searchTerm.trim() ? 1 : 0);
   const hasActiveFilters = filters.classFilter || filters.genderFilter || searchTerm.trim();
 
   // Loại bỏ các lớp trùng lặp hoặc null
   const uniqueClasses = Array.from(
     new Map(classes.filter(c => c && c.MaLop && c.TenLop).map(c => [c.MaLop, c])).values()
   );
+
+  // Thống kê số lượng sinh viên theo từng lớp
+  const classStats = useMemo(() => {
+    return uniqueClasses.map(cls => ({
+      ...cls,
+      count: students.filter(s => s.MaLop === cls.MaLop).length
+    })).sort((a, b) => (a.TenLop || '').localeCompare(b.TenLop || ''));
+  }, [uniqueClasses, students]);
+
+  const handleSelectClassFilter = (cls) => {
+    const newFilters = { ...filters, classFilter: cls.MaLop };
+    setFilters(newFilters);
+    setDisplayFilters(newFilters);
+  };
 
   if (loading) {
     return (
@@ -390,24 +407,33 @@ function StudentManagement() {
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo MSSV, Họ tên hoặc Email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
-              className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
-            />
-            {searchTerm && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
+          <div className="relative flex-1 flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo MSSV, Họ tên hoặc Email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()} // Cho phép nhấn Enter
+                className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
+              />
+              {searchTerm && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            {/* NÚT TÌM KIẾM MỚI */}
+            <button 
+              onClick={handleSearch}
+              className="bg-orange-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-orange-700 transition-colors shadow-lg"
+            >
+              Tìm kiếm
+            </button>
           </div>
           <div className="flex gap-3">
             <motion.button
@@ -428,76 +454,146 @@ function StudentManagement() {
                 </span>
               )}
             </motion.button>
-            {hasActiveFilters && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={clearFilters}
-                className="px-5 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200/60"
-              >
-                <XCircle className="w-5 h-5" />
-                Xóa lọc
-              </motion.button>
-            )}
           </div>
         </div>
 
         {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
-                <select
-                  value={displayFilters.classFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
-                >
-                  <option value="">Tất cả lớp học</option>
-                  {uniqueClasses.map((cls) => (
-                    <option key={cls.MaLop} value={cls.MaLop}>
-                      {cls.TenLop} ({cls.MaLop})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Giới tính</label>
-                <select
-                  value={displayFilters.genderFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, genderFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
-                >
-                  <option value="">Tất cả</option>
-                  <option value="Nam">Nam</option>
-                  <option value="Nữ">Nữ</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
-              >
-                Áp dụng bộ lọc
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                onClick={() => setDisplayFilters({ classFilter: '', genderFilter: '' })}
-                className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-              >
-                Đặt lại
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
+  <motion.div
+    initial={{ opacity: 0, height: 0 }}
+    animate={{ opacity: 1, height: 'auto' }}
+    exit={{ opacity: 0, height: 0 }}
+    className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+  >
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Lọc theo Lớp */}
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp</label>
+        <select
+          value={displayFilters.classFilter}
+          onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
+          className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+        >
+          <option value="">Tất cả lớp</option>
+          {uniqueClasses.map((cls) => (
+            <option key={cls.MaLop} value={cls.MaLop}>
+              {cls.TenLop} ({cls.MaLop})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Lọc theo Khoa */}
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Khoa</label>
+        <select
+          value={displayFilters.facultyFilter}
+          onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+          className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+        >
+          <option value="">Tất cả khoa</option>
+          {faculties.map((f) => (
+            <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Lọc theo Niên khóa */}
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Niên khóa</label>
+        <select
+          value={displayFilters.nienKhoaFilter}
+          onChange={(e) => setDisplayFilters({ ...displayFilters, nienKhoaFilter: e.target.value })}
+          className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+        >
+          <option value="">Tất cả niên khóa</option>
+          {[...new Set(classes.map(c => c.NienKhoa).filter(Boolean))].map((nk) => (
+            <option key={nk} value={nk}>{nk}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+
+    <div className="flex gap-3 pt-2">
+      <motion.button
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        onClick={handleApplyFilters}
+        className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
+      >
+        Áp dụng bộ lọc
+      </motion.button>
+      <motion.button
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        onClick={() => setDisplayFilters({ ...emptyFilters })}
+        className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+      >
+        Đặt lại
+      </motion.button>
+    </div>
+  </motion.div>
+)}
+      </div>
+
+      {/* Bảng số lượng sinh viên theo lớp */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-orange-500" />
+            Danh sách lớp &amp; số lượng sinh viên
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+              <tr>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã lớp</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên lớp</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Niên khóa</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Số lượng sinh viên</th>
+              </tr>
+            </thead>
+            <tbody>
+              {classStats.length > 0 ? (
+                classStats.map((cls, index) => (
+                  <motion.tr
+                    key={cls.MaLop}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    onClick={() => handleSelectClassFilter(cls)}
+                    className={`border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer ${
+                      filters.classFilter === cls.MaLop ? 'bg-orange-50/70' : ''
+                    }`}
+                  >
+                    <td className="py-5 px-6">
+                      <span className="font-semibold text-gray-800 text-base">{cls.MaLop}</span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className="font-medium text-gray-700">{cls.TenLop}</span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className="text-gray-600">{cls.NienKhoa || '—'}</span>
+                    </td>
+                    <td className="py-5 px-6 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold bg-orange-100 text-orange-700">
+                        <Users className="w-4 h-4" />
+                        {cls.count}
+                      </span>
+                    </td>
+                  </motion.tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="py-12 text-center text-gray-400">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                    Chưa có dữ liệu lớp học
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Table */}
