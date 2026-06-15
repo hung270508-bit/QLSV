@@ -3,10 +3,10 @@ import { Routes, Route } from 'react-router-dom';
 import API_URL from './api';
 import axios from 'axios';
 import AdminDashboard from './components/admin/AdminDashboard';
-import StudentDashboard from './components/students/StudentDashboard';
+import StudentDashboard from './components/student/StudentDashboard';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
-import ResetPassword from './components/ResetPassword';
-import LoginForm from './components/LoginForm';
+import ResetPassword from './components/auth/ResetPassword';
+import LoginForm from './components/auth/LoginForm';
 
 const DASHBOARD_MAP = {
   admin: AdminDashboard,

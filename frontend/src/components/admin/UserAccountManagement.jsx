@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
-import ModalPortal from '../ModalPortal';
+import ModalPortal from '../common/ModalPortal';
 
 function UserAccountManagement() {
   const [users, setUsers] = useState([]);

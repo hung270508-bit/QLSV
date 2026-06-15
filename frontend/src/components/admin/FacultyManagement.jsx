@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
-import ModalPortal from '../ModalPortal';
+import ModalPortal from '../common/ModalPortal';
 
 // Tự động lấy cấu hình môi trường hoặc mặc định localhost
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'

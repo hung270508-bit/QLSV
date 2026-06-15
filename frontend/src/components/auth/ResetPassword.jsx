@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
-import API_URL from '../api';
+import API_URL from '../../api';
 
 function ResetPassword() {
   const { token } = useParams();

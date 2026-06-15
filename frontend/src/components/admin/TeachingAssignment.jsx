@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Search, X, ClipboardCheck, BookOpen, AlertCircle, CheckCircle2, UserCheck } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
-import ModalPortal, { ConfirmDialog, SuccessDialog, ErrorDialog, Toast } from '../ModalPortal';
+import ModalPortal, { ConfirmDialog, SuccessDialog, ErrorDialog, Toast } from '../common/ModalPortal';
 import API_URL from '../../api';
 
 function TeachingAssignment() {

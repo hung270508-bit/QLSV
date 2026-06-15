@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { GradeSkeleton } from './AdminSkeleton';
-import ModalPortal from '../ModalPortal';
+import ModalPortal from '../common/ModalPortal';
 
 // ================================================================
 // Toast — góc trên phải, tự biến mất sau 4s

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
-import ModalPortal from '../ModalPortal';
+import ModalPortal from '../common/ModalPortal';
 
 function AnnouncementManagement() {
   const [announcements, setAnnouncements] = useState([]);

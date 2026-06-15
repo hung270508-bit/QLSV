@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
-import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 
 function SubjectManagement() {
   // 1. THÊM ĐOẠN KHAI BÁO TỰ ĐỘNG NÀY VÀO ĐẦU TẤT CẢ CÁC FILE

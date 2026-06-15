@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, BarChart3, BookOpen, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, CheckCircle, UserCheck, Clock, MapPin, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
-import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 
 // Tự động lấy cấu hình môi trường hoặc mặc định localhost
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'

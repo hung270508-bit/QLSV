@@ -6,7 +6,7 @@ import {
   AlertCircle, ChevronDown, Loader2
 } from 'lucide-react';
 import axios from 'axios';
-import ModalPortal, { SuccessDialog, ErrorDialog, Toast, ConfirmDialog } from '../ModalPortal';
+import ModalPortal, { SuccessDialog, ErrorDialog, Toast, ConfirmDialog } from '../common/ModalPortal';
 
 // Tự động lấy cấu hình môi trường hoặc mặc định localhost
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
