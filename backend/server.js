@@ -247,8 +247,9 @@ app.post('/api/forgot-password', (req, res) => {
             { expiresIn: '30m' }
         );
         
-        // Create reset link
-        const resetLink = `${process.env.FRONTEND_URL}/#/reset-password/${resetToken}`;
+        // Create reset link dynamically based on request origin (local or cloud)
+        const origin = req.headers.origin || process.env.FRONTEND_URL;
+        const resetLink = `${origin}/#/reset-password/${resetToken}`;
         
         // Send email
         const mailOptions = {
