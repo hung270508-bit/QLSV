@@ -16,7 +16,6 @@ function StudentManagement() {
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [selectedFaculty, setSelectedFaculty] = useState('');
-  const [selectedNienKhoa, setSelectedNienKhoa] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -43,7 +42,9 @@ function StudentManagement() {
     Email: '',
     SoDienThoai: '',
     MaLop: '',
-    TrangThai: 'Đang học'
+    TrangThai: 'Đang học',
+    startYear: '',
+    endYear: ''
   });
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -107,16 +108,27 @@ function StudentManagement() {
   const handleFacultyChange = (e) => {
     const facultyId = e.target.value;
     setSelectedFaculty(facultyId);
-    setSelectedNienKhoa('');
     setFormData(prev => ({ ...prev, MaLop: '', MSSV: '' }));
     if (errors.selectedFaculty) setErrors(prev => ({ ...prev, selectedFaculty: '' }));
   };
 
-  const handleNienKhoaChange = (e) => {
-    const nienKhoa = e.target.value;
-    setSelectedNienKhoa(nienKhoa);
-    setFormData(prev => ({ ...prev, MaLop: '', MSSV: '' }));
-    if (errors.selectedNienKhoa) setErrors(prev => ({ ...prev, selectedNienKhoa: '' }));
+  const handleStartYearChange = (e) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) {
+      const startYearInt = parseInt(value, 10);
+      const endYear = !isNaN(startYearInt) && value.length === 4 ? (startYearInt + 4).toString() : '';
+
+      setFormData(prev => ({ ...prev, startYear: value, endYear: endYear }));
+      if (errors.startYear) setErrors(prev => ({ ...prev, startYear: '' }));
+    }
+  };
+
+  const handleEndYearChange = (e) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) {
+      setFormData(prev => ({ ...prev, endYear: value }));
+      if (errors.endYear) setErrors(prev => ({ ...prev, endYear: '' }));
+    }
   };
 
   const handleLopChange = async (e) => {
@@ -149,8 +161,8 @@ function StudentManagement() {
       newErrors.HoTen = 'Họ tên không được để trống';
     } else if (formData.HoTen.length < 2) {
       newErrors.HoTen = 'Họ tên phải có ít nhất 2 ký tự';
-    } else if (formData.HoTen.length > 100) {
-      newErrors.HoTen = 'Họ tên không được vượt quá 100 ký tự';
+    } else if (formData.HoTen.length > 50) {
+      newErrors.HoTen = 'Họ tên không được vượt quá 50 ký tự';
     } else {
       // Validate Họ tên chỉ được chứa chữ cái và khoảng trắng
       const nameRegex = /^[a-zA-ZÀ-Ỹà-ỹ\s]+$/;
@@ -211,9 +223,39 @@ function StudentManagement() {
       newErrors.selectedFaculty = 'Vui lòng chọn khoa';
     }
 
-    // Validate Niên khóa
-    if (!selectedNienKhoa) {
-      newErrors.selectedNienKhoa = 'Vui lòng chọn niên khóa';
+    // Validate startYear
+    if (!formData.startYear.trim()) {
+      newErrors.startYear = 'Năm bắt đầu không được để trống';
+    } else if (formData.startYear.length !== 4) {
+      newErrors.startYear = 'Năm bắt đầu phải có 4 chữ số';
+    } else {
+      const startYearInt = parseInt(formData.startYear, 10);
+      const currentYear = new Date().getFullYear();
+      const minYear = currentYear - 3;
+      const maxYear = currentYear + 4;
+
+      if (isNaN(startYearInt) || startYearInt <= 0) {
+        newErrors.startYear = 'Năm bắt đầu phải là số dương';
+      } else if (startYearInt < minYear) {
+        newErrors.startYear = `Năm bắt đầu phải từ ${minYear} trở đi`;
+      } else if (startYearInt > maxYear) {
+        newErrors.startYear = `Năm bắt đầu không được lớn hơn ${maxYear}`;
+      }
+    }
+
+    // Validate endYear
+    if (!formData.endYear.trim()) {
+      newErrors.endYear = 'Năm kết thúc không được để trống';
+    } else if (formData.endYear.length !== 4) {
+      newErrors.endYear = 'Năm kết thúc phải có 4 chữ số';
+    } else {
+      const start = parseInt(formData.startYear, 10);
+      const end = parseInt(formData.endYear, 10);
+      if (!isNaN(start) && !isNaN(end)) {
+        if (start >= end) {
+          newErrors.endYear = 'Năm kết thúc phải lớn hơn năm bắt đầu';
+        }
+      }
     }
 
     // Validate Lớp
@@ -238,10 +280,14 @@ function StudentManagement() {
   e.preventDefault();
   if (!validateForm()) return;
 
+  // Combine startYear and endYear into NienKhoa
+  const nienKhoa = `${formData.startYear}-${formData.endYear}`;
+
   // Capitalize the name before saving
   const formDataWithCapitalizedName = {
     ...formData,
-    HoTen: capitalizeVietnameseName(formData.HoTen)
+    HoTen: capitalizeVietnameseName(formData.HoTen),
+    NienKhoa: nienKhoa
   };
 
   if (editingStudent) {
@@ -275,6 +321,7 @@ function StudentManagement() {
 
   const handleEdit = (student) => {
     setEditingStudent(student);
+    const years = student.NienKhoa ? student.NienKhoa.split('-') : ['', ''];
     setFormData({
       MSSV: student.MSSV,
       HoTen: student.HoTen,
@@ -283,10 +330,11 @@ function StudentManagement() {
       Email: student.Email || '',
       SoDienThoai: student.SoDienThoai || '',
       MaLop: student.MaLop || '',
-      TrangThai: student.TrangThai || 'Đang học'
+      TrangThai: student.TrangThai || 'Đang học',
+      startYear: years[0] || '',
+      endYear: years[1] || ''
     });
     setSelectedFaculty(student.MaKhoa || '');
-    setSelectedNienKhoa(student.NienKhoa || '');
     setShowModal(true);
   };
 
@@ -302,10 +350,11 @@ function StudentManagement() {
       Email: '',
       SoDienThoai: '',
       MaLop: '',
-      TrangThai: 'Đang học'
+      TrangThai: 'Đang học',
+      startYear: '',
+      endYear: ''
     });
     setSelectedFaculty('');
-    setSelectedNienKhoa('');
     setErrors({});
   };
 
@@ -348,7 +397,7 @@ function StudentManagement() {
       ...filteredStudents.map(s => [
         s.MSSV,
         s.HoTen,
-        s.NgaySinh,
+        s.NgaySinh ? s.NgaySinh.split('T')[0] : '',
         s.GioiTinh,
         s.Email,
         s.SoDienThoai,
@@ -363,22 +412,14 @@ function StudentManagement() {
     link.click();
   };
 
-  const filteredNienKhoas = useMemo(() => {
-    if (!selectedFaculty) return [];
-    const nienKhoas = classes
-      .filter(cls => cls.MaKhoa === selectedFaculty)
-      .map(cls => cls.NienKhoa)
-      .filter(Boolean);
-    return [...new Set(nienKhoas)].sort();
-  }, [classes, selectedFaculty]);
-
   const filteredClassesForForm = useMemo(() => {
-    if (!selectedFaculty || !selectedNienKhoa) return [];
+    if (!selectedFaculty || !formData.startYear || !formData.endYear) return [];
+    const nienKhoa = `${formData.startYear}-${formData.endYear}`;
     return classes.filter(cls => 
       cls.MaKhoa === selectedFaculty && 
-      cls.NienKhoa === selectedNienKhoa
+      cls.NienKhoa === nienKhoa
     );
-  }, [classes, selectedFaculty, selectedNienKhoa]);
+  }, [classes, selectedFaculty, formData.startYear, formData.endYear]);
 
   const filteredStudents = students.filter(student => {
     const searchLower = debouncedSearchTerm.toLowerCase();
@@ -768,7 +809,39 @@ function StudentManagement() {
                   />
                   {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
                 </div>
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={formData.startYear}
+                        onChange={handleStartYearChange}
+                        placeholder="Năm bắt đầu"
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                        maxLength={4}
+                      />
+                      {errors.startYear && (
+                        <p className="text-red-500 text-xs mt-1 font-medium">{errors.startYear}</p>
+                      )}
+                    </div>
+                    <span className="flex items-center text-gray-500 font-semibold">-</span>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={formData.endYear}
+                        onChange={handleEndYearChange}
+                        placeholder="Năm kết thúc"
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                        maxLength={4}
+                      />
+                      {errors.endYear && (
+                        <p className="text-red-500 text-xs mt-1 font-medium">{errors.endYear}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
                     <select
@@ -788,25 +861,6 @@ function StudentManagement() {
                     {errors.selectedFaculty && <p className="text-red-500 text-xs mt-1">{errors.selectedFaculty}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
-                    <select
-                      value={selectedNienKhoa}
-                      onChange={handleNienKhoaChange}
-                      disabled={!selectedFaculty}
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${
-                        errors.selectedNienKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                      }`}
-                    >
-                      <option value="">Chọn niên khóa</option>
-                      {filteredNienKhoas.map((nk) => (
-                        <option key={nk} value={nk}>
-                          {nk}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.selectedNienKhoa && <p className="text-red-500 text-xs mt-1">{errors.selectedNienKhoa}</p>}
-                  </div>
-                  <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
                     <select
                       value={formData.MaLop}
@@ -814,7 +868,7 @@ function StudentManagement() {
                         handleLopChange(e); // Gọi hàm tự động sinh MSSV
                         if (errors.MaLop) setErrors({ ...errors, MaLop: '' }); // Giữ nguyên tính năng xóa viền đỏ
                       }}
-                      disabled={!selectedNienKhoa}
+                      disabled={!selectedFaculty || !formData.startYear || !formData.endYear}
                       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${
                         errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
                       }`}
@@ -977,7 +1031,7 @@ function StudentManagement() {
                       {[
                         { label: 'MSSV', value: studentDetails.MSSV, icon: null },
                         { label: 'Họ tên', value: studentDetails.HoTen, icon: null },
-                        { label: 'Ngày sinh', value: studentDetails.NgaySinh, icon: null },
+                        { label: 'Ngày sinh', value: studentDetails.NgaySinh ? studentDetails.NgaySinh.split('T')[0] : '', icon: null },
                         { label: 'Giới tính', value: studentDetails.GioiTinh, icon: null },
                         { label: 'Email', value: studentDetails.Email, icon: Mail },
                         { label: 'SĐT', value: studentDetails.SoDienThoai, icon: Phone },
