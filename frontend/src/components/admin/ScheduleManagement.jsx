@@ -103,9 +103,7 @@ function ScheduleManagement() {
   const selectedLHPInfo = useMemo(() => {
     const lhp = lhpList.find(l => String(l.MaLopHocPhan).trim().toLowerCase() === String(formData.MaLopHocPhan).trim().toLowerCase());
     if (!lhp) return { tinChi: 0, soBuoiHoc: 0, soTietHoc: 0 };
-    // Mặc định 3 tín chỉ nếu API chưa trả về
     const tc = lhp.TinChi || lhp.SoTinChi || 3; 
-    // Quy chuẩn: 1 Tín chỉ = 3 Ca = 9 Tiết. 
     return { tinChi: tc, soBuoiHoc: tc * 3, soTietHoc: tc * 9 };
   }, [formData.MaLopHocPhan, lhpList]);
 
@@ -121,29 +119,78 @@ function ScheduleManagement() {
     
     for (let i = 0; i < numSessions; i++) {
       dates.push(new Date(curr));
-      // Tự động nhảy lịch sang tuần tiếp theo
       curr.setDate(curr.getDate() + 7);
     }
     return dates;
   }, [isRecurring, formData.NgayBatDau, formData.MaLopHocPhan, selectedLHPInfo]);
 
+  // LOGIC RÀNG BUỘC THỜI GIAN THỜI GIAN THỰC (REAL-TIME)
+  const handleDateChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentYear = today.getFullYear();
+    let errorMsg = '';
+
+    if (value) {
+      const selectedDate = new Date(value + 'T00:00:00');
+      const isSameOldDate = editingSchedule && getLocalYYYYMMDD(editingSchedule.NgayHoc) === value;
+      
+      if (!isSameOldDate) {
+        if (selectedDate < today) {
+          errorMsg = 'Không được xếp lịch vào ngày ở quá khứ.';
+        } else if (selectedDate.getFullYear() > currentYear) {
+          errorMsg = `Chỉ được phép xếp lịch trong năm hiện tại (${currentYear}).`;
+        }
+      }
+    }
+    setFormErrors(prev => ({ ...prev, [field]: errorMsg }));
+  };
+
   const validateScheduleForm = () => {
-    const errors = {};
+    const errors = { ...formErrors }; // Kế thừa các lỗi đã bắt real-time
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentYear = today.getFullYear();
+
     if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
+    
     if (isRecurring && !editingSchedule) {
-      if (!formData.NgayBatDau) errors.NgayBatDau = 'Chọn ngày bắt đầu';
+      if (!formData.NgayBatDau) {
+        errors.NgayBatDau = 'Chọn ngày bắt đầu';
+      } else {
+        const startDate = new Date(formData.NgayBatDau + 'T00:00:00');
+        if (startDate < today) errors.NgayBatDau = 'Không được xếp lịch vào ngày ở quá khứ.';
+        else if (startDate.getFullYear() > currentYear) errors.NgayBatDau = `Chỉ được phép bắt đầu lịch học trong năm hiện tại (${currentYear}).`;
+      }
     } else {
-      if (!formData.NgayHoc) errors.NgayHoc = 'Vui lòng chọn ngày học';
+      if (!formData.NgayHoc) {
+        errors.NgayHoc = 'Vui lòng chọn ngày học';
+      } else {
+        const singleDate = new Date(formData.NgayHoc + 'T00:00:00');
+        const isSameOldDate = editingSchedule && getLocalYYYYMMDD(editingSchedule.NgayHoc) === formData.NgayHoc;
+        
+        if (!isSameOldDate) {
+          if (singleDate < today) errors.NgayHoc = 'Không được xếp lịch vào ngày ở quá khứ.';
+          else if (singleDate.getFullYear() > currentYear) errors.NgayHoc = `Chỉ được phép xếp lịch trong năm hiện tại (${currentYear}).`;
+        }
+      }
     }
     if (!formData.CaHoc) errors.CaHoc = 'Vui lòng chọn ca học';
     if (!formData.PhongHoc) errors.PhongHoc = 'Vui lòng chọn phòng học';
+    
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    // Chỉ submit khi tất cả giá trị lỗi đều rỗng
+    return Object.values(errors).every(err => !err);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateScheduleForm()) return;
+    if (!validateScheduleForm()) {
+      showToast('Vui lòng kiểm tra lại các trường bị thiếu hoặc sai ngày!', 'error');
+      return;
+    }
 
     const currentFormLHP = String(formData.MaLopHocPhan).trim().toLowerCase();
     const selectedLHP = lhpList.find(l => String(l.MaLopHocPhan).trim().toLowerCase() === currentFormLHP);
@@ -385,7 +432,7 @@ function ScheduleManagement() {
               </div>
               
               <div className="p-6 overflow-y-auto space-y-4">
-                <form id="schedule-form" onSubmit={handleSubmit} className="space-y-4">
+                <form id="schedule-form" onSubmit={handleSubmit} noValidate className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Lớp học phần <span className="text-red-500">*</span></label>
                     <select 
@@ -435,12 +482,17 @@ function ScheduleManagement() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày bắt đầu học <span className="text-red-500">*</span></label>
-                            <input type="date" value={formData.NgayBatDau} onChange={e => setFormData({ ...formData, NgayBatDau: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayBatDau ? 'border-red-500' : 'border-gray-300'}`}/>
-                            {formErrors.NgayBatDau && <p className="text-red-500 text-xs mt-1">{formErrors.NgayBatDau}</p>}
-                            {/* Chú thích hiển thị ngày rõ ràng bằng tiếng Việt */}
-                            {formData.NgayBatDau && !formErrors.NgayBatDau && (
+                            <input 
+                              type="date" 
+                              value={formData.NgayBatDau} 
+                              onChange={e => handleDateChange('NgayBatDau', e.target.value)} 
+                              className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}
+                            />
+                            {formErrors.NgayBatDau ? (
+                              <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5"/> {formErrors.NgayBatDau}</p>
+                            ) : formData.NgayBatDau ? (
                               <p className="text-blue-600 text-xs mt-1.5 font-bold flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5"/> Lịch khởi động: {getDayAndDateStr(formData.NgayBatDau)}</p>
-                            )}
+                            ) : null}
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Dự kiến kết thúc</label>
@@ -480,11 +532,17 @@ function ScheduleManagement() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div>
                           <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày học <span className="text-red-500">*</span></label>
-                          <input type="date" value={formData.NgayHoc} onChange={e => setFormData({ ...formData, NgayHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayHoc ? 'border-red-500' : 'border-gray-300'}`}/>
-                          {formErrors.NgayHoc && <p className="text-red-500 text-xs mt-1">{formErrors.NgayHoc}</p>}
-                          {formData.NgayHoc && !formErrors.NgayHoc && (
+                          <input 
+                            type="date" 
+                            value={formData.NgayHoc} 
+                            onChange={e => handleDateChange('NgayHoc', e.target.value)} 
+                            className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}
+                          />
+                          {formErrors.NgayHoc ? (
+                            <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5"/> {formErrors.NgayHoc}</p>
+                          ) : formData.NgayHoc ? (
                             <p className="text-blue-600 text-[11px] mt-1.5 font-bold flex items-center gap-1"><CalendarDays className="w-3 h-3"/> {getDayAndDateStr(formData.NgayHoc)}</p>
-                          )}
+                          ) : null}
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
