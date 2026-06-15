@@ -222,6 +222,11 @@ app.post('/api/login', (req, res) => {
 app.post('/api/forgot-password', (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ success: false, message: 'Vui lòng nhập email!' });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ success: false, message: 'Email không đúng định dạng!' });
+    }
     
     const query = `
         SELECT 'sinhvien' as userType, MSSV as id, HoTen as name, Email as email FROM sinhvien WHERE Email = ?
@@ -230,44 +235,44 @@ app.post('/api/forgot-password', (req, res) => {
     `;
     db.query(query, [email, email], async (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
-        if (results.length > 0) {
-            const user = results[0];
-            // Generate JWT token with 30-minute expiry
-            const resetToken = jwt.sign(
-                { email: user.email, id: user.id, userType: user.userType },
-                JWT_SECRET,
-                { expiresIn: '30m' }
-            );
-            
-            // Create reset link
-            const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-            
-            // Send email
-            const mailOptions = {
-                from: process.env.EMAIL_USER,
-                to: user.email,
-                subject: 'Đặt lại mật khẩu - Hệ thống QLSV',
-                html: `
-                    <h2>Xin chào ${user.name},</h2>
-                    <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
-                    <p>Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu của bạn:</p>
-                    <p><a href="${resetLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Đặt lại mật khẩu</a></p>
-                    <p>Liên kết này sẽ hết hạn sau 30 phút.</p>
-                    <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
-                    <p>Trân trọng,<br>Hệ thống Quản lý Sinh Viên</p>
-                `
-            };
-            
-            try {
-                await transporter.sendMail(mailOptions);
-                return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
-            } catch (emailError) {
-                console.error('Lỗi gửi email:', emailError);
-                return res.status(500).json({ success: false, message: 'Lỗi gửi email!' });
-            }
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Email này không tồn tại trong hệ thống!' });
         }
-        // Don't reveal if email exists or not for security
-        return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
+
+        const user = results[0];
+        // Generate JWT token with 30-minute expiry
+        const resetToken = jwt.sign(
+            { email: user.email, id: user.id, userType: user.userType },
+            JWT_SECRET,
+            { expiresIn: '30m' }
+        );
+        
+        // Create reset link
+        const resetLink = `${process.env.FRONTEND_URL}/#/reset-password/${resetToken}`;
+        
+        // Send email
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Đặt lại mật khẩu - Hệ thống QLSV',
+            html: `
+                <h2>Xin chào ${user.name},</h2>
+                <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
+                <p>Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu của bạn:</p>
+                <p><a href="${resetLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Đặt lại mật khẩu</a></p>
+                <p>Liên kết này sẽ hết hạn sau 30 phút.</p>
+                <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+                <p>Trân trọng,<br>Hệ thống Quản lý Sinh Viên</p>
+            `
+        };
+        
+        try {
+            await transporter.sendMail(mailOptions);
+            return res.json({ success: true, message: `Liên kết đặt lại mật khẩu đã được gửi đến email ${email}!` });
+        } catch (emailError) {
+            console.error('Lỗi gửi email:', emailError);
+            return res.status(500).json({ success: false, message: 'Lỗi gửi email!' });
+        }
     });
 });
 
