@@ -2,10 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar as CalendarIcon, Plus, Edit, Trash2, Search, X, 
-  RefreshCw, CheckCircle2, AlertCircle, Clock, MapPin, Repeat, CalendarDays
+  RefreshCw, CheckCircle2, AlertCircle, Clock, MapPin, Repeat, CalendarDays, BookOpen, Layers
 } from 'lucide-react';
 import axios from 'axios';
 import API_URL from '../../api';
+
+// Danh sách phòng học cố định hệ thống
+const ROOM_LIST = [
+  'E-0101', 'E-0102', 'E-0201', 'E-0202', 'E-0301', 'E-0302',
+  'A-0101', 'A-0102', 'A-0201', 'A-0202',
+  'B-0101', 'B-0102', 'B-0201', 'B-0202',
+  'C-0101', 'C-0102', 'C-0201', 'C-0202'
+];
 
 function ScheduleManagement() {
   const [schedules, setSchedules] = useState([]);
@@ -25,7 +33,7 @@ function ScheduleManagement() {
 
   const [isRecurring, setIsRecurring] = useState(true);
   const [formData, setFormData] = useState({ 
-    MaLopHocPhan: '', NgayHoc: '', NgayBatDau: '', NgayKetThuc: '', ThuHoc: '', CaHoc: '', PhongHoc: '' 
+    MaLopHocPhan: '', NgayHoc: '', NgayBatDau: '', CaHoc: '', PhongHoc: '' 
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -47,7 +55,6 @@ function ScheduleManagement() {
     }
   };
 
-  // Hàm chuẩn hóa ngày khử hoàn toàn lỗi lệch múi giờ nhảy ngày
   const getLocalYYYYMMDD = (dateInput) => {
     if (!dateInput) return '';
     const d = new Date(dateInput);
@@ -58,7 +65,19 @@ function ScheduleManagement() {
     return `${year}-${month}-${day}`;
   };
 
-  // Nhóm dữ liệu theo ngày hiển thị dạng danh sách phẳng trục dọc
+  // Hàm chuyển đổi Date -> "Thứ..., DD/MM/YYYY"
+  const getDayAndDateStr = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    const names = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    const dayName = names[d.getDay()];
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dayName}, ${dd}/${mm}/${yyyy}`;
+  };
+
   const groupedSchedules = useMemo(() => {
     const filtered = schedules.filter(s =>
       s.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,34 +99,44 @@ function ScheduleManagement() {
     return Object.entries(groups).sort((a, b) => new Date(b[0]) - new Date(a[0]));
   }, [schedules, searchTerm]);
 
+  // LOGIC AUTO TÍNH BUỔI HỌC DỰA VÀO TÍN CHỈ
+  const selectedLHPInfo = useMemo(() => {
+    const lhp = lhpList.find(l => String(l.MaLopHocPhan).trim().toLowerCase() === String(formData.MaLopHocPhan).trim().toLowerCase());
+    if (!lhp) return { tinChi: 0, soBuoiHoc: 0, soTietHoc: 0 };
+    // Mặc định 3 tín chỉ nếu API chưa trả về
+    const tc = lhp.TinChi || lhp.SoTinChi || 3; 
+    // Quy chuẩn: 1 Tín chỉ = 3 Ca = 9 Tiết. 
+    return { tinChi: tc, soBuoiHoc: tc * 3, soTietHoc: tc * 9 };
+  }, [formData.MaLopHocPhan, lhpList]);
+
+  // TẠO LỘ TRÌNH LỊCH HỌC TỰ ĐỘNG (1 Buổi/Tuần)
   const previewDates = useMemo(() => {
-    if (!isRecurring || !formData.NgayBatDau || !formData.NgayKetThuc || formData.ThuHoc === '') return [];
+    if (!isRecurring || !formData.NgayBatDau || !formData.MaLopHocPhan) return [];
+    
     let dates = [];
     let curr = new Date(formData.NgayBatDau + 'T00:00:00'); 
-    let end = new Date(formData.NgayKetThuc + 'T23:59:59'); 
-    let targetDay = parseInt(formData.ThuHoc); 
+    if (isNaN(curr.getTime())) return [];
+
+    const numSessions = selectedLHPInfo.soBuoiHoc;
     
-    while(curr <= end) {
-      if (curr.getDay() === targetDay) {
-        dates.push(new Date(curr)); 
-      }
-      curr.setDate(curr.getDate() + 1);
+    for (let i = 0; i < numSessions; i++) {
+      dates.push(new Date(curr));
+      // Tự động nhảy lịch sang tuần tiếp theo
+      curr.setDate(curr.getDate() + 7);
     }
     return dates;
-  }, [isRecurring, formData.NgayBatDau, formData.NgayKetThuc, formData.ThuHoc]);
+  }, [isRecurring, formData.NgayBatDau, formData.MaLopHocPhan, selectedLHPInfo]);
 
   const validateScheduleForm = () => {
     const errors = {};
     if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
     if (isRecurring && !editingSchedule) {
       if (!formData.NgayBatDau) errors.NgayBatDau = 'Chọn ngày bắt đầu';
-      if (!formData.NgayKetThuc) errors.NgayKetThuc = 'Chọn ngày kết thúc';
-      if (formData.ThuHoc === '') errors.ThuHoc = 'Chọn thứ học';
     } else {
       if (!formData.NgayHoc) errors.NgayHoc = 'Vui lòng chọn ngày học';
     }
     if (!formData.CaHoc) errors.CaHoc = 'Vui lòng chọn ca học';
-    if (!formData.PhongHoc.trim()) errors.PhongHoc = 'Nhập phòng học';
+    if (!formData.PhongHoc) errors.PhongHoc = 'Vui lòng chọn phòng học';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -120,18 +149,13 @@ function ScheduleManagement() {
     const selectedLHP = lhpList.find(l => String(l.MaLopHocPhan).trim().toLowerCase() === currentFormLHP);
     if (!selectedLHP) { showToast('Không tìm thấy lớp học phần hợp lệ!', 'error'); return; }
 
-    // =========================================================================
-    // RÀNG BUỘC CHẶN TUYỆT ĐỐI: Không cho xếp lịch "Lặp định kỳ" nếu LHP đã từng có lịch học
     if (isRecurring && !editingSchedule) {
-      const isAlreadyScheduled = schedules.some(s => 
-        String(s.MaLopHocPhan).trim().toLowerCase() === currentFormLHP
-      );
+      const isAlreadyScheduled = schedules.some(s => String(s.MaLopHocPhan).trim().toLowerCase() === currentFormLHP);
       if (isAlreadyScheduled) {
-        showToast(`Lớp HP ${formData.MaLopHocPhan} đã được xếp lịch chính thức! Vui lòng chọn chế độ "Học bù (1 buổi)" để tạo lịch bổ sung.`, 'error');
+        showToast(`Lớp HP ${formData.MaLopHocPhan} đã được xếp lịch chính thức! Vui lòng chọn chế độ "Học bù (1 buổi)".`, 'error');
         return; 
       }
     }
-    // =========================================================================
 
     const caNew = String(formData.CaHoc).replace(/\D/g, ''); 
     let targetDates = [];
@@ -143,7 +167,7 @@ function ScheduleManagement() {
       targetDates.push(getLocalYYYYMMDD(formData.NgayHoc));
     }
 
-    // Kiểm tra trùng lịch học phòng, giảng viên, lớp sinh hoạt
+    // SIÊU LƯỚI LỌC TRÙNG LỊCH: Kiểm tra kỹ Phòng học
     for (const targetDate of targetDates) {
       const displayDate = targetDate.split('-').reverse().join('/'); 
 
@@ -155,8 +179,9 @@ function ScheduleManagement() {
       });
 
       for (const conflict of conflictingSchedules) {
+        // TRÙNG PHÒNG HỌC -> CHẶN
         if (String(conflict.PhongHoc).trim().toLowerCase() === String(formData.PhongHoc).trim().toLowerCase()) {
-          showToast(`Phòng ${formData.PhongHoc} đã bị kẹt vào Ca ${caNew} ngày ${displayDate}!`, 'error');
+          showToast(`Trùng lịch: Phòng ${formData.PhongHoc} đã có lớp học vào Ca ${caNew} ngày ${displayDate}!`, 'error');
           return; 
         }
 
@@ -166,7 +191,7 @@ function ScheduleManagement() {
           const sameTeacherTen = selectedLHP.TenGiangVien && conflictLHP.TenGiangVien && String(selectedLHP.TenGiangVien).trim().toLowerCase() === String(conflictLHP.TenGiangVien).trim().toLowerCase();
           
           if (sameTeacherMa || sameTeacherTen) {
-            showToast(`GV ${conflictLHP.TenGiangVien} đã bận dạy lớp khác vào Ca ${caNew} ngày ${displayDate}!`, 'error');
+            showToast(`Trùng lịch: GV ${conflictLHP.TenGiangVien} đã bị kẹt dạy lớp khác vào Ca ${caNew} ngày ${displayDate}!`, 'error');
             return;
           }
           
@@ -174,7 +199,7 @@ function ScheduleManagement() {
           const sameClassTen = selectedLHP.TenLop && conflictLHP.TenLop && String(selectedLHP.TenLop).trim().toLowerCase() === String(conflictLHP.TenLop).trim().toLowerCase();
 
           if (sameClassMa || sameClassTen) {
-            showToast(`Lớp ${conflictLHP.TenLop} bận học môn khác vào Ca ${caNew} ngày ${displayDate}!`, 'error');
+            showToast(`Trùng lịch: Lớp ${conflictLHP.TenLop} đã bận học môn khác vào Ca ${caNew} ngày ${displayDate}!`, 'error');
             return;
           }
         }
@@ -187,8 +212,8 @@ function ScheduleManagement() {
       message: editingSchedule 
         ? 'Bạn có chắc chắn muốn lưu thay đổi cho buổi học này?' 
         : isRecurring
-            ? `Hệ thống sẽ tự động tạo ${previewDates.length} buổi học định kỳ. Xác nhận lưu?` 
-            : 'Bạn có chắc chắn muốn thêm buổi học bù phát sinh này?',
+            ? `Hệ thống sẽ tạo ${previewDates.length} buổi học định kỳ (1 buổi/tuần). Xác nhận lưu?` 
+            : 'Bạn có chắc chắn muốn thêm buổi học bù này?',
       action: async () => {
         setConfirmDialog({ show: false, title: '', message: '', action: null });
         try {
@@ -246,21 +271,15 @@ function ScheduleManagement() {
       NgayHoc: getLocalYYYYMMDD(s.NgayHoc),
       CaHoc: String(s.CaHoc).replace(/\D/g, ''),
       PhongHoc: s.PhongHoc,
-      NgayBatDau: '', NgayKetThuc: '', ThuHoc: ''
+      NgayBatDau: ''
     });
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false); setEditingSchedule(null);
-    setFormData({ MaLopHocPhan: '', NgayHoc: '', CaHoc: '', PhongHoc: '', NgayBatDau: '', NgayKetThuc: '', ThuHoc: '' });
+    setFormData({ MaLopHocPhan: '', NgayHoc: '', CaHoc: '', PhongHoc: '', NgayBatDau: '' });
     setFormErrors({}); setIsRecurring(true);
-  };
-
-  const getDayName = (dateStr) => {
-    const d = new Date(dateStr + 'T00:00:00');
-    const names = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    return names[d.getDay()];
   };
 
   if (loading) return <div className="flex h-64 items-center justify-center"><RefreshCw className="animate-spin text-orange-500 w-12 h-12" /></div>;
@@ -277,13 +296,13 @@ function ScheduleManagement() {
         )}
       </AnimatePresence>
 
-      {/* Header Banner màu cam, thiết kế phẳng đồng bộ */}
+      {/* Header Banner */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl text-white flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-white/20 p-3 rounded-full border border-white/10 flex items-center justify-center shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>
           <div>
             <h2 className="text-2xl font-bold">Quản lý lịch học</h2>
-            <p className="text-orange-100 text-sm mt-0.5">Xếp lịch giảng dạy và điều phối thời gian biểu học phần hệ thống</p>
+            <p className="text-orange-100 text-sm mt-0.5">Xếp lịch giảng dạy và điều phối thời gian biểu học phần</p>
           </div>
         </div>
         <button onClick={() => setShowModal(true)} className="bg-white text-orange-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"><Plus className="w-5 h-5"/> Xếp lịch học</button>
@@ -295,26 +314,22 @@ function ScheduleManagement() {
         <input type="text" placeholder="Tìm kiếm mã lớp học phần, tên môn học, giảng viên..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:border-orange-500 text-sm font-medium" />
       </div>
 
-      {/* Danh sách Phẳng Timeline căn trái đồng bộ */}
+      {/* Danh sách Timeline */}
       <div className="space-y-6">
         {groupedSchedules.length > 0 ? groupedSchedules.map(([date, items]) => (
           <div key={date} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            
-            {/* Header hiển thị Thứ / Ngày - Căn trái sắc nét */}
             <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
               <h3 className="font-bold text-gray-800 text-sm md:text-base">
-                ▼ {getDayName(date)} - {date.split('-').reverse().join('/')}
+                ▼ {getDayAndDateStr(date)}
               </h3>
               <span className="bg-orange-50 text-orange-600 text-xs font-bold px-3 py-1 rounded-full border border-orange-100">
                 {items.length} ca học
               </span>
             </div>
             
-            {/* Hàng thông tin buổi học */}
             <div className="divide-y divide-gray-100">
               {items.map(s => (
                 <div key={s.MaLichHoc} className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
-                  
                   <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 items-center w-full">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Ca:</span>
@@ -322,7 +337,7 @@ function ScheduleManagement() {
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Phòng</span>
-                      <span className="font-bold text-gray-800 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-red-500"/> {s.PhongHoc}</span>
+                      <span className="font-bold text-gray-800 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-red-500"/> P.{s.PhongHoc}</span>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Môn học</span>
@@ -338,7 +353,6 @@ function ScheduleManagement() {
                     </div>
                   </div>
 
-                  {/* Nút thao tác cứng đổi tông màu cam đồng bộ */}
                   <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
                     <button onClick={() => handleEdit(s)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-orange-600 hover:border-orange-300 transition-colors">
                       <Edit className="w-3.5 h-3.5" /> Sửa
@@ -347,26 +361,24 @@ function ScheduleManagement() {
                       <Trash2 className="w-3.5 h-3.5" /> Xóa
                     </button>
                   </div>
-
                 </div>
               ))}
             </div>
-
           </div>
         )) : (
           <div className="text-center py-16 bg-white border border-gray-200 rounded-xl shadow-sm">
             <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium text-sm">Chưa có lịch học nào được tạo trong hệ thống.</p>
+            <p className="text-gray-500 font-medium text-sm">Chưa có lịch học nào được xếp.</p>
           </div>
         )}
       </div>
 
-      {/* Form Modal thiết kế phẳng vuông vức, bo tròn icon màu cam */}
+      {/* Modal Sắp Xếp / Sửa Lịch */}
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCloseModal} />
-            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="relative bg-white rounded-xl w-full max-w-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="relative bg-white rounded-xl w-full max-w-[700px] shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <h3 className="text-base font-bold text-gray-800 flex items-center gap-2"><CalendarDays className="w-5 h-5 text-orange-500"/> {editingSchedule ? 'Cập nhật lịch học' : 'Xếp lịch học mới'}</h3>
                 <button onClick={handleCloseModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"><X className="w-5 h-5" /></button>
@@ -390,6 +402,18 @@ function ScheduleManagement() {
                       {lhpList.map(lhp => (<option key={lhp.MaLopHocPhan} value={lhp.MaLopHocPhan}>[{lhp.MaLopHocPhan}] {lhp.TenMonHoc} - GV: {lhp.TenGiangVien}</option>))}
                     </select>
                     {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
+                    
+                    {/* KHỐI HIỂN THỊ TÍN CHỈ VÀ LỘ TRÌNH TỰ ĐỘNG MỚI */}
+                    {formData.MaLopHocPhan && !editingSchedule && isRecurring && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 p-4 bg-orange-50 border border-orange-100 rounded-xl shadow-sm overflow-hidden">
+                        <div className="flex flex-col md:flex-row justify-between items-center text-sm w-full gap-3">
+                          <span className="font-semibold text-gray-700 flex items-center gap-1.5 w-full md:w-auto"><BookOpen className="w-4 h-4 text-orange-500"/> Tín chỉ môn: <span className="text-orange-600 font-black text-base ml-1">{selectedLHPInfo.tinChi} TC</span></span>
+                          <span className="font-semibold text-gray-700 flex items-center gap-1.5 w-full md:w-auto"><Layers className="w-4 h-4 text-orange-500"/> Tổng số tiết: <span className="text-orange-600 font-black text-base ml-1">{selectedLHPInfo.soTietHoc} tiết</span></span>
+                          <span className="font-semibold text-gray-700 flex items-center gap-1.5 w-full md:w-auto"><CalendarDays className="w-4 h-4 text-orange-500"/> Lộ trình: <span className="text-orange-600 font-black text-base ml-1">{selectedLHPInfo.soBuoiHoc} buổi học</span></span>
+                        </div>
+                      </motion.div>
+                    )}
+
                     {editingSchedule && (
                       <p className="text-xs text-orange-600 mt-1.5 font-semibold flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5"/> 
@@ -405,52 +429,84 @@ function ScheduleManagement() {
                     </div>
                   )}
 
-                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50/50 space-y-4">
+                  <div className="p-5 border border-gray-200 rounded-xl bg-gray-50/50 space-y-5">
                     {isRecurring && !editingSchedule ? (
                       <>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Từ ngày <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày bắt đầu học <span className="text-red-500">*</span></label>
                             <input type="date" value={formData.NgayBatDau} onChange={e => setFormData({ ...formData, NgayBatDau: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayBatDau ? 'border-red-500' : 'border-gray-300'}`}/>
+                            {formErrors.NgayBatDau && <p className="text-red-500 text-xs mt-1">{formErrors.NgayBatDau}</p>}
+                            {/* Chú thích hiển thị ngày rõ ràng bằng tiếng Việt */}
+                            {formData.NgayBatDau && !formErrors.NgayBatDau && (
+                              <p className="text-blue-600 text-xs mt-1.5 font-bold flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5"/> Lịch khởi động: {getDayAndDateStr(formData.NgayBatDau)}</p>
+                            )}
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Đến ngày <span className="text-red-500">*</span></label>
-                            <input type="date" value={formData.NgayKetThuc} onChange={e => setFormData({ ...formData, NgayKetThuc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayKetThuc ? 'border-red-500' : 'border-gray-300'}`}/>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Dự kiến kết thúc</label>
+                            <input type="text" value={previewDates.length > 0 ? getDayAndDateStr(getLocalYYYYMMDD(previewDates[previewDates.length - 1])) : ''} disabled placeholder="Hệ thống tự động tính toán..." className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed"/>
+                            {previewDates.length > 0 && (
+                              <p className="text-emerald-600 text-xs mt-1.5 font-bold flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5"/>
+                                Buổi {selectedLHPInfo.soBuoiHoc}: Mở hệ thống nhập điểm
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Học vào Thứ <span className="text-red-500">*</span></label>
-                            <select value={formData.ThuHoc} onChange={e => setFormData({ ...formData, ThuHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm font-bold text-gray-700 focus:border-orange-500 ${formErrors.ThuHoc ? 'border-red-500' : 'border-gray-300'}`}>
-                              <option value="">-- Chọn Thứ --</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
+                            <select value={formData.PhongHoc} onChange={e => setFormData({ ...formData, PhongHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
+                              <option value="">-- Chọn Phòng --</option>
+                              {ROOM_LIST.map(r => <option key={r} value={r}>Phòng {r}</option>)}
                             </select>
+                            {formErrors.PhongHoc && <p className="text-red-500 text-xs mt-1">{formErrors.PhongHoc}</p>}
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ca học <span className="text-red-500">*</span></label>
                             <select value={formData.CaHoc} onChange={e => setFormData({ ...formData, CaHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.CaHoc ? 'border-red-500' : 'border-gray-300'}`}>
-                              <option value="">-- Chọn Ca --</option><option value="1">Ca 1 (Tiết 1-3)</option><option value="2">Ca 2 (Tiết 4-6)</option><option value="3">Ca 3 (Tiết 7-9)</option><option value="4">Ca 4 (Tiết 10-12)</option>
+                              <option value="">-- Chọn Ca --</option>
+                              <option value="1">Ca 1 (Tiết 1-3 | 07:00 - 09:30)</option>
+                              <option value="2">Ca 2 (Tiết 4-6 | 09:30 - 12:00)</option>
+                              <option value="3">Ca 3 (Tiết 7-9 | 12:30 - 14:30)</option>
+                              <option value="4">Ca 4 (Tiết 10-12 | 14:30 - 16:30)</option>
                             </select>
+                            {formErrors.CaHoc && <p className="text-red-500 text-xs mt-1">{formErrors.CaHoc}</p>}
                           </div>
                         </div>
                       </>
                     ) : (
-                      <div className="grid grid-cols-2 gap-4">
+                      // FORM CHO "HỌC BÙ (1 BUỔI)" HOẶC "SỬA LỊCH"
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div>
                           <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày học <span className="text-red-500">*</span></label>
                           <input type="date" value={formData.NgayHoc} onChange={e => setFormData({ ...formData, NgayHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayHoc ? 'border-red-500' : 'border-gray-300'}`}/>
+                          {formErrors.NgayHoc && <p className="text-red-500 text-xs mt-1">{formErrors.NgayHoc}</p>}
+                          {formData.NgayHoc && !formErrors.NgayHoc && (
+                            <p className="text-blue-600 text-[11px] mt-1.5 font-bold flex items-center gap-1"><CalendarDays className="w-3 h-3"/> {getDayAndDateStr(formData.NgayHoc)}</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
+                          <select value={formData.PhongHoc} onChange={e => setFormData({ ...formData, PhongHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
+                            <option value="">-- Chọn Phòng --</option>
+                            {ROOM_LIST.map(r => <option key={r} value={r}>Phòng {r}</option>)}
+                          </select>
+                          {formErrors.PhongHoc && <p className="text-red-500 text-xs mt-1">{formErrors.PhongHoc}</p>}
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ca học <span className="text-red-500">*</span></label>
                           <select value={formData.CaHoc} onChange={e => setFormData({ ...formData, CaHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.CaHoc ? 'border-red-500' : 'border-gray-300'}`}>
-                            <option value="">-- Chọn Ca --</option><option value="1">Ca 1 (Tiết 1-3)</option><option value="2">Ca 2 (Tiết 4-6)</option><option value="3">Ca 3 (Tiết 7-9)</option><option value="4">Ca 4 (Tiết 10-12)</option>
+                            <option value="">-- Chọn Ca --</option>
+                            <option value="1">Ca 1 (Tiết 1-3 | 07:00 - 09:30)</option>
+                            <option value="2">Ca 2 (Tiết 4-6 | 09:30 - 12:00)</option>
+                            <option value="3">Ca 3 (Tiết 7-9 | 12:30 - 14:30)</option>
+                            <option value="4">Ca 4 (Tiết 10-12 | 14:30 - 16:30)</option>
                           </select>
+                          {formErrors.CaHoc && <p className="text-red-500 text-xs mt-1">{formErrors.CaHoc}</p>}
                         </div>
                       </div>
                     )}
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
-                      <input type="text" placeholder="VD: E-0101" value={formData.PhongHoc} onChange={e => setFormData({ ...formData, PhongHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg text-sm font-bold text-gray-700 focus:border-orange-500 ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`} />
-                    </div>
                   </div>
                 </form>
               </div>
@@ -466,7 +522,7 @@ function ScheduleManagement() {
         )}
       </AnimatePresence>
 
-      {/* Confirm Dialog bo tròn hoàn toàn */}
+      {/* Confirm Dialog */}
       <AnimatePresence>
         {confirmDialog.show && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">

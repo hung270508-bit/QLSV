@@ -959,6 +959,27 @@ app.get('/api/course-sections', (req, res) => {
     executeQuery(query, [], res, 'Lỗi lấy danh sách lớp học phần!');
 });
 
+app.get('/api/course-sections', (req, res) => {
+    const query = `
+        SELECT
+            lhp.*,
+            mh.TenMonHoc,
+            mh.SoTinChi,
+            mh.MaKhoa,
+            l.TenLop,
+            gv.HoTen     AS TenGiangVien,
+            k.TenKhoa
+        FROM lophocphan lhp
+        LEFT JOIN monhoc   mh ON lhp.MaMonHoc   = mh.MaMonHoc
+        LEFT JOIN lophoc   l  ON lhp.MaLop       = l.MaLop
+        LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
+        LEFT JOIN khoa     k  ON mh.MaKhoa        = k.MaKhoa
+    `;
+    // JOIN khoa qua monhoc.MaKhoa → đảm bảo MaKhoa + TenKhoa luôn có
+    // dù lophocphan.MaLop là NULL (lớp tự do / đăng ký tự do)
+    executeQuery(query, [], res, 'Lỗi lấy danh sách lớp học phần!');
+});
+ 
 app.post('/api/teaching-assignments', (req, res) => {
     const { MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
     const maLHP = MaLopHocPhan || `${MaMonHoc}_${HocKy}_${Math.floor(Math.random()*1000)}`;
@@ -1027,7 +1048,20 @@ app.get('/api/enrollment/available/:mssv', (req, res) => {
 });
 
 app.get('/api/enrollment/my-courses/:mssv', (req, res) => executeQuery('SELECT dk.*, lhp.MaMonHoc, mh.TenMonHoc, mh.SoTinChi FROM dangky_hocphan dk JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE dk.MSSV = ? ORDER BY dk.NgayDangKy DESC', [req.params.mssv], res, 'Lỗi!'));
-
+// GET /api/enrollments/all
+// Trả toàn bộ bản ghi dangky_hocphan (FE dùng để check SV đã đăng ký LHP nào)
+// Shape: [{ MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy }, ...]
+app.get('/api/enrollments/all', (req, res) => {
+    executeQuery(
+        `SELECT MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy
+         FROM dangky_hocphan
+         WHERE TrangThai != 'Từ chối'
+         ORDER BY NgayDangKy DESC`,
+        [],
+        res,
+        'Lỗi lấy danh sách đăng ký học phần!'
+    );
+});
 app.post('/api/enrollment', (req, res) => {
     const { MSSV, MaLopHocPhan, HocKy } = req.body;
     const queryDK = "INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai) VALUES (?, ?, ?, 'Đã duyệt')";
