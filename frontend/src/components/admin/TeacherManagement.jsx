@@ -112,6 +112,8 @@ function TeacherManagement() {
       newErrors.HoTen = 'Họ tên không được để trống';
     } else if (formattedName.length < 2) {
       newErrors.HoTen = 'Họ tên phải có ít nhất 2 ký tự';
+    } else if (formattedName.length > 50) {
+      newErrors.HoTen = 'Họ tên không được vượt quá 50 ký tự';
     } else if (!/^[a-zA-Z\u00C0-\u1EF9\s]+$/.test(formattedName)) {
       newErrors.HoTen = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
     }
@@ -123,6 +125,15 @@ function TeacherManagement() {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
       if (!emailRegex.test(formData.Email)) {
         newErrors.Email = 'Email không đúng định dạng (VD: @gmail.com)';
+      } else {
+        // Validate trùng email
+        const duplicateEmail = teachers.find(
+          teacher => teacher.Email === formData.Email &&
+                     (!editingTeacher || teacher.MaGiangVien !== editingTeacher.MaGiangVien)
+        );
+        if (duplicateEmail) {
+          newErrors.Email = 'Email đã tồn tại trong hệ thống';
+        }
       }
     }
 
