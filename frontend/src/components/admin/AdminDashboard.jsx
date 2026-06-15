@@ -52,18 +52,64 @@ const pageComponents = {
 };
 
 function AdminDashboard({ user, onLogout }) {
-  const [activeMenu, setActiveMenu] = useState(() => localStorage.getItem('activeMenu') || 'dashboard');
-  const [prevMenu, setPrevMenu] = useState(null);
+  const [activeMenu, setActiveMenu] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
+  // =========================================================================
+  // BỘ CORE ĐIỀU HƯỚNG TỐI ƯU HÓA (CHỐNG LỖI VÒNG LẶP NÚT BACK)
+  // =========================================================================
+useEffect(() => {
+  const currentHash = window.location.hash.replace('#', '');
+
+  if (!currentHash) {
+    // Mới login: đặt #login làm "neo" để Back về đây → trigger logout
+    // Stack: [#login, #dashboard]
+    window.history.replaceState(null, '', '#login');
+    window.history.pushState(null, '', '#dashboard');
+    setActiveMenu('dashboard');
+  } else if (currentHash !== 'dashboard') {
+    // F5 ở chức năng khác: tái tạo stack [#login → #dashboard → #chucnang]
+    window.history.replaceState(null, '', '#login');
+    window.history.pushState(null, '', '#dashboard');
+    window.history.pushState(null, '', '#' + currentHash);
+    setActiveMenu(currentHash);
+  } else {
+    // Đang ở #dashboard
+    setActiveMenu('dashboard');
+  }
+
+  const handlePopState = () => {
+    const hash = window.location.hash.replace('#', '');
+    if (!hash || hash === 'login') {
+      // Back về #login hoặc mất hash → Đăng xuất
+      onLogout();
+    } else {
+      setActiveMenu(hash);
+    }
+  };
+
+  window.addEventListener('popstate', handlePopState);
+  return () => window.removeEventListener('popstate', handlePopState);
+}, [onLogout]);
 
   const handleNavigate = (id) => {
-    if (id !== activeMenu) {
-      setPrevMenu(activeMenu);
+    if (id === activeMenu) return;
+
+    if (id === 'dashboard') {
+      // Đang ở ô Chức năng bấm về "Tổng quan" -> Ấn lệnh LÙI LỊCH SỬ để rác không bị dồn
+      window.history.back();
+    } else {
+      if (activeMenu === 'dashboard') {
+        // Từ Tổng quan bấm vào Chức năng -> PUSH (Thêm 1 mốc lịch sử)
+        window.history.pushState(null, '', '#' + id);
+      } else {
+        // Từ Chức năng này bấm sang Chức năng khác -> REPLACE (Ghi đè, không làm dài lịch sử)
+        window.history.replaceState(null, '', '#' + id);
+      }
       setActiveMenu(id);
     }
   };
+  // =========================================================================
 
   const ActiveComponent = pageComponents[activeMenu] || DashboardOverview;
 
