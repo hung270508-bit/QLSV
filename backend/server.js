@@ -775,16 +775,7 @@ app.post('/api/subjects', (req, res) => {
     );
 });
 
-// Đã sửa: Bổ sung cập nhật trường MaKhoa vào câu lệnh UPDATE và mảng tham số
-app.put('/api/subjects/:maMH', (req, res) => 
-    executeUpdate(
-        'UPDATE monhoc SET TenMonHoc=?, SoTinChi=?, MaKhoa=? WHERE MaMonHoc=?', 
-        [req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa, req.params.maMH], 
-        res, 
-        'Cập nhật thành công!', 
-        'Lỗi cập nhật!'
-    )
-);
+// PUT endpoint for subjects has been removed - edit functionality disabled
 app.delete('/api/subjects/:maMH', (req, res) => executeDelete('DELETE FROM monhoc WHERE MaMonHoc=?', [req.params.maMH], res, 'Xóa thành công!', 'Lỗi xóa!'));
 app.get('/api/subjects/:maMH/classes', (req, res) => executeQuery('SELECT DISTINCT l.MaLop, l.TenLop, (SELECT COUNT(*) FROM sinhvien sv WHERE sv.MaLop = l.MaLop) as SoSinhVien FROM lophocphan lhp JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaMonHoc = ?', [req.params.maMH], res, 'Lỗi lấy danh sách lớp!'));
 app.get('/api/subjects/:maMH/teachers', (req, res) => executeQuery('SELECT DISTINCT gv.MaGiangVien, gv.HoTen FROM lophocphan lhp JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien WHERE lhp.MaMonHoc = ?', [req.params.maMH], res, 'Lỗi lấy danh sách GV!'));

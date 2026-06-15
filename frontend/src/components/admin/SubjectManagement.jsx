@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  BookOpen, Plus, Edit, Trash2, Search, X, Filter, 
+  BookOpen, Plus, Trash2, Search, X, Filter, 
   XCircle, Eye, Users, BarChart3, ChevronLeft, ChevronRight,
   Award, TrendingUp, AlertCircle, CheckCircle, UserCheck
 } from 'lucide-react';
@@ -19,7 +19,6 @@ const API_BASE = `${API_URL}/api`;
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [editingSubject, setEditingSubject] = useState(null);
   
   // States cho Search và Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,14 +172,9 @@ const API_BASE = `${API_URL}/api`;
 
   setIsSubmitting(true);
   try {
-    if (editingSubject) {
-      await axios.put(`${API_BASE}/subjects/${editingSubject.MaMonHoc}`, formData);
-      setToast({ show: true, message: 'Cập nhật môn học thành công!', type: 'success' });
-    } else {
-      const resCode = await axios.get(`${API_BASE}/subjects/next-code/${formData.MaKhoa}`);
-      await axios.post(`${API_BASE}/subjects`, { ...formData, MaMonHoc: resCode.data.MaMonHoc });
-      setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
-    }
+    const resCode = await axios.get(`${API_BASE}/subjects/next-code/${formData.MaKhoa}`);
+    await axios.post(`${API_BASE}/subjects`, { ...formData, MaMonHoc: resCode.data.MaMonHoc });
+    setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
     fetchData();
     handleCloseModal();
   } catch (error) {
@@ -192,22 +186,10 @@ const API_BASE = `${API_URL}/api`;
   }
 };
 
-  const handleEdit = (subject) => {
-    setEditingSubject(subject);
-    setFormData({
-      MaMonHoc: subject.MaMonHoc,
-      TenMonHoc: subject.TenMonHoc,
-      SoTinChi: subject.SoTinChi,
-      MaKhoa: subject.MaKhoa || ''
-    });
-    setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
-    setShowModal(true);
-  };
 
 
   const handleCloseModal = () => {
   setShowModal(false);
-  setEditingSubject(null);
   setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
   setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
 };
@@ -232,7 +214,7 @@ const API_BASE = `${API_URL}/api`;
     const maKhoa = e.target.value;
     setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '' }));
     if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
-    if (editingSubject || !maKhoa) return;
+    if (!maKhoa) return;
     try {
       const res = await axios.get(`${API_BASE}/subjects/next-code/${maKhoa}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: res.data.MaMonHoc }));
@@ -343,7 +325,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
               <BookOpen className="w-8 h-8" />
               Quản lý môn học
             </h2>
-            <p className="text-orange-100 text-lg">Thêm, sửa và xem chi tiết thông tin môn học</p>
+            <p className="text-orange-100 text-lg">Thêm và xem chi tiết thông tin môn học</p>
           </div>
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(249,115,22,0.2)" }}
@@ -498,15 +480,6 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(subject)}
-                          className="p-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all shadow-sm border border-orange-100"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
                           onClick={() => handleDelete(subject)}
                           className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100"
                           title="Xóa"
@@ -586,10 +559,10 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
               <div className="text-white">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <BookOpen className="w-5 h-5" />
-                  {editingSubject ? 'Cập nhật môn học' : 'Thêm môn học mới'}
+                  Thêm môn học mới
                 </h3>
                 <p className="text-orange-100 text-sm mt-0.5">
-                  {editingSubject ? 'Chỉnh sửa thông tin môn học' : 'Tạo môn học theo khoa chuyên môn'}
+                  Tạo môn học theo khoa chuyên môn
                 </p>
               </div>
               <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
@@ -661,7 +634,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
     disabled={isSubmitting}
     className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg disabled:opacity-60"
   >
-    {isSubmitting ? 'Đang lưu...' : (editingSubject ? 'Lưu thay đổi' : 'Thêm môn học')}
+    {isSubmitting ? 'Đang lưu...' : 'Thêm môn học'}
   </button>
 </div>
 </form>

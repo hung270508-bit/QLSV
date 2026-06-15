@@ -60,6 +60,19 @@ function StudentManagement() {
       .replace(/Đ/g, 'D');
   }, []);
 
+  // Capitalize first letter of each word for Vietnamese names
+  const capitalizeVietnameseName = useCallback((str) => {
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(word => {
+        if (word.length === 0) return '';
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+  }, []);
+
   // Debounced search
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
@@ -225,13 +238,19 @@ function StudentManagement() {
   e.preventDefault();
   if (!validateForm()) return;
 
+  // Capitalize the name before saving
+  const formDataWithCapitalizedName = {
+    ...formData,
+    HoTen: capitalizeVietnameseName(formData.HoTen)
+  };
+
   if (editingStudent) {
     setConfirmDialog({
       show: true,
-      message: `Bạn có chắc chắn muốn cập nhật thông tin sinh viên "${formData.HoTen}" (${formData.MSSV}) không?`,
+      message: `Bạn có chắc chắn muốn cập nhật thông tin sinh viên "${formDataWithCapitalizedName.HoTen}" (${formData.MSSV}) không?`,
       onConfirm: async () => {
         try {
-          await axios.put(`${API_BASE}/students/${editingStudent.MSSV}`, formData);
+          await axios.put(`${API_BASE}/students/${editingStudent.MSSV}`, formDataWithCapitalizedName);
           setToast({ show: true, message: 'Cập nhật sinh viên thành công!', type: 'success' });
           fetchData();
           handleCloseModal();
@@ -243,7 +262,7 @@ function StudentManagement() {
     });
   } else {
     try {
-      await axios.post(`${API_BASE}/students`, formData);
+      await axios.post(`${API_BASE}/students`, formDataWithCapitalizedName);
       setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
       fetchData();
       handleCloseModal();
@@ -592,7 +611,7 @@ function StudentManagement() {
                       <span className="font-semibold text-gray-800 text-base">{student.MSSV}</span>
                     </td>
                     <td className="py-5 px-6">
-                      <div className="font-semibold text-gray-800">{student.HoTen}</div>
+                      <div className="font-semibold text-gray-800">{capitalizeVietnameseName(student.HoTen)}</div>
                     </td>
                     <td className="py-5 px-6">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
@@ -868,7 +887,7 @@ function StudentManagement() {
                     </div>
                     <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết sinh viên</span>
                   </div>
-                  <h2 className="text-2xl font-bold text-white mt-2">{studentDetails?.HoTen || selectedStudent.HoTen}</h2>
+                  <h2 className="text-2xl font-bold text-white mt-2">{capitalizeVietnameseName(studentDetails?.HoTen || selectedStudent.HoTen)}</h2>
                   <div className="flex items-center gap-4 mt-2">
                     <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
                     {studentDetails?.TenLop && (

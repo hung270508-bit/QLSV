@@ -29,16 +29,12 @@ function TeachingAssignment() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
-  // Hoc ky / nam hoc
+  // Cố định Năm bắt đầu là 2026 theo yêu cầu
   const [hocKySo, setHocKySo] = useState('');
   const [hocKyError, setHocKyError] = useState('');
   const [hocKyInfo, setHocKyInfo] = useState('');
-  const [namBatDau, setNamBatDau] = useState('');
-  
-  const namKetThuc = useMemo(() => {
-    const n = parseInt(namBatDau);
-    return !isNaN(n) && namBatDau.length === 4 ? String(n + 1) : '';
-  }, [namBatDau]);
+  const namBatDau = '2026';
+  const namKetThuc = '2027';
 
   // Form Data 
   const [formData, setFormData] = useState({
@@ -95,25 +91,24 @@ function TeachingAssignment() {
     return teachers.filter(t => t.TrangThai === 'Đang dạy' && String(t.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
   }, [formData.MaKhoa, teachers]);
 
-  // RÀNG BUỘC KIỂM TRA NĂM HỌC 2025 - 2028
+  // RÀNG BUỘC CỐ ĐỊNH NĂM 2026
   useEffect(() => {
     let msg = '';
     let err = '';
-    const year = parseInt(namBatDau);
-    if (hocKySo && namBatDau && namBatDau.length === 4 && year >= 2025 && year <= 2028) {
+    if (hocKySo) {
       msg = `Học kỳ ${hocKySo} - Năm học ${namBatDau}-${namKetThuc}`;
       const hk = `HK${hocKySo}_${namBatDau}_${namKetThuc}`;
       setFormData(f => ({ ...f, HocKy: hk, NamHoc: `${namBatDau}-${namKetThuc}` }));
-    } else if (hocKySo || namBatDau) {
-      err = 'Vui lòng nhập Học kỳ và Năm bắt đầu (từ 2025 đến 2028)';
+    } else {
+      err = 'Vui lòng chọn Học kỳ để phân công';
     }
     setHocKyInfo(msg);
     setHocKyError(err);
-  }, [hocKySo, namBatDau, namKetThuc]);
+  }, [hocKySo]);
 
-  // TỰ ĐỘNG GEN MÃ LỚP HỌC PHẦN
+  // TỰ ĐỘNG GEN MÃ LỚP HỌC PHẦN (CHẠY NGẦM, ẨN KHỎI FORM)
   useEffect(() => {
-    if (formData.MaMonHoc && formData.HocKy && namBatDau.length === 4 && namKetThuc) {
+    if (formData.MaMonHoc && formData.HocKy) {
       const hkCode = `HK${hocKySo}`;
       const namCode = `${namBatDau.slice(-2)}${namKetThuc.slice(-2)}`;
       const base = `${formData.MaMonHoc}.${hkCode}${namCode}`;
@@ -122,30 +117,39 @@ function TeachingAssignment() {
       const stt = String(existing.length + 1).padStart(2, '0');
       
       setFormData(f => ({ ...f, MaLopHocPhan: `${base}.HP${stt}` }));
-      if (formErrors.MaLopHocPhan) setFormErrors(prev => ({ ...prev, MaLopHocPhan: '' }));
+      setFormErrors(prev => ({ ...prev, MaLopHocPhan: '' }));
     }
-  }, [formData.MaMonHoc, formData.HocKy, hocKySo, namBatDau, namKetThuc, assignments]);
-
+  }, [formData.MaMonHoc, formData.HocKy, hocKySo, assignments]);
 
   const validateForm = () => {
     const errors = {};
     if (!formData.MaKhoa) errors.MaKhoa = 'Vui lòng chọn Khoa.';
     if (!formData.MaMonHoc) errors.MaMonHoc = 'Vui lòng chọn Môn học.';
     if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn Giảng viên.';
-    if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng tạo hoặc nhập Mã lớp học phần.';
     
-    // Ràng buộc Sĩ số 30 - 80
-    const siSo = parseInt(formData.SoLuongToiDa);
+    // Ràng buộc: Giảng viên không được dạy lại chính lớp A cho cùng 1 môn
+    if (formData.MaLop && formData.MaGiangVien && formData.MaMonHoc) {
+      const isDuplicate = assignments.some(a => 
+        String(a.MaGiangVien).trim().toLowerCase() === String(formData.MaGiangVien).trim().toLowerCase() &&
+        String(a.MaLop).trim().toLowerCase() === String(formData.MaLop).trim().toLowerCase() &&
+        String(a.MaMonHoc).trim().toLowerCase() === String(formData.MaMonHoc).trim().toLowerCase()
+      );
+      if (isDuplicate) {
+        errors.MaLop = 'Giảng viên này đã được phân công dạy môn này cho lớp đã chọn.';
+      }
+    }
+    
+    // Ràng buộc Sĩ số: Phải là SỐ NGUYÊN và nằm trong khoảng 30 - 80
+    const siSo = Number(formData.SoLuongToiDa);
     if (!formData.SoLuongToiDa || isNaN(siSo)) {
       errors.SoLuongToiDa = 'Vui lòng nhập Sĩ số.';
+    } else if (!Number.isInteger(siSo)) {
+      errors.SoLuongToiDa = 'Sĩ số bắt buộc phải là số nguyên.';
     } else if (siSo < 30 || siSo > 80) {
       errors.SoLuongToiDa = 'Sĩ số phải từ 30 đến 80 sinh viên.';
     }
 
-    // Ràng buộc Năm Học 2025 - 2028 khi ấn Lưu
-    const year = parseInt(namBatDau);
     if (!hocKySo || hocKySo < 1 || hocKySo > 3) errors.HocKy = 'Vui lòng chọn Học kỳ hợp lệ.';
-    if (!namBatDau || isNaN(year) || year < 2025 || year > 2028) errors.NamHoc = 'Năm bắt đầu phải từ 2025 đến 2028.';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -153,26 +157,27 @@ function TeachingAssignment() {
 
   const handleKhoaChange = (e) => {
     const maKhoa = e.target.value;
-    // RESET cả Môn học, Mã LHP, và Giảng viên khi đổi Khoa
-    setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '', MaLopHocPhan: '', MaGiangVien: '' }));
-    if (formErrors.MaKhoa) setFormErrors({ ...formErrors, MaKhoa: '' });
+    // RESET làm trắng các dropdown liên quan khi đổi Khoa
+    setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '', MaLopHocPhan: '', MaGiangVien: '', MaLop: '' }));
+    setFormErrors(prev => ({ ...prev, MaKhoa: '', MaMonHoc: '', MaGiangVien: '', MaLop: '' }));
   };
 
   const handleMonHocChange = (e) => {
     const maMon = e.target.value;
     setFormData(prev => ({ ...prev, MaMonHoc: maMon, MaLopHocPhan: '' }));
-    if (formErrors.MaMonHoc) setFormErrors({ ...formErrors, MaMonHoc: '' });
+    setFormErrors(prev => ({ ...prev, MaMonHoc: '', MaLop: '' }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      showToast('Vui lòng kiểm tra lại các trường bị thiếu!', 'error');
+      showToast('Vui lòng kiểm tra lại các trường bị thiếu hoặc sai định dạng!', 'error');
       return;
     }
 
     const payload = {
       ...formData,
+      SoLuongToiDa: parseInt(formData.SoLuongToiDa), // Đảm bảo gửi lên DB là số nguyên chuẩn
       HocKy: formData.HocKy
     };
 
@@ -215,7 +220,7 @@ function TeachingAssignment() {
   const handleCloseModal = () => {
     setShowModal(false);
     setFormData({ MaKhoa: '', MaLopHocPhan: '', MaMonHoc: '', MaGiangVien: '', MaLop: '', HocKy: '', NamHoc: '', SoLuongToiDa: 40 });
-    setHocKySo(''); setNamBatDau(''); setHocKyError(''); setHocKyInfo('');
+    setHocKySo(''); setHocKyError(''); setHocKyInfo('');
     setFormErrors({});
   };
 
@@ -408,16 +413,10 @@ function TeachingAssignment() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Mã Lớp Học Phần <span className="text-red-500">*</span></label>
-                    <input type="text" value={formData.MaLopHocPhan} readOnly placeholder="Mã sẽ tự động sinh khi điền đủ Môn Học và Học Kỳ..." className={`w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl font-bold font-mono text-orange-600 outline-none opacity-80 ${formErrors.MaLopHocPhan ? 'border-red-500' : ''}`} />
-                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-sm mt-1">{formErrors.MaLopHocPhan}</p>}
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Giảng viên phụ trách <span className="text-red-500">*</span></label>
-                      <select disabled={!formData.MaKhoa} value={formData.MaGiangVien} onChange={e => {setFormData({...formData, MaGiangVien: e.target.value}); setFormErrors({...formErrors, MaGiangVien: ''})}} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
+                      <select disabled={!formData.MaKhoa} value={formData.MaGiangVien} onChange={e => {setFormData({...formData, MaGiangVien: e.target.value}); setFormErrors(prev => ({...prev, MaGiangVien: '', MaLop: ''}))}} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
                         {filteredTeachers.length === 0 && formData.MaKhoa 
                           ? <option value="" disabled>Khoa này chưa có giảng viên</option> 
                           : <option value="">-- Chọn giảng viên --</option>}
@@ -428,10 +427,11 @@ function TeachingAssignment() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
-                      <select value={formData.MaLop} onChange={e => setFormData({...formData, MaLop: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl outline-none focus:border-orange-500 transition-all">
+                      <select value={formData.MaLop} onChange={e => {setFormData({...formData, MaLop: e.target.value}); setFormErrors(prev => ({...prev, MaLop: ''}))}} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all ${formErrors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
                         <option value="">-- Dành cho mọi sinh viên --</option>
                         {classes.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
                       </select>
+                      {formErrors.MaLop && <p className="text-red-500 text-sm mt-1">{formErrors.MaLop}</p>}
                     </div>
                   </div>
 
@@ -447,13 +447,13 @@ function TeachingAssignment() {
                       
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Năm bắt đầu <span className="text-red-500">*</span></label>
-                        <input type="number" min="2025" max="2028" placeholder="VD: 2025" value={namBatDau} onChange={e => {setNamBatDau(e.target.value); setFormErrors({...formErrors, NamHoc: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold outline-none focus:border-orange-500 ${formErrors.NamHoc ? 'border-red-500' : 'border-gray-200'}`} />
-                        {formErrors.NamHoc && <p className="text-red-500 text-sm mt-1">{formErrors.NamHoc}</p>}
+                        <input type="text" value="2026" disabled className="w-full p-3 bg-gray-100 border-2 border-gray-200 rounded-xl font-bold text-gray-500 outline-none cursor-not-allowed" />
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Sĩ số (30 - 80) <span className="text-red-500">*</span></label>
-                        <input type="number" value={formData.SoLuongToiDa} onChange={e => {setFormData({...formData, SoLuongToiDa: e.target.value}); setFormErrors({...formErrors, SoLuongToiDa: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold text-orange-600 outline-none focus:border-orange-500 ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
+                        {/* Ngăn chặn nhập dấu chấm, phẩy hoặc chữ e bằng sự kiện onKeyDown */}
+                        <input type="number" min="30" max="80" step="1" onKeyDown={(e) => { if(e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => {setFormData({...formData, SoLuongToiDa: e.target.value}); setFormErrors({...formErrors, SoLuongToiDa: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold text-orange-600 outline-none focus:border-orange-500 ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
                         {formErrors.SoLuongToiDa && <p className="text-red-500 text-sm mt-1">{formErrors.SoLuongToiDa}</p>}
                       </div>
                     </div>
