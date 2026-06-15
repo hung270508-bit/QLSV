@@ -19,8 +19,8 @@ function TeacherManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ facultyFilter: '' });
-  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '' });
+  const [filters, setFilters] = useState({ facultyFilter: '', statusFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '', statusFilter: '' });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [teacherDetails, setTeacherDetails] = useState(null);
@@ -283,8 +283,9 @@ function TeacherManagement() {
       facultyNameNoTones.includes(searchNoTones);
     
     const matchesFaculty = !filters.facultyFilter || teacher.MaKhoa === filters.facultyFilter;
+    const matchesStatus = !filters.statusFilter || teacher.TrangThai === filters.statusFilter;
     
-    return matchesSearch && matchesFaculty;
+    return matchesSearch && matchesFaculty && matchesStatus;
   });
 
   const handleSearch = () => {
@@ -302,14 +303,14 @@ function TeacherManagement() {
   };
 
   const clearFilters = () => {
-    setFilters({ facultyFilter: '' });
-    setDisplayFilters({ facultyFilter: '' });
+    setFilters({ facultyFilter: '', statusFilter: '' });
+    setDisplayFilters({ facultyFilter: '', statusFilter: '' });
     setSearchTerm('');
     setDisplaySearchTerm('');
   };
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || searchTerm.trim();
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || searchTerm.trim();
 
   if (loading) {
     return (
@@ -416,20 +417,35 @@ function TeacherManagement() {
             exit={{ opacity: 0, height: 0 }}
             className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
           >
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
-              <select
-                value={displayFilters.facultyFilter}
-                onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
-                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
-              >
-                <option value="">Tất cả khoa</option>
-                {uniqueFaculties.map((faculty) => (
-                  <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                    {faculty.TenKhoa}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+                <select
+                  value={displayFilters.facultyFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                >
+                  <option value="">Tất cả khoa</option>
+                  {uniqueFaculties.map((faculty) => (
+                    <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                      {faculty.TenKhoa}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo trạng thái</label>
+                <select
+                  value={displayFilters.statusFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, statusFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="Đang dạy">Đang dạy</option>
+                  <option value="Tạm nghỉ">Tạm nghỉ</option>
+                  <option value="Nghỉ việc">Nghỉ việc</option>
+                </select>
+              </div>
             </div>
             <div className="flex gap-3 pt-2">
               <motion.button
@@ -443,7 +459,7 @@ function TeacherManagement() {
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                onClick={() => setDisplayFilters({ facultyFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '' })}
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
