@@ -7,12 +7,16 @@ const envFile = isCloud ? '.env.aiven' : '.env.local';
 // Tự động nạp đúng file cấu hình tương ứng
 require('dotenv').config({ path: path.join(__dirname, envFile) });
 
+// Load email configuration
+require('dotenv').config({ path: path.join(__dirname, '.env.email') });
+
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const nodemailer = require('nodemailer');
 const saltRounds = 10;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '24h';
@@ -50,6 +54,17 @@ db.getConnection((err, connection) => {
     });
 });
 
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 app.use(cors({
     origin: [
         'https://hung270508-bit.github.io', // Khi chạy online trên GitHub Pages
@@ -64,15 +79,6 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
-
-// Rate limiting for login attempts
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // Limit each IP to 5 login attempts per windowMs
-    message: { success: false, message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 15 phút.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
@@ -154,7 +160,7 @@ const normalizeClassGradeStats = (row) => ({
 });
 
 // ==================== API ĐĂNG NHẬP & QUÊN MẬT KHẨU ====================
-app.post('/api/login', loginLimiter, (req, res) => {
+app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!' });
 
@@ -222,12 +228,43 @@ app.post('/api/forgot-password', (req, res) => {
         UNION
         SELECT 'giangvien' as userType, MaGiangVien as id, HoTen as name, Email as email FROM giangvien WHERE Email = ?
     `;
-    db.query(query, [email, email], (err, results) => {
+    db.query(query, [email, email], async (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
         if (results.length > 0) {
-            // In production, send actual email with reset link
-            // For now, return success message
-            return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
+            const user = results[0];
+            // Generate JWT token with 30-minute expiry
+            const resetToken = jwt.sign(
+                { email: user.email, id: user.id, userType: user.userType },
+                JWT_SECRET,
+                { expiresIn: '30m' }
+            );
+            
+            // Create reset link
+            const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+            
+            // Send email
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: user.email,
+                subject: 'Đặt lại mật khẩu - Hệ thống QLSV',
+                html: `
+                    <h2>Xin chào ${user.name},</h2>
+                    <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
+                    <p>Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu của bạn:</p>
+                    <p><a href="${resetLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Đặt lại mật khẩu</a></p>
+                    <p>Liên kết này sẽ hết hạn sau 30 phút.</p>
+                    <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+                    <p>Trân trọng,<br>Hệ thống Quản lý Sinh Viên</p>
+                `
+            };
+            
+            try {
+                await transporter.sendMail(mailOptions);
+                return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
+            } catch (emailError) {
+                console.error('Lỗi gửi email:', emailError);
+                return res.status(500).json({ success: false, message: 'Lỗi gửi email!' });
+            }
         }
         // Don't reveal if email exists or not for security
         return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
@@ -246,23 +283,6 @@ app.post('/api/change-password', verifyToken, async (req, res) => {
     
     if (!currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới!' });
-    }
-    
-    // Password strength validation
-    if (newPassword.length < 8) {
-        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 8 ký tự!' });
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 chữ cái viết hoa!' });
-    }
-    if (!/[a-z]/.test(newPassword)) {
-        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 chữ cái viết thường!' });
-    }
-    if (!/[0-9]/.test(newPassword)) {
-        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 chữ số!' });
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
-        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt!' });
     }
     
     const query = 'SELECT password FROM users WHERE TaiKhoan = ?';
@@ -295,6 +315,43 @@ app.post('/api/change-password', verifyToken, async (req, res) => {
             res.status(500).json({ success: false, message: 'Lỗi mã hóa mật khẩu!' });
         }
     });
+});
+
+// Reset password endpoint
+app.post('/api/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Vui lòng cung cấp token và mật khẩu mới!' });
+    }
+    
+    // Validate password strength
+    if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 8 ký tự!' });
+    }
+    
+    try {
+        // Verify JWT token
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const { email, id, userType } = decoded;
+        
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        
+        // Update password in users table
+        db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
+            res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
+        });
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(400).json({ success: false, message: 'Token đã hết hạn. Vui lòng yêu cầu đặt lại mật khẩu lại!' });
+        }
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(400).json({ success: false, message: 'Token không hợp lệ!' });
+        }
+        return res.status(500).json({ success: false, message: 'Lỗi server!' });
+    }
 });
 
 // ==================== DASHBOARD STATISTICS ====================
