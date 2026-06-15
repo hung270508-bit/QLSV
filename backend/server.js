@@ -248,7 +248,10 @@ app.post('/api/forgot-password', (req, res) => {
         );
         
         // Create reset link dynamically based on request origin (local or cloud)
-        const origin = req.headers.origin || process.env.FRONTEND_URL;
+        let origin = req.headers.origin || process.env.FRONTEND_URL;
+        if (origin && origin.includes('hung270508-bit.github.io') && !origin.includes('/QLSV')) {
+            origin = origin.replace(/\/$/, '') + '/QLSV';
+        }
         const resetLink = `${origin}/#/reset-password/${resetToken}`;
         
         // Send email
