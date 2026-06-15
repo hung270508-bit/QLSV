@@ -59,9 +59,10 @@ function AdminDashboard({ user, onLogout }) {
   // BỘ CORE ĐIỀU HƯỚNG TỐI ƯU HÓA (CHỐNG LỖI VÒNG LẶP NÚT BACK)
   // =========================================================================
 useEffect(() => {
-  const currentHash = window.location.hash.replace('#', '');
+  // Strip both '#' and leading '/' to get the clean menu ID (e.g., '#/sinhvien' -> 'sinhvien')
+  const currentHash = window.location.hash.replace('#', '').replace(/^\//, '');
 
-  if (!currentHash) {
+  if (!currentHash || currentHash === 'login') {
     // Mới login: đặt #login làm "neo" để Back về đây → trigger logout
     // Stack: [#login, #dashboard]
     window.history.replaceState(null, '', '#login');
@@ -79,7 +80,7 @@ useEffect(() => {
   }
 
   const handlePopState = () => {
-    const hash = window.location.hash.replace('#', '');
+    const hash = window.location.hash.replace('#', '').replace(/^\//, '');
     if (!hash || hash === 'login') {
       // Back về #login hoặc mất hash → Đăng xuất
       onLogout();
