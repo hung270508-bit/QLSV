@@ -189,6 +189,18 @@ function ClassManagement() {
       newErrors.TenLop = 'Tên lớp không được để trống';
     } else if (tenLopTrimmed.length < 2) {
       newErrors.TenLop = 'Tên lớp phải có ít nhất 2 ký tự';
+    } else if (tenLopTrimmed.includes('-')) {
+      // Validate dash position: must be between two words
+      const parts = tenLopTrimmed.split('-');
+      if (parts.length > 2) {
+        newErrors.TenLop = 'Tên lớp chỉ được phép có một dấu "-"';
+      } else {
+        const beforeDash = parts[0].trim();
+        const afterDash = parts[1].trim();
+        if (!beforeDash || !afterDash) {
+          newErrors.TenLop = 'Dấu "-" phải nằm giữa hai từ (VD: Toán - Văn)';
+        }
+      }
     }
 
     // Validate MaKhoa

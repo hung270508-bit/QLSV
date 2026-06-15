@@ -130,15 +130,33 @@ function TeacherManagement() {
     if (!formData.SoDienThoai.trim()) {
       newErrors.SoDienThoai = 'Số điện thoại không được để trống';
     } else {
-      const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
-      if (!phoneRegex.test(formData.SoDienThoai)) {
-        newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)';
+      const phoneDigits = formData.SoDienThoai.replace(/\D/g, ''); // Remove non-digit characters
+      if (phoneDigits.length < 10) {
+        newErrors.SoDienThoai = 'SĐT không dưới 10 số';
+      } else if (phoneDigits.length > 10) {
+        newErrors.SoDienThoai = 'SĐT không trên 10 số';
+      } else {
+        const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
+        if (!phoneRegex.test(formData.SoDienThoai)) {
+          newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)';
+        }
       }
     }
 
     // Validate Khoa
     if (!formData.MaKhoa) {
       newErrors.MaKhoa = 'Vui lòng chọn khoa';
+    }
+
+    // Validate trùng số điện thoại
+    if (formData.SoDienThoai.trim()) {
+      const duplicatePhone = teachers.find(
+        teacher => teacher.SoDienThoai === formData.SoDienThoai &&
+                   (!editingTeacher || teacher.MaGiangVien !== editingTeacher.MaGiangVien)
+      );
+      if (duplicatePhone) {
+        newErrors.SoDienThoai = 'Số điện thoại đã tồn tại trong hệ thống';
+      }
     }
 
     setErrors(newErrors);
