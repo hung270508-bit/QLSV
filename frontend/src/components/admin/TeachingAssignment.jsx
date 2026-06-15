@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Trash2, Search, X, ClipboardCheck, BookOpen, AlertCircle, CheckCircle2, UserCheck } from 'lucide-react';
+import { Plus, Trash2, Search, X, ClipboardCheck, BookOpen, AlertCircle, CheckCircle2, UserCheck } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { ConfirmDialog, SuccessDialog, ErrorDialog, Toast } from '../ModalPortal';
 import API_URL from '../../api';
@@ -13,9 +13,8 @@ function TeachingAssignment() {
   const [khoas, setKhoas] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Modal & Edit State
+  // Modal State
   const [showModal, setShowModal] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState(null);
   
   // Search State
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,25 +89,31 @@ function TeachingAssignment() {
     });
   }, [formData.MaKhoa, subjects]);
 
+  // LỌC GIẢNG VIÊN THEO KHOA
+  const filteredTeachers = useMemo(() => {
+    if (!formData.MaKhoa) return [];
+    return teachers.filter(t => t.TrangThai === 'Đang dạy' && String(t.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
+  }, [formData.MaKhoa, teachers]);
+
+  // RÀNG BUỘC KIỂM TRA NĂM HỌC 2025 - 2028
   useEffect(() => {
     let msg = '';
     let err = '';
-    if (hocKySo && namBatDau && namBatDau.length === 4) {
+    const year = parseInt(namBatDau);
+    if (hocKySo && namBatDau && namBatDau.length === 4 && year >= 2025 && year <= 2028) {
       msg = `Học kỳ ${hocKySo} - Năm học ${namBatDau}-${namKetThuc}`;
       const hk = `HK${hocKySo}_${namBatDau}_${namKetThuc}`;
       setFormData(f => ({ ...f, HocKy: hk, NamHoc: `${namBatDau}-${namKetThuc}` }));
     } else if (hocKySo || namBatDau) {
-      err = 'Vui lòng nhập đầy đủ Học kỳ và Năm bắt đầu (VD: 2025)';
+      err = 'Vui lòng nhập Học kỳ và Năm bắt đầu (từ 2025 đến 2028)';
     }
     setHocKyInfo(msg);
     setHocKyError(err);
   }, [hocKySo, namBatDau, namKetThuc]);
 
-  // =====================================================================
-  // KHÔI PHỤC LOGIC TỰ ĐỘNG GEN MÃ LỚP HỌC PHẦN (Y NGUYÊN CỦA BẠN)
-  // =====================================================================
+  // TỰ ĐỘNG GEN MÃ LỚP HỌC PHẦN
   useEffect(() => {
-    if (!editingAssignment && formData.MaMonHoc && formData.HocKy && namBatDau.length === 4 && namKetThuc) {
+    if (formData.MaMonHoc && formData.HocKy && namBatDau.length === 4 && namKetThuc) {
       const hkCode = `HK${hocKySo}`;
       const namCode = `${namBatDau.slice(-2)}${namKetThuc.slice(-2)}`;
       const base = `${formData.MaMonHoc}.${hkCode}${namCode}`;
@@ -119,7 +124,7 @@ function TeachingAssignment() {
       setFormData(f => ({ ...f, MaLopHocPhan: `${base}.HP${stt}` }));
       if (formErrors.MaLopHocPhan) setFormErrors(prev => ({ ...prev, MaLopHocPhan: '' }));
     }
-  }, [formData.MaMonHoc, formData.HocKy, editingAssignment, hocKySo, namBatDau, namKetThuc, assignments]);
+  }, [formData.MaMonHoc, formData.HocKy, hocKySo, namBatDau, namKetThuc, assignments]);
 
 
   const validateForm = () => {
@@ -129,7 +134,7 @@ function TeachingAssignment() {
     if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn Giảng viên.';
     if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng tạo hoặc nhập Mã lớp học phần.';
     
-    // Ràng buộc Sĩ số với custom error message
+    // Ràng buộc Sĩ số 30 - 80
     const siSo = parseInt(formData.SoLuongToiDa);
     if (!formData.SoLuongToiDa || isNaN(siSo)) {
       errors.SoLuongToiDa = 'Vui lòng nhập Sĩ số.';
@@ -137,8 +142,10 @@ function TeachingAssignment() {
       errors.SoLuongToiDa = 'Sĩ số phải từ 30 đến 80 sinh viên.';
     }
 
+    // Ràng buộc Năm Học 2025 - 2028 khi ấn Lưu
+    const year = parseInt(namBatDau);
     if (!hocKySo || hocKySo < 1 || hocKySo > 3) errors.HocKy = 'Vui lòng chọn Học kỳ hợp lệ.';
-    if (!namBatDau || namBatDau.length !== 4) errors.NamHoc = 'Vui lòng nhập Năm học hợp lệ.';
+    if (!namBatDau || isNaN(year) || year < 2025 || year > 2028) errors.NamHoc = 'Năm bắt đầu phải từ 2025 đến 2028.';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -146,13 +153,13 @@ function TeachingAssignment() {
 
   const handleKhoaChange = (e) => {
     const maKhoa = e.target.value;
-    setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '', MaLopHocPhan: '' }));
+    // RESET cả Môn học, Mã LHP, và Giảng viên khi đổi Khoa
+    setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '', MaLopHocPhan: '', MaGiangVien: '' }));
     if (formErrors.MaKhoa) setFormErrors({ ...formErrors, MaKhoa: '' });
   };
 
   const handleMonHocChange = (e) => {
     const maMon = e.target.value;
-    // Reset mã lớp học phần để kích hoạt lại useEffect sinh mã tự động
     setFormData(prev => ({ ...prev, MaMonHoc: maMon, MaLopHocPhan: '' }));
     if (formErrors.MaMonHoc) setFormErrors({ ...formErrors, MaMonHoc: '' });
   };
@@ -171,20 +178,13 @@ function TeachingAssignment() {
 
     setConfirmDialog({
       show: true,
-      title: editingAssignment ? 'Xác nhận cập nhật' : 'Xác nhận phân công',
-      message: editingAssignment 
-        ? 'Bạn có chắc chắn muốn cập nhật thông tin này không?' 
-        : 'Bạn có chắc chắn muốn thêm phân công giảng dạy này không?',
+      title: 'Xác nhận phân công',
+      message: 'Bạn có chắc chắn muốn thêm phân công giảng dạy này không?',
       action: async () => {
         setConfirmDialog({ show: false, action: null });
         try {
-          if (editingAssignment) {
-            await axios.put(`${API_URL}/api/teaching-assignments/${editingAssignment.MaLopHocPhan}`, payload);
-            showToast('Cập nhật phân công giảng dạy thành công.', 'success');
-          } else {
-            await axios.post(`${API_URL}/api/teaching-assignments`, payload);
-            showToast('Thêm phân công giảng dạy thành công.', 'success');
-          }
+          await axios.post(`${API_URL}/api/teaching-assignments`, payload);
+          showToast('Thêm phân công giảng dạy thành công.', 'success');
           fetchData();
           handleCloseModal();
         } catch (error) {
@@ -198,7 +198,7 @@ function TeachingAssignment() {
     setConfirmDialog({
       show: true,
       title: 'Xác nhận xóa',
-      message: 'Bạn có chắc chắn muốn xóa phân công giảng dạy này không?',
+      message: 'Bạn có chắc chắn muốn xóa phân công giảng dạy này không? (Lưu ý: Chỉ xóa được khi lớp chưa có sinh viên đăng ký)',
       action: async () => {
         setConfirmDialog({ show: false, action: null });
         try {
@@ -206,44 +206,14 @@ function TeachingAssignment() {
           showToast('Xóa phân công giảng dạy thành công.', 'success');
           fetchData();
         } catch (error) {
-          showToast('Lỗi khi xóa phân công!', 'error');
+          showToast('Lớp HP đã có dữ liệu ràng buộc, không thể xóa!', 'error');
         }
       }
     });
   };
 
-  const handleEdit = (assignment) => {
-    setEditingAssignment(assignment);
-    
-    const hkParts = assignment.HocKy ? assignment.HocKy.split('_') : [];
-    if(hkParts.length >= 2) {
-      setHocKySo(hkParts[0].replace('HK', ''));
-      setNamBatDau(hkParts[1]);
-    }
-
-    const extractKhoa = (maMon) => {
-      const match = maMon?.match(/^[A-Z]+/i);
-      return match ? match[0].toUpperCase() : '';
-    };
-    const maKhoa = extractKhoa(assignment.MaMonHoc);
-
-    setFormData({
-      MaKhoa: maKhoa,
-      MaLopHocPhan: assignment.MaLopHocPhan,
-      MaMonHoc: assignment.MaMonHoc,
-      MaGiangVien: assignment.MaGiangVien,
-      MaLop: assignment.MaLop || '',
-      HocKy: assignment.HocKy,
-      NamHoc: assignment.NamHoc,
-      SoLuongToiDa: assignment.SoLuongToiDa || 40 
-    });
-    setFormErrors({});
-    setShowModal(true);
-  };
-
   const handleCloseModal = () => {
     setShowModal(false);
-    setEditingAssignment(null);
     setFormData({ MaKhoa: '', MaLopHocPhan: '', MaMonHoc: '', MaGiangVien: '', MaLop: '', HocKy: '', NamHoc: '', SoLuongToiDa: 40 });
     setHocKySo(''); setNamBatDau(''); setHocKyError(''); setHocKyInfo('');
     setFormErrors({});
@@ -293,7 +263,7 @@ function TeachingAssignment() {
               <ClipboardCheck className="w-8 h-8" />
               Quản lý phân công
             </h2>
-            <p className="text-orange-100 text-lg">Phân công giảng dạy và quản lý lớp học phần</p>
+            <p className="text-orange-100 text-lg">Tạo lớp học phần mới và quản lý quy mô sinh viên</p>
           </div>
           <div className="flex gap-3">
             <motion.button
@@ -303,7 +273,7 @@ function TeachingAssignment() {
               className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
             >
               <Plus className="w-5 h-5" />
-              Thêm phân công
+              Mở lớp mới ngay
             </motion.button>
           </div>
         </div>
@@ -369,18 +339,12 @@ function TeachingAssignment() {
                       {assign.TenLop || 'Tất cả sinh viên'}
                     </td>
                     <td className="py-4 px-6">
+                      {/* NÚT THAO TÁC CỨNG - CHỈ CÒN NÚT XÓA */}
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(assign)}
-                          className="p-2.5 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all shadow-sm border border-orange-100"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
                         <button
                           onClick={() => handleDelete(assign.MaLopHocPhan)}
                           className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm border border-red-100"
-                          title="Xóa"
+                          title="Xóa phân công"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -403,7 +367,7 @@ function TeachingAssignment() {
         </div>
       </div>
 
-      {/* Modal Thêm / Sửa Phân Công - Thêm noValidate để chặn bong bóng của trình duyệt */}
+      {/* Modal Thêm Phân Công */}
       {showModal && (
         <ModalPortal>
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -413,7 +377,7 @@ function TeachingAssignment() {
                 <div className="text-white">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <BookOpen className="w-5 h-5" />
-                    {editingAssignment ? 'Cập nhật Lớp học phần' : 'Tạo Lớp học phần mới'}
+                    Mở Lớp học phần mới
                   </h3>
                 </div>
                 <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white"><X className="w-5 h-5" /></button>
@@ -453,9 +417,11 @@ function TeachingAssignment() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Giảng viên phụ trách <span className="text-red-500">*</span></label>
-                      <select value={formData.MaGiangVien} onChange={e => {setFormData({...formData, MaGiangVien: e.target.value}); setFormErrors({...formErrors, MaGiangVien: ''})}} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
-                        <option value="">-- Chọn giảng viên --</option>
-                        {teachers.filter(t => t.TrangThai === 'Đang dạy').map(t => (<option key={t.MaGiangVien} value={t.MaGiangVien}>[{t.MaKhoa}] {t.HoTen}</option>))}
+                      <select disabled={!formData.MaKhoa} value={formData.MaGiangVien} onChange={e => {setFormData({...formData, MaGiangVien: e.target.value}); setFormErrors({...formErrors, MaGiangVien: ''})}} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
+                        {filteredTeachers.length === 0 && formData.MaKhoa 
+                          ? <option value="" disabled>Khoa này chưa có giảng viên</option> 
+                          : <option value="">-- Chọn giảng viên --</option>}
+                        {filteredTeachers.map(t => (<option key={t.MaGiangVien} value={t.MaGiangVien}>[{t.MaKhoa}] {t.HoTen}</option>))}
                       </select>
                       {formErrors.MaGiangVien && <p className="text-red-500 text-sm mt-1">{formErrors.MaGiangVien}</p>}
                     </div>
@@ -481,13 +447,12 @@ function TeachingAssignment() {
                       
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Năm bắt đầu <span className="text-red-500">*</span></label>
-                        <input type="number" placeholder="VD: 2025" value={namBatDau} onChange={e => {setNamBatDau(e.target.value); setFormErrors({...formErrors, NamHoc: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold outline-none focus:border-orange-500 ${formErrors.NamHoc ? 'border-red-500' : 'border-gray-200'}`} />
+                        <input type="number" min="2025" max="2028" placeholder="VD: 2025" value={namBatDau} onChange={e => {setNamBatDau(e.target.value); setFormErrors({...formErrors, NamHoc: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold outline-none focus:border-orange-500 ${formErrors.NamHoc ? 'border-red-500' : 'border-gray-200'}`} />
                         {formErrors.NamHoc && <p className="text-red-500 text-sm mt-1">{formErrors.NamHoc}</p>}
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Sĩ số (30 - 80) <span className="text-red-500">*</span></label>
-                        {/* Đã xóa min/max để chặn bong bóng mặc định, chạy theo logic viền đỏ custom */}
                         <input type="number" value={formData.SoLuongToiDa} onChange={e => {setFormData({...formData, SoLuongToiDa: e.target.value}); setFormErrors({...formErrors, SoLuongToiDa: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold text-orange-600 outline-none focus:border-orange-500 ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
                         {formErrors.SoLuongToiDa && <p className="text-red-500 text-sm mt-1">{formErrors.SoLuongToiDa}</p>}
                       </div>
@@ -506,7 +471,7 @@ function TeachingAssignment() {
                   Hủy
                 </button>
                 <button form="assignment-form" type="submit" disabled={!!hocKyError} className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                  {editingAssignment ? 'Lưu thay đổi' : 'Xác nhận phân công'}
+                  Xác nhận phân công
                 </button>
               </div>
             </motion.div>

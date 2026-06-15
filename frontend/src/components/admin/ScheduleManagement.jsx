@@ -303,7 +303,7 @@ function ScheduleManagement() {
             {/* Header hiển thị Thứ / Ngày - Căn trái sắc nét */}
             <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
               <h3 className="font-bold text-gray-800 text-sm md:text-base">
-                {getDayName(date)} - {date.split('-').reverse().join('/')}
+                ▼ {getDayName(date)} - {date.split('-').reverse().join('/')}
               </h3>
               <span className="bg-orange-50 text-orange-600 text-xs font-bold px-3 py-1 rounded-full border border-orange-100">
                 {items.length} ca học
@@ -376,11 +376,26 @@ function ScheduleManagement() {
                 <form id="schedule-form" onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Lớp học phần <span className="text-red-500">*</span></label>
-                    <select value={formData.MaLopHocPhan} onChange={e => setFormData({ ...formData, MaLopHocPhan: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.MaLopHocPhan ? 'border-red-500' : 'border-gray-300'}`}>
+                    <select 
+                      value={formData.MaLopHocPhan} 
+                      onChange={e => setFormData({ ...formData, MaLopHocPhan: e.target.value })} 
+                      disabled={!!editingSchedule}
+                      className={`w-full p-2.5 border rounded-lg outline-none text-sm transition-all ${
+                        editingSchedule 
+                          ? 'bg-gray-100 border-gray-200 text-gray-500 font-semibold cursor-not-allowed opacity-90' 
+                          : `bg-white focus:border-orange-500 ${formErrors.MaLopHocPhan ? 'border-red-500' : 'border-gray-300'}`
+                      }`}
+                    >
                       <option value="">-- Chọn lớp học phần --</option>
                       {lhpList.map(lhp => (<option key={lhp.MaLopHocPhan} value={lhp.MaLopHocPhan}>[{lhp.MaLopHocPhan}] {lhp.TenMonHoc} - GV: {lhp.TenGiangVien}</option>))}
                     </select>
                     {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
+                    {editingSchedule && (
+                      <p className="text-xs text-orange-600 mt-1.5 font-semibold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5"/> 
+                        Không thể thay đổi lớp học phần khi đang cập nhật lịch đã xếp
+                      </p>
+                    )}
                   </div>
 
                   {!editingSchedule && (
