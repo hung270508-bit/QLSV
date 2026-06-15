@@ -621,13 +621,48 @@ app.get('/api/classes/next-code/:startYear/:maKhoa', (req, res) => {
         res.json({ MaLop: `${prefix}${maxStt + 1}` });
     });
 });
-app.get('/api/classes/next-name/:tenLop', (req, res) => {
-    const { tenLop } = req.params;
-    db.query('SELECT TenLop FROM lophoc WHERE TenLop LIKE ?', [`${tenLop}%`], (err, rows) => {
+app.get('/api/classes/next-name/:tenLop/:maKhoa', (req, res) => {
+    const { tenLop, maKhoa } = req.params;
+    
+    // Tách phần tên gốc và số thứ tự nếu có (ví dụ: "Lớp A 1" -> base="Lớp A", num=1)
+    const baseMatch = tenLop.match(/^(.*?)\s*(\d+)$/);
+    let baseName = tenLop;
+    let startNum = 0;
+    if (baseMatch) {
+        baseName = baseMatch[1].trim();
+        startNum = parseInt(baseMatch[2], 10);
+    }
+
+    // Tìm tất cả các lớp có tên bắt đầu bằng baseName trong cùng một khoa
+    const query = `
+        SELECT TenLop FROM lophoc 
+        WHERE MaKhoa = ? AND (TenLop = ? OR TenLop LIKE ?)
+    `;
+    
+    db.query(query, [maKhoa, tenLop, `${baseName}%`], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        let maxNum = 0;
-        rows.forEach(row => { const match = row.TenLop.match(new RegExp(`^${tenLop}\\s*(\\d+)$`)); if (match) maxNum = Math.max(maxNum, parseInt(match[1])); });
-        res.json({ TenLop: `${tenLop} ${maxNum + 1}` });
+        
+        // Nếu tên hiện tại chưa tồn tại thì trả về chính nó
+        const exactMatch = rows.find(row => row.TenLop.trim().toLowerCase() === tenLop.trim().toLowerCase());
+        if (!exactMatch) {
+            return res.json({ TenLop: tenLop });
+        }
+
+        // Nếu đã tồn tại, tìm số lớn nhất để tăng lên
+        let maxNum = startNum;
+        rows.forEach(row => {
+            // Regex khớp với baseName + khoảng trắng + số
+            const match = row.TenLop.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+(\\d+)$`, 'i'));
+            if (match) {
+                const num = parseInt(match[1], 10);
+                if (num > maxNum) maxNum = num;
+            } else if (row.TenLop.trim().toLowerCase() === baseName.toLowerCase() && maxNum === 0) {
+                // Trường hợp baseName tồn tại mà chưa có số
+                maxNum = 0;
+            }
+        });
+
+        res.json({ TenLop: `${baseName} ${maxNum + 1}` });
     });
 });
 app.post('/api/classes', (req, res) => {

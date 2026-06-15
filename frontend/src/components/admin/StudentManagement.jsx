@@ -11,9 +11,12 @@ const API_BASE = `${API_URL}/api`;
 function StudentManagement() {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [faculties, setFaculties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [selectedFaculty, setSelectedFaculty] = useState('');
+  const [selectedNienKhoa, setSelectedNienKhoa] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -73,17 +76,32 @@ function StudentManagement() {
 
   const fetchData = async () => {
     try {
-      const [studentsRes, classesRes] = await Promise.all([
+      const [studentsRes, classesRes, facultiesRes] = await Promise.all([
         axios.get(`${API_BASE}/students`),
-        axios.get(`${API_BASE}/classes`)
+        axios.get(`${API_BASE}/classes`),
+        axios.get(`${API_BASE}/faculties`)
       ]);
       setStudents(studentsRes.data);
       setClasses(classesRes.data);
+      setFaculties(facultiesRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFacultyChange = (e) => {
+    const facultyId = e.target.value;
+    setSelectedFaculty(facultyId);
+    setSelectedNienKhoa('');
+    setFormData(prev => ({ ...prev, MaLop: '', MSSV: '' }));
+  };
+
+  const handleNienKhoaChange = (e) => {
+    const nienKhoa = e.target.value;
+    setSelectedNienKhoa(nienKhoa);
+    setFormData(prev => ({ ...prev, MaLop: '', MSSV: '' }));
   };
 
   const handleLopChange = async (e) => {
@@ -205,6 +223,8 @@ function StudentManagement() {
       MaLop: student.MaLop || '',
       TrangThai: student.TrangThai || 'Đang học'
     });
+    setSelectedFaculty(student.MaKhoa || '');
+    setSelectedNienKhoa(student.NienKhoa || '');
     setShowModal(true);
   };
 
@@ -222,6 +242,8 @@ function StudentManagement() {
       MaLop: '',
       TrangThai: 'Đang học'
     });
+    setSelectedFaculty('');
+    setSelectedNienKhoa('');
     setErrors({});
   };
 
@@ -278,6 +300,23 @@ function StudentManagement() {
     link.download = 'sinhVien.csv';
     link.click();
   };
+
+  const filteredNienKhoas = useMemo(() => {
+    if (!selectedFaculty) return [];
+    const nienKhoas = classes
+      .filter(cls => cls.MaKhoa === selectedFaculty)
+      .map(cls => cls.NienKhoa)
+      .filter(Boolean);
+    return [...new Set(nienKhoas)].sort();
+  }, [classes, selectedFaculty]);
+
+  const filteredClassesForForm = useMemo(() => {
+    if (!selectedFaculty || !selectedNienKhoa) return [];
+    return classes.filter(cls => 
+      cls.MaKhoa === selectedFaculty && 
+      cls.NienKhoa === selectedNienKhoa
+    );
+  }, [classes, selectedFaculty, selectedNienKhoa]);
 
   const filteredStudents = students.filter(student => {
     const searchLower = debouncedSearchTerm.toLowerCase();
@@ -667,26 +706,60 @@ function StudentManagement() {
                   />
                   {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
-                  <select
-                    value={formData.MaLop}
-                    onChange={(e) => {
-                      handleLopChange(e); // Gọi hàm tự động sinh MSSV
-                      if (errors.MaLop) setErrors({ ...errors, MaLop: '' }); // Giữ nguyên tính năng xóa viền đỏ
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  >
-                    <option value="">Chọn lớp</option>
-                    {classes.map((cls) => (
-                      <option key={cls.MaLop} value={cls.MaLop}>
-                        {cls.TenLop}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.MaLop && <p className="text-red-500 text-sm mt-1">{errors.MaLop}</p>}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
+                    <select
+                      value={selectedFaculty}
+                      onChange={handleFacultyChange}
+                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                    >
+                      <option value="">Chọn khoa</option>
+                      {faculties.map((f) => (
+                        <option key={f.MaKhoa} value={f.MaKhoa}>
+                          {f.TenKhoa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
+                    <select
+                      value={selectedNienKhoa}
+                      onChange={handleNienKhoaChange}
+                      disabled={!selectedFaculty}
+                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-50"
+                    >
+                      <option value="">Chọn niên khóa</option>
+                      {filteredNienKhoas.map((nk) => (
+                        <option key={nk} value={nk}>
+                          {nk}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
+                    <select
+                      value={formData.MaLop}
+                      onChange={(e) => {
+                        handleLopChange(e); // Gọi hàm tự động sinh MSSV
+                        if (errors.MaLop) setErrors({ ...errors, MaLop: '' }); // Giữ nguyên tính năng xóa viền đỏ
+                      }}
+                      disabled={!selectedNienKhoa}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${
+                        errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      }`}
+                    >
+                      <option value="">Chọn lớp</option>
+                      {filteredClassesForForm.map((cls) => (
+                        <option key={cls.MaLop} value={cls.MaLop}>
+                          {cls.TenLop}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.MaLop && <p className="text-red-500 text-sm mt-1">{errors.MaLop}</p>}
+                  </div>
                 </div>
                 {editingStudent && (
                   <div className="md:col-span-2">

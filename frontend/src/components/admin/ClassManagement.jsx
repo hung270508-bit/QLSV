@@ -196,18 +196,6 @@ function ClassManagement() {
       newErrors.MaKhoa = 'Vui lòng chọn Khoa cho lớp học!';
     }
 
-    // Lỗi trùng lặp (TC_32 & Lỗi dòng 3)
-    if (tenLopTrimmed && formData.MaKhoa) {
-      const duplicateClass = classes.find(
-        c => c.TenLop.trim().toLowerCase() === tenLopTrimmed.toLowerCase() &&
-             c.MaKhoa === formData.MaKhoa &&
-             (!editingClass || c.MaLop !== editingClass.MaLop)
-      );
-      if (duplicateClass) {
-        newErrors.TenLop = 'Tên lớp học đã tồn tại trong khoa này!';
-      }
-    }
-
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -259,14 +247,31 @@ function ClassManagement() {
     e.preventDefault();
     if (!validateForm()) return;
 
+    // Tự động xử lý trùng tên lớp: Tìm trong danh sách local xem có trùng không
+    let finalTenLop = formData.TenLop.trim();
+    const isDuplicate = classes.some(
+      c => c.TenLop.trim().toLowerCase() === finalTenLop.toLowerCase() &&
+           c.MaKhoa === formData.MaKhoa &&
+           (!editingClass || c.MaLop !== editingClass.MaLop)
+    );
+
+    // Nếu trùng, gọi API để lấy tên mới (ví dụ: "Lớp A" -> "Lớp A 1")
+    if (isDuplicate) {
+      try {
+        const res = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(finalTenLop)}/${formData.MaKhoa}`);
+        finalTenLop = res.data.TenLop;
+      } catch (err) {
+        console.error('Lỗi khi lấy tên lớp tiếp theo:', err);
+      }
+    }
+
     setConfirmDialog({
       show: true,
       message: editingClass
-        ? `Bạn có chắc chắn muốn cập nhật lớp "${formData.TenLop.trim()}" không?`
-        : `Bạn có chắc chắn muốn thêm lớp mới không?`,
+        ? `Bạn có chắc chắn muốn cập nhật lớp "${finalTenLop}" không?`
+        : `Bạn có chắc chắn muốn thêm lớp "${finalTenLop}" không?`,
       onConfirm: async () => {
         const nienKhoa = `${formData.startYear}-${formData.endYear}`;
-        const finalTenLop = formData.TenLop.trim();
 
         try {
           if (editingClass) {
