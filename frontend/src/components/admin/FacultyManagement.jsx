@@ -92,6 +92,19 @@ function FacultyManagement() {
     if (!/^[A-Za-zÀ-ỹ\s-]+$/.test(value)) return 'Tên khoa không được chứa ký tự đặc biệt';
     if (/\s{2,}/.test(value)) return 'Chỉ được nhập 1 khoảng trắng giữa các từ';
     if (/--+/.test(value)) return 'Không được nhập nhiều dấu gạch nối liên tiếp';
+    // Validate dash position: must be between two words
+    if (value.includes('-')) {
+      const parts = value.split('-');
+      if (parts.length > 2) {
+        return 'Tên khoa chỉ được phép có một dấu "-"';
+      } else {
+        const beforeDash = parts[0].trim();
+        const afterDash = parts[1].trim();
+        if (!beforeDash || !afterDash) {
+          return 'Dấu "-" phải nằm giữa hai từ (VD: Toán - Văn)';
+        }
+      }
+    }
     return '';
   };
 

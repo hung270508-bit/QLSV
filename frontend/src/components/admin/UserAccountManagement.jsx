@@ -66,8 +66,8 @@ function UserAccountManagement() {
   if (!formData.password?.trim()) {
     errors.password = 'Mật khẩu không được để trống';
   } else {
-    if (formData.password.length < 10) {
-      errors.password = 'Mật khẩu phải có ít nhất 10 ký tự';
+    if (formData.password.length < 5) {
+      errors.password = 'Mật khẩu phải có ít nhất 5 ký tự';
     } else if (!/[a-z]/.test(formData.password)) {
       errors.password = 'Mật khẩu phải chứa ít nhất một chữ thường';
     } else if (!/[A-Z]/.test(formData.password)) {
@@ -353,7 +353,7 @@ function UserAccountManagement() {
                         className={`w-full px-4 py-3.5 pr-12 bg-gray-50 border-2 rounded-xl focus:border-orange-500 outline-none transition-colors font-medium text-sm ${
                           formErrors.password ? 'border-red-500 focus:bg-red-50' : 'border-gray-200 focus:bg-white'
                         }`}
-                        placeholder="Tối thiểu 10 ký tự: chữ hoa, thường, số, ký tự đặc biệt"
+                        placeholder="Tối thiểu 5 ký tự: chữ hoa, thường, số, ký tự đặc biệt"
                       />
                       <button
                         type="button"

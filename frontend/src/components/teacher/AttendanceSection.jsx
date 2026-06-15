@@ -41,7 +41,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
     return teachingSchedule.filter(item => item.NgayHoc && isSameDay(item.NgayHoc, today));
   }, [teachingSchedule, today]);
 
-  const availableSchedules = todaySchedules.length > 0 ? todaySchedules : Array.isArray(teachingSchedule) ? teachingSchedule : [];
+  const availableSchedules = todaySchedules;
 
   const fetchScheduleAttendance = async (maLopHocPhan, dateString) => {
     try {
@@ -182,12 +182,12 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 pb-6 border-b border-gray-100">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-orange-600 font-bold mb-1">Lịch học hôm nay</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-orange-600 font-bold mb-1">Lịch dạy hôm nay</p>
             <h3 className="text-2xl font-bold text-gray-800">
-              {todaySchedules.length ? 'Các lớp của hôm nay' : 'Không có lớp hôm nay'}
+              {todaySchedules.length ? 'Các lớp của hôm nay' : 'Chưa có lịch dạy'}
             </h3>
             <p className="mt-1 text-sm text-gray-500 font-medium">
-              {todaySchedules.length ? 'Chọn lớp để xem danh sách sinh viên và điểm danh.' : 'Hiển thị tất cả lớp của giảng viên khi không có lớp trong ngày.'}
+              {todaySchedules.length ? 'Chọn lớp để xem danh sách sinh viên và điểm danh.' : 'Vui lòng liên hệ admin để được phân công lịch dạy.'}
             </p>
           </div>
           <div className="bg-orange-50 px-5 py-3 rounded-2xl flex items-center gap-3 border border-orange-100 shadow-inner">
@@ -242,8 +242,8 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-10 h-10 text-gray-300" />
             </div>
-            <h3 className="text-lg font-bold text-gray-700 mb-2">Trống lịch giảng dạy</h3>
-            <p className="text-gray-500">Bạn không có lịch giảng dạy nào được xếp vào lúc này.</p>
+            <h3 className="text-lg font-bold text-gray-700 mb-2">Chưa có lịch dạy</h3>
+            <p className="text-gray-500">Vui lòng liên hệ admin để được phân công lịch dạy.</p>
           </div>
         )}
       </motion.div>

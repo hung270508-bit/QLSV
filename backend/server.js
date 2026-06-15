@@ -7,11 +7,19 @@ const envFile = isCloud ? '.env.aiven' : '.env.local';
 // Tự động nạp đúng file cấu hình tương ứng
 require('dotenv').config({ path: path.join(__dirname, envFile) });
 
+// Load email configuration
+require('dotenv').config({ path: path.join(__dirname, '.env.email') });
+
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const nodemailer = require('nodemailer');
 const saltRounds = 10;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
@@ -46,6 +54,17 @@ db.getConnection((err, connection) => {
     });
 });
 
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 app.use(cors({
     origin: [
         'https://hung270508-bit.github.io', // Khi chạy online trên GitHub Pages
@@ -60,6 +79,21 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
+
+// Middleware to verify JWT token
+const verifyToken = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Không tìm thấy token xác thực!' });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn!' });
+    }
+};
 
 // ==================== HELPER FUNCTIONS ====================
 const executeQuery = (query, params, res, errorMessage) => {
@@ -128,7 +162,7 @@ const normalizeClassGradeStats = (row) => ({
 // ==================== API ĐĂNG NHẬP & QUÊN MẬT KHẨU ====================
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ!' });
+    if (!username || !password) return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!' });
 
     const query = `
         SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen,
@@ -165,25 +199,159 @@ app.post('/api/login', (req, res) => {
                 } else if (user.MaQuyen === 2) {
                     Object.assign(userResponse, { hoTen: user.TenGiangVien, email: user.EmailGV, soDienThoai: user.SDTGV, maKhoa: user.MaKhoa, tenKhoa: user.TenKhoa });
                 }
-                return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse });
+
+                // Generate JWT token
+                const token = jwt.sign(
+                    { 
+                        id: user.TaiKhoan, 
+                        username: user.TaiKhoan, 
+                        role: roleString, 
+                        maQuyen: user.MaQuyen 
+                    },
+                    JWT_SECRET,
+                    { expiresIn: JWT_EXPIRES_IN }
+                );
+
+                return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse, token });
             }
         }
-        return res.status(401).json({ success: false, message: 'Sai thông tin đăng nhập!' });
+        return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng!' });
     });
 });
 
 app.post('/api/forgot-password', (req, res) => {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Vui lòng nhập email!' });
+    
     const query = `
         SELECT 'sinhvien' as userType, MSSV as id, HoTen as name, Email as email FROM sinhvien WHERE Email = ?
         UNION
         SELECT 'giangvien' as userType, MaGiangVien as id, HoTen as name, Email as email FROM giangvien WHERE Email = ?
     `;
-    db.query(query, [email, email], (err, results) => {
+    db.query(query, [email, email], async (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
-        if (results.length > 0) return res.json({ success: true, message: `Đã gửi liên kết đến ${email}.` });
-        return res.status(404).json({ success: false, message: 'Email không tồn tại!' });
+        if (results.length > 0) {
+            const user = results[0];
+            // Generate JWT token with 30-minute expiry
+            const resetToken = jwt.sign(
+                { email: user.email, id: user.id, userType: user.userType },
+                JWT_SECRET,
+                { expiresIn: '30m' }
+            );
+            
+            // Create reset link
+            const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+            
+            // Send email
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: user.email,
+                subject: 'Đặt lại mật khẩu - Hệ thống QLSV',
+                html: `
+                    <h2>Xin chào ${user.name},</h2>
+                    <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
+                    <p>Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu của bạn:</p>
+                    <p><a href="${resetLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Đặt lại mật khẩu</a></p>
+                    <p>Liên kết này sẽ hết hạn sau 30 phút.</p>
+                    <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+                    <p>Trân trọng,<br>Hệ thống Quản lý Sinh Viên</p>
+                `
+            };
+            
+            try {
+                await transporter.sendMail(mailOptions);
+                return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
+            } catch (emailError) {
+                console.error('Lỗi gửi email:', emailError);
+                return res.status(500).json({ success: false, message: 'Lỗi gửi email!' });
+            }
+        }
+        // Don't reveal if email exists or not for security
+        return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
     });
+});
+
+// Verify token endpoint
+app.get('/api/verify-token', verifyToken, (req, res) => {
+    res.json({ success: true, user: req.user });
+});
+
+// Change password endpoint
+app.post('/api/change-password', verifyToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const username = req.user.username;
+    
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới!' });
+    }
+    
+    const query = 'SELECT password FROM users WHERE TaiKhoan = ?';
+    db.query(query, [username], async (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản!' });
+        }
+        
+        const user = results[0];
+        let passwordMatch = false;
+        
+        if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+            passwordMatch = await bcrypt.compare(currentPassword, user.password);
+        } else {
+            passwordMatch = (currentPassword === user.password);
+        }
+        
+        if (!passwordMatch) {
+            return res.status(401).json({ success: false, message: 'Mật khẩu hiện tại không đúng!' });
+        }
+        
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, username], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
+                res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: 'Lỗi mã hóa mật khẩu!' });
+        }
+    });
+});
+
+// Reset password endpoint
+app.post('/api/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Vui lòng cung cấp token và mật khẩu mới!' });
+    }
+    
+    // Validate password strength
+    if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 8 ký tự!' });
+    }
+    
+    try {
+        // Verify JWT token
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const { email, id, userType } = decoded;
+        
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        
+        // Update password in users table
+        db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
+            res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
+        });
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(400).json({ success: false, message: 'Token đã hết hạn. Vui lòng yêu cầu đặt lại mật khẩu lại!' });
+        }
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(400).json({ success: false, message: 'Token không hợp lệ!' });
+        }
+        return res.status(500).json({ success: false, message: 'Lỗi server!' });
+    }
 });
 
 // ==================== DASHBOARD STATISTICS ====================
@@ -292,70 +460,265 @@ app.get('/api/students', (req, res) =>
   )
 );
 app.post('/api/students', async (req, res) => {
-    // Không lấy MaKhoa để insert vào database nữa vì DB không có cột này
     const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai } = req.body;
+    
+    // Ràng buộc dữ liệu đầu vào - Kiểm tra các trường bắt buộc
+    if (!MSSV || !HoTen || !NgaySinh || !Email || !SoDienThoai || !MaLop) {
+        return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin sinh viên bắt buộc!' });
+    }
+
+    // Validate Họ tên
+    if (!HoTen.trim() || HoTen.length < 2) {
+        return res.status(400).json({ success: false, message: 'Họ tên phải có ít nhất 2 ký tự!' });
+    }
+    if (HoTen.length > 100) {
+        return res.status(400).json({ success: false, message: 'Họ tên không được vượt quá 100 ký tự!' });
+    }
+    // Validate Họ tên chỉ được chứa chữ cái và khoảng trắng
+    const nameRegex = /^[a-zA-ZÀ-Ỹà-ỹ\s]+$/;
+    if (!nameRegex.test(HoTen)) {
+        return res.status(400).json({ success: false, message: 'Họ tên chỉ được chứa chữ cái và khoảng trắng!' });
+    }
+
+    // Validate Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(Email)) {
+        return res.status(400).json({ success: false, message: 'Email không đúng định dạng!' });
+    }
+    if (Email.length > 100) {
+        return res.status(400).json({ success: false, message: 'Email không được vượt quá 100 ký tự!' });
+    }
+
+    // Validate Số điện thoại
+    const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
+    if (!phoneRegex.test(SoDienThoai)) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)!' });
+    }
+
+    // Validate Ngày sinh
+    const birthDate = new Date(NgaySinh);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    if (isNaN(birthDate.getTime())) {
+        return res.status(400).json({ success: false, message: 'Ngày sinh không hợp lệ!' });
+    }
+    if (age < 15 || age > 100) {
+        return res.status(400).json({ success: false, message: 'Ngày sinh không hợp lệ (tuổi phải từ 15-100)!' });
+    }
+
+    // Validate MSSV format
+    if (!/^[A-Z0-9]+$/.test(MSSV)) {
+        return res.status(400).json({ success: false, message: 'MSSV chỉ được chứa chữ cái hoa và số!' });
+    }
+    if (MSSV.length > 20) {
+        return res.status(400).json({ success: false, message: 'MSSV không được vượt quá 20 ký tự!' });
+    }
+
+    // Validate Giới tính
+    if (GioiTinh && !['Nam', 'Nữ'].includes(GioiTinh)) {
+        return res.status(400).json({ success: false, message: 'Giới tính phải là Nam hoặc Nữ!' });
+    }
+
+    // Validate TrangThai
+    const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+    if (TrangThai && !validTrangThai.includes(TrangThai)) {
+        return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
+    }
+
     try {
+        // Kiểm tra email đã tồn tại chưa
+        const emailCheck = await new Promise((resolve, reject) => {
+            db.query('SELECT Email FROM sinhvien WHERE Email = ?', [Email], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        });
+        if (emailCheck.length > 0) {
+            return res.status(400).json({ success: false, message: 'Email này đã được sử dụng!' });
+        }
+
+        // Kiểm tra số điện thoại đã tồn tại chưa
+        const phoneCheck = await new Promise((resolve, reject) => {
+            db.query('SELECT SoDienThoai FROM sinhvien WHERE SoDienThoai = ?', [SoDienThoai], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        });
+        if (phoneCheck.length > 0) {
+            return res.status(400).json({ success: false, message: 'Số điện thoại này đã được sử dụng!' });
+        }
+
+        // Kiểm tra lớp có tồn tại không
+        const classCheck = await new Promise((resolve, reject) => {
+            db.query('SELECT MaLop FROM lophoc WHERE MaLop = ?', [MaLop], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        });
+        if (classCheck.length === 0) {
+            return res.status(400).json({ success: false, message: 'Lớp không tồn tại!' });
+        }
+
+        // Tạo user và sinh viên
         const hashedPassword = await bcrypt.hash('123456aA@', saltRounds);
-        db.query(
-            'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)',
-            [MSSV, hashedPassword],
-            (err) => {
-                if (err) {
-                    if (err.code === 'ER_DUP_ENTRY') {
-                        return res.status(400).json({ success: false, message: `Tài khoản ${MSSV} đã tồn tại` });
-                    }
-                    return res.status(500).json({ success: false, message: err.sqlMessage });
+        
+        await new Promise((resolve, reject) => {
+            db.query(
+                'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)',
+                [MSSV, hashedPassword],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
                 }
-                
-                // Viết rõ tên các cột thay vì dùng (...)
-                db.query(
-                    'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
-                    [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'],
-                    (err) => {
-                        if (err) {
-                            console.error('SINHVIEN INSERT ERROR:', err);
-                            return res.status(500).json({ success: false, message: err.sqlMessage || err.message });
-                        }
-                        res.json({ success: true, message: 'Thêm sinh viên thành công!' });
-                    }
-                );
-            }
-        );
-    } catch (error) { 
-        res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); 
+            );
+        });
+
+        await new Promise((resolve, reject) => {
+            db.query(
+                'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+                [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+
+        res.json({ success: true, message: 'Thêm sinh viên thành công!' });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ success: false, message: `Tài khoản ${MSSV} đã tồn tại` });
+        }
+        console.error('SINHVIEN INSERT ERROR:', error);
+        res.status(500).json({ success: false, message: error.sqlMessage || error.message || 'Lỗi khi thêm sinh viên!' });
     }
 });
-app.put('/api/students/:mssv', (req, res) => {
+app.put('/api/students/:mssv', async (req, res) => {
     const data = req.body;
 
-    db.query(
-        `UPDATE sinhvien
-         SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=?, TrangThai=?
-         WHERE MSSV=?`,
-        [
-            data.HoTen,
-            data.NgaySinh,
-            data.GioiTinh,
-            data.Email,
-            data.SoDienThoai,
-            data.MaLop,
-            data.TrangThai,
-            req.params.mssv
-        ],
-        (err, result) => {
-            if (err) {
-                console.error('SQL ERROR:', err);
-                return res.status(500).json({
-                    message: err.sqlMessage || err.message
-                });
-            }
+    // Ràng buộc dữ liệu đầu vào - Kiểm tra các trường bắt buộc
+    if (!data.HoTen || !data.NgaySinh || !data.Email || !data.SoDienThoai || !data.MaLop) {
+        return res.status(400).json({ success: false, message: 'Dữ liệu cập nhật không đầy đủ!' });
+    }
 
-            res.json({
-                success: true,
-                message: 'Cập nhật thành công'
+    // Validate Họ tên
+    if (!data.HoTen.trim() || data.HoTen.length < 2) {
+        return res.status(400).json({ success: false, message: 'Họ tên phải có ít nhất 2 ký tự!' });
+    }
+    if (data.HoTen.length > 100) {
+        return res.status(400).json({ success: false, message: 'Họ tên không được vượt quá 100 ký tự!' });
+    }
+    // Validate Họ tên chỉ được chứa chữ cái và khoảng trắng
+    const nameRegex = /^[a-zA-ZÀ-Ỹà-ỹ\s]+$/;
+    if (!nameRegex.test(data.HoTen)) {
+        return res.status(400).json({ success: false, message: 'Họ tên chỉ được chứa chữ cái và khoảng trắng!' });
+    }
+
+    // Validate Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.Email)) {
+        return res.status(400).json({ success: false, message: 'Email không đúng định dạng!' });
+    }
+    if (data.Email.length > 100) {
+        return res.status(400).json({ success: false, message: 'Email không được vượt quá 100 ký tự!' });
+    }
+
+    // Validate Số điện thoại
+    const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
+    if (!phoneRegex.test(data.SoDienThoai)) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)!' });
+    }
+
+    // Validate Ngày sinh
+    const birthDate = new Date(data.NgaySinh);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    if (isNaN(birthDate.getTime())) {
+        return res.status(400).json({ success: false, message: 'Ngày sinh không hợp lệ!' });
+    }
+    if (age < 15 || age > 100) {
+        return res.status(400).json({ success: false, message: 'Ngày sinh không hợp lệ (tuổi phải từ 15-100)!' });
+    }
+
+    // Validate Giới tính
+    if (data.GioiTinh && !['Nam', 'Nữ'].includes(data.GioiTinh)) {
+        return res.status(400).json({ success: false, message: 'Giới tính phải là Nam hoặc Nữ!' });
+    }
+
+    // Validate TrangThai
+    const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+    if (data.TrangThai && !validTrangThai.includes(data.TrangThai)) {
+        return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
+    }
+
+    try {
+        // Kiểm tra email đã tồn tại chưa (trừ sinh viên hiện tại)
+        const emailCheck = await new Promise((resolve, reject) => {
+            db.query('SELECT Email FROM sinhvien WHERE Email = ? AND MSSV != ?', [data.Email, req.params.mssv], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
             });
+        });
+        if (emailCheck.length > 0) {
+            return res.status(400).json({ success: false, message: 'Email này đã được sử dụng!' });
         }
-    );
+
+        // Kiểm tra số điện thoại đã tồn tại chưa (trừ sinh viên hiện tại)
+        const phoneCheck = await new Promise((resolve, reject) => {
+            db.query('SELECT SoDienThoai FROM sinhvien WHERE SoDienThoai = ? AND MSSV != ?', [data.SoDienThoai, req.params.mssv], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        });
+        if (phoneCheck.length > 0) {
+            return res.status(400).json({ success: false, message: 'Số điện thoại này đã được sử dụng!' });
+        }
+
+        // Kiểm tra lớp có tồn tại không
+        const classCheck = await new Promise((resolve, reject) => {
+            db.query('SELECT MaLop FROM lophoc WHERE MaLop = ?', [data.MaLop], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        });
+        if (classCheck.length === 0) {
+            return res.status(400).json({ success: false, message: 'Lớp không tồn tại!' });
+        }
+
+        // Cập nhật sinh viên
+        await new Promise((resolve, reject) => {
+            db.query(
+                `UPDATE sinhvien
+                 SET HoTen=?, NgaySinh=?, GioiTinh=?, Email=?, SoDienThoai=?, MaLop=?, TrangThai=?
+                 WHERE MSSV=?`,
+                [
+                    data.HoTen,
+                    data.NgaySinh,
+                    data.GioiTinh,
+                    data.Email,
+                    data.SoDienThoai,
+                    data.MaLop,
+                    data.TrangThai || 'Đang học',
+                    req.params.mssv
+                ],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+
+        res.json({
+            success: true,
+            message: 'Cập nhật thành công'
+        });
+    } catch (error) {
+        console.error('SQL ERROR:', error);
+        res.status(500).json({
+            success: false,
+            message: error.sqlMessage || error.message || 'Lỗi khi cập nhật sinh viên!'
+        });
+    }
 });
 app.delete('/api/students/:mssv', (req, res) => {
     const mssv = req.params.mssv;
@@ -469,16 +832,7 @@ app.post('/api/subjects', (req, res) => {
     );
 });
 
-// Đã sửa: Bổ sung cập nhật trường MaKhoa vào câu lệnh UPDATE và mảng tham số
-app.put('/api/subjects/:maMH', (req, res) => 
-    executeUpdate(
-        'UPDATE monhoc SET TenMonHoc=?, SoTinChi=?, MaKhoa=? WHERE MaMonHoc=?', 
-        [req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa, req.params.maMH], 
-        res, 
-        'Cập nhật thành công!', 
-        'Lỗi cập nhật!'
-    )
-);
+// PUT endpoint for subjects has been removed - edit functionality disabled
 app.delete('/api/subjects/:maMH', (req, res) => executeDelete('DELETE FROM monhoc WHERE MaMonHoc=?', [req.params.maMH], res, 'Xóa thành công!', 'Lỗi xóa!'));
 app.get('/api/subjects/:maMH/classes', (req, res) => executeQuery('SELECT DISTINCT l.MaLop, l.TenLop, (SELECT COUNT(*) FROM sinhvien sv WHERE sv.MaLop = l.MaLop) as SoSinhVien FROM lophocphan lhp JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaMonHoc = ?', [req.params.maMH], res, 'Lỗi lấy danh sách lớp!'));
 app.get('/api/subjects/:maMH/teachers', (req, res) => executeQuery('SELECT DISTINCT gv.MaGiangVien, gv.HoTen FROM lophocphan lhp JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien WHERE lhp.MaMonHoc = ?', [req.params.maMH], res, 'Lỗi lấy danh sách GV!'));
@@ -510,13 +864,48 @@ app.get('/api/classes/next-code/:startYear/:maKhoa', (req, res) => {
         res.json({ MaLop: `${prefix}${maxStt + 1}` });
     });
 });
-app.get('/api/classes/next-name/:tenLop', (req, res) => {
-    const { tenLop } = req.params;
-    db.query('SELECT TenLop FROM lophoc WHERE TenLop LIKE ?', [`${tenLop}%`], (err, rows) => {
+app.get('/api/classes/next-name/:tenLop/:maKhoa', (req, res) => {
+    const { tenLop, maKhoa } = req.params;
+    
+    // Tách phần tên gốc và số thứ tự nếu có (ví dụ: "Lớp A 1" -> base="Lớp A", num=1)
+    const baseMatch = tenLop.match(/^(.*?)\s*(\d+)$/);
+    let baseName = tenLop;
+    let startNum = 0;
+    if (baseMatch) {
+        baseName = baseMatch[1].trim();
+        startNum = parseInt(baseMatch[2], 10);
+    }
+
+    // Tìm tất cả các lớp có tên bắt đầu bằng baseName trong cùng một khoa
+    const query = `
+        SELECT TenLop FROM lophoc 
+        WHERE MaKhoa = ? AND (TenLop = ? OR TenLop LIKE ?)
+    `;
+    
+    db.query(query, [maKhoa, tenLop, `${baseName}%`], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        let maxNum = 0;
-        rows.forEach(row => { const match = row.TenLop.match(new RegExp(`^${tenLop}\\s*(\\d+)$`)); if (match) maxNum = Math.max(maxNum, parseInt(match[1])); });
-        res.json({ TenLop: `${tenLop} ${maxNum + 1}` });
+        
+        // Nếu tên hiện tại chưa tồn tại thì trả về chính nó
+        const exactMatch = rows.find(row => row.TenLop.trim().toLowerCase() === tenLop.trim().toLowerCase());
+        if (!exactMatch) {
+            return res.json({ TenLop: tenLop });
+        }
+
+        // Nếu đã tồn tại, tìm số lớn nhất để tăng lên
+        let maxNum = startNum;
+        rows.forEach(row => {
+            // Regex khớp với baseName + khoảng trắng + số
+            const match = row.TenLop.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+(\\d+)$`, 'i'));
+            if (match) {
+                const num = parseInt(match[1], 10);
+                if (num > maxNum) maxNum = num;
+            } else if (row.TenLop.trim().toLowerCase() === baseName.toLowerCase() && maxNum === 0) {
+                // Trường hợp baseName tồn tại mà chưa có số
+                maxNum = 0;
+            }
+        });
+
+        res.json({ TenLop: `${baseName} ${maxNum + 1}` });
     });
 });
 app.post('/api/classes', (req, res) => {

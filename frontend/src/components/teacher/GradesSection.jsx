@@ -13,7 +13,6 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingGrade, setEditingGrade] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ subjectFilter: '', semesterFilter: '' });
   const [displayFilters, setDisplayFilters] = useState({ subjectFilter: '', semesterFilter: '' });
@@ -221,7 +220,6 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
     setFilters({ subjectFilter: '', semesterFilter: '' });
     setDisplayFilters({ subjectFilter: '', semesterFilter: '' });
     setSearchTerm('');
-    setDisplaySearchTerm('');
   };
 
   const activeFilterCount = (filters.subjectFilter ? 1 : 0) + (filters.semesterFilter ? 1 : 0) + (searchTerm ? 1 : 0);
@@ -269,8 +267,8 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
           <div className="relative w-2/3">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
-              type="text" placeholder="Tìm kiếm điểm..." value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
+              type="text" placeholder="Tìm kiếm điểm..." value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-12 py-2.5 bg-white/80 backdrop-blur-xl border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all shadow-lg"
             />
             <button type="button" onClick={() => setShowFilters(!showFilters)} className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}>
@@ -278,7 +276,6 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
               {activeFilterCount > 0 && (<span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>)}
             </button>
           </div>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm(displaySearchTerm)} className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onRefresh} className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"><RefreshCw className="w-5 h-5" /> Làm mới</motion.button>
           {hasActiveFilters && (
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={clearFilters} className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"><XCircle className="w-5 h-5" /> Xóa bộ lọc</motion.button>
