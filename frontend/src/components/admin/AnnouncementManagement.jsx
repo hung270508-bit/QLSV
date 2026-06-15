@@ -3,6 +3,7 @@ import API_URL from '../../api';
 import { motion } from 'framer-motion';
 import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
+import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal from '../ModalPortal';
 
 function AnnouncementManagement() {
@@ -218,11 +219,7 @@ function AnnouncementManagement() {
 
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <TableSkeleton columns={4} rows={5} />;
   }
 
   return (

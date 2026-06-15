@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Upload, FileText, Calendar, CheckCircle, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, BookOpen, BarChart3, UserCheck, Clock, MapPin } from 'lucide-react';
 import axios from 'axios';
+import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../ModalPortal';
 // 1. THÊM ĐOẠN KHAI BÁO TỰ ĐỘNG NÀY VÀO ĐẦU TẤT CẢ CÁC FILE
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -466,11 +467,7 @@ function StudentManagement() {
   const hasActiveFilters = filters.classFilter || filters.genderFilter || searchTerm;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <TableSkeleton columns={6} rows={7} />;
   }
 
   return (

@@ -3,6 +3,7 @@ import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock } from 'lucide-react';
 import axios from 'axios';
+import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal from '../ModalPortal';
 
 function UserAccountManagement() {
@@ -157,11 +158,7 @@ function UserAccountManagement() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <TableSkeleton columns={4} rows={6} />;
   }
 
   return (

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
 import axios from 'axios';
+import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal from '../ModalPortal';
 
 // Tự động lấy cấu hình môi trường hoặc mặc định localhost
@@ -271,11 +272,7 @@ function FacultyManagement() {
   const hasActiveFilters = filters.facultyFilter || searchTerm;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <TableSkeleton columns={4} rows={5} />;
   }
 
   return (

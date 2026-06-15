@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Search, X, ClipboardCheck, BookOpen, AlertCircle, CheckCircle2, UserCheck } from 'lucide-react';
 import axios from 'axios';
+import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal, { ConfirmDialog, SuccessDialog, ErrorDialog, Toast } from '../ModalPortal';
 import API_URL from '../../api';
 
@@ -240,11 +241,7 @@ function TeachingAssignment() {
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <TableSkeleton columns={7} rows={5} />;
   }
 
   return (

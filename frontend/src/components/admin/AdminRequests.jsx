@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
+import { RequestsSkeleton } from './AdminSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search
@@ -103,6 +104,8 @@ function AdminRequests() {
     visible: (i) => ({ opacity: 1, y: 0, transition: { delay: i * 0.04, duration: 0.2 } }),
   };
 
+  if (loading) return <RequestsSkeleton />;
+
   return (
     <div className="max-w-7xl mx-auto space-y-5">
       {/* Header */}
@@ -175,75 +178,66 @@ function AdminRequests() {
         transition={{ duration: 0.2, delay: 0.1 }}
         className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
       >
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
-              <span className="text-sm text-gray-400">Đang tải dữ liệu...</span>
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-gray-50/80 border-b border-gray-100">
-                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide w-14 text-center">ID</th>
-                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Người gửi</th>
-                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Loại / Chủ đề</th>
-                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Ngày gửi</th>
-                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Trạng thái</th>
-                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide text-center">Thao tác</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-50/80 border-b border-gray-100">
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide w-14 text-center">ID</th>
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Người gửi</th>
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Loại / Chủ đề</th>
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Ngày gửi</th>
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Trạng thái</th>
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((req, i) => (
+                <motion.tr
+                  key={req.MaYeuCau}
+                  custom={i}
+                  variants={rowVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors duration-150"
+                >
+                  <td className="p-4 text-center">
+                    <span className="text-xs font-mono font-bold text-gray-400">#{req.MaYeuCau}</span>
+                  </td>
+                  <td className="p-4">
+                    <p className="font-semibold text-gray-800 text-sm">{req.TenNguoiGui || 'N/A'}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {req.VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên'} · {req.NguoiGui}
+                    </p>
+                  </td>
+                  <td className="p-4">
+                    <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-semibold mb-1">{req.LoaiYeuCau}</span>
+                    <p className="font-semibold text-gray-800 text-sm line-clamp-1 max-w-xs">{req.TieuDe}</p>
+                  </td>
+                  <td className="p-4 text-sm text-gray-500">{new Date(req.NgayGui).toLocaleDateString('vi-VN')}</td>
+                  <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
+                  <td className="p-4 text-center">
+                    <motion.button
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => handleOpenModal(req)}
+                      className="px-4 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
+                    >
+                      Xử lý
+                    </motion.button>
+                  </td>
+                </motion.tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-12 text-center text-gray-400">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                    <p className="font-medium">Không có yêu cầu nào</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((req, i) => (
-                  <motion.tr
-                    key={req.MaYeuCau}
-                    custom={i}
-                    variants={rowVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors duration-150"
-                  >
-                    <td className="p-4 text-center">
-                      <span className="text-xs font-mono font-bold text-gray-400">#{req.MaYeuCau}</span>
-                    </td>
-                    <td className="p-4">
-                      <p className="font-semibold text-gray-800 text-sm">{req.TenNguoiGui || 'N/A'}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {req.VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên'} · {req.NguoiGui}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-semibold mb-1">{req.LoaiYeuCau}</span>
-                      <p className="font-semibold text-gray-800 text-sm line-clamp-1 max-w-xs">{req.TieuDe}</p>
-                    </td>
-                    <td className="p-4 text-sm text-gray-500">{new Date(req.NgayGui).toLocaleDateString('vi-VN')}</td>
-                    <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
-                    <td className="p-4 text-center">
-                      <motion.button
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => handleOpenModal(req)}
-                        className="px-4 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
-                      >
-                        Xử lý
-                      </motion.button>
-                    </td>
-                  </motion.tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-12 text-center text-gray-400">
-                      <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                      <p className="font-medium">Không có yêu cầu nào</p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+              )}
+            </tbody>
+          </table>
+        </div>
       </motion.div>
 
       {/* Modal */}

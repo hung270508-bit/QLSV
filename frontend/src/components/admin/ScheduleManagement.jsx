@@ -5,6 +5,7 @@ import {
   RefreshCw, CheckCircle2, AlertCircle, Clock, MapPin, Repeat, CalendarDays, BookOpen, Layers
 } from 'lucide-react';
 import axios from 'axios';
+import { ScheduleSkeleton } from './AdminSkeleton';
 import API_URL from '../../api';
 
 // Danh sách phòng học cố định hệ thống
@@ -329,7 +330,7 @@ function ScheduleManagement() {
     setFormErrors({}); setIsRecurring(true);
   };
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><RefreshCw className="animate-spin text-orange-500 w-12 h-12" /></div>;
+  if (loading) return <ScheduleSkeleton />;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 px-4">

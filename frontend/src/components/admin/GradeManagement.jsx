@@ -6,6 +6,7 @@ import {
   XCircle, Download, FileText, BarChart3, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import axios from 'axios';
+import { GradeSkeleton } from './AdminSkeleton';
 import ModalPortal from '../ModalPortal';
 
 // ================================================================
@@ -604,11 +605,7 @@ function GradeManagement() {
   const hasPreview     = hasAnyScore(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
   const allScoresValid = SCORE_FIELDS.every(f => isScoreValid(formData[f]));
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500" />
-    </div>
-  );
+  if (loading) return <GradeSkeleton />;
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
+import { TrainingPointsSkeleton } from './AdminSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator, 
@@ -177,6 +178,8 @@ function AdminTrainingPoints() {
   const diemSVHienTai = selectedRecord ? (parseInt(selectedRecord.DiemTuDanhGia) || 0) : 0;
   const diemKhoaNhap = parseInt(diemKhoa) || 0;
   const tongDiemPreview = Math.min(diemSVHienTai + diemKhoaNhap, 100);
+
+  if (loading) return <TrainingPointsSkeleton />;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 relative">
