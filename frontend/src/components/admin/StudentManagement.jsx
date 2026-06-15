@@ -96,12 +96,14 @@ function StudentManagement() {
     setSelectedFaculty(facultyId);
     setSelectedNienKhoa('');
     setFormData(prev => ({ ...prev, MaLop: '', MSSV: '' }));
+    if (errors.selectedFaculty) setErrors(prev => ({ ...prev, selectedFaculty: '' }));
   };
 
   const handleNienKhoaChange = (e) => {
     const nienKhoa = e.target.value;
     setSelectedNienKhoa(nienKhoa);
     setFormData(prev => ({ ...prev, MaLop: '', MSSV: '' }));
+    if (errors.selectedNienKhoa) setErrors(prev => ({ ...prev, selectedNienKhoa: '' }));
   };
 
   const handleLopChange = async (e) => {
@@ -134,6 +136,14 @@ function StudentManagement() {
       newErrors.HoTen = 'Họ tên không được để trống';
     } else if (formData.HoTen.length < 2) {
       newErrors.HoTen = 'Họ tên phải có ít nhất 2 ký tự';
+    } else if (formData.HoTen.length > 100) {
+      newErrors.HoTen = 'Họ tên không được vượt quá 100 ký tự';
+    } else {
+      // Validate Họ tên chỉ được chứa chữ cái và khoảng trắng
+      const nameRegex = /^[a-zA-ZÀ-Ỹà-ỹ\s]+$/;
+      if (!nameRegex.test(formData.HoTen)) {
+        newErrors.HoTen = 'Họ tên chỉ được chứa chữ cái và khoảng trắng';
+      }
     }
 
     // Validate Ngày sinh
@@ -142,9 +152,13 @@ function StudentManagement() {
     } else {
       const birthDate = new Date(formData.NgaySinh);
       const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      if (age < 15 || age > 100) {
+      if (isNaN(birthDate.getTime())) {
         newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
+      } else {
+        const age = today.getFullYear() - birthDate.getFullYear();
+        if (age < 15 || age > 100) {
+          newErrors.NgaySinh = 'Ngày sinh không hợp lệ (tuổi phải từ 15-100)';
+        }
       }
     }
 
@@ -155,6 +169,8 @@ function StudentManagement() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.Email)) {
         newErrors.Email = 'Email không đúng định dạng';
+      } else if (formData.Email.length > 100) {
+        newErrors.Email = 'Email không được vượt quá 100 ký tự';
       }
     }
 
@@ -168,9 +184,36 @@ function StudentManagement() {
       }
     }
 
+    // Validate MSSV (chỉ khi thêm mới)
+    if (!editingStudent && formData.MSSV) {
+      if (!/^[A-Z0-9]+$/.test(formData.MSSV)) {
+        newErrors.MSSV = 'MSSV chỉ được chứa chữ cái hoa và số';
+      } else if (formData.MSSV.length > 20) {
+        newErrors.MSSV = 'MSSV không được vượt quá 20 ký tự';
+      }
+    }
+
+    // Validate Khoa
+    if (!selectedFaculty) {
+      newErrors.selectedFaculty = 'Vui lòng chọn khoa';
+    }
+
+    // Validate Niên khóa
+    if (!selectedNienKhoa) {
+      newErrors.selectedNienKhoa = 'Vui lòng chọn niên khóa';
+    }
+
     // Validate Lớp
     if (!formData.MaLop) {
       newErrors.MaLop = 'Vui lòng chọn lớp';
+    }
+
+    // Validate TrangThai
+    if (formData.TrangThai) {
+      const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+      if (!validTrangThai.includes(formData.TrangThai)) {
+        newErrors.TrangThai = 'Trạng thái không hợp lệ';
+      }
     }
 
     setErrors(newErrors);
@@ -712,7 +755,9 @@ function StudentManagement() {
                     <select
                       value={selectedFaculty}
                       onChange={handleFacultyChange}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                        errors.selectedFaculty ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      }`}
                     >
                       <option value="">Chọn khoa</option>
                       {faculties.map((f) => (
@@ -721,6 +766,7 @@ function StudentManagement() {
                         </option>
                       ))}
                     </select>
+                    {errors.selectedFaculty && <p className="text-red-500 text-xs mt-1">{errors.selectedFaculty}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
@@ -728,7 +774,9 @@ function StudentManagement() {
                       value={selectedNienKhoa}
                       onChange={handleNienKhoaChange}
                       disabled={!selectedFaculty}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-50"
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${
+                        errors.selectedNienKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      }`}
                     >
                       <option value="">Chọn niên khóa</option>
                       {filteredNienKhoas.map((nk) => (
@@ -737,6 +785,7 @@ function StudentManagement() {
                         </option>
                       ))}
                     </select>
+                    {errors.selectedNienKhoa && <p className="text-red-500 text-xs mt-1">{errors.selectedNienKhoa}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
