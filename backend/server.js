@@ -11,7 +11,11 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const saltRounds = 10;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
@@ -60,6 +64,30 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
+
+// Rate limiting for login attempts
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 login attempts per windowMs
+    message: { success: false, message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 15 phút.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Middleware to verify JWT token
+const verifyToken = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Không tìm thấy token xác thực!' });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn!' });
+    }
+};
 
 // ==================== HELPER FUNCTIONS ====================
 const executeQuery = (query, params, res, errorMessage) => {
@@ -126,9 +154,9 @@ const normalizeClassGradeStats = (row) => ({
 });
 
 // ==================== API ĐĂNG NHẬP & QUÊN MẬT KHẨU ====================
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginLimiter, (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ!' });
+    if (!username || !password) return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!' });
 
     const query = `
         SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen,
@@ -165,15 +193,30 @@ app.post('/api/login', (req, res) => {
                 } else if (user.MaQuyen === 2) {
                     Object.assign(userResponse, { hoTen: user.TenGiangVien, email: user.EmailGV, soDienThoai: user.SDTGV, maKhoa: user.MaKhoa, tenKhoa: user.TenKhoa });
                 }
-                return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse });
+
+                // Generate JWT token
+                const token = jwt.sign(
+                    { 
+                        id: user.TaiKhoan, 
+                        username: user.TaiKhoan, 
+                        role: roleString, 
+                        maQuyen: user.MaQuyen 
+                    },
+                    JWT_SECRET,
+                    { expiresIn: JWT_EXPIRES_IN }
+                );
+
+                return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse, token });
             }
         }
-        return res.status(401).json({ success: false, message: 'Sai thông tin đăng nhập!' });
+        return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng!' });
     });
 });
 
 app.post('/api/forgot-password', (req, res) => {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Vui lòng nhập email!' });
+    
     const query = `
         SELECT 'sinhvien' as userType, MSSV as id, HoTen as name, Email as email FROM sinhvien WHERE Email = ?
         UNION
@@ -181,8 +224,76 @@ app.post('/api/forgot-password', (req, res) => {
     `;
     db.query(query, [email, email], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
-        if (results.length > 0) return res.json({ success: true, message: `Đã gửi liên kết đến ${email}.` });
-        return res.status(404).json({ success: false, message: 'Email không tồn tại!' });
+        if (results.length > 0) {
+            // In production, send actual email with reset link
+            // For now, return success message
+            return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
+        }
+        // Don't reveal if email exists or not for security
+        return res.json({ success: true, message: `Nếu email ${email} tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.` });
+    });
+});
+
+// Verify token endpoint
+app.get('/api/verify-token', verifyToken, (req, res) => {
+    res.json({ success: true, user: req.user });
+});
+
+// Change password endpoint
+app.post('/api/change-password', verifyToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const username = req.user.username;
+    
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới!' });
+    }
+    
+    // Password strength validation
+    if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 8 ký tự!' });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 chữ cái viết hoa!' });
+    }
+    if (!/[a-z]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 chữ cái viết thường!' });
+    }
+    if (!/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 chữ số!' });
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt!' });
+    }
+    
+    const query = 'SELECT password FROM users WHERE TaiKhoan = ?';
+    db.query(query, [username], async (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản!' });
+        }
+        
+        const user = results[0];
+        let passwordMatch = false;
+        
+        if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+            passwordMatch = await bcrypt.compare(currentPassword, user.password);
+        } else {
+            passwordMatch = (currentPassword === user.password);
+        }
+        
+        if (!passwordMatch) {
+            return res.status(401).json({ success: false, message: 'Mật khẩu hiện tại không đúng!' });
+        }
+        
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, username], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
+                res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: 'Lỗi mã hóa mật khẩu!' });
+        }
     });
 });
 

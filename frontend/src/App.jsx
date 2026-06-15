@@ -10,7 +10,16 @@ import TeacherDashboard from './components/teacher/TeacherDashboard';
 function App() {
   const getSavedAccounts = () => {
     try {
-      return JSON.parse(localStorage.getItem('savedAccounts') || '[]');
+      const accounts = JSON.parse(localStorage.getItem('savedAccounts') || '[]');
+      // Clean up old accounts that still have passwords stored (security fix)
+      const cleanedAccounts = accounts.map(acc => {
+        const { password, ...rest } = acc;
+        return rest;
+      });
+      if (JSON.stringify(accounts) !== JSON.stringify(cleanedAccounts)) {
+        localStorage.setItem('savedAccounts', JSON.stringify(cleanedAccounts));
+      }
+      return cleanedAccounts;
     } catch {
       return [];
     }
@@ -30,11 +39,23 @@ function App() {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  const [token, setToken] = useState(() => {
+    return localStorage.getItem('token') || null;
+  });
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, message: '' });
+  const [sessionTimeout, setSessionTimeout] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [newPasswordStrength, setNewPasswordStrength] = useState({ score: 0, message: '' });
 
   const handleSelectAccount = (acc) => {
     setUsername(acc.username);
-    setPassword(acc.password);
+    setPassword(''); // Security: Don't auto-fill password from localStorage
     setShowAccountList(false);
+    setMessage({ type: 'info', text: 'Vui lòng nhập mật khẩu cho tài khoản đã lưu.' });
   };
 
   const handleRemoveAccount = (e, accUsername) => {
@@ -49,6 +70,18 @@ function App() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
+    // Form validation
+    if (!username.trim()) {
+      setMessage({ type: 'error', text: 'Vui lòng nhập tên đăng nhập!' });
+      setLoading(false);
+      return;
+    }
+    if (!password) {
+      setMessage({ type: 'error', text: 'Vui lòng nhập mật khẩu!' });
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await axios.post(`${API_URL}/api/login`, {
         username,
@@ -61,19 +94,31 @@ function App() {
           text: response.data.message
       });
 
+      // Save JWT token
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        setToken(response.data.token);
+      }
+
+      // Save user data
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      setLoggedInUser(response.data.user);
+
+      // Save only username (not password) for convenience
       if (rememberMe) {
         const accounts = getSavedAccounts().filter(acc => acc.username !== username);
-        accounts.unshift({ username, password, role: response.data.user.role, tenQuyen: response.data.user.tenQuyen });
+        accounts.unshift({ username, role: response.data.user.role, tenQuyen: response.data.user.tenQuyen });
         const trimmed = accounts.slice(0, 5);
         localStorage.setItem('savedAccounts', JSON.stringify(trimmed));
         setSavedAccounts(trimmed);
       }
 
-      localStorage.setItem(
-        'user',
-        JSON.stringify(response.data.user)
-      );
-      setLoggedInUser(response.data.user);
+      // Set session timeout (24 hours)
+      const timeoutId = setTimeout(() => {
+        handleLogout();
+        setMessage({ type: 'info', text: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
+      }, 24 * 60 * 60 * 1000);
+      setSessionTimeout(timeoutId);
     }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Không thể kết nối đến server!';
@@ -93,14 +138,107 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    // Clear session timeout
+    if (sessionTimeout) {
+      clearTimeout(sessionTimeout);
+      setSessionTimeout(null);
+    }
 
+    // Clear token and user data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
     setLoggedInUser(null);
     setUsername('');
     setPassword('');
     setMessage({ type: '', text: '' });
-};
-  
+  };
+
+  const checkPasswordStrength = (password) => {
+    let score = 0;
+    let message = '';
+
+    if (password.length === 0) {
+      return { score: 0, message: '' };
+    }
+
+    if (password.length < 6) {
+      return { score: 1, message: 'Mật khẩu quá yếu' };
+    }
+
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+    if (score <= 2) message = 'Mật khẩu yếu';
+    else if (score <= 4) message = 'Mật khẩu trung bình';
+    else if (score <= 5) message = 'Mật khẩu mạnh';
+    else message = 'Mật khẩu rất mạnh';
+
+    return { score, message };
+  };
+
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    setPasswordStrength(checkPasswordStrength(newPassword));
+  };
+
+  const handleNewPasswordChange = (e) => {
+    const newPass = e.target.value;
+    setNewPassword(newPass);
+    setNewPasswordStrength(checkPasswordStrength(newPass));
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setChangePasswordLoading(true);
+    setMessage({ type: '', text: '' });
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setMessage({ type: 'error', text: 'Vui lòng nhập đầy đủ thông tin!' });
+      setChangePasswordLoading(false);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: 'error', text: 'Mật khẩu mới không khớp!' });
+      setChangePasswordLoading(false);
+      return;
+    }
+
+    if (newPasswordStrength.score < 3) {
+      setMessage({ type: 'error', text: 'Mật khẩu mới quá yếu!' });
+      setChangePasswordLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/change-password`,
+        { currentPassword, newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setMessage({ type: 'success', text: response.data.message });
+        setShowChangePassword(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setNewPasswordStrength({ score: 0, message: '' });
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Không thể kết nối đến server!';
+      setMessage({ type: 'error', text: errorMsg });
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setForgotLoading(true);
@@ -125,17 +263,317 @@ function App() {
 
   // Show AdminDashboard for admin users
   if (loggedInUser && loggedInUser.role === 'admin') {
-    return <AdminDashboard user={loggedInUser} onLogout={handleLogout} />;
+    return (
+      <>
+        <AdminDashboard user={loggedInUser} onLogout={handleLogout} />
+        {showChangePassword && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl"
+            >
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">Đổi Mật Khẩu</h3>
+              {message.text && (
+                <div className={`p-4 rounded-xl text-sm mb-4 text-center font-medium ${
+                  message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 
+                  message.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
+                  'bg-blue-50 text-blue-600 border border-blue-200'
+                }`}>
+                  {message.text}
+                </div>
+              )}
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={handleNewPasswordChange}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                  {newPasswordStrength.message && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          style={{ width: `${(newPasswordStrength.score / 6) * 100}%` }}
+                          className={`h-full transition-colors ${
+                            newPasswordStrength.score <= 2 ? 'bg-red-500' :
+                            newPasswordStrength.score <= 4 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                        />
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        newPasswordStrength.score <= 2 ? 'text-red-500' :
+                        newPasswordStrength.score <= 4 ? 'text-yellow-500' :
+                        'text-green-500'
+                      }`}>
+                        {newPasswordStrength.message}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowChangePassword(false);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setNewPasswordStrength({ score: 0, message: '' });
+                      setMessage({ type: '', text: '' });
+                    }}
+                    className="flex-1 py-3 text-gray-600 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={changePasswordLoading}
+                    className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {changePasswordLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </>
+    );
   }
 
   // Show StudentDashboard for student users
   if (loggedInUser && loggedInUser.role === 'student') {
-    return <StudentDashboard user={loggedInUser} onLogout={handleLogout} />;
+    return (
+      <>
+        <StudentDashboard user={loggedInUser} onLogout={handleLogout} />
+        {showChangePassword && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl"
+            >
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">Đổi Mật Khẩu</h3>
+              {message.text && (
+                <div className={`p-4 rounded-xl text-sm mb-4 text-center font-medium ${
+                  message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 
+                  message.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
+                  'bg-blue-50 text-blue-600 border border-blue-200'
+                }`}>
+                  {message.text}
+                </div>
+              )}
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={handleNewPasswordChange}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                  {newPasswordStrength.message && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          style={{ width: `${(newPasswordStrength.score / 6) * 100}%` }}
+                          className={`h-full transition-colors ${
+                            newPasswordStrength.score <= 2 ? 'bg-red-500' :
+                            newPasswordStrength.score <= 4 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                        />
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        newPasswordStrength.score <= 2 ? 'text-red-500' :
+                        newPasswordStrength.score <= 4 ? 'text-yellow-500' :
+                        'text-green-500'
+                      }`}>
+                        {newPasswordStrength.message}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowChangePassword(false);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setNewPasswordStrength({ score: 0, message: '' });
+                      setMessage({ type: '', text: '' });
+                    }}
+                    className="flex-1 py-3 text-gray-600 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={changePasswordLoading}
+                    className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {changePasswordLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </>
+    );
   }
 
   // Show TeacherDashboard for teacher users
   if (loggedInUser && loggedInUser.role === 'teacher') {
-    return <TeacherDashboard user={loggedInUser} onLogout={handleLogout} />;
+    return (
+      <>
+        <TeacherDashboard user={loggedInUser} onLogout={handleLogout} />
+        {showChangePassword && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl"
+            >
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">Đổi Mật Khẩu</h3>
+              {message.text && (
+                <div className={`p-4 rounded-xl text-sm mb-4 text-center font-medium ${
+                  message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 
+                  message.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
+                  'bg-blue-50 text-blue-600 border border-blue-200'
+                }`}>
+                  {message.text}
+                </div>
+              )}
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={handleNewPasswordChange}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                  {newPasswordStrength.message && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          style={{ width: `${(newPasswordStrength.score / 6) * 100}%` }}
+                          className={`h-full transition-colors ${
+                            newPasswordStrength.score <= 2 ? 'bg-red-500' :
+                            newPasswordStrength.score <= 4 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                        />
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        newPasswordStrength.score <= 2 ? 'text-red-500' :
+                        newPasswordStrength.score <= 4 ? 'text-yellow-500' :
+                        'text-green-500'
+                      }`}>
+                        {newPasswordStrength.message}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowChangePassword(false);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setNewPasswordStrength({ score: 0, message: '' });
+                      setMessage({ type: '', text: '' });
+                    }}
+                    className="flex-1 py-3 text-gray-600 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={changePasswordLoading}
+                    className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {changePasswordLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </>
+    );
   }
 
   return (
@@ -195,7 +633,9 @@ function App() {
                 initial={{ opacity: 0, scale: 0.95, y: -10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 className={`p-4 rounded-xl text-sm mb-6 text-center font-medium ${
-                  message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'
+                  message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 
+                  message.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
+                  'bg-blue-50 text-blue-600 border border-blue-200'
                 }`}
               >
                 {message.text}
@@ -281,7 +721,7 @@ function App() {
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={handlePasswordChange}
                       className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                       placeholder="Nhập mật khẩu..."
                       required
@@ -296,6 +736,32 @@ function App() {
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </motion.button>
                   </div>
+                  {passwordStrength.message && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-2 flex items-center gap-2"
+                    >
+                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(passwordStrength.score / 6) * 100}%` }}
+                          className={`h-full transition-colors ${
+                            passwordStrength.score <= 2 ? 'bg-red-500' :
+                            passwordStrength.score <= 4 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                        />
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        passwordStrength.score <= 2 ? 'text-red-500' :
+                        passwordStrength.score <= 4 ? 'text-yellow-500' :
+                        'text-green-500'
+                      }`}>
+                        {passwordStrength.message}
+                      </span>
+                    </motion.div>
+                  )}
                 </motion.div>
 
                 <motion.div
