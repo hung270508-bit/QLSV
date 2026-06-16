@@ -6,7 +6,7 @@ import {
   Award, TrendingUp, AlertCircle, CheckCircle, UserCheck
 } from 'lucide-react';
 import axios from 'axios';
-import { TableSkeleton } from './AdminSkeleton';
+import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
 
@@ -571,18 +571,8 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
               }
             }}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Row 1: Mã môn học | Tên môn học */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã môn học</label>
-                  <input
-                    type="text"
-                    value={formData.MaMonHoc}
-                    disabled
-                    placeholder="Tự động sinh khi chọn khoa"
-                    className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-500 font-semibold cursor-not-allowed"
-                  />
-                </div>
-                <div>
+                <input type="hidden" value={formData.MaMonHoc} />
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Tên môn học</label>
                   <input
                     type="text"

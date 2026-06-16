@@ -164,9 +164,47 @@ const normalizeClassGradeStats = (row) => ({
 });
 
 // ==================== API ĐĂNG NHẬP & QUÊN MẬT KHẨU ====================
+// Store login attempts in memory
+const loginAttempts = {};
+
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!' });
+
+    // Check if account is locked out
+    const now = new Date();
+    if (loginAttempts[username] && loginAttempts[username].lockoutUntil && loginAttempts[username].lockoutUntil > now) {
+        const remainingMs = loginAttempts[username].lockoutUntil - now;
+        const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+        return res.status(403).json({
+            success: false,
+            message: `Tài khoản của bạn tạm thời bị khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ${remainingMinutes} phút.`
+        });
+    }
+
+    const handleFailedAttempt = (username) => {
+        if (!loginAttempts[username]) {
+            loginAttempts[username] = { attempts: 0, lockoutUntil: null };
+        }
+        loginAttempts[username].attempts += 1;
+        const attempts = loginAttempts[username].attempts;
+
+        if (attempts % 5 === 0) {
+            const multiplier = attempts / 5;
+            const lockoutMinutes = 5 * multiplier;
+            loginAttempts[username].lockoutUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
+            return res.status(403).json({
+                success: false,
+                message: `Bạn đã nhập sai mật khẩu ${attempts} lần. Tài khoản của bạn bị khóa tạm thời trong ${lockoutMinutes} phút.`
+            });
+        } else {
+            const remaining = 5 - (attempts % 5);
+            return res.status(401).json({
+                success: false,
+                message: `Mật khẩu không đúng! Bạn đã nhập sai ${attempts} lần. Còn ${remaining} lần thử trước khi tài khoản bị khóa tạm thời.`
+            });
+        }
+    };
 
     const query = `
         SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen,
@@ -184,7 +222,7 @@ app.post('/api/login', (req, res) => {
 
     db.query(query, [username], async (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
-        if (results.length > 0) {
+        if (results.length > 0 && results[0].TaiKhoan === username) {
             const user = results[0];
             let passwordMatch = false;
 
@@ -195,6 +233,12 @@ app.post('/api/login', (req, res) => {
             }
 
             if (passwordMatch) {
+                // Reset login attempts on success
+                if (loginAttempts[username]) {
+                    loginAttempts[username].attempts = 0;
+                    loginAttempts[username].lockoutUntil = null;
+                }
+
                 let roleString = user.MaQuyen === 1 ? 'admin' : (user.MaQuyen === 2 ? 'teacher' : 'student');
                 const userResponse = { id: user.TaiKhoan, username: user.TaiKhoan, role: roleString, tenQuyen: user.TenQuyen };
 
@@ -217,9 +261,12 @@ app.post('/api/login', (req, res) => {
                 );
 
                 return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse, token });
+            } else {
+                return handleFailedAttempt(username);
             }
+        } else {
+            return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại!' });
         }
-        return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng!' });
     });
 });
 

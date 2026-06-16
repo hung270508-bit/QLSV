@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
-import { TrainingPointsSkeleton } from './AdminSkeleton';
+import { TrainingPointsSkeleton } from '../common/AdminSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator, 

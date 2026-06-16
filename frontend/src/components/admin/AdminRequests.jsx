@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
-import { RequestsSkeleton } from './AdminSkeleton';
+import { RequestsSkeleton } from '../common/AdminSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search

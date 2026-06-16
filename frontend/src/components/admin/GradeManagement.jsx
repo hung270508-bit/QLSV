@@ -6,7 +6,7 @@ import {
   XCircle, Download, FileText, BarChart3, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import axios from 'axios';
-import { GradeSkeleton } from './AdminSkeleton';
+import { GradeSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
 
 // ================================================================
