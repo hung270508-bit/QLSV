@@ -51,6 +51,12 @@ function ResetPassword() {
       return;
     }
 
+    if (trimmedNew.length > 20) {
+      setMessage({ type: 'error', text: 'Mật khẩu chỉ được tối đa 20 ký tự!' });
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await axios.post(`${API_URL}/api/reset-password`, {
         token,
@@ -184,7 +190,15 @@ function ResetPassword() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewPassword(val);
+                    if (val.length > 20) {
+                      setMessage({ type: 'error', text: 'Mật khẩu chỉ được tối đa 20 ký tự!' });
+                    } else {
+                      setMessage({ type: '', text: '' });
+                    }
+                  }}
                   onBlur={() => setNewPassword(newPassword.trim())}
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                   placeholder="Nhập mật khẩu mới..."
@@ -215,7 +229,15 @@ function ResetPassword() {
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setConfirmPassword(val);
+                    if (val.length > 20) {
+                      setMessage({ type: 'error', text: 'Mật khẩu chỉ được tối đa 20 ký tự!' });
+                    } else {
+                      setMessage({ type: '', text: '' });
+                    }
+                  }}
                   onBlur={() => setConfirmPassword(confirmPassword.trim())}
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                   placeholder="Nhập lại mật khẩu mới..."
