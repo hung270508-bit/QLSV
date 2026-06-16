@@ -321,6 +321,9 @@ app.post('/api/change-password', verifyToken, async (req, res) => {
     if (!currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới!' });
     }
+    if (newPassword.length < 8 || newPassword.length > 20) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải từ 8 đến 20 ký tự!' });
+    }
 
     const query = 'SELECT password FROM users WHERE TaiKhoan = ?';
     db.query(query, [username], async (err, results) => {
@@ -363,8 +366,8 @@ app.post('/api/reset-password', async (req, res) => {
     }
 
     // Validate password strength
-    if (newPassword.length < 8) {
-        return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 8 ký tự!' });
+    if (newPassword.length < 8 || newPassword.length > 20) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu phải từ 8 đến 20 ký tự!' });
     }
 
     try {
@@ -450,6 +453,9 @@ app.get('/api/users', (req, res) => executeQuery(`SELECT u.TaiKhoan, u.password,
 app.get('/api/roles', (req, res) => executeQuery('SELECT * FROM phanquyen', [], res, 'Lỗi lấy quyền!'));
 app.post('/api/users', async (req, res) => {
     try {
+        if (!req.body.password || req.body.password.length < 5 || req.body.password.length > 20) {
+            return res.status(400).json({ success: false, message: 'Mật khẩu phải từ 5 đến 20 ký tự!' });
+        }
         const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
         executeInsert('INSERT INTO users (TaiKhoan, password, MaQuyen, NgayTao) VALUES (?, ?, ?, NOW())', [req.body.TaiKhoan, hashedPassword, req.body.MaQuyen], res, 'Thêm tài khoản thành công!', 'Lỗi thêm tài khoản!');
     } catch (e) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
@@ -457,6 +463,9 @@ app.post('/api/users', async (req, res) => {
 app.put('/api/users/:taiKhoan', async (req, res) => {
     try {
         if (req.body.password) {
+            if (req.body.password.length < 5 || req.body.password.length > 20) {
+                return res.status(400).json({ success: false, message: 'Mật khẩu phải từ 5 đến 20 ký tự!' });
+            }
             const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
             executeUpdate('UPDATE users SET password = ?, MaQuyen = ? WHERE TaiKhoan = ?', [hashedPassword, req.body.MaQuyen, req.params.taiKhoan], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
         } else {
@@ -467,7 +476,11 @@ app.put('/api/users/:taiKhoan', async (req, res) => {
 app.delete('/api/users/:taiKhoan', (req, res) => executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.taiKhoan], res, 'Xóa tài khoản thành công!', 'Lỗi xóa!'));
 app.put('/api/users/:taiKhoan/reset-password', async (req, res) => {
     try {
-        const hashedPassword = await bcrypt.hash(req.body.password || req.body.newPassword, saltRounds);
+        const passwordVal = req.body.password || req.body.newPassword;
+        if (!passwordVal || passwordVal.length < 5 || passwordVal.length > 20) {
+            return res.status(400).json({ success: false, message: 'Mật khẩu phải từ 5 đến 20 ký tự!' });
+        }
+        const hashedPassword = await bcrypt.hash(passwordVal, saltRounds);
         executeUpdate('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, req.params.taiKhoan], res, 'Đặt lại MK thành công!', 'Lỗi đặt lại MK!');
     } catch (e) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
@@ -557,7 +570,7 @@ app.post('/api/students', async (req, res) => {
     }
 
     // Validate TrangThai
-    const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+    const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
     if (TrangThai && !validTrangThai.includes(TrangThai)) {
         return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
     }
@@ -683,7 +696,7 @@ app.put('/api/students/:mssv', async (req, res) => {
     }
 
     // Validate TrangThai
-    const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+    const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
     if (data.TrangThai && !validTrangThai.includes(data.TrangThai)) {
         return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
     }

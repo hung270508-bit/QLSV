@@ -36,7 +36,9 @@ const LoginForm = ({
   }, [username]);
 
   React.useEffect(() => {
-    if (password) {
+    if (password.length > 20) {
+      setErrors(prev => ({ ...prev, password: 'Mật khẩu chỉ được tối đa 20 ký tự!' }));
+    } else {
       setErrors(prev => ({ ...prev, password: '' }));
     }
   }, [password]);
@@ -79,6 +81,9 @@ const LoginForm = ({
     // Ràng buộc mật khẩu
     if (!trimmedPassword) {
       newErrors.password = 'Vui lòng nhập mật khẩu!';
+      hasError = true;
+    } else if (password.length > 20) {
+      newErrors.password = 'Mật khẩu chỉ được tối đa 20 ký tự!';
       hasError = true;
     } else if (/\s{2,}/.test(password)) {
       newErrors.password = 'Mật khẩu không được chứa quá nhiều khoảng trắng liên tiếp!';
