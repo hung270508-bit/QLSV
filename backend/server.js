@@ -878,19 +878,19 @@ app.get('/api/teachers/next-code/:maKhoa', (req, res) => {
     });
 });
 app.post('/api/teachers', async (req, res) => {
-    const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai } = req.body;
+    const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh } = req.body;
     try {
         const hashedPassword = await bcrypt.hash('gv@2025', saltRounds);
         db.query('INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 2)', [MaGiangVien, hashedPassword], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo TK GV!' });
-            db.query('INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai) VALUES (?, ?, ?, ?, ?, ?)', [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai || 'Đang dạy'], (err) => {
+            db.query('INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai || 'Đang dạy', GioiTinh || null, NgaySinh || null], (err) => {
                 if (err) return res.status(500).json({ success: false, message: 'Lỗi thêm GV!' });
                 res.json({ success: true, message: 'Thêm giảng viên thành công!' });
             });
         });
     } catch (err) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
-app.put('/api/teachers/:maGV', (req, res) => executeUpdate('UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=? WHERE MaGiangVien=?', [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.params.maGV], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
+app.put('/api/teachers/:maGV', (req, res) => executeUpdate('UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=?, GioiTinh=?, NgaySinh=? WHERE MaGiangVien=?', [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.body.GioiTinh || null, req.body.NgaySinh || null, req.params.maGV], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
 app.delete('/api/teachers/:maGV', (req, res) => executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.maGV], res, 'Xóa thành công!', 'Lỗi xóa!'));
 
 app.get('/api/teachers/:maGV/details', (req, res) => executeQuery('SELECT g.*, k.TenKhoa FROM giangvien g LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa WHERE g.MaGiangVien = ?', [req.params.maGV], res, 'Lỗi lấy chi tiết!'));
