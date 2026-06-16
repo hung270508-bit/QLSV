@@ -283,15 +283,27 @@ app.post('/api/forgot-password', (req, res) => {
     });
 });
 
-// Endpoint tạm thời để chẩn đoán lỗi gửi email trực tiếp trên Render
+// Endpoint tạm thời để chẩn đoán lỗi gửi email trực tiếp trên Render (thử cổng 465 SSL)
 app.get('/api/test-email-error', (req, res) => {
+    const testTransporter = require('nodemailer').createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: {
+            user: 'hung270508@gmail.com',
+            pass: 'cdhi yudv iuik khjw'
+        },
+        tls: {
+            rejectUnauthorized: false
+        }
+    });
     const mailOptions = {
-        from: process.env.EMAIL_SENDER || process.env.EMAIL_USER,
+        from: 'hung270508@gmail.com',
         to: 'hung270508@gmail.com',
-        subject: 'Test Email Error Diagnostic',
-        text: 'Chẩn đoán lỗi kết nối SMTP từ Render'
+        subject: 'Test Email Error Diagnostic Port 465',
+        text: 'Chẩn đoán lỗi kết nối SMTP 465 từ Render'
     };
-    transporter.sendMail(mailOptions, (error, info) => {
+    testTransporter.sendMail(mailOptions, (error, info) => {
         if (error) {
             res.json({ success: false, error: error.message, code: error.code, stack: error.stack });
         } else {
