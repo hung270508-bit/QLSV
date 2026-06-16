@@ -283,6 +283,24 @@ app.post('/api/forgot-password', (req, res) => {
     });
 });
 
+// Endpoint tạm thời để chẩn đoán lỗi gửi email trực tiếp trên Render
+app.get('/api/test-email-error', (req, res) => {
+    const mailOptions = {
+        from: process.env.EMAIL_SENDER || process.env.EMAIL_USER,
+        to: 'hung270508@gmail.com',
+        subject: 'Test Email Error Diagnostic',
+        text: 'Chẩn đoán lỗi kết nối SMTP từ Render'
+    };
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            res.json({ success: false, error: error.message, code: error.code, stack: error.stack });
+        } else {
+            res.json({ success: true, info });
+        }
+    });
+});
+
+
 // Verify token endpoint
 app.get('/api/verify-token', verifyToken, (req, res) => {
     res.json({ success: true, user: req.user });
