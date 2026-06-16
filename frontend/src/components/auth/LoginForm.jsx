@@ -26,6 +26,93 @@ const LoginForm = ({
   handleSelectAccount,
   handleRemoveAccount
 }) => {
+  const [errors, setErrors] = React.useState({ username: '', password: '' });
+  const [forgotEmailError, setForgotEmailError] = React.useState('');
+
+  React.useEffect(() => {
+    if (username.trim()) {
+      setErrors(prev => ({ ...prev, username: '' }));
+    }
+  }, [username]);
+
+  React.useEffect(() => {
+    if (password) {
+      setErrors(prev => ({ ...prev, password: '' }));
+    }
+  }, [password]);
+
+  React.useEffect(() => {
+    if (forgotEmail.trim()) {
+      setForgotEmailError('');
+    }
+  }, [forgotEmail]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+
+    setUsername(trimmedUsername);
+    setPassword(trimmedPassword);
+
+    const newErrors = { username: '', password: '' };
+    let hasError = false;
+
+    // Ràng buộc tên đăng nhập (Mã số tài khoản)
+    if (!trimmedUsername) {
+      newErrors.username = 'Vui lòng nhập mã số tài khoản!';
+      hasError = true;
+    } else if (/\s/.test(trimmedUsername)) {
+      newErrors.username = 'Mã số tài khoản không được chứa khoảng trắng!';
+      hasError = true;
+    } else if (!/^[a-zA-Z0-9]+$/.test(trimmedUsername)) {
+      newErrors.username = 'Mã số tài khoản chỉ được chứa chữ cái không dấu và số!';
+      hasError = true;
+    } else if (trimmedUsername.length < 3) {
+      newErrors.username = 'Mã số tài khoản phải có ít nhất 3 ký tự!';
+      hasError = true;
+    } else if (trimmedUsername.length > 20) {
+      newErrors.username = 'Mã số tài khoản không được vượt quá 20 ký tự!';
+      hasError = true;
+    }
+
+    // Ràng buộc mật khẩu
+    if (!trimmedPassword) {
+      newErrors.password = 'Vui lòng nhập mật khẩu!';
+      hasError = true;
+    } else if (/\s{2,}/.test(password)) {
+      newErrors.password = 'Mật khẩu không được chứa quá nhiều khoảng trắng liên tiếp!';
+      hasError = true;
+    }
+
+    setErrors(newErrors);
+
+    if (!hasError) {
+      handleLogin(e);
+    }
+  };
+
+  const handleForgotSubmit = (e) => {
+    e.preventDefault();
+    const trimmedEmail = forgotEmail.trim();
+    setForgotEmail(trimmedEmail);
+
+    let error = '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedEmail) {
+      error = 'Vui lòng nhập email!';
+    } else if (!emailRegex.test(trimmedEmail)) {
+      error = 'Email không đúng định dạng!';
+    }
+
+    setForgotEmailError(error);
+
+    if (!error) {
+      handleForgotPassword(e);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-100 p-4 relative overflow-hidden">
       {/* Background decorative elements */}
@@ -91,7 +178,7 @@ const LoginForm = ({
           )}
 
           {!showForgotPassword ? (
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="space-y-5">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -99,17 +186,23 @@ const LoginForm = ({
               >
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Mã số tài khoản</label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-orange-500 transition-colors">
+                  <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
+                    errors.username ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
+                  }`}>
                     <User className="w-5 h-5" />
                   </div>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+                    onBlur={() => setUsername(username.trim())}
                     onFocus={() => savedAccounts.length > 0 && setShowAccountList(true)}
-                    className="w-full pl-12 pr-10 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
+                    className={`w-full pl-12 pr-10 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
+                      errors.username
+                        ? 'border-red-300 focus:border-red-500 focus:bg-white'
+                        : 'border-gray-200 focus:border-orange-500 focus:bg-white group-hover:border-gray-300'
+                    }`}
                     placeholder="Nhập MSSV hoặc Mã GV..."
-                    required
                   />
                   {savedAccounts.length > 0 && (
                     <button
@@ -154,6 +247,15 @@ const LoginForm = ({
                     </motion.div>
                   )}
                 </div>
+                {errors.username && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                  >
+                    {errors.username}
+                  </motion.p>
+                )}
               </motion.div>
 
               <motion.div
@@ -163,16 +265,22 @@ const LoginForm = ({
               >
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu</label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-orange-500 transition-colors">
+                  <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
+                    errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
+                  }`}>
                     <Lock className="w-5 h-5" />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
+                    onBlur={() => setPassword(password.trim())}
+                    className={`w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
+                      errors.password
+                        ? 'border-red-300 focus:border-red-500 focus:bg-white'
+                        : 'border-gray-200 focus:border-orange-500 focus:bg-white group-hover:border-gray-300'
+                    }`}
                     placeholder="Nhập mật khẩu..."
-                    required
                   />
                   <motion.button
                     type="button"
@@ -184,6 +292,15 @@ const LoginForm = ({
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </motion.button>
                 </div>
+                {errors.password && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                  >
+                    {errors.password}
+                  </motion.p>
+                )}
               </motion.div>
 
               <motion.div
@@ -243,7 +360,8 @@ const LoginForm = ({
             <motion.form
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              onSubmit={handleForgotPassword}
+              onSubmit={handleForgotSubmit}
+              noValidate
               className="space-y-5"
             >
               <motion.div
@@ -253,18 +371,33 @@ const LoginForm = ({
               >
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-orange-500 transition-colors">
+                  <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
+                    forgotEmailError ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
+                  }`}>
                     <Mail className="w-5 h-5" />
                   </div>
                   <input
                     type="email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
+                    onBlur={() => setForgotEmail(forgotEmail.trim())}
+                    className={`w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
+                      forgotEmailError
+                        ? 'border-red-300 focus:border-red-500 focus:bg-white'
+                        : 'border-gray-200 focus:border-orange-500 focus:bg-white group-hover:border-gray-300'
+                    }`}
                     placeholder="email@example.com"
-                    required
                   />
                 </div>
+                {forgotEmailError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                  >
+                    {forgotEmailError}
+                  </motion.p>
+                )}
               </motion.div>
 
               <motion.button

@@ -17,23 +17,29 @@ const DASHBOARD_MAP = {
 function App() {
   const getSavedAccounts = () => {
     try {
-      const accounts = JSON.parse(localStorage.getItem('savedAccounts') || '[]');
-      const cleanedAccounts = accounts.map(acc => {
-        const { password, ...rest } = acc;
-        return rest;
-      });
-      if (JSON.stringify(accounts) !== JSON.stringify(cleanedAccounts)) {
-        localStorage.setItem('savedAccounts', JSON.stringify(cleanedAccounts));
-      }
-      return cleanedAccounts;
+      return JSON.parse(localStorage.getItem('savedAccounts') || '[]');
     } catch {
       return [];
     }
   };
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('rememberedUsername') || '';
+  });
+  const [password, setPassword] = useState(() => {
+    const savedPassword = localStorage.getItem('rememberedPassword') || '';
+    if (savedPassword) {
+      try {
+        return atob(savedPassword);
+      } catch {
+        return savedPassword;
+      }
+    }
+    return '';
+  });
+  const [rememberMe, setRememberMe] = useState(() => {
+    return !!localStorage.getItem('rememberedUsername');
+  });
   const [savedAccounts, setSavedAccounts] = useState(getSavedAccounts);
   const [showAccountList, setShowAccountList] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,19 +49,28 @@ function App() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
   const [token, setToken] = useState(() => {
-    return localStorage.getItem('token') || null;
+    return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
   });
   const [sessionTimeout, setSessionTimeout] = useState(null);
 
   const handleSelectAccount = (acc) => {
     setUsername(acc.username);
-    setPassword('');
+    let decodedPwd = '';
+    if (acc.password) {
+      try {
+        decodedPwd = atob(acc.password);
+      } catch {
+        decodedPwd = acc.password;
+      }
+    }
+    setPassword(decodedPwd);
+    setRememberMe(true);
     setShowAccountList(false);
-    setMessage({ type: 'info', text: 'Vui lòng nhập mật khẩu cho tài khoản đã lưu.' });
+    setMessage({ type: 'info', text: 'Đã tự động điền thông tin tài khoản đã lưu.' });
   };
 
   const handleRemoveAccount = (e, accUsername) => {
@@ -70,12 +85,18 @@ function App() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    if (!username.trim()) {
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+
+    setUsername(trimmedUsername);
+    setPassword(trimmedPassword);
+
+    if (!trimmedUsername) {
       setMessage({ type: 'error', text: 'Vui lòng nhập tên đăng nhập!' });
       setLoading(false);
       return;
     }
-    if (!password) {
+    if (!trimmedPassword) {
       setMessage({ type: 'error', text: 'Vui lòng nhập mật khẩu!' });
       setLoading(false);
       return;
@@ -83,8 +104,8 @@ function App() {
 
     try {
       const response = await axios.post(`${API_URL}/api/login`, {
-        username,
-        password
+        username: trimmedUsername,
+        password: trimmedPassword
       });
 
       if (response.data.success) {
@@ -93,20 +114,44 @@ function App() {
           text: response.data.message
         });
 
+        const storage = rememberMe ? localStorage : sessionStorage;
+
         if (response.data.token) {
-          localStorage.setItem('token', response.data.token);
+          storage.setItem('token', response.data.token);
           setToken(response.data.token);
         }
 
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        storage.setItem('user', JSON.stringify(response.data.user));
         setLoggedInUser(response.data.user);
 
         if (rememberMe) {
-          const accounts = getSavedAccounts().filter(acc => acc.username !== username);
-          accounts.unshift({ username, role: response.data.user.role, tenQuyen: response.data.user.tenQuyen });
+          localStorage.setItem('rememberedUsername', trimmedUsername);
+          try {
+            localStorage.setItem('rememberedPassword', btoa(trimmedPassword));
+          } catch {
+            localStorage.setItem('rememberedPassword', trimmedPassword);
+          }
+
+          let encodedPwd = '';
+          try {
+            encodedPwd = btoa(trimmedPassword);
+          } catch {
+            encodedPwd = trimmedPassword;
+          }
+
+          const accounts = getSavedAccounts().filter(acc => acc.username !== trimmedUsername);
+          accounts.unshift({
+            username: trimmedUsername,
+            password: encodedPwd,
+            role: response.data.user.role,
+            tenQuyen: response.data.user.tenQuyen
+          });
           const trimmed = accounts.slice(0, 5);
           localStorage.setItem('savedAccounts', JSON.stringify(trimmed));
           setSavedAccounts(trimmed);
+        } else {
+          localStorage.removeItem('rememberedUsername');
+          localStorage.removeItem('rememberedPassword');
         }
 
         const timeoutId = setTimeout(() => {
@@ -131,10 +176,24 @@ function App() {
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     setToken(null);
     setLoggedInUser(null);
-    setUsername('');
-    setPassword('');
+
+    const remembered = localStorage.getItem('rememberedUsername') || '';
+    const rememberedPwd = localStorage.getItem('rememberedPassword') || '';
+    let decodedPwd = '';
+    if (rememberedPwd) {
+      try {
+        decodedPwd = atob(rememberedPwd);
+      } catch {
+        decodedPwd = rememberedPwd;
+      }
+    }
+    setUsername(remembered);
+    setPassword(decodedPwd);
+    setRememberMe(!!remembered);
     setMessage({ type: '', text: '' });
   };
 
@@ -143,14 +202,17 @@ function App() {
     setForgotLoading(true);
     setMessage({ type: '', text: '' });
 
-    if (!forgotEmail) {
+    const trimmedEmail = forgotEmail.trim();
+    setForgotEmail(trimmedEmail);
+
+    if (!trimmedEmail) {
       setMessage({ type: 'error', text: 'Vui lòng nhập email!' });
       setForgotLoading(false);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(forgotEmail)) {
+    if (!emailRegex.test(trimmedEmail)) {
       setMessage({ type: 'error', text: 'Email không đúng định dạng!' });
       setForgotLoading(false);
       return;
@@ -158,7 +220,7 @@ function App() {
 
     try {
       const response = await axios.post(`${API_URL}/api/forgot-password`, {
-        email: forgotEmail
+        email: trimmedEmail
       });
 
       if (response.data.success) {

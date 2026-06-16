@@ -21,19 +21,31 @@ function ResetPassword() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    if (!newPassword || !confirmPassword) {
+    const trimmedNew = newPassword.trim();
+    const trimmedConfirm = confirmPassword.trim();
+
+    setNewPassword(trimmedNew);
+    setConfirmPassword(trimmedConfirm);
+
+    if (!trimmedNew || !trimmedConfirm) {
       setMessage({ type: 'error', text: 'Vui lòng nhập đầy đủ mật khẩu!' });
       setLoading(false);
       return;
     }
 
-    if (newPassword !== confirmPassword) {
+    if (trimmedNew !== trimmedConfirm) {
       setMessage({ type: 'error', text: 'Mật khẩu không khớp!' });
       setLoading(false);
       return;
     }
 
-    if (newPassword.length < 8) {
+    if (/\s{2,}/.test(newPassword)) {
+      setMessage({ type: 'error', text: 'Mật khẩu không được chứa quá nhiều khoảng trắng liên tiếp!' });
+      setLoading(false);
+      return;
+    }
+
+    if (trimmedNew.length < 8) {
       setMessage({ type: 'error', text: 'Mật khẩu phải có ít nhất 8 ký tự!' });
       setLoading(false);
       return;
@@ -42,7 +54,7 @@ function ResetPassword() {
     try {
       const response = await axios.post(`${API_URL}/api/reset-password`, {
         token,
-        newPassword
+        newPassword: trimmedNew
       });
 
       if (response.data.success) {
@@ -173,6 +185,7 @@ function ResetPassword() {
                   type={showPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  onBlur={() => setNewPassword(newPassword.trim())}
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                   placeholder="Nhập mật khẩu mới..."
                   required
@@ -203,6 +216,7 @@ function ResetPassword() {
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  onBlur={() => setConfirmPassword(confirmPassword.trim())}
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                   placeholder="Nhập lại mật khẩu mới..."
                   required
