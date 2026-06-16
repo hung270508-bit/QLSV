@@ -262,15 +262,38 @@ app.post('/api/forgot-password', (req, res) => {
         const mailOptions = {
             from: process.env.EMAIL_SENDER || process.env.EMAIL_USER,
             to: user.email,
-            subject: 'Đặt lại mật khẩu - Hệ thống QLSV',
+            subject: 'Yêu cầu đặt lại mật khẩu - Hệ thống QLSV',
             html: `
-                <h2>Xin chào ${user.name},</h2>
-                <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
-                <p>Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu của bạn:</p>
-                <p><a href="${resetLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Đặt lại mật khẩu</a></p>
-                <p>Liên kết này sẽ hết hạn sau 30 phút.</p>
-                <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
-                <p>Trân trọng,<br>Hệ thống Quản lý Sinh Viên</p>
+                <div style="background-color: #f9fafb; padding: 40px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+                    <div style="max-width: 570px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); border: 1px solid #f3f4f6;">
+                        <!-- Header -->
+                        <div style="background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); padding: 35px 30px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">HỆ THỐNG QUẢN LÝ SINH VIÊN</h1>
+                        </div>
+                        <!-- Content -->
+                        <div style="padding: 40px 30px;">
+                            <h2 style="color: #111827; margin-top: 0; margin-bottom: 20px; font-size: 18px; font-weight: 700;">Xin chào ${user.name},</h2>
+                            <p style="color: #4b5563; font-size: 15px; margin-bottom: 24px;">Hệ thống nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn tại <strong>QLSV</strong>.</p>
+                            
+                            <p style="color: #4b5563; font-size: 15px; margin-bottom: 30px;">Vui lòng nhấn vào nút dưới đây để hoàn tất việc thiết lập mật khẩu mới:</p>
+                            
+                            <div style="text-align: center; margin-bottom: 35px;">
+                                <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); color: #ffffff; padding: 14px 32px; font-size: 15px; font-weight: 700; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);">Đặt lại mật khẩu</a>
+                            </div>
+
+                            <div style="background-color: #fff7ed; border-left: 4px solid #ea580c; padding: 16px; border-radius: 8px; margin-bottom: 30px;">
+                                <p style="margin: 0; color: #c2410c; font-size: 14px; font-weight: 600;">⚠️ Lưu ý quan trọng:</p>
+                                <p style="margin: 4px 0 0 0; color: #7c2d12; font-size: 13px; line-height: 1.5;">Liên kết này chỉ có hiệu lực trong vòng <strong>30 phút</strong>. Nếu không yêu cầu thay đổi này, bạn có thể yên tâm bỏ qua email này.</p>
+                            </div>
+                            
+                            <p style="color: #9ca3af; font-size: 13px; border-top: 1px solid #f3f4f6; padding-top: 20px; margin-bottom: 0;">Trân trọng,<br><strong style="color: #4b5563;">Hệ thống Quản lý Sinh viên</strong></p>
+                        </div>
+                        <!-- Footer -->
+                        <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #f3f4f6;">
+                            <p style="color: #9ca3af; font-size: 12px; margin: 0;">Đây là email tự động từ hệ thống, vui lòng không trả lời trực tiếp thư này.</p>
+                        </div>
+                    </div>
+                </div>
             `
         };
 
