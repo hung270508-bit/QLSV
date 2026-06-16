@@ -75,7 +75,7 @@ function StudentManagement() {
 
   // Debounced search
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
@@ -131,26 +131,26 @@ function StudentManagement() {
   };
 
   const handleLopChange = async (e) => {
-  const maLop = e.target.value;
+    const maLop = e.target.value;
 
-  // 1. NẾU ĐANG SỬA: Chỉ đổi lớp, TUYỆT ĐỐI KHÔNG xóa MSSV
-  if (editingStudent) {
-    setFormData(prev => ({ ...prev, MaLop: maLop }));
-    return; 
-  }
+    // 1. NẾU ĐANG SỬA: Chỉ đổi lớp, TUYỆT ĐỐI KHÔNG xóa MSSV
+    if (editingStudent) {
+      setFormData(prev => ({ ...prev, MaLop: maLop }));
+      return;
+    }
 
-  // 2. NẾU THÊM MỚI: Tạm xóa MSSV cũ để tạo mã mới theo lớp
-  setFormData(prev => ({ ...prev, MaLop: maLop, MSSV: '' }));
+    // 2. NẾU THÊM MỚI: Tạm xóa MSSV cũ để tạo mã mới theo lớp
+    setFormData(prev => ({ ...prev, MaLop: maLop, MSSV: '' }));
 
-  if (!maLop) return;
+    if (!maLop) return;
 
-  try {
-    const res = await axios.get(`${API_URL}/api/students/next-code/${maLop}`);
-    setFormData(prev => ({ ...prev, MaLop: maLop, MSSV: res.data.MSSV }));
-  } catch (err) {
-    console.error('Lỗi tạo MSSV:', err);
-  }
-};
+    try {
+      const res = await axios.get(`${API_URL}/api/students/next-code/${maLop}`);
+      setFormData(prev => ({ ...prev, MaLop: maLop, MSSV: res.data.MSSV }));
+    } catch (err) {
+      console.error('Lỗi tạo MSSV:', err);
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -210,7 +210,7 @@ function StudentManagement() {
       } else {
         // Remove non-digit characters for length check
         const digitsOnly = formData.SoDienThoai.replace(/\D/g, '');
-        
+
         if (digitsOnly.length < 10) {
           newErrors.SoDienThoai = 'Số điện thoại phải có ít nhất 10 chữ số';
         } else if (digitsOnly.length > 10) {
@@ -280,7 +280,7 @@ function StudentManagement() {
 
     // Validate TrangThai
     if (formData.TrangThai) {
-      const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+      const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
       if (!validTrangThai.includes(formData.TrangThai)) {
         newErrors.TrangThai = 'Trạng thái không hợp lệ';
       }
@@ -291,48 +291,48 @@ function StudentManagement() {
   };
 
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
-  // Combine startYear and endYear into NienKhoa
-  const nienKhoa = `${formData.startYear}-${formData.endYear}`;
+    // Combine startYear and endYear into NienKhoa
+    const nienKhoa = `${formData.startYear}-${formData.endYear}`;
 
-  // Capitalize the name before saving
-  const formDataWithCapitalizedName = {
-    ...formData,
-    HoTen: capitalizeVietnameseName(formData.HoTen),
-    NienKhoa: nienKhoa
-  };
+    // Capitalize the name before saving
+    const formDataWithCapitalizedName = {
+      ...formData,
+      HoTen: capitalizeVietnameseName(formData.HoTen),
+      NienKhoa: nienKhoa
+    };
 
-  if (editingStudent) {
-    setConfirmDialog({
-      show: true,
-      message: `Bạn có chắc chắn muốn cập nhật thông tin sinh viên "${formDataWithCapitalizedName.HoTen}" (${formData.MSSV}) không?`,
-      onConfirm: async () => {
-        try {
-          await axios.put(`${API_BASE}/students/${editingStudent.MSSV}`, formDataWithCapitalizedName);
-          setToast({ show: true, message: 'Cập nhật sinh viên thành công!', type: 'success' });
-          fetchData();
-          handleCloseModal();
-        } catch (error) {
-          console.error('Error saving student:', error);
-          setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
+    if (editingStudent) {
+      setConfirmDialog({
+        show: true,
+        message: `Bạn có chắc chắn muốn cập nhật thông tin sinh viên "${formDataWithCapitalizedName.HoTen}" (${formData.MSSV}) không?`,
+        onConfirm: async () => {
+          try {
+            await axios.put(`${API_BASE}/students/${editingStudent.MSSV}`, formDataWithCapitalizedName);
+            setToast({ show: true, message: 'Cập nhật sinh viên thành công!', type: 'success' });
+            fetchData();
+            handleCloseModal();
+          } catch (error) {
+            console.error('Error saving student:', error);
+            setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
+          }
         }
+      });
+    } else {
+      try {
+        await axios.post(`${API_BASE}/students`, formDataWithCapitalizedName);
+        setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
+        fetchData();
+        handleCloseModal();
+      } catch (error) {
+        console.error('Error saving student:', error);
+        setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
       }
-    });
-  } else {
-    try {
-      await axios.post(`${API_BASE}/students`, formDataWithCapitalizedName);
-      setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
-      fetchData();
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error saving student:', error);
-      setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
     }
-  }
-};
+  };
 
   const handleEdit = (student) => {
     setEditingStudent(student);
@@ -378,7 +378,7 @@ function StudentManagement() {
     setSelectedStudent(student);
     setShowDetailModal(true);
     setDetailTab('info');
-    
+
     try {
       const [detailsRes, transcriptRes, scheduleRes, attendanceRes] = await Promise.all([
         axios.get(`${API_BASE}/students/${student.MSSV}/details`),
@@ -386,7 +386,7 @@ function StudentManagement() {
         axios.get(`${API_BASE}/students/${student.MSSV}/schedule`),
         axios.get(`${API_BASE}/attendance/student/${student.MSSV}`)
       ]);
-      
+
       setStudentDetails(detailsRes.data[0] || null);
       setStudentTranscript(transcriptRes.data);
       setStudentSchedule(Array.isArray(scheduleRes.data) ? scheduleRes.data : []);
@@ -430,8 +430,8 @@ function StudentManagement() {
   const filteredClassesForForm = useMemo(() => {
     if (!selectedFaculty || !formData.startYear || !formData.endYear) return [];
     const nienKhoa = `${formData.startYear}-${formData.endYear}`;
-    return classes.filter(cls => 
-      cls.MaKhoa === selectedFaculty && 
+    return classes.filter(cls =>
+      cls.MaKhoa === selectedFaculty &&
       cls.NienKhoa === nienKhoa
     );
   }, [classes, selectedFaculty, formData.startYear, formData.endYear]);
@@ -443,16 +443,16 @@ function StudentManagement() {
     const nameNoTones = removeVietnameseTones(nameLower);
     const idLower = student.MSSV?.toLowerCase() || '';
     const emailLower = student.Email?.toLowerCase() || '';
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       nameLower.includes(searchLower) ||
       nameNoTones.includes(searchNoTones) ||
       idLower.includes(searchLower) ||
       emailLower.includes(searchLower);
-    
+
     const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
     const matchesGender = !filters.genderFilter || student.GioiTinh === filters.genderFilter;
-    
+
     return matchesSearch && matchesClass && matchesGender;
   });
 
@@ -546,11 +546,10 @@ function StudentManagement() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                hasActiveFilters
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${hasActiveFilters
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <Filter className="w-5 h-5" />
               Bộ lọc
@@ -666,11 +665,10 @@ function StudentManagement() {
                       <div className="font-semibold text-gray-800">{capitalizeVietnameseName(student.HoTen)}</div>
                     </td>
                     <td className="py-5 px-6">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        student.GioiTinh === 'Nam'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-pink-100 text-pink-700'
-                      }`}>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${student.GioiTinh === 'Nam'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-pink-100 text-pink-700'
+                        }`}>
                         {student.GioiTinh || 'N/A'}
                       </span>
                     </td>
@@ -678,13 +676,12 @@ function StudentManagement() {
                     <td className="py-5 px-6 text-sm text-gray-600">{student.Email || 'N/A'}</td>
                     <td className="py-5 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
                     <td className="py-5 px-6">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        student.TrangThai === 'Đang học'
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : student.TrangThai === 'Học lại'
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${student.TrangThai === 'Đang học'
+                        ? 'bg-green-100 text-green-700 border border-green-200'
+                        : student.TrangThai === 'Học lại'
                           ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                           : 'bg-red-100 text-red-700 border border-red-200'
-                      }`}>
+                        }`}>
                         {student.TrangThai || 'Đang học'}
                       </span>
                     </td>
@@ -724,210 +721,204 @@ function StudentManagement() {
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
             <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-          >
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
-              <div className="text-white">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5" />
-                  {editingStudent ? 'Cập nhật sinh viên' : 'Thêm sinh viên mới'}
-                </h3>
-                <p className="text-orange-100 text-sm mt-0.5">
-                  {editingStudent ? 'Chỉnh sửa hồ sơ sinh viên' : 'Tạo hồ sơ sinh viên và gán lớp'}
-                </p>
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div className="text-white">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5" />
+                    {editingStudent ? 'Cập nhật sinh viên' : 'Thêm sinh viên mới'}
+                  </h3>
+                  <p className="text-orange-100 text-sm mt-0.5">
+                    {editingStudent ? 'Chỉnh sửa hồ sơ sinh viên' : 'Tạo hồ sơ sinh viên và gán lớp'}
+                  </p>
+                </div>
+                <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-              <input type="hidden" value={formData.MSSV} />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Ô Họ tên */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
-                  <input
-                    type="text"
-                    value={formData.HoTen}
-                    onChange={(e) => {
-                      setFormData({ ...formData, HoTen: e.target.value });
-                      if (errors.HoTen) setErrors({ ...errors, HoTen: '' });
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  />
-                  {errors.HoTen && <p className="text-red-500 text-sm mt-1">{errors.HoTen}</p>}
-                </div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+                <input type="hidden" value={formData.MSSV} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
-                  <input
-                    type="date"
-                    value={formData.NgaySinh}
-                    onChange={(e) => {
-                      setFormData({ ...formData, NgaySinh: e.target.value });
-                      if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '' });
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  />
-                  {errors.NgaySinh && <p className="text-red-500 text-sm mt-1">{errors.NgaySinh}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
-                  <select
-                    value={formData.GioiTinh}
-                    onChange={(e) => setFormData({ ...formData, GioiTinh: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
-                  >
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={formData.Email}
-                    onChange={(e) => {
-                      setFormData({ ...formData, Email: e.target.value });
-                      if (errors.Email) setErrors({ ...errors, Email: '' });
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  />
-                  {errors.Email && <p className="text-red-500 text-sm mt-1">{errors.Email}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
-                  <input
-                    type="text"
-                    value={formData.SoDienThoai}
-                    onChange={(e) => {
-                      setFormData({ ...formData, SoDienThoai: e.target.value });
-                      if (errors.SoDienThoai) setErrors({ ...errors, SoDienThoai: '' });
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  />
-                  {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={formData.startYear}
-                        onChange={handleStartYearChange}
-                        placeholder="Năm bắt đầu"
-                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                        maxLength={4}
-                      />
-                      {errors.startYear && (
-                        <p className="text-red-500 text-xs mt-1 font-medium">{errors.startYear}</p>
-                      )}
-                    </div>
-                    <span className="flex items-center text-gray-500 font-semibold">-</span>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={formData.endYear}
-                        onChange={handleEndYearChange}
-                        placeholder="Năm kết thúc"
-                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                        maxLength={4}
-                      />
-                      {errors.endYear && (
-                        <p className="text-red-500 text-xs mt-1 font-medium">{errors.endYear}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
-                    <select
-                      value={selectedFaculty}
-                      onChange={handleFacultyChange}
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                        errors.selectedFaculty ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                      }`}
-                    >
-                      <option value="">Chọn khoa</option>
-                      {faculties.map((f) => (
-                        <option key={f.MaKhoa} value={f.MaKhoa}>
-                          {f.TenKhoa}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.selectedFaculty && <p className="text-red-500 text-xs mt-1">{errors.selectedFaculty}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
-                    <select
-                      value={formData.MaLop}
-                      onChange={(e) => {
-                        handleLopChange(e); // Gọi hàm tự động sinh MSSV
-                        if (errors.MaLop) setErrors({ ...errors, MaLop: '' }); // Giữ nguyên tính năng xóa viền đỏ
-                      }}
-                      disabled={!selectedFaculty || !formData.startYear || !formData.endYear}
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${
-                        errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                      }`}
-                    >
-                      <option value="">Chọn lớp</option>
-                      {filteredClassesForForm.map((cls) => (
-                        <option key={cls.MaLop} value={cls.MaLop}>
-                          {cls.TenLop}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.MaLop && <p className="text-red-500 text-sm mt-1">{errors.MaLop}</p>}
-                  </div>
-                </div>
-                {editingStudent && (
+                  {/* Ô Họ tên */}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
+                    <input
+                      type="text"
+                      value={formData.HoTen}
+                      onChange={(e) => {
+                        setFormData({ ...formData, HoTen: e.target.value });
+                        if (errors.HoTen) setErrors({ ...errors, HoTen: '' });
+                      }}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                        }`}
+                    />
+                    {errors.HoTen && <p className="text-red-500 text-sm mt-1">{errors.HoTen}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                    <input
+                      type="date"
+                      value={formData.NgaySinh}
+                      onChange={(e) => {
+                        setFormData({ ...formData, NgaySinh: e.target.value });
+                        if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '' });
+                      }}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                        }`}
+                    />
+                    {errors.NgaySinh && <p className="text-red-500 text-sm mt-1">{errors.NgaySinh}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
                     <select
-                      value={formData.TrangThai}
-                      onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
+                      value={formData.GioiTinh}
+                      onChange={(e) => setFormData({ ...formData, GioiTinh: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
                     >
-                      <option value="Đang học">Đang học</option>
-                      <option value="Học lại">Học lại</option>
-                      <option value="Nghỉ học">Nghỉ học</option>
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
                     </select>
                   </div>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={formData.Email}
+                      onChange={(e) => {
+                        setFormData({ ...formData, Email: e.target.value });
+                        if (errors.Email) setErrors({ ...errors, Email: '' });
+                      }}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                        }`}
+                    />
+                    {errors.Email && <p className="text-red-500 text-sm mt-1">{errors.Email}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
+                    <input
+                      type="text"
+                      value={formData.SoDienThoai}
+                      onChange={(e) => {
+                        setFormData({ ...formData, SoDienThoai: e.target.value });
+                        if (errors.SoDienThoai) setErrors({ ...errors, SoDienThoai: '' });
+                      }}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                        }`}
+                    />
+                    {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={formData.startYear}
+                          onChange={handleStartYearChange}
+                          placeholder="Năm bắt đầu"
+                          className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                          maxLength={4}
+                        />
+                        {errors.startYear && (
+                          <p className="text-red-500 text-xs mt-1 font-medium">{errors.startYear}</p>
+                        )}
+                      </div>
+                      <span className="flex items-center text-gray-500 font-semibold">-</span>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={formData.endYear}
+                          onChange={handleEndYearChange}
+                          placeholder="Năm kết thúc"
+                          className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                          maxLength={4}
+                        />
+                        {errors.endYear && (
+                          <p className="text-red-500 text-xs mt-1 font-medium">{errors.endYear}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
+                      <select
+                        value={selectedFaculty}
+                        onChange={handleFacultyChange}
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.selectedFaculty ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                          }`}
+                      >
+                        <option value="">Chọn khoa</option>
+                        {faculties.map((f) => (
+                          <option key={f.MaKhoa} value={f.MaKhoa}>
+                            {f.TenKhoa}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.selectedFaculty && <p className="text-red-500 text-xs mt-1">{errors.selectedFaculty}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp</label>
+                      <select
+                        value={formData.MaLop}
+                        onChange={(e) => {
+                          handleLopChange(e); // Gọi hàm tự động sinh MSSV
+                          if (errors.MaLop) setErrors({ ...errors, MaLop: '' }); // Giữ nguyên tính năng xóa viền đỏ
+                        }}
+                        disabled={!selectedFaculty || !formData.startYear || !formData.endYear}
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                          }`}
+                      >
+                        <option value="">Chọn lớp</option>
+                        {filteredClassesForForm.map((cls) => (
+                          <option key={cls.MaLop} value={cls.MaLop}>
+                            {cls.TenLop}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.MaLop && <p className="text-red-500 text-sm mt-1">{errors.MaLop}</p>}
+                    </div>
+                  </div>
+                  {editingStudent && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
+                      <select
+                        value={formData.TrangThai}
+                        onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                      >
+                        <option value="Đang học">Đang học</option>
+                        <option value="Học lại">Học lại</option>
+                        <option value="Nghỉ học">Nghỉ học</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
-                >
-                  {editingStudent ? 'Lưu thay đổi' : 'Thêm sinh viên'}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                  >
+                    {editingStudent ? 'Lưu thay đổi' : 'Thêm sinh viên'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         </ModalPortal>
       )}
 
@@ -936,145 +927,80 @@ function StudentManagement() {
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
             <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
-          >
-            {/* Header */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="bg-white/20 rounded-xl p-2">
-                      <GraduationCap className="w-6 h-6 text-white" />
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="bg-white/20 rounded-xl p-2">
+                        <GraduationCap className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết sinh viên</span>
                     </div>
-                    <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết sinh viên</span>
+                    <h2 className="text-2xl font-bold text-white mt-2">{capitalizeVietnameseName(studentDetails?.HoTen || selectedStudent.HoTen)}</h2>
+                    <div className="flex items-center gap-4 mt-2">
+                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
+                      {studentDetails?.TenLop && (
+                        <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{studentDetails.TenLop}</span>
+                      )}
+                      {studentDetails?.TenKhoa && (
+                        <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{studentDetails.TenKhoa}</span>
+                      )}
+                    </div>
                   </div>
-                  <h2 className="text-2xl font-bold text-white mt-2">{capitalizeVietnameseName(studentDetails?.HoTen || selectedStudent.HoTen)}</h2>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
-                    {studentDetails?.TenLop && (
-                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{studentDetails.TenLop}</span>
-                    )}
-                    {studentDetails?.TenKhoa && (
-                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{studentDetails.TenKhoa}</span>
-                    )}
-                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleCloseDetailModal}
+                    className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </motion.button>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleCloseDetailModal}
-                  className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
-                >
-                  <X className="w-5 h-5 text-white" />
-                </motion.button>
-              </div>
 
-              {/* Tabs */}
-              <div className="flex gap-1 mt-5">
-                {[
-                  { id: 'info', label: 'Thông tin', icon: Users },
-                  { id: 'transcript', label: 'Bảng điểm', icon: FileText },
-                  { id: 'schedule', label: 'Lịch học', icon: Calendar },
-                  { id: 'attendance', label: 'Điểm danh', icon: CheckCircle },
-                ].map(tab => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setDetailTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                        detailTab === tab.id
+                {/* Tabs */}
+                <div className="flex gap-1 mt-5">
+                  {[
+                    { id: 'info', label: 'Thông tin', icon: Users },
+                    { id: 'transcript', label: 'Bảng điểm', icon: FileText },
+                    { id: 'schedule', label: 'Lịch học', icon: Calendar },
+                    { id: 'attendance', label: 'Điểm danh', icon: CheckCircle },
+                  ].map(tab => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setDetailTab(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${detailTab === tab.id
                           ? 'bg-white text-orange-600 shadow-md'
                           : 'text-white/70 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {detailTab === 'info' && studentDetails && (
-                <div className="space-y-6">
-                  {/* Stats cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Tín chỉ', value: studentTranscript?.summary?.totalCredits || 0, icon: BookOpen, color: 'blue' },
-                      { label: 'GPA', value: studentTranscript?.summary?.cumulativeGPA || 0, icon: Award, color: 'green' },
-                      { label: 'Tỷ lệ qua', value: `${studentTranscript?.summary?.passRate || 0}%`, icon: TrendingUp, color: 'purple' },
-                      { label: 'Số môn', value: studentTranscript?.transcript?.length || 0, icon: BarChart3, color: 'orange' },
-                    ].map((card, i) => {
-                      const Icon = card.icon;
-                      const colorMap = {
-                        blue: 'bg-blue-50 text-blue-600 border-blue-100',
-                        green: 'bg-green-50 text-green-600 border-green-100',
-                        purple: 'bg-purple-50 text-purple-600 border-purple-100',
-                        orange: 'bg-orange-50 text-orange-600 border-orange-100',
-                      };
-                      return (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.07 }}
-                          className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
-                        >
-                          <Icon className="w-6 h-6 mb-3 opacity-80" />
-                          <div className="text-3xl font-bold">{card.value}</div>
-                          <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Personal info */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[
-                        { label: 'MSSV', value: studentDetails.MSSV, icon: null },
-                        { label: 'Họ tên', value: studentDetails.HoTen, icon: null },
-                        { label: 'Ngày sinh', value: studentDetails.NgaySinh ? studentDetails.NgaySinh.split('T')[0] : '', icon: null },
-                        { label: 'Giới tính', value: studentDetails.GioiTinh, icon: null },
-                        { label: 'Email', value: studentDetails.Email, icon: Mail },
-                        { label: 'SĐT', value: studentDetails.SoDienThoai, icon: Phone },
-                      ].map((item, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.06 }}
-                          className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100"
-                        >
-                          {item.icon && <item.icon className="w-5 h-5 text-gray-400" />}
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
-                            <div className="font-semibold text-gray-800 text-sm">{item.value || '—'}</div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
+                          }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
-              {detailTab === 'transcript' && studentTranscript && (
-                <div className="space-y-6">
-                  {studentTranscript.summary && (
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {detailTab === 'info' && studentDetails && (
+                  <div className="space-y-6">
+                    {/* Stats cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {[
-                        { label: 'Tổng tín chỉ', value: studentTranscript.summary.totalCredits, icon: BookOpen, color: 'blue' },
-                        { label: 'Tín chỉ qua', value: studentTranscript.summary.passedCredits, icon: CheckCircle, color: 'green' },
-                        { label: 'GPA tích lũy', value: studentTranscript.summary.cumulativeGPA, icon: Award, color: 'purple' },
-                        { label: 'Tỷ lệ qua', value: `${studentTranscript.summary.passRate}%`, icon: TrendingUp, color: 'orange' },
+                        { label: 'Tín chỉ', value: studentTranscript?.summary?.totalCredits || 0, icon: BookOpen, color: 'blue' },
+                        { label: 'GPA', value: studentTranscript?.summary?.cumulativeGPA || 0, icon: Award, color: 'green' },
+                        { label: 'Tỷ lệ qua', value: `${studentTranscript?.summary?.passRate || 0}%`, icon: TrendingUp, color: 'purple' },
+                        { label: 'Số môn', value: studentTranscript?.transcript?.length || 0, icon: BarChart3, color: 'orange' },
                       ].map((card, i) => {
                         const Icon = card.icon;
                         const colorMap = {
@@ -1098,70 +1024,86 @@ function StudentManagement() {
                         );
                       })}
                     </div>
-                  )}
-                  <div className="overflow-x-auto rounded-2xl border border-gray-100">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Môn học</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Học kỳ</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">QT</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">GK</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">CK</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">TB</th>
-                          <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Điểm chữ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {studentTranscript.transcript && studentTranscript.transcript.map((grade, index) => (
-                          <motion.tr
-                            key={index}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: index * 0.03 }}
-                            className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+
+                    {/* Personal info */}
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          { label: 'MSSV', value: studentDetails.MSSV, icon: null },
+                          { label: 'Họ tên', value: studentDetails.HoTen, icon: null },
+                          { label: 'Ngày sinh', value: studentDetails.NgaySinh ? studentDetails.NgaySinh.split('T')[0] : '', icon: null },
+                          { label: 'Giới tính', value: studentDetails.GioiTinh, icon: null },
+                          { label: 'Email', value: studentDetails.Email, icon: Mail },
+                          { label: 'SĐT', value: studentDetails.SoDienThoai, icon: Phone },
+                        ].map((item, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.06 }}
+                            className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100"
                           >
-                            <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{grade.TenMonHoc}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.HocKy}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemQuaTrinh || '-'}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
-                            <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
-                            <td className="py-3.5 px-5 text-sm font-bold text-orange-600">{grade.DiemTB}</td>
-                            <td className="py-3.5 px-5 text-sm font-semibold text-gray-800">{grade.DiemChu}</td>
-                          </motion.tr>
+                            {item.icon && <item.icon className="w-5 h-5 text-gray-400" />}
+                            <div className="flex-1">
+                              <div className="text-xs text-gray-500 font-medium">{item.label}</div>
+                              <div className="font-semibold text-gray-800 text-sm">{item.value || '—'}</div>
+                            </div>
+                          </motion.div>
                         ))}
-                      </tbody>
-                    </table>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {detailTab === 'schedule' && (
-                <ScheduleDetailView
-                  schedule={studentSchedule}
-                  title="Lịch học sinh viên"
-                  showTeacher
-                  showHocKy
-                />
-              )}
-
-              {detailTab === 'attendance' && (
-                <div>
-                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
-                    Lịch điểm danh ({studentAttendance.length} buổi)
-                  </h4>
-                  {studentAttendance.length > 0 ? (
+                {detailTab === 'transcript' && studentTranscript && (
+                  <div className="space-y-6">
+                    {studentTranscript.summary && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { label: 'Tổng tín chỉ', value: studentTranscript.summary.totalCredits, icon: BookOpen, color: 'blue' },
+                          { label: 'Tín chỉ qua', value: studentTranscript.summary.passedCredits, icon: CheckCircle, color: 'green' },
+                          { label: 'GPA tích lũy', value: studentTranscript.summary.cumulativeGPA, icon: Award, color: 'purple' },
+                          { label: 'Tỷ lệ qua', value: `${studentTranscript.summary.passRate}%`, icon: TrendingUp, color: 'orange' },
+                        ].map((card, i) => {
+                          const Icon = card.icon;
+                          const colorMap = {
+                            blue: 'bg-blue-50 text-blue-600 border-blue-100',
+                            green: 'bg-green-50 text-green-600 border-green-100',
+                            purple: 'bg-purple-50 text-purple-600 border-purple-100',
+                            orange: 'bg-orange-50 text-orange-600 border-orange-100',
+                          };
+                          return (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 16 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.07 }}
+                              className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
+                            >
+                              <Icon className="w-6 h-6 mb-3 opacity-80" />
+                              <div className="text-3xl font-bold">{card.value}</div>
+                              <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    )}
                     <div className="overflow-x-auto rounded-2xl border border-gray-100">
                       <table className="w-full">
                         <thead>
                           <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Ngày</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Phòng</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Môn học</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Học kỳ</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">QT</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">GK</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">CK</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">TB</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Điểm chữ</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {studentAttendance.map((att, index) => (
+                          {studentTranscript.transcript && studentTranscript.transcript.map((grade, index) => (
                             <motion.tr
                               key={index}
                               initial={{ opacity: 0 }}
@@ -1169,35 +1111,82 @@ function StudentManagement() {
                               transition={{ delay: index * 0.03 }}
                               className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
                             >
-                              <td className="py-3.5 px-5 text-sm text-gray-800">
-                                {new Date(att.NgayDiemDanh).toLocaleDateString('vi-VN')}
-                              </td>
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{att.PhongHoc}</td>
-                              <td className="py-3.5 px-5">
-                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${
-                                  att.TrangThai === 'Có mặt' ? 'bg-green-100 text-green-700' :
-                                  att.TrangThai === 'Vắng mặt' ? 'bg-red-100 text-red-700' :
-                                  'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                  {att.TrangThai}
-                                </span>
-                              </td>
+                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{grade.TenMonHoc}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.HocKy}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemQuaTrinh || '-'}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
+                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
+                              <td className="py-3.5 px-5 text-sm font-bold text-orange-600">{grade.DiemTB}</td>
+                              <td className="py-3.5 px-5 text-sm font-semibold text-gray-800">{grade.DiemChu}</td>
                             </motion.tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                      <CheckCircle className="w-14 h-14 mb-3 text-gray-200" />
-                      <p className="font-medium">Chưa có dữ liệu điểm danh</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
+                  </div>
+                )}
+
+                {detailTab === 'schedule' && (
+                  <ScheduleDetailView
+                    schedule={studentSchedule}
+                    title="Lịch học sinh viên"
+                    showTeacher
+                    showHocKy
+                  />
+                )}
+
+                {detailTab === 'attendance' && (
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                      Lịch điểm danh ({studentAttendance.length} buổi)
+                    </h4>
+                    {studentAttendance.length > 0 ? (
+                      <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Ngày</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Phòng</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {studentAttendance.map((att, index) => (
+                              <motion.tr
+                                key={index}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: index * 0.03 }}
+                                className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                              >
+                                <td className="py-3.5 px-5 text-sm text-gray-800">
+                                  {new Date(att.NgayDiemDanh).toLocaleDateString('vi-VN')}
+                                </td>
+                                <td className="py-3.5 px-5 text-sm text-gray-600">{att.PhongHoc}</td>
+                                <td className="py-3.5 px-5">
+                                  <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${att.TrangThai === 'Có mặt' ? 'bg-green-100 text-green-700' :
+                                    att.TrangThai === 'Vắng mặt' ? 'bg-red-100 text-red-700' :
+                                      'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                    {att.TrangThai}
+                                  </span>
+                                </td>
+                              </motion.tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <CheckCircle className="w-14 h-14 mb-3 text-gray-200" />
+                        <p className="font-medium">Chưa có dữ liệu điểm danh</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
         </ModalPortal>
       )}
 

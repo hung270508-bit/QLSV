@@ -557,7 +557,7 @@ app.post('/api/students', async (req, res) => {
     }
 
     // Validate TrangThai
-    const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+    const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
     if (TrangThai && !validTrangThai.includes(TrangThai)) {
         return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
     }
@@ -683,7 +683,7 @@ app.put('/api/students/:mssv', async (req, res) => {
     }
 
     // Validate TrangThai
-    const validTrangThai = ['Đang học', 'Học lại', 'Đã tốt nghiệp', 'Đã nghỉ học'];
+    const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
     if (data.TrangThai && !validTrangThai.includes(data.TrangThai)) {
         return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
     }
