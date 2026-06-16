@@ -37,7 +37,9 @@ function TeacherManagement() {
     Email: '',
     SoDienThoai: '',
     MaKhoa: '',
-    TrangThai: 'Đang dạy'
+    TrangThai: 'Đang dạy',
+    GioiTinh: '',
+    NgaySinh: ''
   });
   const [errors, setErrors] = useState({});
 
@@ -220,7 +222,9 @@ function TeacherManagement() {
       Email: teacher.Email || '',
       SoDienThoai: teacher.SoDienThoai || '',
       MaKhoa: teacher.MaKhoa || '',
-      TrangThai: teacher.TrangThai || 'Đang dạy'
+      TrangThai: teacher.TrangThai || 'Đang dạy',
+      GioiTinh: teacher.GioiTinh || '',
+      NgaySinh: teacher.NgaySinh || ''
     });
     setShowModal(true);
   };
@@ -228,7 +232,7 @@ function TeacherManagement() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingTeacher(null);
-    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy' });
+    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '' });
     setErrors({});
   };
 
@@ -368,7 +372,7 @@ function TeacherManagement() {
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy' }); setShowModal(true); }}
+              onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '' }); setShowModal(true); }}
               className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
             >
               <Plus className="w-5 h-5" />
@@ -673,6 +677,27 @@ function TeacherManagement() {
                   />
                   {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
+                  <select
+                    value={formData.GioiTinh}
+                    onChange={(e) => setFormData({ ...formData, GioiTinh: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
+                  >
+                    <option value="">Chọn giới tính</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                  <input
+                    type="date"
+                    value={formData.NgaySinh}
+                    onChange={(e) => setFormData({ ...formData, NgaySinh: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
+                  />
+                </div>
                 {editingTeacher && (
                   <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
@@ -846,6 +871,8 @@ function TeacherManagement() {
                       {[
                         { label: 'Mã giảng viên', value: teacherDetails.MaGiangVien, icon: null },
                         { label: 'Họ và tên', value: teacherDetails.HoTen, icon: null },
+                        { label: 'Giới tính', value: teacherDetails.GioiTinh, icon: null },
+                        { label: 'Ngày sinh', value: teacherDetails.NgaySinh ? new Date(teacherDetails.NgaySinh).toLocaleDateString('vi-VN') : '', icon: null },
                         { label: 'Email', value: teacherDetails.Email, icon: Mail },
                         { label: 'Số điện thoại', value: teacherDetails.SoDienThoai, icon: Phone },
                         { label: 'Khoa trực thuộc', value: teacherDetails.TenKhoa, icon: null },
