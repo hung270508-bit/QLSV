@@ -497,38 +497,37 @@ function TeacherManagement() {
       </div>
 
       {/* Table Section */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100/60 border-b border-orange-100">
+            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã GV</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Họ tên</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Khoa</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Email</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">SĐT</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Trạng thái</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Giảng viên</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Liên hệ</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {filteredTeachers.length > 0 ? (
                 filteredTeachers.map((teacher, index) => (
                   <motion.tr
                     key={teacher.MaGiangVien}
-                    initial={{ opacity: 0, y: 15 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="hover:bg-orange-50/40 transition-colors cursor-pointer"
+                    transition={{ delay: index * 0.05 }}
+                    className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
                     onClick={() => handleViewDetails(teacher)}
                   >
-                    <td className="py-4 px-6">
-                      <span className="font-semibold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg text-sm">{teacher.MaGiangVien}</span>
+                    <td className="py-5 px-6">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{teacher.HoTen}</span>
+                        <span className="text-xs text-gray-400 font-mono mt-0.5 whitespace-nowrap">{teacher.MaGiangVien}</span>
+                      </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="font-semibold text-gray-800">{teacher.HoTen}</div>
-                    </td>
-                    <td className="py-4 px-6">
+                    <td className="py-5 px-6 text-sm text-gray-700 font-medium whitespace-nowrap">
                       <span 
                         title={teacher.TenKhoa}
                         className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"
@@ -536,26 +535,39 @@ function TeacherManagement() {
                         {teacher.TenKhoa || 'Chưa xếp khoa'}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.Email || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.SoDienThoai || 'N/A'}</td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        teacher.TrangThai === 'Đang dạy'
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : teacher.TrangThai === 'Tạm nghỉ'
-                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                          : 'bg-red-100 text-red-700 border border-red-200'
-                      }`}>
+                    <td className="py-5 px-6">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${teacher.GioiTinh === 'Nam'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : teacher.GioiTinh === 'Nữ'
+                          ? 'bg-pink-50 text-pink-700 border border-pink-200'
+                          : 'bg-gray-50 text-gray-700 border border-gray-200'
+                        }`}>
+                        {teacher.GioiTinh || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="flex flex-col text-xs">
+                        <span className="text-gray-700 whitespace-nowrap max-w-[180px] truncate" title={teacher.Email}>{teacher.Email || 'N/A'}</span>
+                        <span className="text-gray-400 whitespace-nowrap mt-0.5">{teacher.SoDienThoai || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${teacher.TrangThai === 'Đang dạy'
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : teacher.TrangThai === 'Tạm nghỉ'
+                          ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                          : 'bg-red-50 text-red-700 border border-red-200'
+                        }`}>
                         {teacher.TrangThai || 'Đang dạy'}
                       </span>
                     </td>
-                    <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="py-5 px-6">
+                      <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(teacher)}
-                          className="p-2 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all shadow-sm border border-orange-100"
+                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
@@ -566,7 +578,7 @@ function TeacherManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-16">
+                  <td colSpan="6" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-orange-200" />
                       <p className="text-lg font-medium text-gray-600">Không tìm thấy giảng viên nào</p>

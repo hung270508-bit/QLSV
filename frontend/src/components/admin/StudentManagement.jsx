@@ -638,7 +638,8 @@ function StudentManagement() {
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Sinh viên</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Lớp & Giới tính</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Liên hệ</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
@@ -661,16 +662,16 @@ function StudentManagement() {
                         <span className="text-xs text-gray-400 font-mono mt-0.5 whitespace-nowrap">{student.MSSV}</span>
                       </div>
                     </td>
+                    <td className="py-5 px-6 text-sm text-gray-700 font-medium whitespace-nowrap">
+                      {student.TenLop || 'N/A'}
+                    </td>
                     <td className="py-5 px-6">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className="text-sm text-gray-700 font-medium whitespace-nowrap">{student.TenLop || 'N/A'}</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${student.GioiTinh === 'Nam'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : 'bg-pink-50 text-pink-700 border border-pink-200'
-                          }`}>
-                          {student.GioiTinh || 'N/A'}
-                        </span>
-                      </div>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${student.GioiTinh === 'Nam'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'bg-pink-50 text-pink-700 border border-pink-200'
+                        }`}>
+                        {student.GioiTinh || 'N/A'}
+                      </span>
                     </td>
                     <td className="py-5 px-6">
                       <div className="flex flex-col text-xs">
@@ -705,7 +706,7 @@ function StudentManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="py-16">
+                  <td colSpan="6" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy sinh viên nào</p>
