@@ -170,6 +170,22 @@ function TeacherManagement() {
       }
     }
 
+    // Validate Ngày sinh - phải từ 18 tuổi trở lên
+    if (formData.NgaySinh) {
+      const birthDate = new Date(formData.NgaySinh);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      if (age < 18) {
+        newErrors.NgaySinh = 'Giảng viên phải từ 18 tuổi trở lên';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -694,9 +710,15 @@ function TeacherManagement() {
                   <input
                     type="date"
                     value={formData.NgaySinh}
-                    onChange={(e) => setFormData({ ...formData, NgaySinh: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
+                    onChange={(e) => {
+                      setFormData({ ...formData, NgaySinh: e.target.value });
+                      if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    } focus:bg-white text-gray-700`}
                   />
+                  {errors.NgaySinh && <p className="text-red-500 text-sm mt-1">{errors.NgaySinh}</p>}
                 </div>
                 {editingTeacher && (
                   <div className="md:col-span-2">
