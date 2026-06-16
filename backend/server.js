@@ -222,7 +222,7 @@ app.post('/api/login', (req, res) => {
 
     db.query(query, [username], async (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
-        if (results.length > 0) {
+        if (results.length > 0 && results[0].TaiKhoan === username) {
             const user = results[0];
             let passwordMatch = false;
 
