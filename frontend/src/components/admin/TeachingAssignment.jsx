@@ -200,20 +200,30 @@ function TeachingAssignment() {
     });
   };
 
+  // LOGIC BẢO MẬT 2 LỚP KHI XÓA
   const handleDelete = (id) => {
+    // Lớp 1: Hỏi xác nhận bình thường
     setConfirmDialog({
       show: true,
-      title: 'Xác nhận xóa',
-      message: 'Bạn có chắc chắn muốn xóa phân công giảng dạy này không? (Lưu ý: Chỉ xóa được khi lớp chưa có sinh viên đăng ký)',
-      action: async () => {
-        setConfirmDialog({ show: false, action: null });
-        try {
-          await axios.delete(`${API_URL}/api/teaching-assignments/${id}`);
-          showToast('Xóa phân công giảng dạy thành công.', 'success');
-          fetchData();
-        } catch (error) {
-          showToast('Lớp HP đã có dữ liệu ràng buộc, không thể xóa!', 'error');
-        }
+      title: 'Xác nhận xóa (Bước 1/2)',
+      message: 'Bạn có chắc chắn muốn xóa phân công giảng dạy này không?',
+      action: () => {
+        // Lớp 2: Cảnh báo xóa vĩnh viễn
+        setConfirmDialog({
+          show: true,
+          title: 'Cảnh báo xóa vĩnh viễn (Bước 2/2)',
+          message: 'Hành động này không thể hoàn tác! Bạn có chắc chắn 100% muốn xóa lớp học phần này? (Lưu ý: Chỉ xóa được khi lớp chưa có sinh viên đăng ký)',
+          action: async () => {
+            setConfirmDialog({ show: false, action: null });
+            try {
+              await axios.delete(`${API_URL}/api/teaching-assignments/${id}`);
+              showToast('Xóa phân công giảng dạy thành công.', 'success');
+              fetchData();
+            } catch (error) {
+              showToast('Lớp HP đã có dữ liệu ràng buộc, không thể xóa!', 'error');
+            }
+          }
+        });
       }
     });
   };
@@ -424,7 +434,7 @@ function TeachingAssignment() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
-                      <select value={formData.MaLop} onChange={e => {setFormData({...formData, MaLop: e.target.value}); setFormErrors(prev => ({...prev, MaLop: ''}))}} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all ${formErrors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
+                      <select value={formData.MaLop} onChange={e => {setFormData({...formData, MaLop: e.target.value}); setFormErrors(prev => ({...prev, MaLop: ''}))}} className={`w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl outline-none focus:border-orange-500 transition-all`}>
                         <option value="">-- Dành cho mọi sinh viên --</option>
                         {classes.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
                       </select>
@@ -449,7 +459,6 @@ function TeachingAssignment() {
 
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Sĩ số (30 - 80) <span className="text-red-500">*</span></label>
-                        {/* Ngăn chặn nhập dấu chấm, phẩy hoặc chữ e bằng sự kiện onKeyDown */}
                         <input type="number" min="30" max="80" step="1" onKeyDown={(e) => { if(e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => {setFormData({...formData, SoLuongToiDa: e.target.value}); setFormErrors({...formErrors, SoLuongToiDa: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold text-orange-600 outline-none focus:border-orange-500 ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
                         {formErrors.SoLuongToiDa && <p className="text-red-500 text-sm mt-1">{formErrors.SoLuongToiDa}</p>}
                       </div>
@@ -481,7 +490,7 @@ function TeachingAssignment() {
         {confirmDialog.show && (
           <ModalPortal>
             <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-              <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl border border-gray-100">
+              <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="bg-white rounded-xl p-6 w-full max-w-sm text-center shadow-2xl border border-gray-100">
                 <div className="w-14 h-14 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle className="w-7 h-7" /></div>
                 <h3 className="text-lg font-black text-gray-800 mb-2">{confirmDialog.title}</h3>
                 <p className="text-gray-600 text-sm mb-6 font-medium">{confirmDialog.message}</p>
