@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  HelpCircle, MessageSquare, FileText, Send, 
+import {
+  HelpCircle, MessageSquare, FileText, Send,
   Clock, CheckCircle2, ShieldAlert, GraduationCap,
   AlertCircle, ChevronDown, Loader2
 } from 'lucide-react';
@@ -11,7 +11,7 @@ import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
 function StudentSupport({ user }) {
-  const [activeTab, setActiveTab] = useState('requests'); 
+  const [activeTab, setActiveTab] = useState('requests');
   const [supportList, setSupportList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,11 +46,11 @@ function StudentSupport({ user }) {
   const handleQuickRequest = (chude) => {
     // ---- BƯỚC 1: KIỂM TRA RÀNG BUỘC SỐ LẦN YÊU CẦU TRONG NĂM ----
     const currentYear = new Date().getFullYear();
-    
+
     // Đếm xem sinh viên này đã xin loại giấy này bao nhiêu lần trong năm nay
-    const requestCount = supportList.filter(req => 
-      req.LoaiYeuCau === 'Hành chính' && 
-      req.ChuDe === chude && 
+    const requestCount = supportList.filter(req =>
+      req.LoaiYeuCau === 'Hành chính' &&
+      req.ChuDe === chude &&
       new Date(req.NgayGui).getFullYear() === currentYear
     ).length;
 
@@ -65,9 +65,9 @@ function StudentSupport({ user }) {
 
     // Nếu vượt quá giới hạn -> Chặn lại và báo lỗi
     if (requestCount >= maxLimit) {
-      setErrorDialog({ 
-        show: true, 
-        message: `Bạn đã yêu cầu cấp "${chude}" ${requestCount} lần trong năm nay. (Giới hạn quy định: ${maxLimit} lần/năm). Nếu cần hỗ trợ khẩn cấp, vui lòng liên hệ trực tiếp Phòng Công tác Sinh viên!` 
+      setErrorDialog({
+        show: true,
+        message: `Bạn đã yêu cầu cấp "${chude}" ${requestCount} lần trong năm nay. (Giới hạn quy định: ${maxLimit} lần/năm). Nếu cần hỗ trợ khẩn cấp, vui lòng liên hệ trực tiếp Phòng Công tác Sinh viên!`
       });
       return;
     }
@@ -144,7 +144,7 @@ function StudentSupport({ user }) {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      
+
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10">
@@ -169,11 +169,11 @@ function StudentSupport({ user }) {
       {/* Content Area */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
         <AnimatePresence mode="wait">
-          
+
           {/* TAB 1: DỊCH VỤ HÀNH CHÍNH */}
           {activeTab === 'requests' && (
             <motion.div key="requests" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
-              
+
               <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Tạo yêu cầu mới</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -237,7 +237,7 @@ function StudentSupport({ user }) {
           {/* TAB 2: HỎI ĐÁP & HỖ TRỢ */}
           {activeTab === 'questions' && (
             <motion.div key="questions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-              
+
               <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
                 <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
                   <Send className="w-5 h-5" /> Gửi câu hỏi cho Nhà trường
@@ -247,7 +247,7 @@ function StudentSupport({ user }) {
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Chủ đề cần hỗ trợ <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        <select required value={formData.chuDe} onChange={(e) => setFormData({...formData, chuDe: e.target.value})} className="w-full p-3 bg-white border border-gray-200 rounded-xl appearance-none focus:outline-none focus:border-blue-500 font-medium text-gray-700">
+                        <select required value={formData.chuDe} onChange={(e) => setFormData({ ...formData, chuDe: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-xl appearance-none focus:outline-none focus:border-blue-500 font-medium text-gray-700">
                           <option value="">--- Chọn chủ đề ---</option>
                           <option value="Lỗi hệ thống Website / App">Lỗi hệ thống Website / App</option>
                           <option value="Thắc mắc Điểm thi / Điểm danh">Thắc mắc Điểm thi / Điểm danh</option>
@@ -264,7 +264,7 @@ function StudentSupport({ user }) {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Nội dung chi tiết <span className="text-red-500">*</span></label>
-                    <textarea required value={formData.noiDung} onChange={(e) => setFormData({...formData, noiDung: e.target.value})} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 resize-none text-gray-700"></textarea>
+                    <textarea required value={formData.noiDung} onChange={(e) => setFormData({ ...formData, noiDung: e.target.value })} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 resize-none text-gray-700"></textarea>
                   </div>
                   <div className="text-right">
                     <button type="submit" disabled={submitting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 ml-auto shadow-md shadow-blue-200 disabled:bg-blue-300 disabled:cursor-not-allowed">
@@ -287,7 +287,7 @@ function StudentSupport({ user }) {
                         {renderStatus(q.TrangThai)}
                       </div>
                       <p className="text-gray-700 bg-gray-50 p-4 rounded-xl text-sm border border-gray-100 whitespace-pre-wrap">{q.NoiDung}</p>
-                      
+
                       {q.PhanHoi && (
                         <div className="mt-4 pl-4 border-l-4 border-green-500">
                           <p className="text-xs font-bold text-green-700 mb-1.5 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Nhà trường phản hồi:</p>

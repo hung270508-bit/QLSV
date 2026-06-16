@@ -1091,7 +1091,7 @@ app.post('/api/enrollment', (req, res) => {
     });
 });
 
-app.delete('/api/enrollment/:mssv/:maLhp', (req, res) => executeDelete('DELETE FROM dangky_hocphan WHERE MSSV = ? AND MaLopHocPhan = ? AND TrangThai = "Chờ duyệt"', [req.params.mssv, req.params.maLhp], res, 'Hủy môn thành công!', 'Lỗi!'));
+app.delete('/api/enrollment/:mssv/:maLhp', (req, res) => executeDelete("DELETE FROM dangky_hocphan WHERE MSSV = ? AND MaLopHocPhan = ? AND TrangThai = 'Chờ duyệt'", [req.params.mssv, req.params.maLhp], res, 'Hủy môn thành công!', 'Lỗi!'));
 
 app.get('/api/schedules', (req, res) => executeQuery('SELECT lh.*, lhp.MaGiangVien, lhp.MaMonHoc, lhp.HocKy, gv.HoTen as TenGiangVien, mh.TenMonHoc, lhp.MaLop, l.TenLop FROM lichhoc lh LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop', [], res, 'Lỗi!'));
 app.get('/api/schedule/student/:mssv', (req, res) => executeQuery('SELECT lh.*, mh.TenMonHoc FROM diem d JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan JOIN lichhoc lh ON lh.MaLopHocPhan = lhp.MaLopHocPhan JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE d.MSSV = ?', [req.params.mssv], res, 'Lỗi!'));
@@ -1313,7 +1313,7 @@ app.post('/api/training-points', (req, res) => {
     else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
     else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
-    const query = 'INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai) VALUES (?, ?, ?, ?, ?, "Chờ lớp duyệt")';
+    const query = "INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai) VALUES (?, ?, ?, ?, ?, 'Chờ lớp duyệt')";
     executeInsert(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai], res, 'Nộp đánh giá thành công!', 'Lỗi nộp đánh giá!');
 });
 
@@ -1337,7 +1337,7 @@ app.get('/api/support/student/:mssv', (req, res) => {
 
 app.post('/api/support', (req, res) => {
     const { MSSV, LoaiYeuCau, ChuDe, NoiDung } = req.body;
-    const query = 'INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), "Đang xử lý")';
+    const query = "INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Đang xử lý')";
     executeInsert(query, [MSSV, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 
