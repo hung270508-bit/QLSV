@@ -94,18 +94,18 @@ function App() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    const trimmedUsername = username.trim();
-    const trimmedPassword = password.trim();
+    const cleanUsername = username.replace(/\s/g, '');
+    const cleanPassword = password.replace(/\s/g, '');
 
-    setUsername(trimmedUsername);
-    setPassword(trimmedPassword);
+    setUsername(cleanUsername);
+    setPassword(cleanPassword);
 
-    if (!trimmedUsername) {
+    if (!cleanUsername) {
       setMessage({ type: 'error', text: 'Vui lòng nhập tên đăng nhập!' });
       setLoading(false);
       return;
     }
-    if (!trimmedPassword) {
+    if (!cleanPassword) {
       setMessage({ type: 'error', text: 'Vui lòng nhập mật khẩu!' });
       setLoading(false);
       return;
@@ -113,8 +113,8 @@ function App() {
 
     try {
       const response = await axios.post(`${API_URL}/api/login`, {
-        username: trimmedUsername,
-        password: trimmedPassword
+        username: cleanUsername,
+        password: cleanPassword
       });
 
       if (response.data.success) {
@@ -134,23 +134,23 @@ function App() {
         setLoggedInUser(response.data.user);
 
         if (rememberMe) {
-          localStorage.setItem('rememberedUsername', trimmedUsername);
+          localStorage.setItem('rememberedUsername', cleanUsername);
           try {
-            localStorage.setItem('rememberedPassword', btoa(trimmedPassword));
+            localStorage.setItem('rememberedPassword', btoa(cleanPassword));
           } catch {
-            localStorage.setItem('rememberedPassword', trimmedPassword);
+            localStorage.setItem('rememberedPassword', cleanPassword);
           }
 
           let encodedPwd = '';
           try {
-            encodedPwd = btoa(trimmedPassword);
+            encodedPwd = btoa(cleanPassword);
           } catch {
-            encodedPwd = trimmedPassword;
+            encodedPwd = cleanPassword;
           }
 
-          const accounts = getSavedAccounts().filter(acc => acc.username !== trimmedUsername);
+          const accounts = getSavedAccounts().filter(acc => acc.username !== cleanUsername);
           accounts.unshift({
-            username: trimmedUsername,
+            username: cleanUsername,
             password: encodedPwd,
             role: response.data.user.role,
             tenQuyen: response.data.user.tenQuyen

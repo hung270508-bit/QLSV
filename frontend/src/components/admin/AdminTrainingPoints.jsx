@@ -26,6 +26,7 @@ function AdminTrainingPoints() {
   const [periods, setPeriods] = useState([]);
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
   const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: '2025-2026', NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
+  const [periodFormErrors, setPeriodFormErrors] = useState({});
 
   // === STATES: XÉT DUYỆT ĐIỂM ===
   const [pointsData, setPointsData] = useState([]);
@@ -60,10 +61,56 @@ function AdminTrainingPoints() {
   // ==========================================
   // LOGIC: QUẢN LÝ ĐỢT ĐÁNH GIÁ
   // ==========================================
+  // Tách "Năm học" (niên khóa) dạng "YYYY-YYYY" thành năm bắt đầu/kết thúc
+  const parseNienKhoa = (namHoc) => {
+    const match = /^(\d{4})-(\d{4})$/.exec((namHoc || '').trim());
+    if (!match) return null;
+    const start = parseInt(match[1], 10);
+    const end = parseInt(match[2], 10);
+    if (end <= start) return null;
+    return { start, end };
+  };
+
+  const nienKhoaRange = parseNienKhoa(periodForm.NamHoc);
+  const minNgay = nienKhoaRange ? `${nienKhoaRange.start}-01-01` : '';
+  const maxNgay = nienKhoaRange ? `${nienKhoaRange.end}-12-31` : '';
+
+  // Khi đổi Năm học: nếu ngày đã chọn rơi ngoài niên khóa mới thì xóa để bắt nhập lại
+  const handleNamHocChange = (value) => {
+    setPeriodForm(prev => {
+      const range = parseNienKhoa(value);
+      let { NgayBatDau, NgayKetThuc } = prev;
+      if (range) {
+        const min = `${range.start}-01-01`;
+        const max = `${range.end}-12-31`;
+        if (NgayBatDau && (NgayBatDau < min || NgayBatDau > max)) NgayBatDau = '';
+        if (NgayKetThuc && (NgayKetThuc < min || NgayKetThuc > max)) NgayKetThuc = '';
+      }
+      return { ...prev, NamHoc: value, NgayBatDau, NgayKetThuc };
+    });
+    setPeriodFormErrors(prev => ({ ...prev, NamHoc: '', NgayBatDau: '', NgayKetThuc: '' }));
+  };
+
+  // Khi chọn ngày: chặn ngay nếu nằm ngoài niên khóa, kèm thông báo lỗi rõ ràng
+  const handleNgayChange = (field, value) => {
+    setPeriodFormErrors(prev => ({ ...prev, [field]: '' }));
+    if (nienKhoaRange && value && (value < minNgay || value > maxNgay)) {
+      setPeriodFormErrors(prev => ({
+        ...prev,
+        [field]: `Phải nằm trong niên khóa ${nienKhoaRange.start}-${nienKhoaRange.end}`
+      }));
+      return;
+    }
+    setPeriodForm(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleCreatePeriod = async () => {
     // Validate trước khi gửi (thay alert bằng showToast)
-    if (!periodForm.NamHoc) return showToast('Vui lòng nhập Năm học!', 'error');
+    if (!nienKhoaRange) return showToast('Vui lòng nhập Năm học đúng định dạng VD: 2025-2026!', 'error');
     if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc) return showToast('Vui lòng chọn đầy đủ Ngày bắt đầu và kết thúc!', 'error');
+    if (periodForm.NgayBatDau < minNgay || periodForm.NgayBatDau > maxNgay || periodForm.NgayKetThuc < minNgay || periodForm.NgayKetThuc > maxNgay) {
+      return showToast(`Ngày bắt đầu/kết thúc phải nằm trong niên khóa ${nienKhoaRange.start}-${nienKhoaRange.end}!`, 'error');
+    }
     if (new Date(periodForm.NgayBatDau) > new Date(periodForm.NgayKetThuc)) return showToast('Ngày kết thúc phải sau Ngày bắt đầu!', 'error');
 
     try {
@@ -80,6 +127,7 @@ function AdminTrainingPoints() {
       // Thành công: Đóng Modal, reset form, load lại data và báo thành công
       setIsPeriodModalOpen(false);
       setPeriodForm({ HocKy: 'HK1', NamHoc: '2025-2026', NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
+      setPeriodFormErrors({});
       fetchData(); 
       showToast(response.data.message, 'success');
       
@@ -432,19 +480,56 @@ function AdminTrainingPoints() {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Năm học</label>
-                    <input type="text" placeholder="VD: 2025-2026" value={periodForm.NamHoc} onChange={e => setPeriodForm({...periodForm, NamHoc: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700" />
+                    <input
+                      type="text"
+                      placeholder="VD: 2025-2026"
+                      value={periodForm.NamHoc}
+                      onChange={e => handleNamHocChange(e.target.value)}
+                      className={`w-full p-3 bg-gray-50 border rounded-xl outline-none font-bold text-gray-700 ${!nienKhoaRange && periodForm.NamHoc ? 'border-red-400 focus:border-red-500' : 'border-gray-200'}`}
+                    />
+                    {!nienKhoaRange && periodForm.NamHoc && (
+                      <p className="text-red-500 text-xs mt-1.5 font-medium">Định dạng phải là YYYY-YYYY, VD: 2025-2026</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu</label>
-                    <input type="date" value={periodForm.NgayBatDau} onChange={e => setPeriodForm({...periodForm, NgayBatDau: e.target.value})} className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none text-sm text-gray-600" />
+                    <input
+                      type="date"
+                      value={periodForm.NgayBatDau}
+                      onChange={e => handleNgayChange('NgayBatDau', e.target.value)}
+                      min={minNgay || undefined}
+                      max={maxNgay || undefined}
+                      disabled={!nienKhoaRange}
+                      className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`}
+                    />
+                    {periodFormErrors.NgayBatDau && (
+                      <p className="text-red-500 text-xs mt-1.5 font-medium">{periodFormErrors.NgayBatDau}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc</label>
-                    <input type="date" value={periodForm.NgayKetThuc} onChange={e => setPeriodForm({...periodForm, NgayKetThuc: e.target.value})} className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none text-sm text-gray-600" />
+                    <input
+                      type="date"
+                      value={periodForm.NgayKetThuc}
+                      onChange={e => handleNgayChange('NgayKetThuc', e.target.value)}
+                      min={minNgay || undefined}
+                      max={maxNgay || undefined}
+                      disabled={!nienKhoaRange}
+                      className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`}
+                    />
+                    {periodFormErrors.NgayKetThuc && (
+                      <p className="text-red-500 text-xs mt-1.5 font-medium">{periodFormErrors.NgayKetThuc}</p>
+                    )}
                   </div>
                 </div>
+                {nienKhoaRange && (
+                  <p className="text-[11px] text-gray-400 -mt-2 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    Chỉ được chọn ngày trong khoảng {nienKhoaRange.start}-01-01 đến {nienKhoaRange.end}-12-31
+                  </p>
+                )}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Trạng thái khởi tạo</label>
                   <select value={periodForm.TrangThai} onChange={e => setPeriodForm({...periodForm, TrangThai: e.target.value})} className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none text-sm font-bold text-green-600">
@@ -454,7 +539,7 @@ function AdminTrainingPoints() {
                 </div>
               </div>
               <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end gap-3">
-                <button onClick={() => setIsPeriodModalOpen(false)} className="px-5 py-2.5 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Hủy</button>
+                <button onClick={() => { setIsPeriodModalOpen(false); setPeriodFormErrors({}); }} className="px-5 py-2.5 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Hủy</button>
                 <button onClick={handleCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 shadow-md shadow-orange-200">Xác nhận tạo đợt</button>
               </div>
             </motion.div>

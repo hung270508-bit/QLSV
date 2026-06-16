@@ -51,7 +51,8 @@ function SubjectManagement() {
     SoTinChi: '',
     TenKhoa: ''
   });
-  const [deleteModal, setDeleteModal] = useState({ show: false, subject: null });
+  const [deleteModal, setDeleteModal] = useState({ show: false, subject: null, step: 1 });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, title: 'Xác nhận' });
 
   // Validation states
   const [formErrors, setFormErrors] = useState({
@@ -74,6 +75,18 @@ function SubjectManagement() {
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/đ/g, 'd')
       .replace(/Đ/g, 'D');
+  }, []);
+
+  // Tự động viết hoa chữ cái đầu tiên của mỗi từ (Title Case)
+  const capitalizeWords = useCallback((str) => {
+    if (!str) return '';
+    return str
+      .split(/\s+/)
+      .map(word => {
+        if (word.length === 0) return '';
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
   }, []);
 
   // Debounced search
@@ -105,7 +118,7 @@ function SubjectManagement() {
   }
 };
 
-  const validateForm = () => {
+  const validateForm = (data = formData) => {
     const errors = {
       MaKhoa: '',
       TenMonHoc: '',
@@ -113,36 +126,36 @@ function SubjectManagement() {
     };
     let isValid = true;
 
-    if (!formData.MaKhoa) {
+    if (!data.MaKhoa) {
       errors.MaKhoa = 'Vui lòng chọn khoa';
       isValid = false;
     }
 
-    if (!formData.TenMonHoc.trim()) {
+    if (!data.TenMonHoc.trim()) {
       errors.TenMonHoc = 'Vui lòng nhập tên môn học';
       isValid = false;
-    } else if (formData.TenMonHoc.trim().length < 3) {
+    } else if (data.TenMonHoc.trim().length < 3) {
       errors.TenMonHoc = 'Tên môn học phải có ít nhất 3 ký tự';
       isValid = false;
-    } else if (formData.TenMonHoc.trim().length > 30) {
+    } else if (data.TenMonHoc.trim().length > 30) {
       errors.TenMonHoc = 'Tên môn học không được vượt quá 30 ký tự';
       isValid = false;
-    } else if (/\d/.test(formData.TenMonHoc)) {
+    } else if (/\d/.test(data.TenMonHoc)) {
       errors.TenMonHoc = 'Tên môn học không được chứa số';
       isValid = false;
-    } else if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.TenMonHoc)) {
+    } else if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(data.TenMonHoc)) {
       errors.TenMonHoc = 'Tên môn học không được chứa ký tự đặc biệt';
       isValid = false;
-    } else if (/\s{2,}/.test(formData.TenMonHoc)) {
+    } else if (/\s{2,}/.test(data.TenMonHoc)) {
       errors.TenMonHoc = 'Tên môn học không được chứa nhiều khoảng trắng liên tiếp';
       isValid = false;
     }
 
-    if (!formData.SoTinChi) {
+    if (!data.SoTinChi) {
       errors.SoTinChi = 'Vui lòng nhập số tín chỉ';
       isValid = false;
     } else {
-      const credits = Number(formData.SoTinChi);
+      const credits = Number(data.SoTinChi);
       if (isNaN(credits)) {
         errors.SoTinChi = 'Số tín chỉ phải là số';
         isValid = false;
@@ -163,49 +176,64 @@ function SubjectManagement() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    return;
-  }
+    e.preventDefault();
+    
+    const formattedName = capitalizeWords(formData.TenMonHoc.trim());
+    const updatedFormData = { ...formData, TenMonHoc: formattedName };
+    setFormData(updatedFormData);
 
-  setIsSubmitting(true);
-  try {
-    const resCode = await axios.get(`${API_BASE}/subjects/next-code/${formData.MaKhoa}`);
-    await axios.post(`${API_BASE}/subjects`, { ...formData, MaMonHoc: resCode.data.MaMonHoc });
-    setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
-    fetchData();
-    handleCloseModal();
-  } catch (error) {
-    console.error('Error saving subject:', error);
-    const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
-    setErrorDialog({ show: true, message: errorMessage });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    if (!validateForm(updatedFormData)) {
+      return;
+    }
 
-
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận thêm môn học',
+      message: `Bạn có chắc chắn muốn thêm môn học "${formattedName}" không?`,
+      onConfirm: async () => {
+        setIsSubmitting(true);
+        try {
+          const resCode = await axios.get(`${API_BASE}/subjects/next-code/${updatedFormData.MaKhoa}`);
+          await axios.post(`${API_BASE}/subjects`, { ...updatedFormData, MaMonHoc: resCode.data.MaMonHoc });
+          setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
+          fetchData();
+          handleCloseModal();
+        } catch (error) {
+          console.error('Error saving subject:', error);
+          const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
+          setErrorDialog({ show: true, message: errorMessage });
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    });
+  };
 
   const handleCloseModal = () => {
-  setShowModal(false);
-  setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
-  setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
-};
+    setShowModal(false);
+    setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
+    setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
+  };
+
   const handleDelete = (subject) => {
-    setDeleteModal({ show: true, subject });
+    setDeleteModal({ show: true, subject, step: 1 });
+  };
+
+  const handleFirstDeleteConfirm = () => {
+    setDeleteModal(prev => ({ ...prev, step: 2 }));
   };
 
   const handleDeleteConfirm = async () => {
     try {
       await axios.delete(`${API_BASE}/subjects/${deleteModal.subject.MaMonHoc}`);
       setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
-      setDeleteModal({ show: false, subject: null });
+      setDeleteModal({ show: false, subject: null, step: 1 });
       setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
     } catch (error) {
       console.error('Error deleting subject:', error);
       const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
       setErrorDialog({ show: true, message: errorMessage });
+      setDeleteModal({ show: false, subject: null, step: 1 });
     }
   };
 
@@ -581,6 +609,9 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                       setFormData({ ...formData, TenMonHoc: e.target.value });
                       if (formErrors.TenMonHoc) setFormErrors({ ...formErrors, TenMonHoc: '' });
                     }}
+                    onBlur={(e) => {
+                      setFormData(prev => ({ ...prev, TenMonHoc: capitalizeWords(e.target.value) }));
+                    }}
                     maxLength={30}
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenMonHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
                   />
@@ -871,13 +902,29 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         </div>
         </ModalPortal>
       )}
+      {/* General Confirmation Dialog (Add/Edit) */}
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        onConfirm={() => {
+          if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+          setConfirmDialog({ show: false, message: '', onConfirm: null, title: 'Xác nhận' });
+        }}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, title: 'Xác nhận' })}
+        title={confirmDialog.title}
+      />
+
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         show={deleteModal.show}
-        message={`Bạn có chắc chắn muốn xóa vĩnh viễn "${deleteModal.subject?.TenMonHoc}" "${deleteModal.subject?.MaMonHoc}"? Hành động này không thể hoàn tác.`}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteModal({ show: false, subject: null })}
-        title="Xác nhận xóa môn học"
+        title={deleteModal.step === 1 ? "Xác nhận xóa môn học (Lần 1)" : "CẢNH BÁO XÓA MÔN HỌC (Lần 2)"}
+        message={
+          deleteModal.step === 1
+            ? `Bạn có chắc chắn muốn xóa môn học "${deleteModal.subject?.TenMonHoc}" (${deleteModal.subject?.MaMonHoc}) không?`
+            : `HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC! Toàn bộ dữ liệu điểm số, lớp học phần liên quan đến môn học "${deleteModal.subject?.TenMonHoc}" sẽ bị ảnh hưởng. Bạn có thực sự muốn xóa môn học này không?`
+        }
+        onConfirm={deleteModal.step === 1 ? handleFirstDeleteConfirm : handleDeleteConfirm}
+        onCancel={() => setDeleteModal({ show: false, subject: null, step: 1 })}
       />
 
       {/* Toast Notification */}

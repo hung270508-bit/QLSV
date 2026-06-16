@@ -51,42 +51,36 @@ const LoginForm = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const trimmedUsername = username.trim();
-    const trimmedPassword = password.trim();
+    const cleanUsername = username.replace(/\s/g, '');
+    const cleanPassword = password.replace(/\s/g, '');
 
-    setUsername(trimmedUsername);
-    setPassword(trimmedPassword);
+    setUsername(cleanUsername);
+    setPassword(cleanPassword);
 
     const newErrors = { username: '', password: '' };
     let hasError = false;
 
     // Ràng buộc tên đăng nhập (Mã số tài khoản)
-    if (!trimmedUsername) {
+    if (!cleanUsername) {
       newErrors.username = 'Vui lòng nhập mã số tài khoản!';
       hasError = true;
-    } else if (/\s/.test(trimmedUsername)) {
-      newErrors.username = 'Mã số tài khoản không được chứa khoảng trắng!';
-      hasError = true;
-    } else if (!/^[a-zA-Z0-9]+$/.test(trimmedUsername)) {
+    } else if (!/^[a-zA-Z0-9]+$/.test(cleanUsername)) {
       newErrors.username = 'Mã số tài khoản chỉ được chứa chữ cái không dấu và số!';
       hasError = true;
-    } else if (trimmedUsername.length < 3) {
+    } else if (cleanUsername.length < 3) {
       newErrors.username = 'Mã số tài khoản phải có ít nhất 3 ký tự!';
       hasError = true;
-    } else if (trimmedUsername.length > 20) {
+    } else if (cleanUsername.length > 20) {
       newErrors.username = 'Mã số tài khoản không được vượt quá 20 ký tự!';
       hasError = true;
     }
 
     // Ràng buộc mật khẩu
-    if (!trimmedPassword) {
+    if (!cleanPassword) {
       newErrors.password = 'Vui lòng nhập mật khẩu!';
       hasError = true;
-    } else if (password.length > 20) {
+    } else if (cleanPassword.length > 20) {
       newErrors.password = 'Mật khẩu chỉ được tối đa 20 ký tự!';
-      hasError = true;
-    } else if (/\s{2,}/.test(password)) {
-      newErrors.password = 'Mật khẩu không được chứa quá nhiều khoảng trắng liên tiếp!';
       hasError = true;
     }
 
@@ -199,8 +193,8 @@ const LoginForm = ({
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    onBlur={() => setUsername(username.trim())}
+                    onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))}
+                    onBlur={() => setUsername(username.replace(/\s/g, ''))}
                     onFocus={() => savedAccounts.length > 0 && setShowAccountList(true)}
                     className={`w-full pl-12 pr-10 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       errors.username
@@ -278,8 +272,8 @@ const LoginForm = ({
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onBlur={() => setPassword(password.trim())}
+                    onChange={(e) => setPassword(e.target.value.replace(/\s/g, ''))}
+                    onBlur={() => setPassword(password.replace(/\s/g, ''))}
                     className={`w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       errors.password
                         ? 'border-red-300 focus:border-red-500 focus:bg-white'
