@@ -192,7 +192,7 @@ function StudentManagement() {
     if (!formData.Email.trim()) {
       newErrors.Email = 'Email không được để trống';
     } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{3,}$/;
       if (!emailRegex.test(formData.Email)) {
         newErrors.Email = 'Email không đúng định dạng';
       } else if (formData.Email.length > 100) {
@@ -204,9 +204,23 @@ function StudentManagement() {
     if (!formData.SoDienThoai.trim()) {
       newErrors.SoDienThoai = 'Số điện thoại không được để trống';
     } else {
-      const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
-      if (!phoneRegex.test(formData.SoDienThoai)) {
-        newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)';
+      // Check for spaces
+      if (formData.SoDienThoai.includes(' ')) {
+        newErrors.SoDienThoai = 'Số điện thoại không được chứa khoảng trắng';
+      } else {
+        // Remove non-digit characters for length check
+        const digitsOnly = formData.SoDienThoai.replace(/\D/g, '');
+        
+        if (digitsOnly.length < 10) {
+          newErrors.SoDienThoai = 'Số điện thoại phải có ít nhất 10 chữ số';
+        } else if (digitsOnly.length > 10) {
+          newErrors.SoDienThoai = 'Số điện thoại không được vượt quá 10 chữ số';
+        } else {
+          const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
+          if (!phoneRegex.test(formData.SoDienThoai)) {
+            newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)';
+          }
+        }
       }
     }
 
