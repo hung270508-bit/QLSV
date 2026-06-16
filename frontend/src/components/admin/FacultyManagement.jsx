@@ -4,11 +4,8 @@ import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, Bar
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
+import API_URL from '../../api';
 
-// Tự động lấy cấu hình môi trường hoặc mặc định localhost
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000' 
-    : 'https://qlsv-huq1.onrender.com';
 const API_BASE = `${API_URL}/api`;
 function FacultyManagement() {
   const [faculties, setFaculties] = useState([]);

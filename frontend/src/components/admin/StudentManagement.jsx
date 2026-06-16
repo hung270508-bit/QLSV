@@ -4,10 +4,8 @@ import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, U
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
-// 1. THÊM ĐOẠN KHAI BÁO TỰ ĐỘNG NÀY VÀO ĐẦU TẤT CẢ CÁC FILE
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000' 
-    : 'https://qlsv-huq1.onrender.com';
+import API_URL from '../../api';
+
 const API_BASE = `${API_URL}/api`;
 function StudentManagement() {
   const [students, setStudents] = useState([]);

@@ -2,11 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen, X, MapPin, Clock, Info } from 'lucide-react';
 import axios from 'axios';
+import API_URL from '../../api';
 
-// Tự động lấy cấu hình môi trường hoặc mặc định localhost
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000' 
-    : 'https://qlsv-huq1.onrender.com';
 const API_BASE = `${API_URL}/api`;
 function StudentSchedule({ user }) {
   const [viewType, setViewType] = useState('week'); 
