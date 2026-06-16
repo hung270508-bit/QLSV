@@ -472,7 +472,7 @@ function ClassManagement() {
     <div className="space-y-8">
       {/* Header Section */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="text-white">
             <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
               <Users className="w-8 h-8" />
@@ -619,12 +619,11 @@ function ClassManagement() {
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã lớp</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên lớp</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Khoa</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Niên khóa</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Sĩ số</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Lớp học</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Niên khóa</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Sĩ số</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -639,24 +638,23 @@ function ClassManagement() {
                     onClick={() => handleViewDetails(cls)}
                   >
                     <td className="py-5 px-6">
-                      <span className="font-semibold text-gray-800 text-base">{cls.MaLop}</span>
-                    </td>
-                    {/* TC_37: Chặn tràn hàng nếu tên lớp quá dài */}
-                    <td className="py-5 px-6 min-w-[150px] max-w-xs">
-                      <div className="font-semibold text-gray-800 break-words line-clamp-2" title={cls.TenLop}>{cls.TenLop}</div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{cls.TenLop}</span>
+                        <span className="text-xs text-gray-400 font-mono mt-0.5 whitespace-nowrap">{cls.MaLop}</span>
+                      </div>
                     </td>
                     <td className="py-5 px-6">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-700">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 whitespace-nowrap">
                         {cls.TenKhoa || 'N/A'}
                       </span>
                     </td>
                     <td className="py-5 px-6">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 whitespace-nowrap">
                         {cls.NienKhoa || 'N/A'}
                       </span>
                     </td>
                     <td className="py-5 px-6 text-center">
-                      <span className="inline-flex items-center justify-center min-w-[2rem] px-2.5 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-700">
+                      <span className="inline-flex items-center justify-center min-w-[2rem] px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 whitespace-nowrap">
                         {cls.SoSinhVien ?? 0}
                       </span>
                     </td>
@@ -686,7 +684,7 @@ function ClassManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="py-16">
+                  <td colSpan="5" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy lớp học nào</p>
@@ -726,76 +724,90 @@ function ClassManagement() {
 
             {/* TC_17: Chỉ dùng onSubmit của form để đón phím Enter, xóa bỏ onKeyDown dư thừa */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={formData.startYear}
-                      onChange={handleStartYearChange}
-                      placeholder="Năm bắt đầu"
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                      maxLength={4}
-                    />
-                    {formErrors.startYear && (
-                      <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.startYear}</p>
-                    )}
-                  </div>
-                  <span className="flex items-center text-gray-500 font-semibold">-</span>
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={formData.endYear}
-                      onChange={handleEndYearChange}
-                      placeholder="Năm kết thúc"
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                      maxLength={4}
-                    />
-                    {formErrors.endYear && (
-                      <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.endYear}</p>
-                    )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Row 1: Mã lớp | Tên lớp */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã lớp</label>
+                  <input
+                    type="text"
+                    value={formData.MaLop}
+                    disabled
+                    placeholder="Tự động sinh khi chọn Khoa & Niên khóa"
+                    className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-500 font-semibold cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
+                  <input
+                    type="text"
+                    value={formData.TenLop}
+                    onChange={(e) => {
+                      let value = e.target.value;
+                      value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
+                      setFormData({ ...formData, TenLop: value });
+                      if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
+                    }}
+                    placeholder="Nhập tên lớp học"
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                  />
+                  {formErrors.TenLop && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
+                  )}
+                </div>
+
+                {/* Row 2: Khoa | Niên khóa */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
+                  <select
+                    value={formData.MaKhoa}
+                    onChange={(e) => {
+                      handleKhoaChange(e);
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                  >
+                    <option value="">Chọn khoa</option>
+                    {uniqueFaculties.map((faculty) => (
+                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                        {faculty.TenKhoa}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.MaKhoa && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.MaKhoa}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={formData.startYear}
+                        onChange={handleStartYearChange}
+                        placeholder="Năm bắt đầu"
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                        maxLength={4}
+                      />
+                      {formErrors.startYear && (
+                        <p className="text-red-500 text-xs mt-1">{formErrors.startYear}</p>
+                      )}
+                    </div>
+                    <span className="flex items-center text-gray-500 font-semibold">-</span>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={formData.endYear}
+                        onChange={handleEndYearChange}
+                        placeholder="Năm kết thúc"
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                        maxLength={4}
+                      />
+                      {formErrors.endYear && (
+                        <p className="text-red-500 text-xs mt-1">{formErrors.endYear}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
-                <input
-                  type="text"
-                  value={formData.TenLop}
-                  onChange={(e) => {
-                    let value = e.target.value;
-                    // Lỗi 4: Loại bỏ các ký tự đặc biệt, nhưng vẫn cho phép số và chữ tiếng Việt
-                    value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
-                    setFormData({ ...formData, TenLop: value });
-                    if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
-                  }}
-                  placeholder="Nhập tên lớp học"
-                  className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                />
-                {formErrors.TenLop && (
-                  <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.TenLop}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
-                <select
-                  value={formData.MaKhoa}
-                  onChange={(e) => {
-                    handleKhoaChange(e);
-                  }}
-                  className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                >
-                  <option value="">Chọn khoa</option>
-                  {uniqueFaculties.map((faculty) => (
-                    <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                      {faculty.TenKhoa}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.MaKhoa && (
-                  <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.MaKhoa}</p>
-                )}
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -862,22 +874,25 @@ function ClassManagement() {
             {/* Header */}
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
               <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="bg-white/20 rounded-xl p-2">
-                      <GraduationCap className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết lớp học</span>
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <GraduationCap className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-white mt-2">{selectedClass.TenLop}</h2>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{selectedClass.MaLop}</span>
-                    {selectedClass.TenKhoa && (
-                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{selectedClass.TenKhoa}</span>
-                    )}
-                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">
-                      {classStudents.length} sinh viên
+                  <div>
+                    <span className="text-orange-100 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4" />
+                      Chi tiết lớp học
                     </span>
+                    <h2 className="text-2xl font-bold text-white mt-1">{selectedClass.TenLop}</h2>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{selectedClass.MaLop}</span>
+                      {selectedClass.TenKhoa && (
+                        <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">{selectedClass.TenKhoa}</span>
+                      )}
+                      <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                        {classStudents.length} sinh viên
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <motion.button
@@ -945,10 +960,10 @@ function ClassManagement() {
                         ].map((card, i) => {
                           const Icon = card.icon;
                           const colorMap = {
-                            orange: 'bg-orange-50 text-orange-600 border-orange-100',
-                            blue: 'bg-blue-50 text-blue-600 border-blue-100',
-                            purple: 'bg-purple-50 text-purple-600 border-purple-100',
-                            green: 'bg-green-50 text-green-600 border-green-100',
+                            orange: 'bg-orange-50 text-orange-600 border-orange-100 hover:border-orange-300 hover:bg-orange-100/30',
+                            blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
+                            purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
+                            green: 'bg-green-50 text-green-600 border-green-100 hover:border-green-300 hover:bg-green-100/30',
                           };
                           return (
                             <motion.div
@@ -956,11 +971,16 @@ function ClassManagement() {
                               initial={{ opacity: 0, y: 16 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: i * 0.07 }}
-                              className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
+                              whileHover={{ y: -4, boxShadow: '0 12px 30px rgba(0,0,0,0.04)' }}
+                              className={`rounded-2xl border-2 p-5 ${colorMap[card.color]} transition-all duration-300`}
                             >
-                              <Icon className="w-6 h-6 mb-3 opacity-80" />
-                              <div className="text-3xl font-bold">{card.value}</div>
-                              <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
+                              <div className="flex justify-between items-start">
+                                <div className="text-3xl font-bold font-mono tracking-tight">{card.value}</div>
+                                <div className="p-2 bg-white rounded-xl shadow-sm">
+                                  <Icon className="w-5 h-5 opacity-90" />
+                                </div>
+                              </div>
+                              <div className="text-sm font-semibold opacity-70 mt-3 uppercase tracking-wider">{card.label}</div>
                             </motion.div>
                           );
                         })}
@@ -977,7 +997,8 @@ function ClassManagement() {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: i * 0.06 }}
-                                className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100"
+                                whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
+                                className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all duration-300"
                               >
                                 <div className="bg-orange-100 rounded-xl p-2 flex-shrink-0">
                                   <UserCheck className="w-5 h-5 text-orange-600" />
@@ -1021,16 +1042,16 @@ function ClassManagement() {
                         </h4>
                       </div>
                       {classStudents.length > 0 ? (
-                        <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                        <div className="overflow-x-auto rounded-2xl border border-orange-100">
                           <table className="w-full">
                             <thead>
                               <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">#</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">MSSV</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Họ và tên</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Giới tính</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Email</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">SĐT</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">#</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">MSSV</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Họ và tên</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Email</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">SĐT</th>
                               </tr>
                             </thead>
                             <tbody>

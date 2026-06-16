@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin, CheckCircle } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin, CheckCircle, GraduationCap, Building2 } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from './AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
@@ -347,7 +347,7 @@ function TeacherManagement() {
     <div className="space-y-8 p-4 max-w-screen-3xl mx-auto w-full">
       {/* Header Section */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl shadow-orange-500/10">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="text-white">
             <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
               <Users className="w-8 h-8" />
@@ -355,7 +355,7 @@ function TeacherManagement() {
             </h2>
             <p className="text-orange-100 text-lg">Thêm, sửa và xem chi tiết thông tin giảng viên</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
               whileTap={{ scale: 0.95 }}
@@ -493,21 +493,19 @@ function TeacherManagement() {
       </div>
 
       {/* Table Section */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100/60 border-b border-orange-100">
+            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã GV</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Họ tên</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Khoa</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Email</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">SĐT</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Trạng thái</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Giảng viên</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Liên hệ</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {filteredTeachers.length > 0 ? (
                 filteredTeachers.map((teacher, index) => (
                   <motion.tr
@@ -515,27 +513,31 @@ function TeacherManagement() {
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="hover:bg-orange-50/40 transition-colors cursor-pointer"
+                    className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
                     onClick={() => handleViewDetails(teacher)}
                   >
-                    <td className="py-4 px-6">
-                      <span className="font-semibold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg text-sm">{teacher.MaGiangVien}</span>
+                    <td className="py-5 px-6">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{teacher.HoTen}</span>
+                        <span className="text-xs text-gray-400 font-mono mt-0.5 whitespace-nowrap">{teacher.MaGiangVien}</span>
+                      </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="font-semibold text-gray-800">{teacher.HoTen}</div>
-                    </td>
-                    <td className="py-4 px-6">
+                    <td className="py-5 px-6">
                       <span 
                         title={teacher.TenKhoa}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap"
                       >
                         {teacher.TenKhoa || 'Chưa xếp khoa'}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.Email || 'N/A'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{teacher.SoDienThoai || 'N/A'}</td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                    <td className="py-5 px-6">
+                      <div className="flex flex-col text-xs">
+                        <span className="text-gray-700 whitespace-nowrap max-w-[180px] truncate" title={teacher.Email}>{teacher.Email || 'N/A'}</span>
+                        <span className="text-gray-400 whitespace-nowrap mt-0.5">{teacher.SoDienThoai || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
                         teacher.TrangThai === 'Đang dạy'
                           ? 'bg-green-100 text-green-700 border border-green-200'
                           : teacher.TrangThai === 'Tạm nghỉ'
@@ -545,13 +547,13 @@ function TeacherManagement() {
                         {teacher.TrangThai || 'Đang dạy'}
                       </span>
                     </td>
-                    <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-5 px-6" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-2">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(teacher)}
-                          className="p-2 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all shadow-sm border border-orange-100"
+                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
@@ -562,7 +564,7 @@ function TeacherManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-16">
+                  <td colSpan="5" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Users className="w-16 h-16 mb-4 text-orange-200" />
                       <p className="text-lg font-medium text-gray-600">Không tìm thấy giảng viên nào</p>
@@ -601,9 +603,40 @@ function TeacherManagement() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-              <input type="hidden" value={formData.MaGiangVien} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+                {/* Row 1: Mã giảng viên | Họ tên */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã giảng viên</label>
+                  <input
+                    type="text"
+                    value={formData.MaGiangVien}
+                    disabled
+                    placeholder="Tự động sinh khi chọn khoa"
+                    className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-500 font-semibold cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
+                  <input
+                    type="text"
+                    value={formData.HoTen}
+                    onChange={(e) => {
+                      setFormData({ ...formData, HoTen: e.target.value });
+                      if (errors.HoTen) setErrors({ ...errors, HoTen: '' });
+                    }}
+                    onBlur={(e) => {
+                      const formatted = formatTitleCase(e.target.value.trim());
+                      setFormData(prev => ({ ...prev, HoTen: formatted }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    }`}
+                  />
+                  {errors.HoTen && <p className="text-red-500 text-xs mt-1">{errors.HoTen}</p>}
+                </div>
+
+                {/* Row 2: Khoa chuyên môn | Số điện thoại */}
+                <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa chuyên môn</label>
                   <select
                     value={formData.MaKhoa}
@@ -624,40 +657,6 @@ function TeacherManagement() {
                   </select>
                   {errors.MaKhoa && <p className="text-red-500 text-sm mt-1">{errors.MaKhoa}</p>}
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
-                  <input
-                    type="text"
-                    value={formData.HoTen}
-                    onChange={(e) => {
-                      setFormData({ ...formData, HoTen: e.target.value });
-                      if (errors.HoTen) setErrors({ ...errors, HoTen: '' });
-                    }}
-                    onBlur={(e) => {
-                      const formatted = formatTitleCase(e.target.value.trim());
-                      setFormData(prev => ({ ...prev, HoTen: formatted }));
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  />
-                  {errors.HoTen && <p className="text-red-500 text-sm mt-1">{errors.HoTen}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={formData.Email}
-                    onChange={(e) => {
-                      setFormData({ ...formData, Email: e.target.value });
-                      if (errors.Email) setErrors({ ...errors, Email: '' });
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  />
-                  {errors.Email && <p className="text-red-500 text-sm mt-1">{errors.Email}</p>}
-                </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
                   <input
@@ -671,22 +670,37 @@ function TeacherManagement() {
                       errors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
                     }`}
                   />
-                  {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
+                  {errors.SoDienThoai && <p className="text-red-500 text-xs mt-1">{errors.SoDienThoai}</p>}
                 </div>
-                {editingTeacher && (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
-                    <select
-                      value={formData.TrangThai}
-                      onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
-                    >
-                      <option value="Đang dạy">Đang dạy</option>
-                      <option value="Tạm nghỉ">Tạm nghỉ</option>
-                      <option value="Nghỉ việc">Nghỉ việc</option>
-                    </select>
-                  </div>
-                )}
+
+                {/* Row 3: Email | Trạng thái */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={formData.Email}
+                    onChange={(e) => {
+                      setFormData({ ...formData, Email: e.target.value });
+                      if (errors.Email) setErrors({ ...errors, Email: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    }`}
+                  />
+                  {errors.Email && <p className="text-red-500 text-xs mt-1">{errors.Email}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Trạng thái</label>
+                  <select
+                    value={formData.TrangThai}
+                    onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  >
+                    <option value="Đang dạy">Đang dạy</option>
+                    <option value="Tạm nghỉ">Tạm nghỉ</option>
+                    <option value="Nghỉ việc">Nghỉ việc</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -750,122 +764,143 @@ function TeacherManagement() {
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
           >
-            {/* Header */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="bg-white/20 rounded-xl p-2">
-                      <UserCheck className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="text-orange-100 text-sm font-medium uppercase tracking-widest">Chi tiết giảng viên</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-white mt-2">{teacherDetails?.HoTen || selectedTeacher.HoTen}</h2>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full font-mono">{teacherDetails?.MaGiangVien || selectedTeacher.MaGiangVien}</span>
-                    {teacherDetails?.TenKhoa && (
-                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">{teacherDetails.TenKhoa}</span>
-                    )}
-                  </div>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleCloseDetailModal}
-                  className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
-                >
-                  <X className="w-5 h-5 text-white" />
-                </motion.button>
-              </div>
+             {/* Header */}
+             <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+               <div className="flex items-start justify-between">
+                 <div className="flex items-center gap-4">
+                   <div className="bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
+                     {(teacherDetails?.HoTen || selectedTeacher.HoTen || 'GV')
+                       .split(' ')
+                       .map(w => w[0])
+                       .filter(Boolean)
+                       .slice(-2)
+                       .join('')
+                       .toUpperCase()}
+                   </div>
+                   <div>
+                     <span className="text-orange-100 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
+                       <UserCheck className="w-4 h-4" />
+                       Chi tiết giảng viên
+                     </span>
+                     <h2 className="text-2xl font-bold text-white mt-1">{teacherDetails?.HoTen || selectedTeacher.HoTen}</h2>
+                     <div className="flex flex-wrap items-center gap-2 mt-2">
+                       <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{teacherDetails?.MaGiangVien || selectedTeacher.MaGiangVien}</span>
+                       {teacherDetails?.TenKhoa && (
+                         <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">{teacherDetails.TenKhoa}</span>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+                 <motion.button
+                   whileHover={{ scale: 1.1, rotate: 90 }}
+                   whileTap={{ scale: 0.9 }}
+                   onClick={handleCloseDetailModal}
+                   className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                 >
+                   <X className="w-5 h-5 text-white" />
+                 </motion.button>
+               </div>
 
-              {/* Tabs */}
-              <div className="flex gap-1 mt-5">
-                {[
-                  { id: 'info', label: 'Thông tin', icon: Users },
-                  { id: 'schedule', label: 'Lịch giảng dạy', icon: Calendar },
-                  { id: 'load', label: 'Tải công việc', icon: FileText }
-                ].map(tab => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setDetailTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                        detailTab === tab.id
-                          ? 'bg-white text-orange-600 shadow-md'
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+               {/* Tabs */}
+               <div className="flex gap-1 mt-5">
+                 {[
+                   { id: 'info', label: 'Thông tin', icon: Users },
+                   { id: 'schedule', label: 'Lịch giảng dạy', icon: Calendar },
+                   { id: 'load', label: 'Tải công việc', icon: FileText }
+                 ].map(tab => {
+                   const Icon = tab.icon;
+                   return (
+                     <button
+                       key={tab.id}
+                       onClick={() => setDetailTab(tab.id)}
+                       className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                         detailTab === tab.id
+                           ? 'bg-white text-orange-600 shadow-md'
+                           : 'text-white/70 hover:text-white hover:bg-white/10'
+                       }`}
+                     >
+                       <Icon className="w-4 h-4" />
+                       {tab.label}
+                     </button>
+                   );
+                 })}
+               </div>
+             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {detailTab === 'info' && teacherDetails && (
-                <div className="space-y-6">
-                  {/* Stats cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Lớp dạy', value: teachingSchedule.length, icon: BookOpen, color: 'blue' },
-                      { label: 'Môn học', value: [...new Set(teachingSchedule.map(s => s.TenMonHoc))].length, icon: BarChart3, color: 'green' },
-                      { label: 'Tín chỉ', value: teachingLoad.reduce((sum, l) => sum + (parseInt(l.SoTinChi) || 0), 0), icon: Award, color: 'purple' },
-                      { label: 'Ca/tuần', value: teachingSchedule.length, icon: Calendar, color: 'orange' },
-                    ].map((card, i) => {
-                      const Icon = card.icon;
-                      const colorMap = {
-                        blue: 'bg-blue-50 text-blue-600 border-blue-100',
-                        green: 'bg-green-50 text-green-600 border-green-100',
-                        purple: 'bg-purple-50 text-purple-600 border-purple-100',
-                        orange: 'bg-orange-50 text-orange-600 border-orange-100',
-                      };
-                      return (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.07 }}
-                          className={`rounded-2xl border-2 p-5 ${colorMap[card.color]}`}
-                        >
-                          <Icon className="w-6 h-6 mb-3 opacity-80" />
-                          <div className="text-3xl font-bold">{card.value}</div>
-                          <div className="text-sm font-medium opacity-70 mt-1">{card.label}</div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
+             {/* Content */}
+             <div className="flex-1 overflow-y-auto p-6">
+               {detailTab === 'info' && teacherDetails && (
+                 <div className="space-y-6">
+                   {/* Stats cards */}
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                     {[
+                       { label: 'Lớp dạy', value: teachingSchedule.length, icon: BookOpen, color: 'blue' },
+                       { label: 'Môn học', value: [...new Set(teachingSchedule.map(s => s.TenMonHoc))].length, icon: BarChart3, color: 'green' },
+                       { label: 'Tín chỉ', value: teachingLoad.reduce((sum, l) => sum + (parseInt(l.SoTinChi) || 0), 0), icon: Award, color: 'purple' },
+                       { label: 'Ca/tuần', value: teachingSchedule.length, icon: Calendar, color: 'orange' },
+                     ].map((card, i) => {
+                       const Icon = card.icon;
+                       const colorMap = {
+                         blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
+                         green: 'bg-green-50 text-green-600 border-green-100 hover:border-green-300 hover:bg-green-100/30',
+                         purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
+                         orange: 'bg-orange-50 text-orange-600 border-orange-100 hover:border-orange-300 hover:bg-orange-100/30',
+                       };
+                       return (
+                         <motion.div
+                           key={i}
+                           initial={{ opacity: 0, y: 16 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           transition={{ delay: i * 0.07 }}
+                           whileHover={{ y: -4, boxShadow: '0 12px 30px rgba(0,0,0,0.04)' }}
+                           className={`rounded-2xl border-2 p-5 ${colorMap[card.color]} transition-all duration-300`}
+                         >
+                           <div className="flex justify-between items-start">
+                             <div className="text-3xl font-bold font-mono tracking-tight">{card.value}</div>
+                             <div className="p-2 bg-white rounded-xl shadow-sm">
+                               <Icon className="w-5 h-5 opacity-90" />
+                             </div>
+                           </div>
+                           <div className="text-sm font-semibold opacity-70 mt-3 uppercase tracking-wider">{card.label}</div>
+                         </motion.div>
+                       );
+                     })}
+                   </div>
 
-                  {/* Personal info */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[
-                        { label: 'Mã giảng viên', value: teacherDetails.MaGiangVien, icon: null },
-                        { label: 'Họ và tên', value: teacherDetails.HoTen, icon: null },
-                        { label: 'Email', value: teacherDetails.Email, icon: Mail },
-                        { label: 'Số điện thoại', value: teacherDetails.SoDienThoai, icon: Phone },
-                        { label: 'Khoa trực thuộc', value: teacherDetails.TenKhoa, icon: null },
-                      ].map((item, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.06 }}
-                          className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100"
-                        >
-                          {item.icon && <item.icon className="w-5 h-5 text-gray-400" />}
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-500 font-medium">{item.label}</div>
-                            <div className="font-semibold text-gray-800 text-sm">{item.value || '—'}</div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
+                   {/* Personal info */}
+                   <div>
+                     <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                       {[
+                         { label: 'Mã giảng viên', value: teacherDetails.MaGiangVien, icon: Award },
+                         { label: 'Họ và tên', value: teacherDetails.HoTen, icon: UserCheck },
+                         { label: 'Email', value: teacherDetails.Email, icon: Mail },
+                         { label: 'Số điện thoại', value: teacherDetails.SoDienThoai, icon: Phone },
+                         { label: 'Khoa trực thuộc', value: teacherDetails.TenKhoa, icon: Building2 },
+                       ].map((item, i) => (
+                         <motion.div
+                           key={i}
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           transition={{ delay: i * 0.05 }}
+                           whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
+                           className="flex items-center gap-4 bg-gray-50 border border-gray-100 rounded-2xl p-4 transition-all duration-300"
+                         >
+                           {item.icon && (
+                             <div className="bg-orange-100 rounded-xl p-2.5 text-orange-600 flex-shrink-0">
+                               <item.icon className="w-5 h-5" />
+                             </div>
+                           )}
+                           <div className="flex-1 min-w-0">
+                             <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{item.label}</div>
+                             <div className="font-semibold text-gray-800 text-sm mt-0.5 truncate" title={item.value || ''}>
+                               {item.value || '—'}
+                             </div>
+                           </div>
+                         </motion.div>
+                       ))}
+                     </div>
+                   </div>
                 </div>
               )}
 
@@ -885,14 +920,14 @@ function TeacherManagement() {
                     Tải công việc ({teachingLoad.length} môn)
                   </h4>
                   {teachingLoad.length > 0 ? (
-                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                    <div className="overflow-x-auto rounded-2xl border border-orange-100">
                       <table className="w-full">
                         <thead>
                           <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Môn học</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Số tín chỉ</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Lớp học</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-gray-600 uppercase tracking-wider">Học kỳ</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Môn học</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Số tín chỉ</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Lớp học</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Học kỳ</th>
                           </tr>
                         </thead>
                         <tbody>
