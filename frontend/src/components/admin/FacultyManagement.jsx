@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
 import axios from 'axios';
-import { TableSkeleton } from './AdminSkeleton';
+import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
 import API_URL from '../../api';
 
@@ -15,7 +15,7 @@ function FacultyManagement() {
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('default'); 
+  const [sortBy, setSortBy] = useState('default');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ facultyFilter: '' });
   const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '' });
@@ -56,7 +56,7 @@ function FacultyManagement() {
   };
 
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
@@ -130,7 +130,7 @@ function FacultyManagement() {
   // Gộp Logic Kiểm Tra & Báo Lỗi trước khi hiện Modal Confirm (FIX TC_08, TC_21, TC_22)
   const validateAndConfirm = () => {
     let tenKhoa = formatTitleCase(formData.TenKhoa.trim());
-    
+
     // Kiểm tra tính hợp lệ cơ bản
     const error = validateFacultyName(tenKhoa);
     if (error) {
@@ -156,7 +156,7 @@ function FacultyManagement() {
       TenKhoa: tenKhoa,
       MaKhoa: generateMaKhoa(tenKhoa)
     }));
-    
+
     setErrors({ TenKhoa: '' });
     setShowConfirmModal(true);
   };
@@ -227,22 +227,22 @@ function FacultyManagement() {
   };
 
   const filteredAndSortedFaculties = [...faculties]
-  .filter(f => {
-    const searchLower = debouncedSearchTerm.toLowerCase();
-    const searchNoTones = removeVietnameseTones(searchLower);
-    const nameLower = f.TenKhoa.toLowerCase();
-    const nameNoTones = removeVietnameseTones(nameLower);
-    const codeLower = f.MaKhoa.toLowerCase();
-    
-    return nameLower.includes(searchLower) || 
-           nameNoTones.includes(searchNoTones) ||
-           codeLower.includes(searchLower);
-  })
-  .sort((a, b) => {
-    if (sortBy === 'asc') return a.TenKhoa.localeCompare(b.TenKhoa);
-    if (sortBy === 'desc') return b.TenKhoa.localeCompare(a.TenKhoa);
-    return 0;
-  });
+    .filter(f => {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      const searchNoTones = removeVietnameseTones(searchLower);
+      const nameLower = f.TenKhoa.toLowerCase();
+      const nameNoTones = removeVietnameseTones(nameLower);
+      const codeLower = f.MaKhoa.toLowerCase();
+
+      return nameLower.includes(searchLower) ||
+        nameNoTones.includes(searchNoTones) ||
+        codeLower.includes(searchLower);
+    })
+    .sort((a, b) => {
+      if (sortBy === 'asc') return a.TenKhoa.localeCompare(b.TenKhoa);
+      if (sortBy === 'desc') return b.TenKhoa.localeCompare(a.TenKhoa);
+      return 0;
+    });
 
   const handleClearSearch = () => {
     setSearchTerm('');
@@ -253,7 +253,7 @@ function FacultyManagement() {
     setFilters({ ...displayFilters });
     setSortBy(displaySortBy);
     setShowFilters(false);
-    
+
   };
 
   const clearFilters = () => {
@@ -326,11 +326,10 @@ function FacultyManagement() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                hasActiveFilters
+              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${hasActiveFilters
                   ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               <Filter className="w-5 h-5" />
               Bộ lọc
@@ -353,7 +352,7 @@ function FacultyManagement() {
             )}
           </div>
         </div>
-{showFilters && (
+        {showFilters && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -482,83 +481,82 @@ function FacultyManagement() {
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
             <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-          >
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
-              <div className="text-white">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <Building2 className="w-5 h-5" />
-                  {editingFaculty ? 'Cập nhật khoa' : 'Thêm khoa mới'}
-                </h3>
-                <p className="text-orange-100 text-sm mt-0.5">
-                  {editingFaculty ? 'Chỉnh sửa thông tin khoa' : 'Tạo khoa mới trong hệ thống'}
-                </p>
-              </div>
-              <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form
-              onSubmit={(e) => e.preventDefault()}
-              className="p-6 space-y-4 overflow-y-auto"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tên khoa
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Nhập tên khoa..."
-                  value={formData.TenKhoa}
-                  onChange={handleFacultyNameChange}
-                  onFocus={() => setErrors({ TenKhoa: '' })}
-                  onBlur={() => {
-                    // FIX TC_12: Khi người dùng bấm ra ngoài ô nhập liệu, tự động chuẩn hóa viết hoa
-                    const formatted = formatTitleCase(formData.TenKhoa.trim());
-                    setFormData(prev => ({ ...prev, TenKhoa: formatted, MaKhoa: generateMaKhoa(formatted) }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      validateAndConfirm(); // FIX TC_22: Enter kích hoạt validate và hiện confirm
-                    }
-                  }}
-                  className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${
-                    errors.TenKhoa
-                      ? 'border-red-500'
-                      : 'border-gray-200 focus:border-orange-500'
-                  }`}
-                />
-
-                {errors.TenKhoa && (
-                  <p className="mt-2 text-sm text-red-500 font-medium">
-                    {errors.TenKhoa}
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div className="text-white">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Building2 className="w-5 h-5" />
+                    {editingFaculty ? 'Cập nhật khoa' : 'Thêm khoa mới'}
+                  </h3>
+                  <p className="text-orange-100 text-sm mt-0.5">
+                    {editingFaculty ? 'Chỉnh sửa thông tin khoa' : 'Tạo khoa mới trong hệ thống'}
                   </p>
-                )}
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  onClick={validateAndConfirm}
-                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
-                >
-                  {editingFaculty ? 'Lưu thay đổi' : 'Thêm khoa'}
+                </div>
+                <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
-          </motion.div>
-        </div>
+              <form
+                onSubmit={(e) => e.preventDefault()}
+                className="p-6 space-y-4 overflow-y-auto"
+              >
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tên khoa
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="Nhập tên khoa..."
+                    value={formData.TenKhoa}
+                    onChange={handleFacultyNameChange}
+                    onFocus={() => setErrors({ TenKhoa: '' })}
+                    onBlur={() => {
+                      // FIX TC_12: Khi người dùng bấm ra ngoài ô nhập liệu, tự động chuẩn hóa viết hoa
+                      const formatted = formatTitleCase(formData.TenKhoa.trim());
+                      setFormData(prev => ({ ...prev, TenKhoa: formatted, MaKhoa: generateMaKhoa(formatted) }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        validateAndConfirm(); // FIX TC_22: Enter kích hoạt validate và hiện confirm
+                      }
+                    }}
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${errors.TenKhoa
+                        ? 'border-red-500'
+                        : 'border-gray-200 focus:border-orange-500'
+                      }`}
+                  />
+
+                  {errors.TenKhoa && (
+                    <p className="mt-2 text-sm text-red-500 font-medium">
+                      {errors.TenKhoa}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={validateAndConfirm}
+                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                  >
+                    {editingFaculty ? 'Lưu thay đổi' : 'Thêm khoa'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         </ModalPortal>
       )}
 
@@ -566,7 +564,7 @@ function FacultyManagement() {
       {showConfirmModal && (
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/40">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
@@ -574,13 +572,13 @@ function FacultyManagement() {
               <h3 className="text-xl font-bold text-gray-800 mb-2">Xác nhận</h3>
               <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn {editingFaculty ? 'cập nhật' : 'thêm'} khoa <strong className="text-orange-600">{formData.TenKhoa}</strong> không?</p>
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => setShowConfirmModal(false)}
                   className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200"
                 >
                   Không
                 </button>
-                <button 
+                <button
                   onClick={executeSubmit}
                   className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg"
                 >
@@ -597,251 +595,249 @@ function FacultyManagement() {
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
             <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
-          >
-            {/* Header */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
-                    {(selectedFaculty.TenKhoa || 'KH')
-                      .split(' ')
-                      .map(w => w[0])
-                      .filter(Boolean)
-                      .slice(-2)
-                      .join('')
-                      .toUpperCase()}
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
+                      {(selectedFaculty.TenKhoa || 'KH')
+                        .split(' ')
+                        .map(w => w[0])
+                        .filter(Boolean)
+                        .slice(-2)
+                        .join('')
+                        .toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="text-orange-100 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
+                        <Building2 className="w-4 h-4" />
+                        Chi tiết khoa
+                      </span>
+                      <h2 className="text-2xl font-bold text-white mt-1">{selectedFaculty.TenKhoa}</h2>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{selectedFaculty.MaKhoa}</span>
+                      </div>
+                    </div>
                   </div>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleCloseDetailModal}
+                    className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </motion.button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-1 mt-5">
+                  {[
+                    { id: 'teachers', label: 'Giảng viên', icon: Users },
+                    { id: 'students', label: 'Sinh viên', icon: GraduationCap },
+                    { id: 'classes', label: 'Lớp học', icon: BookOpen },
+                    { id: 'stats', label: 'Thống kê', icon: BarChart3 }
+                  ].map(tab => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setDetailTab(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${detailTab === tab.id
+                            ? 'bg-white text-orange-600 shadow-md'
+                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                          }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {detailTab === 'teachers' && (
                   <div>
-                    <span className="text-orange-100 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4" />
-                      Chi tiết khoa
-                    </span>
-                    <h2 className="text-2xl font-bold text-white mt-1">{selectedFaculty.TenKhoa}</h2>
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                      <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{selectedFaculty.MaKhoa}</span>
-                    </div>
-                  </div>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleCloseDetailModal}
-                  className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
-                >
-                  <X className="w-5 h-5 text-white" />
-                </motion.button>
-              </div>
-
-              {/* Tabs */}
-              <div className="flex gap-1 mt-5">
-                {[
-                  { id: 'teachers', label: 'Giảng viên', icon: Users },
-                  { id: 'students', label: 'Sinh viên', icon: GraduationCap },
-                  { id: 'classes', label: 'Lớp học', icon: BookOpen },
-                  { id: 'stats', label: 'Thống kê', icon: BarChart3 }
-                ].map(tab => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setDetailTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                        detailTab === tab.id
-                          ? 'bg-white text-orange-600 shadow-md'
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {detailTab === 'teachers' && (
-                <div>
-                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
-                    Danh sách giảng viên ({facultyTeachers.length})
-                  </h4>
-                  {facultyTeachers.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {facultyTeachers.map((teacher, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.06 }}
-                          whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
-                          className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all duration-300"
-                        >
-                          <div className="bg-orange-100 rounded-xl p-2 flex-shrink-0">
-                            <UserCheck className="w-5 h-5 text-orange-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-gray-800 text-sm truncate">{teacher.HoTen}</div>
-                            <div className="text-xs text-gray-500">{teacher.MaGiangVien}</div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                      <Users className="w-14 h-14 mb-3 text-gray-200" />
-                      <p className="font-medium">Chưa có giảng viên nào</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {detailTab === 'students' && (
-                <div>
-                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
-                    Danh sách sinh viên ({facultyStudents.length})
-                  </h4>
-                  {facultyStudents.length > 0 ? (
-                    <div className="overflow-x-auto rounded-2xl border border-orange-100">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">MSSV</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Họ tên</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {facultyStudents.map((student, index) => (
-                            <motion.tr
-                              key={index}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.03 }}
-                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
-                            >
-                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{student.MSSV}</td>
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{student.HoTen}</td>
-                              <td className="py-3.5 px-5">
-                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${
-                                  student.GioiTinh === 'Nam' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
-                                }}`}>
-                                  {student.GioiTinh || '—'}
-                                </span>
-                              </td>
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{student.TenLop || '—'}</td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                      <GraduationCap className="w-14 h-14 mb-3 text-gray-200" />
-                      <p className="font-medium">Chưa có sinh viên nào</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {detailTab === 'classes' && (
-                <div>
-                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
-                    Danh sách lớp học ({facultyClasses.length})
-                  </h4>
-                  {facultyClasses.length > 0 ? (
-                    <div className="overflow-x-auto rounded-2xl border border-orange-100">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Mã lớp</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Tên lớp</th>
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Số sinh viên</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {facultyClasses.map((cls, index) => (
-                            <motion.tr
-                              key={index}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.03 }}
-                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
-                            >
-                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{cls.MaLop}</td>
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{cls.TenLop}</td>
-                              <td className="py-3.5 px-5">
-                                <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-md font-bold text-sm">{cls.SoSinhVien || 0} SV</span>
-                              </td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                      <BookOpen className="w-14 h-14 mb-3 text-gray-200" />
-                      <p className="font-medium">Chưa có lớp nào</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {detailTab === 'stats' && (
-                <div className="space-y-6">
-                  {/* Stats cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[
-                      { label: 'Giảng viên', value: facultyStats.totalTeachers, icon: Users, color: 'blue' },
-                      { label: 'Sinh viên', value: facultyStats.totalStudents, icon: GraduationCap, color: 'green' },
-                      { label: 'Lớp học', value: facultyStats.totalClasses, icon: BookOpen, color: 'purple' },
-                    ].map((card, i) => {
-                      const Icon = card.icon;
-                      const colorMap = {
-                        blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
-                        green: 'bg-green-50 text-green-600 border-green-100 hover:border-green-300 hover:bg-green-100/30',
-                        purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
-                      };
-                      return (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.07 }}
-                          whileHover={{ y: -4, boxShadow: '0 12px 30px rgba(0,0,0,0.04)' }}
-                          className={`rounded-2xl border-2 p-5 ${colorMap[card.color]} transition-all duration-300`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="text-3xl font-bold font-mono tracking-tight">{card.value}</div>
-                            <div className="p-2 bg-white rounded-xl shadow-sm">
-                              <Icon className="w-5 h-5 opacity-90" />
+                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                      Danh sách giảng viên ({facultyTeachers.length})
+                    </h4>
+                    {facultyTeachers.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {facultyTeachers.map((teacher, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.06 }}
+                            whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
+                            className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all duration-300"
+                          >
+                            <div className="bg-orange-100 rounded-xl p-2 flex-shrink-0">
+                              <UserCheck className="w-5 h-5 text-orange-600" />
                             </div>
-                          </div>
-                          <div className="text-sm font-semibold opacity-70 mt-3 uppercase tracking-wider">{card.label}</div>
-                        </motion.div>
-                      );
-                    })}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-gray-800 text-sm truncate">{teacher.HoTen}</div>
+                              <div className="text-xs text-gray-500">{teacher.MaGiangVien}</div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <Users className="w-14 h-14 mb-3 text-gray-200" />
+                        <p className="font-medium">Chưa có giảng viên nào</p>
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  {/* Summary card */}
-                  <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-center text-white">
-                    <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                    <div className="text-5xl font-bold mb-1">{facultyStats.totalStudents > 0 ? Math.round(facultyStats.totalTeachers / facultyStats.totalStudents * 10) / 10 : 0}</div>
-                    <div className="text-orange-100 font-medium">Tỷ lệ giảng viên/sinh viên</div>
-                    <div className="text-orange-200 text-sm mt-1">Trung bình mỗi giảng viên phụ trách {facultyStats.totalTeachers > 0 ? Math.round(facultyStats.totalStudents / facultyStats.totalTeachers) : 0} sinh viên</div>
+                {detailTab === 'students' && (
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                      Danh sách sinh viên ({facultyStudents.length})
+                    </h4>
+                    {facultyStudents.length > 0 ? (
+                      <div className="overflow-x-auto rounded-2xl border border-orange-100">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">MSSV</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Họ tên</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {facultyStudents.map((student, index) => (
+                              <motion.tr
+                                key={index}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: index * 0.03 }}
+                                className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                              >
+                                <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{student.MSSV}</td>
+                                <td className="py-3.5 px-5 text-sm text-gray-600">{student.HoTen}</td>
+                                <td className="py-3.5 px-5">
+                                  <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${student.GioiTinh === 'Nam' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
+                                    }}`}>
+                                    {student.GioiTinh || '—'}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-5 text-sm text-gray-600">{student.TenLop || '—'}</td>
+                              </motion.tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <GraduationCap className="w-14 h-14 mb-3 text-gray-200" />
+                        <p className="font-medium">Chưa có sinh viên nào</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      </ModalPortal>
+                )}
+
+                {detailTab === 'classes' && (
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                      Danh sách lớp học ({facultyClasses.length})
+                    </h4>
+                    {facultyClasses.length > 0 ? (
+                      <div className="overflow-x-auto rounded-2xl border border-orange-100">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Mã lớp</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Tên lớp</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Số sinh viên</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {facultyClasses.map((cls, index) => (
+                              <motion.tr
+                                key={index}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: index * 0.03 }}
+                                className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                              >
+                                <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{cls.MaLop}</td>
+                                <td className="py-3.5 px-5 text-sm text-gray-600">{cls.TenLop}</td>
+                                <td className="py-3.5 px-5">
+                                  <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-md font-bold text-sm">{cls.SoSinhVien || 0} SV</span>
+                                </td>
+                              </motion.tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <BookOpen className="w-14 h-14 mb-3 text-gray-200" />
+                        <p className="font-medium">Chưa có lớp nào</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {detailTab === 'stats' && (
+                  <div className="space-y-6">
+                    {/* Stats cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {[
+                        { label: 'Giảng viên', value: facultyStats.totalTeachers, icon: Users, color: 'blue' },
+                        { label: 'Sinh viên', value: facultyStats.totalStudents, icon: GraduationCap, color: 'green' },
+                        { label: 'Lớp học', value: facultyStats.totalClasses, icon: BookOpen, color: 'purple' },
+                      ].map((card, i) => {
+                        const Icon = card.icon;
+                        const colorMap = {
+                          blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
+                          green: 'bg-green-50 text-green-600 border-green-100 hover:border-green-300 hover:bg-green-100/30',
+                          purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
+                        };
+                        return (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.07 }}
+                            whileHover={{ y: -4, boxShadow: '0 12px 30px rgba(0,0,0,0.04)' }}
+                            className={`rounded-2xl border-2 p-5 ${colorMap[card.color]} transition-all duration-300`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="text-3xl font-bold font-mono tracking-tight">{card.value}</div>
+                              <div className="p-2 bg-white rounded-xl shadow-sm">
+                                <Icon className="w-5 h-5 opacity-90" />
+                              </div>
+                            </div>
+                            <div className="text-sm font-semibold opacity-70 mt-3 uppercase tracking-wider">{card.label}</div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Summary card */}
+                    <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-center text-white">
+                      <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-5xl font-bold mb-1">{facultyStats.totalStudents > 0 ? Math.round(facultyStats.totalTeachers / facultyStats.totalStudents * 10) / 10 : 0}</div>
+                      <div className="text-orange-100 font-medium">Tỷ lệ giảng viên/sinh viên</div>
+                      <div className="text-orange-200 text-sm mt-1">Trung bình mỗi giảng viên phụ trách {facultyStats.totalTeachers > 0 ? Math.round(facultyStats.totalStudents / facultyStats.totalTeachers) : 0} sinh viên</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </ModalPortal>
       )}
     </div>
   );

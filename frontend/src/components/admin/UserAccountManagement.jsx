@@ -3,7 +3,7 @@ import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock } from 'lucide-react';
 import axios from 'axios';
-import { TableSkeleton } from './AdminSkeleton';
+import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
 
 function UserAccountManagement() {
@@ -14,14 +14,14 @@ function UserAccountManagement() {
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('default'); 
+  const [sortBy, setSortBy] = useState('default');
   const [roleFilter, setRoleFilter] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Custom Notification & Confirm Dialog
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
-  
+
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
     TaiKhoan: '',
@@ -62,28 +62,28 @@ function UserAccountManagement() {
     }
   }, [notification.show]);
 
- const validateForm = () => {
-  const errors = {};
-  if (!formData.password?.trim()) {
-    errors.password = 'Mật khẩu không được để trống';
-  } else {
-    if (formData.password.length < 5) {
-      errors.password = 'Mật khẩu phải có ít nhất 5 ký tự';
-    } else if (formData.password.length > 20) {
-      errors.password = 'Mật khẩu chỉ được tối đa 20 ký tự';
-    } else if (!/[a-z]/.test(formData.password)) {
-      errors.password = 'Mật khẩu phải chứa ít nhất một chữ thường';
-    } else if (!/[A-Z]/.test(formData.password)) {
-      errors.password = 'Mật khẩu phải chứa ít nhất một chữ hoa';
-    } else if (!/[0-9]/.test(formData.password)) {
-      errors.password = 'Mật khẩu phải chứa ít nhất một số';
-    } else if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(formData.password)) {
-      errors.password = 'Mật khẩu phải chứa ít nhất một ký tự đặc biệt';
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.password?.trim()) {
+      errors.password = 'Mật khẩu không được để trống';
+    } else {
+      if (formData.password.length < 5) {
+        errors.password = 'Mật khẩu phải có ít nhất 5 ký tự';
+      } else if (formData.password.length > 20) {
+        errors.password = 'Mật khẩu chỉ được tối đa 20 ký tự';
+      } else if (!/[a-z]/.test(formData.password)) {
+        errors.password = 'Mật khẩu phải chứa ít nhất một chữ thường';
+      } else if (!/[A-Z]/.test(formData.password)) {
+        errors.password = 'Mật khẩu phải chứa ít nhất một chữ hoa';
+      } else if (!/[0-9]/.test(formData.password)) {
+        errors.password = 'Mật khẩu phải chứa ít nhất một số';
+      } else if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(formData.password)) {
+        errors.password = 'Mật khẩu phải chứa ít nhất một ký tự đặc biệt';
+      }
     }
-  }
-  setFormErrors(errors);
-  return Object.keys(errors).length === 0;
-};
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -135,7 +135,7 @@ function UserAccountManagement() {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+    const matchesSearch =
       user.TaiKhoan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.TenQuyen?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = !roleFilter || user.MaQuyen === parseInt(roleFilter);
@@ -151,7 +151,7 @@ function UserAccountManagement() {
   };
 
   const getRoleColor = (maQuyen) => {
-    switch(maQuyen) {
+    switch (maQuyen) {
       case 1: return 'bg-red-100 text-red-600';
       case 2: return 'bg-blue-100 text-blue-600';
       case 3: return 'bg-green-100 text-green-600';
@@ -166,7 +166,7 @@ function UserAccountManagement() {
   return (
     <div className="flex gap-6 pb-10 max-w-7xl mx-auto">
       <div className="flex-1 space-y-8">
-        
+
         {/* Toast Notification */}
         <AnimatePresence>
           {notification.show && (
@@ -174,9 +174,8 @@ function UserAccountManagement() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className={`fixed top-8 right-8 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 z-[100] ${
-                notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-              }`}
+              className={`fixed top-8 right-8 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 z-[100] ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                }`}
             >
               {notification.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
               <span className="font-semibold text-sm">{notification.message}</span>
@@ -211,7 +210,7 @@ function UserAccountManagement() {
               />
             </div>
 
-            <select 
+            <select
               className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 cursor-pointer font-medium text-sm text-gray-700"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -221,7 +220,7 @@ function UserAccountManagement() {
               <option value="desc">Tài khoản: Z-A</option>
             </select>
 
-            <select 
+            <select
               className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 cursor-pointer font-medium text-sm text-gray-700"
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -354,9 +353,8 @@ function UserAccountManagement() {
                             setFormErrors({ ...formErrors, password: '' });
                           }
                         }}
-                        className={`w-full px-4 py-3.5 pr-12 bg-gray-50 border-2 rounded-xl focus:border-orange-500 outline-none transition-colors font-medium text-sm ${
-                          formErrors.password ? 'border-red-500 focus:bg-red-50' : 'border-gray-200 focus:bg-white'
-                        }`}
+                        className={`w-full px-4 py-3.5 pr-12 bg-gray-50 border-2 rounded-xl focus:border-orange-500 outline-none transition-colors font-medium text-sm ${formErrors.password ? 'border-red-500 focus:bg-red-50' : 'border-gray-200 focus:bg-white'
+                          }`}
                         placeholder="Mật khẩu từ 5 - 20 ký tự: chữ hoa, thường, số, ký tự đặc biệt"
                       />
                       <button
