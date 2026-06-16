@@ -3,7 +3,7 @@ const path = require('path');
 // Kiểm tra xem lệnh khởi động có truyền thêm chữ "--cloud" hoặc đang chạy trên Vercel không
 const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
 const isCloud = process.argv.includes('--cloud') || isVercel;
-const envFile = isCloud ? '.env.aiven' : '.env.local';
+const envFile = isCloud ? '.env' : '.env.local';
 
 // Tự động nạp đúng file cấu hình tương ứng
 require('dotenv').config({ path: path.join(__dirname, envFile) });
