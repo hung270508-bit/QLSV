@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import API_URL from './api';
 import axios from 'axios';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -45,7 +45,16 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const showForgotPassword = location.pathname === '/forgot-password';
+  const setShowForgotPassword = (val) => {
+    if (val) {
+      navigate('/forgot-password');
+    } else {
+      navigate('/');
+    }
+  };
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(() => {
