@@ -182,8 +182,10 @@ function StudentManagement() {
         newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
       } else {
         const age = today.getFullYear() - birthDate.getFullYear();
-        if (age < 15 || age > 100) {
-          newErrors.NgaySinh = 'Ngày sinh không hợp lệ (tuổi phải từ 15-100)';
+        if (age < 18) {
+          newErrors.NgaySinh = 'Ngày sinh không hợp lệ (sinh viên phải từ 18 tuổi trở lên)';
+        } else if (age > 100) {
+          newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
         }
       }
     }
