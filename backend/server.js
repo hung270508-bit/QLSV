@@ -1,7 +1,8 @@
 const path = require('path');
 
-// Kiểm tra xem lệnh khởi động có truyền thêm chữ "--cloud" hay không
-const isCloud = process.argv.includes('--cloud');
+// Kiểm tra xem lệnh khởi động có truyền thêm chữ "--cloud" hoặc đang chạy trên Vercel không
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
+const isCloud = process.argv.includes('--cloud') || isVercel;
 const envFile = isCloud ? '.env.aiven' : '.env.local';
 
 // Tự động nạp đúng file cấu hình tương ứng
@@ -1343,7 +1344,11 @@ app.post('/api/support', (req, res) => {
 //=============================================================================
 // Khởi chạy server backend (Không được xóa)
 //=============================================================================
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server Backend đang chạy tại cổng: http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+        console.log(`Server Backend đang chạy tại cổng: http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
