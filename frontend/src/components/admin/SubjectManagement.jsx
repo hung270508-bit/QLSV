@@ -76,6 +76,18 @@ function SubjectManagement() {
       .replace(/Đ/g, 'D');
   }, []);
 
+  // Tự động viết hoa chữ cái đầu tiên của mỗi từ (Title Case)
+  const capitalizeWords = useCallback((str) => {
+    if (!str) return '';
+    return str
+      .split(/\s+/)
+      .map(word => {
+        if (word.length === 0) return '';
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
+  }, []);
+
   // Debounced search
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
@@ -105,7 +117,7 @@ function SubjectManagement() {
   }
 };
 
-  const validateForm = () => {
+  const validateForm = (data = formData) => {
     const errors = {
       MaKhoa: '',
       TenMonHoc: '',
@@ -113,36 +125,36 @@ function SubjectManagement() {
     };
     let isValid = true;
 
-    if (!formData.MaKhoa) {
+    if (!data.MaKhoa) {
       errors.MaKhoa = 'Vui lòng chọn khoa';
       isValid = false;
     }
 
-    if (!formData.TenMonHoc.trim()) {
+    if (!data.TenMonHoc.trim()) {
       errors.TenMonHoc = 'Vui lòng nhập tên môn học';
       isValid = false;
-    } else if (formData.TenMonHoc.trim().length < 3) {
+    } else if (data.TenMonHoc.trim().length < 3) {
       errors.TenMonHoc = 'Tên môn học phải có ít nhất 3 ký tự';
       isValid = false;
-    } else if (formData.TenMonHoc.trim().length > 30) {
+    } else if (data.TenMonHoc.trim().length > 30) {
       errors.TenMonHoc = 'Tên môn học không được vượt quá 30 ký tự';
       isValid = false;
-    } else if (/\d/.test(formData.TenMonHoc)) {
+    } else if (/\d/.test(data.TenMonHoc)) {
       errors.TenMonHoc = 'Tên môn học không được chứa số';
       isValid = false;
-    } else if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.TenMonHoc)) {
+    } else if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(data.TenMonHoc)) {
       errors.TenMonHoc = 'Tên môn học không được chứa ký tự đặc biệt';
       isValid = false;
-    } else if (/\s{2,}/.test(formData.TenMonHoc)) {
+    } else if (/\s{2,}/.test(data.TenMonHoc)) {
       errors.TenMonHoc = 'Tên môn học không được chứa nhiều khoảng trắng liên tiếp';
       isValid = false;
     }
 
-    if (!formData.SoTinChi) {
+    if (!data.SoTinChi) {
       errors.SoTinChi = 'Vui lòng nhập số tín chỉ';
       isValid = false;
     } else {
-      const credits = Number(formData.SoTinChi);
+      const credits = Number(data.SoTinChi);
       if (isNaN(credits)) {
         errors.SoTinChi = 'Số tín chỉ phải là số';
         isValid = false;
@@ -165,14 +177,18 @@ function SubjectManagement() {
   const handleSubmit = async (e) => {
   e.preventDefault();
   
-  if (!validateForm()) {
+  const formattedName = capitalizeWords(formData.TenMonHoc.trim());
+  const updatedFormData = { ...formData, TenMonHoc: formattedName };
+  setFormData(updatedFormData);
+
+  if (!validateForm(updatedFormData)) {
     return;
   }
 
   setIsSubmitting(true);
   try {
-    const resCode = await axios.get(`${API_BASE}/subjects/next-code/${formData.MaKhoa}`);
-    await axios.post(`${API_BASE}/subjects`, { ...formData, MaMonHoc: resCode.data.MaMonHoc });
+    const resCode = await axios.get(`${API_BASE}/subjects/next-code/${updatedFormData.MaKhoa}`);
+    await axios.post(`${API_BASE}/subjects`, { ...updatedFormData, MaMonHoc: resCode.data.MaMonHoc });
     setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
     fetchData();
     handleCloseModal();
@@ -580,6 +596,9 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                     onChange={(e) => {
                       setFormData({ ...formData, TenMonHoc: e.target.value });
                       if (formErrors.TenMonHoc) setFormErrors({ ...formErrors, TenMonHoc: '' });
+                    }}
+                    onBlur={(e) => {
+                      setFormData(prev => ({ ...prev, TenMonHoc: capitalizeWords(e.target.value) }));
                     }}
                     maxLength={30}
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenMonHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
