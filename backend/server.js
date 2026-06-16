@@ -104,12 +104,12 @@ const executeQuery = (query, params, res, errorMessage) => {
 };
 
 const validateAssignment = (req, res, next) => {
-  const { MaLopHocPhan, HocKy } = req.body;
-  if (HocKy === 3) console.log("Hệ thống ghi nhận học kỳ bổ sung");
-  db.query('SELECT * FROM LHP WHERE MaLopHocPhan = ?', [MaLopHocPhan], (err, result) => {
-    if (result.length > 0) return res.status(400).json({ message: "Mã lớp học phần đã tồn tại!" });
-    next();
-  });
+    const { MaLopHocPhan, HocKy } = req.body;
+    if (HocKy === 3) console.log("Hệ thống ghi nhận học kỳ bổ sung");
+    db.query('SELECT * FROM LHP WHERE MaLopHocPhan = ?', [MaLopHocPhan], (err, result) => {
+        if (result.length > 0) return res.status(400).json({ message: "Mã lớp học phần đã tồn tại!" });
+        next();
+    });
 };
 
 const executeMutation = (query, params, res, successMessage, errorMessage) => {
@@ -183,7 +183,7 @@ app.post('/api/login', (req, res) => {
         if (results.length > 0) {
             const user = results[0];
             let passwordMatch = false;
-            
+
             if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
                 passwordMatch = await bcrypt.compare(password, user.password);
             } else {
@@ -202,11 +202,11 @@ app.post('/api/login', (req, res) => {
 
                 // Generate JWT token
                 const token = jwt.sign(
-                    { 
-                        id: user.TaiKhoan, 
-                        username: user.TaiKhoan, 
-                        role: roleString, 
-                        maQuyen: user.MaQuyen 
+                    {
+                        id: user.TaiKhoan,
+                        username: user.TaiKhoan,
+                        role: roleString,
+                        maQuyen: user.MaQuyen
                     },
                     JWT_SECRET,
                     { expiresIn: JWT_EXPIRES_IN }
@@ -227,7 +227,7 @@ app.post('/api/forgot-password', (req, res) => {
     if (!emailRegex.test(email)) {
         return res.status(400).json({ success: false, message: 'Email không đúng định dạng!' });
     }
-    
+
     const query = `
         SELECT 'sinhvien' as userType, MSSV as id, HoTen as name, Email as email FROM sinhvien WHERE Email = ?
         UNION
@@ -246,17 +246,17 @@ app.post('/api/forgot-password', (req, res) => {
             JWT_SECRET,
             { expiresIn: '30m' }
         );
-        
+
         // Create reset link dynamically based on request origin (local or cloud)
         let origin = req.headers.origin || process.env.FRONTEND_URL;
         if (origin && origin.includes('hung270508-bit.github.io') && !origin.includes('/QLSV')) {
             origin = origin.replace(/\/$/, '') + '/QLSV';
         }
         const resetLink = `${origin}/#/reset-password/${resetToken}`;
-        
+
         // Send email
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            from: process.env.EMAIL_SENDER || process.env.EMAIL_USER,
             to: user.email,
             subject: 'Đặt lại mật khẩu - Hệ thống QLSV',
             html: `
@@ -269,7 +269,7 @@ app.post('/api/forgot-password', (req, res) => {
                 <p>Trân trọng,<br>Hệ thống Quản lý Sinh Viên</p>
             `
         };
-        
+
         try {
             await transporter.sendMail(mailOptions);
             return res.json({ success: true, message: `Liên kết đặt lại mật khẩu đã được gửi đến email ${email}!` });
@@ -289,31 +289,31 @@ app.get('/api/verify-token', verifyToken, (req, res) => {
 app.post('/api/change-password', verifyToken, async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     const username = req.user.username;
-    
+
     if (!currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới!' });
     }
-    
+
     const query = 'SELECT password FROM users WHERE TaiKhoan = ?';
     db.query(query, [username], async (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
         if (results.length === 0) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản!' });
         }
-        
+
         const user = results[0];
         let passwordMatch = false;
-        
+
         if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
             passwordMatch = await bcrypt.compare(currentPassword, user.password);
         } else {
             passwordMatch = (currentPassword === user.password);
         }
-        
+
         if (!passwordMatch) {
             return res.status(401).json({ success: false, message: 'Mật khẩu hiện tại không đúng!' });
         }
-        
+
         try {
             const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
             db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, username], (err) => {
@@ -329,24 +329,24 @@ app.post('/api/change-password', verifyToken, async (req, res) => {
 // Reset password endpoint
 app.post('/api/reset-password', async (req, res) => {
     const { token, newPassword } = req.body;
-    
+
     if (!token || !newPassword) {
         return res.status(400).json({ success: false, message: 'Vui lòng cung cấp token và mật khẩu mới!' });
     }
-    
+
     // Validate password strength
     if (newPassword.length < 8) {
         return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 8 ký tự!' });
     }
-    
+
     try {
         // Verify JWT token
         const decoded = jwt.verify(token, JWT_SECRET);
         const { email, id, userType } = decoded;
-        
+
         // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-        
+
         // Update password in users table
         db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, id], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
@@ -446,8 +446,8 @@ app.put('/api/users/:taiKhoan/reset-password', async (req, res) => {
 
 // ==================== STUDENTS ====================
 app.get('/api/students', (req, res) =>
-  executeQuery(
-    `SELECT 
+    executeQuery(
+        `SELECT 
       s.MSSV, 
       s.HoTen, 
       s.NgaySinh, 
@@ -463,14 +463,14 @@ app.get('/api/students', (req, res) =>
     FROM sinhvien s
     LEFT JOIN lophoc l ON s.MaLop = l.MaLop
     LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa`,
-    [],
-    res,
-    'Lỗi lấy danh sách sinh viên!'
-  )
+        [],
+        res,
+        'Lỗi lấy danh sách sinh viên!'
+    )
 );
 app.post('/api/students', async (req, res) => {
     const { MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai } = req.body;
-    
+
     // Ràng buộc dữ liệu đầu vào - Kiểm tra các trường bắt buộc
     if (!MSSV || !HoTen || !NgaySinh || !Email || !SoDienThoai || !MaLop) {
         return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin sinh viên bắt buộc!' });
@@ -570,7 +570,7 @@ app.post('/api/students', async (req, res) => {
 
         // Tạo user và sinh viên
         const hashedPassword = await bcrypt.hash('123456aA@', saltRounds);
-        
+
         await new Promise((resolve, reject) => {
             db.query(
                 'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)',
@@ -584,7 +584,7 @@ app.post('/api/students', async (req, res) => {
 
         await new Promise((resolve, reject) => {
             db.query(
-                'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+                'INSERT INTO sinhvien (MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                 [MSSV, HoTen, NgaySinh, GioiTinh, Email, SoDienThoai, MaLop, TrangThai || 'Đang học'],
                 (err) => {
                     if (err) reject(err);
@@ -743,24 +743,24 @@ app.delete('/api/students/:mssv', (req, res) => {
 app.get('/api/students/next-code/:maLop', (req, res) => {
     const { maLop } = req.params;
     const queryLop = `SELECT l.NienKhoa, k.ID as KhoaID FROM lophoc l JOIN khoa k ON l.MaKhoa = k.MaKhoa WHERE l.MaLop = ?`;
-    
+
     db.query(queryLop, [maLop], (err, rows) => {
         if (err) return res.status(500).json({ error: 'Lỗi server' });
         if (rows.length === 0) return res.status(404).json({ error: 'Không tìm thấy thông tin lớp' });
 
         const nienKhoa = rows[0].NienKhoa;
         const khoaId = rows[0].KhoaID;
-        
+
         if (!nienKhoa) return res.status(400).json({ error: 'Lớp này chưa được cài đặt Niên khóa!' });
         if (!khoaId) return res.status(400).json({ error: 'Khoa này chưa có ID (Khóa chính)!' });
 
         const startYearStr = nienKhoa.split('-')[0];
         const startYearSuffix = startYearStr.slice(-2);
         const paddedKhoaId = String(khoaId).padStart(2, '0');
-        const prefix = `${startYearSuffix}${paddedKhoaId}`; 
+        const prefix = `${startYearSuffix}${paddedKhoaId}`;
 
         const queryMSSV = `SELECT MSSV FROM sinhvien WHERE MSSV LIKE ? ORDER BY MSSV DESC LIMIT 1`;
-        
+
         db.query(queryMSSV, [`${prefix}%`], (err, svRows) => {
             if (err) return res.status(500).json({ error: 'Lỗi sinh mã MSSV' });
             let nextNum = 1;
@@ -800,7 +800,7 @@ app.post('/api/teachers', async (req, res) => {
                 res.json({ success: true, message: 'Thêm giảng viên thành công!' });
             });
         });
-    } catch(err) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
+    } catch (err) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
 app.put('/api/teachers/:maGV', (req, res) => executeUpdate('UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=? WHERE MaGiangVien=?', [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.params.maGV], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
 app.delete('/api/teachers/:maGV', (req, res) => executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.maGV], res, 'Xóa thành công!', 'Lỗi xóa!'));
@@ -833,10 +833,10 @@ app.get('/api/subjects/next-code/:maKhoa', (req, res) => {
 app.post('/api/subjects', (req, res) => {
     console.log("Dữ liệu nhận được từ Frontend:", req.body);
     executeInsert(
-        'INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi, MaKhoa) VALUES (?, ?, ?, ?)', 
-        [req.body.MaMonHoc, req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa], 
-        res, 
-        'Thêm môn thành công!', 
+        'INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi, MaKhoa) VALUES (?, ?, ?, ?)',
+        [req.body.MaMonHoc, req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa],
+        res,
+        'Thêm môn thành công!',
         'Lỗi thêm!'
     );
 });
@@ -875,7 +875,7 @@ app.get('/api/classes/next-code/:startYear/:maKhoa', (req, res) => {
 });
 app.get('/api/classes/next-name/:tenLop/:maKhoa', (req, res) => {
     const { tenLop, maKhoa } = req.params;
-    
+
     // Tách phần tên gốc và số thứ tự nếu có (ví dụ: "Lớp A 1" -> base="Lớp A", num=1)
     const baseMatch = tenLop.match(/^(.*?)\s*(\d+)$/);
     let baseName = tenLop;
@@ -890,10 +890,10 @@ app.get('/api/classes/next-name/:tenLop/:maKhoa', (req, res) => {
         SELECT TenLop FROM lophoc 
         WHERE MaKhoa = ? AND (TenLop = ? OR TenLop LIKE ?)
     `;
-    
+
     db.query(query, [maKhoa, tenLop, `${baseName}%`], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        
+
         // Nếu tên hiện tại chưa tồn tại thì trả về chính nó
         const exactMatch = rows.find(row => row.TenLop.trim().toLowerCase() === tenLop.trim().toLowerCase());
         if (!exactMatch) {
@@ -988,24 +988,24 @@ app.get('/api/course-sections', (req, res) => {
     // dù lophocphan.MaLop là NULL (lớp tự do / đăng ký tự do)
     executeQuery(query, [], res, 'Lỗi lấy danh sách lớp học phần!');
 });
- 
+
 app.post('/api/teaching-assignments', (req, res) => {
     const { MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
-    const maLHP = MaLopHocPhan || `${MaMonHoc}_${HocKy}_${Math.floor(Math.random()*1000)}`;
+    const maLHP = MaLopHocPhan || `${MaMonHoc}_${HocKy}_${Math.floor(Math.random() * 1000)}`;
     const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
 
     db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa) VALUES (?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
-        
-        if (finalMaLop) { 
+
+        if (finalMaLop) {
             db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
-                if (!err && students.length > 0) { 
-                    students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]); }); 
+                if (!err && students.length > 0) {
+                    students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]); });
                 }
                 res.json({ success: true, message: 'Tạo Lớp HP và tự động lên danh sách thành công!' });
             });
-        } else { 
-            res.json({ success: true, message: 'Tạo Lớp tự do thành công (Sinh viên phải tự đăng ký)!' }); 
+        } else {
+            res.json({ success: true, message: 'Tạo Lớp tự do thành công (Sinh viên phải tự đăng ký)!' });
         }
     });
 });
@@ -1016,17 +1016,17 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
 
     db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, req.params.id], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
-        
+
         db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
             if (finalMaLop) {
                 db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
-                    if (!err && students.length > 0) { 
-                        students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); }); 
+                    if (!err && students.length > 0) {
+                        students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); });
                     }
                     res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách mới thành công!' });
                 });
-            } else { 
-                res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' }); 
+            } else {
+                res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' });
             }
         });
     });
@@ -1074,11 +1074,11 @@ app.get('/api/enrollments/all', (req, res) => {
 app.post('/api/enrollment', (req, res) => {
     const { MSSV, MaLopHocPhan, HocKy } = req.body;
     const queryDK = "INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai) VALUES (?, ?, ?, 'Đã duyệt')";
-    
+
     db.query(queryDK, [MSSV, MaLopHocPhan, HocKy], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi ghi nhận đăng ký học phần!', error: err.message });
         const queryDiem = "INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)";
-        
+
         db.query(queryDiem, [MSSV, MaLopHocPhan, HocKy], (errDiem) => {
             if (errDiem) return res.status(500).json({ success: false, message: 'Lỗi đồng bộ lịch học học vụ!', error: errDiem.message });
             res.json({ success: true, message: 'Đăng ký học phần thành công! Lịch học đã được cập nhật tại tab Học vụ.' });
@@ -1268,14 +1268,14 @@ app.get('/api/admin/training-points', (req, res) => {
 });
 
 app.put('/api/admin/training-points/:id', (req, res) => {
-    const { DiemKhoaDanhGia, TongDiem, TrangThai } = req.body; 
-    let xepLoai = 'Yếu'; 
+    const { DiemKhoaDanhGia, TongDiem, TrangThai } = req.body;
+    let xepLoai = 'Yếu';
     const diem = Number(TongDiem);
-    if(diem >= 90) xepLoai = 'Xuất sắc';
-    else if(diem >= 80) xepLoai = 'Tốt';
-    else if(diem >= 65) xepLoai = 'Khá';
-    else if(diem >= 50) xepLoai = 'Trung bình';
-    
+    if (diem >= 90) xepLoai = 'Xuất sắc';
+    else if (diem >= 80) xepLoai = 'Tốt';
+    else if (diem >= 65) xepLoai = 'Khá';
+    else if (diem >= 50) xepLoai = 'Trung bình';
+
     const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ? WHERE MaDanhGia = ?';
     executeUpdate(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, req.params.id], res, 'Đã chốt điểm!', 'Lỗi cập nhật điểm!');
 });
@@ -1303,10 +1303,10 @@ app.get('/api/training-points/student/:mssv', (req, res) => {
 app.post('/api/training-points', (req, res) => {
     const { MSSV, HocKy, DiemTuDanhGia } = req.body;
     let xepLoai = 'Yếu';
-    if(DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
-    else if(DiemTuDanhGia >= 80) xepLoai = 'Tốt';
-    else if(DiemTuDanhGia >= 65) xepLoai = 'Khá';
-    else if(DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+    if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
+    else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
+    else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
+    else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
     const query = 'INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai) VALUES (?, ?, ?, ?, ?, "Chờ lớp duyệt")';
     executeInsert(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai], res, 'Nộp đánh giá thành công!', 'Lỗi nộp đánh giá!');
@@ -1315,10 +1315,10 @@ app.post('/api/training-points', (req, res) => {
 app.put('/api/training-points/:id', (req, res) => {
     const { DiemTuDanhGia } = req.body;
     let xepLoai = 'Yếu';
-    if(DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
-    else if(DiemTuDanhGia >= 80) xepLoai = 'Tốt';
-    else if(DiemTuDanhGia >= 65) xepLoai = 'Khá';
-    else if(DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+    if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
+    else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
+    else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
+    else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
     const query = 'UPDATE danhgia_renluyen SET DiemTuDanhGia=?, TongDiem=?, XepLoai=? WHERE MaDanhGia=?';
     executeUpdate(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], res, 'Cập nhật điểm thành công!', 'Lỗi cập nhật điểm!');
