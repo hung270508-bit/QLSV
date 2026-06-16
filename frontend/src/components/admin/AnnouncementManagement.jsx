@@ -3,7 +3,7 @@ import API_URL from '../../api';
 import { motion } from 'framer-motion';
 import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
-import { TableSkeleton } from './AdminSkeleton';
+import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
 
 function AnnouncementManagement() {

@@ -5,7 +5,7 @@ import {
   RefreshCw, CheckCircle2, AlertCircle, Clock, MapPin, Repeat, CalendarDays, BookOpen, Layers
 } from 'lucide-react';
 import axios from 'axios';
-import { ScheduleSkeleton } from './AdminSkeleton';
+import { ScheduleSkeleton } from '../common/AdminSkeleton';
 import API_URL from '../../api';
 
 // Danh sách phòng học cố định hệ thống

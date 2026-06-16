@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, BarChart3, BookOpen, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, CheckCircle, UserCheck, Clock, MapPin, Trash2 } from 'lucide-react';
 import axios from 'axios';
-import { TableSkeleton } from './AdminSkeleton';
+import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
 
@@ -724,58 +724,10 @@ function ClassManagement() {
 
             {/* TC_17: Chỉ dùng onSubmit của form để đón phím Enter, xóa bỏ onKeyDown dư thừa */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Row 1: Mã lớp | Tên lớp */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã lớp</label>
-                  <input
-                    type="text"
-                    value={formData.MaLop}
-                    disabled
-                    placeholder="Tự động sinh khi chọn Khoa & Niên khóa"
-                    className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-500 font-semibold cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
-                  <input
-                    type="text"
-                    value={formData.TenLop}
-                    onChange={(e) => {
-                      let value = e.target.value;
-                      value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
-                      setFormData({ ...formData, TenLop: value });
-                      if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
-                    }}
-                    placeholder="Nhập tên lớp học"
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                  />
-                  {formErrors.TenLop && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
-                  )}
-                </div>
+              <div className="flex flex-col gap-4">
+                <input type="hidden" value={formData.MaLop} />
 
-                {/* Row 2: Khoa | Niên khóa */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
-                  <select
-                    value={formData.MaKhoa}
-                    onChange={(e) => {
-                      handleKhoaChange(e);
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                  >
-                    <option value="">Chọn khoa</option>
-                    {uniqueFaculties.map((faculty) => (
-                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                        {faculty.TenKhoa}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.MaKhoa && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.MaKhoa}</p>
-                  )}
-                </div>
+                {/* Niên khóa */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Niên khóa</label>
                   <div className="flex gap-3">
@@ -807,6 +759,48 @@ function ClassManagement() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Khoa */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
+                  <select
+                    value={formData.MaKhoa}
+                    onChange={(e) => {
+                      handleKhoaChange(e);
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                  >
+                    <option value="">Chọn khoa</option>
+                    {uniqueFaculties.map((faculty) => (
+                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                        {faculty.TenKhoa}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.MaKhoa && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.MaKhoa}</p>
+                  )}
+                </div>
+
+                {/* Tên lớp */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
+                  <input
+                    type="text"
+                    value={formData.TenLop}
+                    onChange={(e) => {
+                      let value = e.target.value;
+                      value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
+                      setFormData({ ...formData, TenLop: value });
+                      if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
+                    }}
+                    placeholder="Nhập tên lớp học"
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                  />
+                  {formErrors.TenLop && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
+                  )}
                 </div>
               </div>
 
