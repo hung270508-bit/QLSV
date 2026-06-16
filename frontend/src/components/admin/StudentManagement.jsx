@@ -327,6 +327,9 @@ function StudentManagement() {
       Email: '', SoDienThoai: '', MaLop: '', TrangThai: 'Đang học'
     });
     setFormErrors({ HoTen: '', NgaySinh: '', Email: '', SoDienThoai: '', MaLop: '' });
+    if (classViewModal.classInfo) {
+      setClassViewModal(prev => ({ ...prev, show: true }));
+    }
   };
 
   const handleDelete = (student) => {
@@ -426,11 +429,12 @@ function StudentManagement() {
   const classStats = useMemo(() => {
     return uniqueClasses
       .filter(cls => !filters.facultyFilter || cls.MaKhoa === filters.facultyFilter)
+      .filter(cls => !filters.nienKhoaFilter || cls.NienKhoa === filters.nienKhoaFilter)
       .map(cls => ({
         ...cls,
         count: students.filter(s => s.MaLop === cls.MaLop).length
       })).sort((a, b) => (a.TenLop || '').localeCompare(b.TenLop || ''));
-  }, [uniqueClasses, students, filters.facultyFilter]);
+  }, [uniqueClasses, students, filters.facultyFilter, filters.nienKhoaFilter]);
 
   const handleSelectClassFilter = (cls) => {
     if (!cls) return;
@@ -691,99 +695,6 @@ function StudentManagement() {
                   <td colSpan="5" className="py-12 text-center text-gray-400">
                     <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                     Chưa có dữ liệu lớp học
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Danh sách toàn thể sinh viên */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Users className="w-5 h-5 text-orange-500" />
-            Danh sách toàn thể sinh viên
-            <span className="ml-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-sm">{filteredStudents.length}</span>
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
-              <tr>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">MSSV</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Họ và tên</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Lớp</th>
-                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Liên hệ</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student, index) => (
-                  <motion.tr
-                    key={student.MSSV}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.02 }}
-                    className="border-b border-gray-100 hover:bg-orange-50/50 transition-colors cursor-pointer"
-                    onClick={() => handleViewDetails(student)}
-                  >
-                    <td className="py-4 px-6 font-medium text-gray-800">{student.MSSV}</td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm ${
-                          student.GioiTinh === 'Nữ' ? 'bg-pink-400' : 'bg-blue-500'
-                        }`}>
-                          {student.HoTen ? student.HoTen.charAt(0).toUpperCase() : 'S'}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-800">{student.HoTen}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{student.GioiTinh || 'Chưa cập nhật'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-gray-700">{student.MaLop}</td>
-                    <td className="py-4 px-6">
-                      <div className="text-sm text-gray-600 space-y-1">
-                        {student.Email && (
-                          <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{student.Email}</div>
-                        )}
-                        {student.SoDienThoai && (
-                          <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{student.SoDienThoai}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={(e) => { e.stopPropagation(); handleEdit(student); }}
-                          className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
-                          title="Sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={(e) => { e.stopPropagation(); handleDelete(student); }}
-                          className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="py-12 text-center text-gray-400">
-                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                    Không tìm thấy sinh viên nào
                   </td>
                 </tr>
               )}
@@ -1331,6 +1242,7 @@ function StudentManagement() {
                         <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Giới tính</th>
                         <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
                         <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">SĐT</th>
+                        <th className="text-center py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1357,6 +1269,35 @@ function StudentManagement() {
                           <td className="py-3 px-6 text-gray-600">{student.GioiTinh || '—'}</td>
                           <td className="py-3 px-6 text-gray-600">{student.Email || '—'}</td>
                           <td className="py-3 px-6 text-gray-600">{student.SoDienThoai || '—'}</td>
+                          <td className="py-3 px-6">
+                            <div className="flex items-center justify-center gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setClassViewModal(prev => ({ ...prev, show: false }));
+                                  handleEdit(student);
+                                }}
+                                className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
+                                title="Sửa"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(student);
+                                }}
+                                className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                title="Xóa"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </motion.button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
