@@ -51,7 +51,8 @@ function SubjectManagement() {
     SoTinChi: '',
     TenKhoa: ''
   });
-  const [deleteModal, setDeleteModal] = useState({ show: false, subject: null });
+  const [deleteModal, setDeleteModal] = useState({ show: false, subject: null, step: 1 });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, title: 'Xác nhận' });
 
   // Validation states
   const [formErrors, setFormErrors] = useState({
@@ -175,53 +176,64 @@ function SubjectManagement() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  const formattedName = capitalizeWords(formData.TenMonHoc.trim());
-  const updatedFormData = { ...formData, TenMonHoc: formattedName };
-  setFormData(updatedFormData);
+    e.preventDefault();
+    
+    const formattedName = capitalizeWords(formData.TenMonHoc.trim());
+    const updatedFormData = { ...formData, TenMonHoc: formattedName };
+    setFormData(updatedFormData);
 
-  if (!validateForm(updatedFormData)) {
-    return;
-  }
+    if (!validateForm(updatedFormData)) {
+      return;
+    }
 
-  setIsSubmitting(true);
-  try {
-    const resCode = await axios.get(`${API_BASE}/subjects/next-code/${updatedFormData.MaKhoa}`);
-    await axios.post(`${API_BASE}/subjects`, { ...updatedFormData, MaMonHoc: resCode.data.MaMonHoc });
-    setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
-    fetchData();
-    handleCloseModal();
-  } catch (error) {
-    console.error('Error saving subject:', error);
-    const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
-    setErrorDialog({ show: true, message: errorMessage });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
-
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận thêm môn học',
+      message: `Bạn có chắc chắn muốn thêm môn học "${formattedName}" không?`,
+      onConfirm: async () => {
+        setIsSubmitting(true);
+        try {
+          const resCode = await axios.get(`${API_BASE}/subjects/next-code/${updatedFormData.MaKhoa}`);
+          await axios.post(`${API_BASE}/subjects`, { ...updatedFormData, MaMonHoc: resCode.data.MaMonHoc });
+          setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
+          fetchData();
+          handleCloseModal();
+        } catch (error) {
+          console.error('Error saving subject:', error);
+          const errorMessage = error.response?.data?.message || 'Lỗi khi lưu môn học!';
+          setErrorDialog({ show: true, message: errorMessage });
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    });
+  };
 
   const handleCloseModal = () => {
-  setShowModal(false);
-  setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
-  setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
-};
+    setShowModal(false);
+    setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
+    setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
+  };
+
   const handleDelete = (subject) => {
-    setDeleteModal({ show: true, subject });
+    setDeleteModal({ show: true, subject, step: 1 });
+  };
+
+  const handleFirstDeleteConfirm = () => {
+    setDeleteModal(prev => ({ ...prev, step: 2 }));
   };
 
   const handleDeleteConfirm = async () => {
     try {
       await axios.delete(`${API_BASE}/subjects/${deleteModal.subject.MaMonHoc}`);
       setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
-      setDeleteModal({ show: false, subject: null });
+      setDeleteModal({ show: false, subject: null, step: 1 });
       setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
     } catch (error) {
       console.error('Error deleting subject:', error);
       const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
       setErrorDialog({ show: true, message: errorMessage });
+      setDeleteModal({ show: false, subject: null, step: 1 });
     }
   };
 
@@ -890,13 +902,29 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         </div>
         </ModalPortal>
       )}
+      {/* General Confirmation Dialog (Add/Edit) */}
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        onConfirm={() => {
+          if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+          setConfirmDialog({ show: false, message: '', onConfirm: null, title: 'Xác nhận' });
+        }}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, title: 'Xác nhận' })}
+        title={confirmDialog.title}
+      />
+
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         show={deleteModal.show}
-        message={`Bạn có chắc chắn muốn xóa vĩnh viễn "${deleteModal.subject?.TenMonHoc}" "${deleteModal.subject?.MaMonHoc}"? Hành động này không thể hoàn tác.`}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteModal({ show: false, subject: null })}
-        title="Xác nhận xóa môn học"
+        title={deleteModal.step === 1 ? "Xác nhận xóa môn học (Lần 1)" : "CẢNH BÁO XÓA MÔN HỌC (Lần 2)"}
+        message={
+          deleteModal.step === 1
+            ? `Bạn có chắc chắn muốn xóa môn học "${deleteModal.subject?.TenMonHoc}" (${deleteModal.subject?.MaMonHoc}) không?`
+            : `HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC! Toàn bộ dữ liệu điểm số, lớp học phần liên quan đến môn học "${deleteModal.subject?.TenMonHoc}" sẽ bị ảnh hưởng. Bạn có thực sự muốn xóa môn học này không?`
+        }
+        onConfirm={deleteModal.step === 1 ? handleFirstDeleteConfirm : handleDeleteConfirm}
+        onCancel={() => setDeleteModal({ show: false, subject: null, step: 1 })}
       />
 
       {/* Toast Notification */}
