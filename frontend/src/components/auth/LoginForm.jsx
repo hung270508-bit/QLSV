@@ -77,7 +77,7 @@ const LoginForm = ({
 
     // Ràng buộc mật khẩu
     if (!cleanPassword) {
-      newErrors.password = 'Vui lòng nhập mật khẩu!';
+      newErrors.password = 'Vui lòng nhập mật khẩu';
       hasError = true;
     } else if (cleanPassword.length > 20) {
       newErrors.password = 'Mật khẩu chỉ được tối đa 20 ký tự!';
