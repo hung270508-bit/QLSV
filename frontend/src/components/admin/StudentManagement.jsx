@@ -20,11 +20,11 @@ function StudentManagement() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     classFilter: '',
-    genderFilter: ''
+    statusFilter: ''
   });
   const [displayFilters, setDisplayFilters] = useState({
     classFilter: '',
-    genderFilter: ''
+    statusFilter: ''
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -451,9 +451,9 @@ function StudentManagement() {
       emailLower.includes(searchLower);
 
     const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
-    const matchesGender = !filters.genderFilter || student.GioiTinh === filters.genderFilter;
+    const matchesStatus = !filters.statusFilter || student.TrangThai === filters.statusFilter;
 
-    return matchesSearch && matchesClass && matchesGender;
+    return matchesSearch && matchesClass && matchesStatus;
   });
 
   const handleSearch = () => {
@@ -471,14 +471,14 @@ function StudentManagement() {
   };
 
   const clearFilters = () => {
-    setFilters({ classFilter: '', genderFilter: '' });
-    setDisplayFilters({ classFilter: '', genderFilter: '' });
+    setFilters({ classFilter: '', statusFilter: '' });
+    setDisplayFilters({ classFilter: '', statusFilter: '' });
     setSearchTerm('');
     setDisplaySearchTerm('');
   };
 
-  const activeFilterCount = (filters.classFilter ? 1 : 0) + (filters.genderFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.classFilter || filters.genderFilter || searchTerm;
+  const activeFilterCount = (filters.classFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = filters.classFilter || filters.statusFilter || searchTerm;
 
   if (loading) {
     return <TableSkeleton columns={5} rows={7} />;
@@ -597,15 +597,16 @@ function StudentManagement() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo giới tính</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo trạng thái</label>
                 <select
-                  value={displayFilters.genderFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, genderFilter: e.target.value })}
+                  value={displayFilters.statusFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, statusFilter: e.target.value })}
                   className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
                 >
-                  <option value="">Tất cả</option>
-                  <option value="Nam">Nam</option>
-                  <option value="Nữ">Nữ</option>
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="Đang học">Đang học</option>
+                  <option value="Học lại">Học lại</option>
+                  <option value="Nghỉ học">Nghỉ học</option>
                 </select>
               </div>
             </div>
@@ -621,7 +622,7 @@ function StudentManagement() {
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                onClick={() => setDisplayFilters({ classFilter: '', genderFilter: '' })}
+                onClick={() => setDisplayFilters({ classFilter: '', statusFilter: '' })}
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
