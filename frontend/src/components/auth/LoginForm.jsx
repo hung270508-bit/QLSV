@@ -193,8 +193,8 @@ const LoginForm = ({
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))}
-                    onBlur={() => setUsername(username.replace(/\s/g, ''))}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onBlur={() => setUsername(username.trim())}
                     onFocus={() => savedAccounts.length > 0 && setShowAccountList(true)}
                     className={`w-full pl-12 pr-10 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       errors.username
@@ -272,8 +272,8 @@ const LoginForm = ({
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value.replace(/\s/g, ''))}
-                    onBlur={() => setPassword(password.replace(/\s/g, ''))}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onBlur={() => setPassword(password.trim())}
                     className={`w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       errors.password
                         ? 'border-red-300 focus:border-red-500 focus:bg-white'
