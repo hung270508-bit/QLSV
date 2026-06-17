@@ -9,6 +9,7 @@ import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
+import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
@@ -52,7 +53,7 @@ function SubjectManagement() {
     SoTinChi: '',
     TenKhoa: ''
   });
-  const [deleteModal, setDeleteModal] = useState({ show: false, subject: null, step: 1 });
+  const [deleteModal, setDeleteModal] = useState({ show: false, subject: null });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, title: 'Xác nhận' });
 
   // Validation states
@@ -218,24 +219,21 @@ function SubjectManagement() {
   };
 
   const handleDelete = (subject) => {
-    setDeleteModal({ show: true, subject, step: 1 });
-  };
-
-  const handleFirstDeleteConfirm = () => {
-    setDeleteModal(prev => ({ ...prev, step: 2 }));
+    setDeleteModal({ show: true, subject });
   };
 
   const handleDeleteConfirm = async () => {
+    if (!deleteModal.subject) return;
     try {
       await axios.delete(`${API_BASE}/subjects/${deleteModal.subject.MaMonHoc}`);
       setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
-      setDeleteModal({ show: false, subject: null, step: 1 });
+      setDeleteModal({ show: false, subject: null });
       setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
     } catch (error) {
       console.error('Error deleting subject:', error);
       const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
       setErrorDialog({ show: true, message: errorMessage });
-      setDeleteModal({ show: false, subject: null, step: 1 });
+      setDeleteModal({ show: false, subject: null });
     }
   };
 
@@ -886,6 +884,14 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         </div>
         </ModalPortal>
       )}
+      <ConfirmDeleteModal
+        isOpen={deleteModal.show}
+        onClose={() => setDeleteModal({ show: false, subject: null })}
+        onConfirm={handleDeleteConfirm}
+        title="CẢNH BÁO XÓA MÔN HỌC"
+        message={`HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC! Toàn bộ dữ liệu điểm số, lớp học phần liên quan đến môn học "${deleteModal.subject?.TenMonHoc}" (${deleteModal.subject?.MaMonHoc}) sẽ bị ảnh hưởng. Bạn có thực sự muốn xóa môn học này không?`}
+      />
+
       {/* General Confirmation Dialog (Add/Edit) */}
       <ConfirmDialog
         show={confirmDialog.show}
@@ -896,19 +902,6 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         }}
         onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, title: 'Xác nhận' })}
         title={confirmDialog.title}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        show={deleteModal.show}
-        title={deleteModal.step === 1 ? "Xác nhận xóa môn học (Lần 1)" : "CẢNH BÁO XÓA MÔN HỌC (Lần 2)"}
-        message={
-          deleteModal.step === 1
-            ? `Bạn có chắc chắn muốn xóa môn học "${deleteModal.subject?.TenMonHoc}" (${deleteModal.subject?.MaMonHoc}) không?`
-            : `HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC! Toàn bộ dữ liệu điểm số, lớp học phần liên quan đến môn học "${deleteModal.subject?.TenMonHoc}" sẽ bị ảnh hưởng. Bạn có thực sự muốn xóa môn học này không?`
-        }
-        onConfirm={deleteModal.step === 1 ? handleFirstDeleteConfirm : handleDeleteConfirm}
-        onCancel={() => setDeleteModal({ show: false, subject: null, step: 1 })}
       />
 
       {/* Toast Notification */}

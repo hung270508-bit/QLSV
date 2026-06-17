@@ -13,17 +13,17 @@ function TeachingAssignment() {
   const [classes, setClasses] = useState([]);
   const [khoas, setKhoas] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Modal State
   const [showModal, setShowModal] = useState(false);
-  
+
   // Search State
   const [searchTerm, setSearchTerm] = useState('');
   const [searchGV, setSearchGV] = useState('');
 
   // Dialog & Toast State
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', action: null });
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -113,10 +113,10 @@ function TeachingAssignment() {
       const hkCode = `HK${hocKySo}`;
       const namCode = `${namBatDau.slice(-2)}${namKetThuc.slice(-2)}`;
       const base = `${formData.MaMonHoc}.${hkCode}${namCode}`;
-      
+
       const existing = assignments.filter(a => a.MaLopHocPhan?.startsWith(base));
       const stt = String(existing.length + 1).padStart(2, '0');
-      
+
       setFormData(f => ({ ...f, MaLopHocPhan: `${base}.HP${stt}` }));
       setFormErrors(prev => ({ ...prev, MaLopHocPhan: '' }));
     }
@@ -127,10 +127,10 @@ function TeachingAssignment() {
     if (!formData.MaKhoa) errors.MaKhoa = 'Vui lòng chọn Khoa.';
     if (!formData.MaMonHoc) errors.MaMonHoc = 'Vui lòng chọn Môn học.';
     if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn Giảng viên.';
-    
+
     // Ràng buộc: Giảng viên không được dạy lại chính lớp A cho cùng 1 môn
     if (formData.MaLop && formData.MaGiangVien && formData.MaMonHoc) {
-      const isDuplicate = assignments.some(a => 
+      const isDuplicate = assignments.some(a =>
         String(a.MaGiangVien).trim().toLowerCase() === String(formData.MaGiangVien).trim().toLowerCase() &&
         String(a.MaLop).trim().toLowerCase() === String(formData.MaLop).trim().toLowerCase() &&
         String(a.MaMonHoc).trim().toLowerCase() === String(formData.MaMonHoc).trim().toLowerCase()
@@ -139,7 +139,7 @@ function TeachingAssignment() {
         errors.MaLop = 'Giảng viên này đã được phân công dạy môn này cho lớp đã chọn.';
       }
     }
-    
+
     // Ràng buộc Sĩ số: Phải là SỐ NGUYÊN và nằm trong khoảng 30 - 80
     const siSo = Number(formData.SoLuongToiDa);
     if (!formData.SoLuongToiDa || isNaN(siSo)) {
@@ -238,15 +238,15 @@ function TeachingAssignment() {
   const filteredAssignments = assignments.filter(a => {
     const searchStr = searchTerm.toLowerCase();
     const gvStr = searchGV.toLowerCase();
-    
-    const matchSearch = 
+
+    const matchSearch =
       (a.TenMonHoc && a.TenMonHoc.toLowerCase().includes(searchStr)) ||
       (a.MaLopHocPhan && a.MaLopHocPhan.toLowerCase().includes(searchStr));
-      
-    const matchGV = 
-      !searchGV || 
+
+    const matchGV =
+      !searchGV ||
       (a.TenGiangVien && a.TenGiangVien.toLowerCase().includes(gvStr));
-      
+
     return matchSearch && matchGV;
   });
 
@@ -256,7 +256,7 @@ function TeachingAssignment() {
 
   return (
     <div className="space-y-8 p-4 max-w-screen-3xl mx-auto w-full">
-      
+
       {/* Toast Notification */}
       <AnimatePresence>
         {toast.show && (
@@ -397,7 +397,7 @@ function TeachingAssignment() {
 
               <div className="p-6 overflow-y-auto custom-scrollbar">
                 <form id="assignment-form" onSubmit={handleSubmit} noValidate className="space-y-6">
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Trực thuộc Khoa <span className="text-red-500">*</span></label>
@@ -411,8 +411,8 @@ function TeachingAssignment() {
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học giảng dạy <span className="text-red-500">*</span></label>
                       <select value={formData.MaMonHoc} onChange={handleMonHocChange} disabled={!formData.MaKhoa} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaMonHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
-                        {filteredSubjects.length === 0 && formData.MaKhoa 
-                          ? <option value="" disabled>Khoa này chưa có môn học</option> 
+                        {filteredSubjects.length === 0 && formData.MaKhoa
+                          ? <option value="" disabled>Khoa này chưa có môn học</option>
                           : <option value="">-- Chọn Môn học --</option>}
                         {filteredSubjects.map(sub => <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc}</option>)}
                       </select>
@@ -423,9 +423,9 @@ function TeachingAssignment() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Giảng viên phụ trách <span className="text-red-500">*</span></label>
-                      <select disabled={!formData.MaKhoa} value={formData.MaGiangVien} onChange={e => {setFormData({...formData, MaGiangVien: e.target.value}); setFormErrors(prev => ({...prev, MaGiangVien: '', MaLop: ''}))}} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
-                        {filteredTeachers.length === 0 && formData.MaKhoa 
-                          ? <option value="" disabled>Khoa này chưa có giảng viên</option> 
+                      <select disabled={!formData.MaKhoa} value={formData.MaGiangVien} onChange={e => { setFormData({ ...formData, MaGiangVien: e.target.value }); setFormErrors(prev => ({ ...prev, MaGiangVien: '', MaLop: '' })) }} className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}>
+                        {filteredTeachers.length === 0 && formData.MaKhoa
+                          ? <option value="" disabled>Khoa này chưa có giảng viên</option>
                           : <option value="">-- Chọn giảng viên --</option>}
                         {filteredTeachers.map(t => (<option key={t.MaGiangVien} value={t.MaGiangVien}>[{t.MaKhoa}] {t.HoTen}</option>))}
                       </select>
@@ -434,7 +434,7 @@ function TeachingAssignment() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
-                      <select value={formData.MaLop} onChange={e => {setFormData({...formData, MaLop: e.target.value}); setFormErrors(prev => ({...prev, MaLop: ''}))}} className={`w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl outline-none focus:border-orange-500 transition-all`}>
+                      <select value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className={`w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl outline-none focus:border-orange-500 transition-all`}>
                         <option value="">-- Dành cho mọi sinh viên --</option>
                         {classes.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
                       </select>
@@ -446,12 +446,12 @@ function TeachingAssignment() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Học kỳ <span className="text-red-500">*</span></label>
-                        <select value={hocKySo} onChange={e => {setHocKySo(e.target.value); setFormErrors({...formErrors, HocKy: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold outline-none focus:border-orange-500 ${formErrors.HocKy ? 'border-red-500' : 'border-gray-200'}`}>
+                        <select value={hocKySo} onChange={e => { setHocKySo(e.target.value); setFormErrors({ ...formErrors, HocKy: '' }) }} className={`w-full p-3 bg-white border-2 rounded-xl font-bold outline-none focus:border-orange-500 ${formErrors.HocKy ? 'border-red-500' : 'border-gray-200'}`}>
                           <option value="">Chọn</option><option value="1">Học kỳ 1</option><option value="2">Học kỳ 2</option><option value="3">Học kỳ 3</option>
                         </select>
                         {formErrors.HocKy && <p className="text-red-500 text-sm mt-1">{formErrors.HocKy}</p>}
                       </div>
-                      
+
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Năm bắt đầu <span className="text-red-500">*</span></label>
                         <input type="text" value="2026" disabled className="w-full p-3 bg-gray-100 border-2 border-gray-200 rounded-xl font-bold text-gray-500 outline-none cursor-not-allowed" />
@@ -459,13 +459,13 @@ function TeachingAssignment() {
 
                       <div>
                         <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Sĩ số (30 - 80) <span className="text-red-500">*</span></label>
-                        <input type="number" min="30" max="80" step="1" onKeyDown={(e) => { if(e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => {setFormData({...formData, SoLuongToiDa: e.target.value}); setFormErrors({...formErrors, SoLuongToiDa: ''})}} className={`w-full p-3 bg-white border-2 rounded-xl font-bold text-orange-600 outline-none focus:border-orange-500 ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
+                        <input type="number" min="30" max="80" step="1" onKeyDown={(e) => { if (e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => { setFormData({ ...formData, SoLuongToiDa: e.target.value }); setFormErrors({ ...formErrors, SoLuongToiDa: '' }) }} className={`w-full p-3 bg-white border-2 rounded-xl font-bold text-orange-600 outline-none focus:border-orange-500 ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
                         {formErrors.SoLuongToiDa && <p className="text-red-500 text-sm mt-1">{formErrors.SoLuongToiDa}</p>}
                       </div>
                     </div>
 
                     <div className="pt-1">
-                      {hocKyError ? <p className="text-amber-600 text-sm font-bold flex items-center gap-1.5"><AlertCircle className="w-4 h-4"/> {hocKyError}</p> : <p className="text-green-600 text-sm font-bold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4"/> Sẽ lưu với thông số: {hocKyInfo}</p>}
+                      {hocKyError ? <p className="text-amber-600 text-sm font-bold flex items-center gap-1.5"><AlertCircle className="w-4 h-4" /> {hocKyError}</p> : <p className="text-green-600 text-sm font-bold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Sẽ lưu với thông số: {hocKyInfo}</p>}
                     </div>
                   </div>
 
@@ -504,7 +504,8 @@ function TeachingAssignment() {
         )}
       </AnimatePresence>
 
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }

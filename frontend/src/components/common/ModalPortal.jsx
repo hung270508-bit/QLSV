@@ -86,6 +86,27 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
 
 // Confirmation Dialog Component
 export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xác nhận' }) => {
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    let timer;
+    if (show) {
+      setCountdown(5);
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [show]);
+
   return (
     <AnimatePresence>
       {show && (
@@ -113,12 +134,19 @@ export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xá
               <p className="text-gray-600 mb-6">{message}</p>
               <div className="flex gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={onConfirm}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
+                  whileHover={countdown === 0 ? { scale: 1.05 } : {}}
+                  whileTap={countdown === 0 ? { scale: 0.95 } : {}}
+                  onClick={() => {
+                    if (countdown === 0) onConfirm();
+                  }}
+                  disabled={countdown > 0}
+                  className={`flex-1 py-3 rounded-xl font-semibold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                    countdown > 0 
+                      ? 'bg-orange-300 text-white cursor-not-allowed'
+                      : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
+                  }`}
                 >
-                  Xác nhận
+                  {countdown > 0 ? `Chờ ${countdown}s` : 'Xác nhận'}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}

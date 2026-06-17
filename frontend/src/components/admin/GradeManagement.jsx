@@ -25,9 +25,9 @@ function Toast({ toasts, onRemove }) {
             exit={{ opacity: 0, x: 60 }}
             transition={{ duration: 0.22 }}
             className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border min-w-[280px] max-w-sm
-              ${t.type === 'error'   ? 'bg-red-50 border-red-200 text-red-800'
-              : t.type === 'success' ? 'bg-green-50 border-green-200 text-green-800'
-              :                        'bg-blue-50 border-blue-200 text-blue-800'}`}
+              ${t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800'
+                : t.type === 'success' ? 'bg-green-50 border-green-200 text-green-800'
+                  : 'bg-blue-50 border-blue-200 text-blue-800'}`}
           >
             {t.type === 'error'
               ? <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500 mt-0.5" />
@@ -90,9 +90,9 @@ function ScoreInput({ value, onChange, placeholder = 'Để trống nếu chưa 
     const raw = e.target.value;
     if (raw === '') { setLocalError(''); onChange(''); return; }
     const num = parseFloat(raw);
-    if (isNaN(num))  { setLocalError('Giá trị không hợp lệ'); return; }
-    if (num < 0)     { setLocalError('Điểm không được âm — vui lòng nhập lại'); onChange(''); return; }
-    if (num > 10)    { setLocalError('Điểm không được vượt quá 10 — vui lòng nhập lại'); onChange(''); return; }
+    if (isNaN(num)) { setLocalError('Giá trị không hợp lệ'); return; }
+    if (num < 0) { setLocalError('Điểm không được âm — vui lòng nhập lại'); onChange(''); return; }
+    if (num > 10) { setLocalError('Điểm không được vượt quá 10 — vui lòng nhập lại'); onChange(''); return; }
     setLocalError('');
     onChange(raw);
   };
@@ -129,7 +129,7 @@ function BulkScoreInput({ value, onChange }) {
     if (raw === '') { setErr(''); onChange(''); return; }
     const n = parseFloat(raw);
     if (isNaN(n) || n < 0) { setErr('Âm'); onChange(''); return; }
-    if (n > 10)             { setErr('>10'); onChange(''); return; }
+    if (n > 10) { setErr('>10'); onChange(''); return; }
     setErr('');
     onChange(raw);
   };
@@ -155,12 +155,12 @@ function BulkScoreInput({ value, onChange }) {
 // Main Component
 // ================================================================
 function GradeManagement() {
-  const [grades, setGrades]                   = useState([]);
-  const [students, setStudents]               = useState([]);
-  const [courseSections, setCourseSections]   = useState([]);
-  const [faculties, setFaculties]             = useState([]);
-  const [enrollments, setEnrollments]         = useState([]);
-  const [loading, setLoading]                 = useState(true);
+  const [grades, setGrades] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [courseSections, setCourseSections] = useState([]);
+  const [faculties, setFaculties] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Toast
   const [toasts, setToasts] = useState([]);
@@ -178,9 +178,9 @@ function GradeManagement() {
   const closeConfirm = () => setConfirm(p => ({ ...p, open: false }));
 
   // Modal thêm/sửa
-  const [showModal, setShowModal]         = useState(false);
-  const [editingGrade, setEditingGrade]   = useState(null);
-  const [formData, setFormData]           = useState({
+  const [showModal, setShowModal] = useState(false);
+  const [editingGrade, setEditingGrade] = useState(null);
+  const [formData, setFormData] = useState({
     selectedKhoa: '', MSSV: '', MaLopHocPhan: '', HocKy: '',
     DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
   });
@@ -188,17 +188,17 @@ function GradeManagement() {
 
   // Bulk modal
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkKhoa, setBulkKhoa]           = useState('');
-  const [bulkSection, setBulkSection]     = useState('');
-  const [bulkGrades, setBulkGrades]       = useState([]);
-  const [bulkError, setBulkError]         = useState('');
+  const [bulkKhoa, setBulkKhoa] = useState('');
+  const [bulkSection, setBulkSection] = useState('');
+  const [bulkGrades, setBulkGrades] = useState([]);
+  const [bulkError, setBulkError] = useState('');
 
   // Search & filter
-  const [searchTerm, setSearchTerm]               = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
-  const [showFilters, setShowFilters]             = useState(false);
-  const [filters, setFilters]                     = useState({ khoaFilter: '', sectionFilter: '' });
-  const [displayFilters, setDisplayFilters]       = useState({ khoaFilter: '', sectionFilter: '' });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({ khoaFilter: '', sectionFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ khoaFilter: '', sectionFilter: '' });
 
   // Pagination calculations
   const [currentPage, setCurrentPage] = useState(1);
@@ -257,20 +257,20 @@ function GradeManagement() {
 
   const convertToGPA = (total10) => {
     const t = parseFloat(total10);
-    if (t >= 8.5) return { letter: 'A',  gpa: 4.0, text: 'Xuất sắc / Giỏi' };
+    if (t >= 8.5) return { letter: 'A', gpa: 4.0, text: 'Xuất sắc / Giỏi' };
     if (t >= 7.8) return { letter: 'B+', gpa: 3.5, text: 'Giỏi' };
-    if (t >= 7.0) return { letter: 'B',  gpa: 3.0, text: 'Khá' };
+    if (t >= 7.0) return { letter: 'B', gpa: 3.0, text: 'Khá' };
     if (t >= 6.3) return { letter: 'C+', gpa: 2.5, text: 'Khá' };
-    if (t >= 5.5) return { letter: 'C',  gpa: 2.0, text: 'Trung bình' };
+    if (t >= 5.5) return { letter: 'C', gpa: 2.0, text: 'Trung bình' };
     if (t >= 4.8) return { letter: 'D+', gpa: 1.5, text: 'Trung bình yếu' };
-    if (t >= 4.0) return { letter: 'D',  gpa: 1.0, text: 'Yếu' };
+    if (t >= 4.0) return { letter: 'D', gpa: 1.0, text: 'Yếu' };
     if (t >= 3.0) return { letter: 'F+', gpa: 0.5, text: 'Kém' };
-    return         { letter: 'F',  gpa: 0.0, text: 'Kém' };
+    return { letter: 'F', gpa: 0.0, text: 'Kém' };
   };
 
   const getLetterColor = (letter) => {
     if (!letter) return 'text-gray-300';
-    if (letter === 'A')                    return 'text-green-600';
+    if (letter === 'A') return 'text-green-600';
     if (letter === 'B+' || letter === 'B') return 'text-blue-600';
     if (letter === 'C+' || letter === 'C') return 'text-yellow-600';
     if (letter === 'D+' || letter === 'D') return 'text-orange-500';
@@ -317,9 +317,9 @@ function GradeManagement() {
       MaLopHocPhan: data.MaLopHocPhan,
       HocKy: data.HocKy,
       DiemChuyenCan: (cc !== '' && cc != null) ? cc : null,
-      DiemBaiTap:    (bt !== '' && bt != null) ? bt : null,
-      DiemGiuaKy:    (gk !== '' && gk != null) ? gk : null,
-      DiemCuoiKy:    (ck !== '' && ck != null) ? ck : null,
+      DiemBaiTap: (bt !== '' && bt != null) ? bt : null,
+      DiemGiuaKy: (gk !== '' && gk != null) ? gk : null,
+      DiemCuoiKy: (ck !== '' && ck != null) ? ck : null,
     };
     if (scored) {
       const t10 = calculateTotal10(cc, bt, gk, ck);
@@ -334,7 +334,7 @@ function GradeManagement() {
   // ================================================================
   const validateForm = () => {
     const errors = {};
-    if (!formData.MSSV)         errors.MSSV = 'Vui lòng chọn sinh viên';
+    if (!formData.MSSV) errors.MSSV = 'Vui lòng chọn sinh viên';
     if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
 
     if (formData.MSSV && formData.MaLopHocPhan && !editingGrade) {
@@ -346,8 +346,8 @@ function GradeManagement() {
         // Kiểm tra đăng ký
         const enrolled = enrollments.some(
           e => e.MSSV === formData.MSSV &&
-               e.MaLopHocPhan === formData.MaLopHocPhan &&
-               e.TrangThai !== 'Từ chối'
+            e.MaLopHocPhan === formData.MaLopHocPhan &&
+            e.TrangThai !== 'Từ chối'
         );
         if (!enrolled) errors.MaLopHocPhan = 'Sinh viên chưa đăng ký lớp học phần này';
       }
@@ -402,14 +402,14 @@ function GradeManagement() {
     const sec = courseSections.find(cs => cs.MaLopHocPhan === grade.MaLopHocPhan);
     setEditingGrade(grade);
     setFormData({
-      selectedKhoa:  sec ? extractKhoa(sec.MaKhoa, sec.MaMonHoc) : '',
-      MSSV:          grade.MSSV,
-      MaLopHocPhan:  grade.MaLopHocPhan,
-      HocKy:         grade.HocKy || '',
+      selectedKhoa: sec ? extractKhoa(sec.MaKhoa, sec.MaMonHoc) : '',
+      MSSV: grade.MSSV,
+      MaLopHocPhan: grade.MaLopHocPhan,
+      HocKy: grade.HocKy || '',
       DiemChuyenCan: grade.DiemChuyenCan ?? '',
-      DiemBaiTap:    grade.DiemBaiTap    ?? '',
-      DiemGiuaKy:    grade.DiemGiuaKy   ?? '',
-      DiemCuoiKy:    grade.DiemCuoiKy   ?? ''
+      DiemBaiTap: grade.DiemBaiTap ?? '',
+      DiemGiuaKy: grade.DiemGiuaKy ?? '',
+      DiemCuoiKy: grade.DiemCuoiKy ?? ''
     });
     setShowModal(true);
   };
@@ -469,9 +469,9 @@ function GradeManagement() {
         MSSV: student.MSSV, HoTen: student.HoTen,
         MaLopHocPhan: maLopHocPhan,
         DiemChuyenCan: existing?.DiemChuyenCan ?? '',
-        DiemBaiTap:    existing?.DiemBaiTap    ?? '',
-        DiemGiuaKy:    existing?.DiemGiuaKy   ?? '',
-        DiemCuoiKy:    existing?.DiemCuoiKy   ?? '',
+        DiemBaiTap: existing?.DiemBaiTap ?? '',
+        DiemGiuaKy: existing?.DiemGiuaKy ?? '',
+        DiemCuoiKy: existing?.DiemCuoiKy ?? '',
         alreadyExists: !!existing,
         MaDiem: existing?.MaDiem || null,
         rowErrors: {}
@@ -525,7 +525,7 @@ function GradeManagement() {
   // ================================================================
   // Search & filter
   // ================================================================
-  
+
   // Trích xuất lọc cho an toàn tuyệt đối
   const filteredSectionsForFilter = displayFilters.khoaFilter
     ? courseSections.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase())
@@ -533,24 +533,24 @@ function GradeManagement() {
 
   const filteredGrades = grades.filter(grade => {
     const term = searchTerm.toLowerCase();
-    const sec  = courseSections.find(cs => cs.MaLopHocPhan === grade.MaLopHocPhan);
+    const sec = courseSections.find(cs => cs.MaLopHocPhan === grade.MaLopHocPhan);
     const matchSearch = !searchTerm ||
       grade.TenSinhVien?.toLowerCase().includes(term) ||
       grade.MSSV?.toLowerCase().includes(term) ||
       grade.TenMonHoc?.toLowerCase().includes(term) ||
       (grade.TenKhoa || sec?.TenKhoa || '')?.toLowerCase().includes(term) ||
       grade.MaLopHocPhan?.toLowerCase().includes(term);
-    
+
     // Gọt khoảng trắng khi filter bằng Khoa
     const gradeKhoa = extractKhoa(grade.MaKhoa || sec?.MaKhoa, grade.MaMonHoc || sec?.MaMonHoc);
     const matchKhoa = !filters.khoaFilter || gradeKhoa === String(filters.khoaFilter).trim().toUpperCase();
-    
+
     const matchSection = !filters.sectionFilter || grade.MaLopHocPhan === filters.sectionFilter;
     return matchSearch && matchKhoa && matchSection;
   });
 
-  const hasActiveFilters   = filters.khoaFilter || filters.sectionFilter || searchTerm;
-  const activeFilterCount  = (filters.khoaFilter ? 1 : 0) + (filters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = filters.khoaFilter || filters.sectionFilter || searchTerm;
+  const activeFilterCount = (filters.khoaFilter ? 1 : 0) + (filters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0);
 
   const clearFilters = () => {
     setFilters({ khoaFilter: '', sectionFilter: '' });
@@ -567,7 +567,7 @@ function GradeManagement() {
     filteredGrades.forEach(g => {
       if (!hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy)) return;
       const t = parseFloat(calculateTotal10(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy));
-      if (t >= 8.5)      stats.a++;
+      if (t >= 8.5) stats.a++;
       else if (t >= 7.8) stats.bPlus++;
       else if (t >= 7.0) stats.b++;
       else if (t >= 6.3) stats.cPlus++;
@@ -575,7 +575,7 @@ function GradeManagement() {
       else if (t >= 4.8) stats.dPlus++;
       else if (t >= 4.0) stats.d++;
       else if (t >= 3.0) stats.fPlus++;
-      else               stats.f++;
+      else stats.f++;
     });
     setGradeStats(stats);
   }, [filteredGrades]);
@@ -591,15 +591,15 @@ function GradeManagement() {
 
   const handleExport = () => {
     const rows = [
-      ['MSSV','Sinh viên','Môn học','Khoa','Học kỳ','CC(10%)','BT(15%)','GK(25%)','CK(50%)','TB','GPA','Điểm chữ','Xếp loại'],
+      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC(10%)', 'BT(15%)', 'GK(25%)', 'CK(50%)', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
       ...filteredGrades.map(g => {
         const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
-        if (!scored) return [g.MSSV, g.TenSinhVien||'N/A', g.TenMonHoc||'N/A', g.TenKhoa||'', g.HocKy||'', '-','-','-','-','Chưa có điểm','','',''];
+        if (!scored) return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '', '-', '-', '-', '-', 'Chưa có điểm', '', '', ''];
         const t10 = calculateTotal10(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
         const gpa = convertToGPA(t10);
-        return [g.MSSV, g.TenSinhVien||'N/A', g.TenMonHoc||'N/A', g.TenKhoa||'', g.HocKy||'',
-          g.DiemChuyenCan??'-', g.DiemBaiTap??'-', g.DiemGiuaKy??'-', g.DiemCuoiKy??'-',
-          g.DiemTong||t10, g.DiemGPA??gpa.gpa.toFixed(1), g.DiemChu||gpa.letter, gpa.text];
+        return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '',
+        g.DiemChuyenCan ?? '-', g.DiemBaiTap ?? '-', g.DiemGiuaKy ?? '-', g.DiemCuoiKy ?? '-',
+        g.DiemTong || t10, g.DiemGPA ?? gpa.gpa.toFixed(1), g.DiemChu || gpa.letter, gpa.text];
       })
     ].map(r => r.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' });
@@ -612,9 +612,9 @@ function GradeManagement() {
   // ================================================================
   // Preview trong modal
   // ================================================================
-  const previewTotal   = calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
-  const previewGPA     = convertToGPA(previewTotal);
-  const hasPreview     = hasAnyScore(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
+  const previewTotal = calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
+  const previewGPA = convertToGPA(previewTotal);
+  const hasPreview = hasAnyScore(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
   const allScoresValid = SCORE_FIELDS.every(f => isScoreValid(formData[f]));
 
   if (loading) return <GradeSkeleton />;
@@ -757,15 +757,15 @@ function GradeManagement() {
         </div>
         <div className="grid grid-cols-3 md:grid-cols-9 gap-3">
           {[
-            { label: 'A',  sub: '≥8.5', color: 'green',   val: gradeStats.a },
+            { label: 'A', sub: '≥8.5', color: 'green', val: gradeStats.a },
             { label: 'B+', sub: '≥7.8', color: 'emerald', val: gradeStats.bPlus },
-            { label: 'B',  sub: '≥7.0', color: 'teal',    val: gradeStats.b },
-            { label: 'C+', sub: '≥6.3', color: 'cyan',    val: gradeStats.cPlus },
-            { label: 'C',  sub: '≥5.5', color: 'sky',     val: gradeStats.c },
-            { label: 'D+', sub: '≥4.8', color: 'indigo',  val: gradeStats.dPlus },
-            { label: 'D',  sub: '≥4.0', color: 'violet',  val: gradeStats.d },
-            { label: 'F+', sub: '≥3.0', color: 'orange',  val: gradeStats.fPlus },
-            { label: 'F',  sub: '<3.0', color: 'red',     val: gradeStats.f },
+            { label: 'B', sub: '≥7.0', color: 'teal', val: gradeStats.b },
+            { label: 'C+', sub: '≥6.3', color: 'cyan', val: gradeStats.cPlus },
+            { label: 'C', sub: '≥5.5', color: 'sky', val: gradeStats.c },
+            { label: 'D+', sub: '≥4.8', color: 'indigo', val: gradeStats.dPlus },
+            { label: 'D', sub: '≥4.0', color: 'violet', val: gradeStats.d },
+            { label: 'F+', sub: '≥3.0', color: 'orange', val: gradeStats.fPlus },
+            { label: 'F', sub: '<3.0', color: 'red', val: gradeStats.f },
           ].map(({ label, sub, color, val }) => (
             <div key={label} className={`text-center p-3 bg-${color}-50 rounded-xl`}>
               <div className={`text-xl font-bold text-${color}-600`}>{val}</div>
@@ -786,10 +786,10 @@ function GradeManagement() {
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Sinh viên</th>
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Môn học</th>
                 <th className="text-left py-4 px-3 text-sm font-semibold text-gray-500">Học kỳ</th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CC<br/><span className="text-xs font-normal text-gray-400">(10%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">BT<br/><span className="text-xs font-normal text-gray-400">(15%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">GK<br/><span className="text-xs font-normal text-gray-400">(25%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CK<br/><span className="text-xs font-normal text-gray-400">(50%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CC<br /><span className="text-xs font-normal text-gray-400">(10%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(15%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(25%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CK<br /><span className="text-xs font-normal text-gray-400">(50%)</span></th>
                 <th className="text-center py-4 px-3 text-sm font-bold text-gray-800">TB</th>
                 <th className="text-center py-4 px-3 text-sm font-bold text-orange-600">GPA</th>
                 <th className="text-center py-4 px-3 text-sm font-semibold text-gray-700">Xếp loại</th>
@@ -799,8 +799,8 @@ function GradeManagement() {
             <tbody>
               {currentItems.length > 0 ? currentItems.map((grade, idx) => {
                 const scored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
-                const t10    = scored ? calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy) : null;
-                const gpa    = t10 ? convertToGPA(t10) : null;
+                const t10 = scored ? calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy) : null;
+                const gpa = t10 ? convertToGPA(t10) : null;
                 const letter = scored ? (grade.DiemChu || gpa?.letter) : null;
                 return (
                   <motion.tr key={grade.MaDiem}
@@ -812,9 +812,9 @@ function GradeManagement() {
                     <td className="py-4 px-4 text-sm text-gray-600 max-w-[160px] truncate">{grade.TenMonHoc || 'N/A'}</td>
                     <td className="py-4 px-3 text-xs text-gray-400">{grade.HocKy || '—'}</td>
                     <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemChuyenCan ?? '—'}</td>
-                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemBaiTap    ?? '—'}</td>
-                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemGiuaKy   ?? '—'}</td>
-                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemCuoiKy   ?? '—'}</td>
+                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemBaiTap ?? '—'}</td>
+                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemGiuaKy ?? '—'}</td>
+                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemCuoiKy ?? '—'}</td>
                     <td className="py-4 px-3 text-sm text-center font-bold text-gray-800">
                       {scored ? (grade.DiemTong || t10) : <span className="text-gray-300">—</span>}
                     </td>
@@ -850,7 +850,7 @@ function GradeManagement() {
           </table>
         </div>
 
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
@@ -976,9 +976,9 @@ function GradeManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   {[
                     { field: 'DiemChuyenCan', label: 'Chuyên cần', pct: '10%' },
-                    { field: 'DiemBaiTap',    label: 'Bài tập',    pct: '15%' },
-                    { field: 'DiemGiuaKy',    label: 'Giữa kỳ',   pct: '25%' },
-                    { field: 'DiemCuoiKy',    label: 'Cuối kỳ',   pct: '50%' },
+                    { field: 'DiemBaiTap', label: 'Bài tập', pct: '15%' },
+                    { field: 'DiemGiuaKy', label: 'Giữa kỳ', pct: '25%' },
+                    { field: 'DiemCuoiKy', label: 'Cuối kỳ', pct: '50%' },
                   ].map(({ field, label, pct }) => (
                     <div key={field}>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1105,20 +1105,20 @@ function GradeManagement() {
                         <tr>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CC<br/><span className="text-xs font-normal text-gray-400">(10%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">BT<br/><span className="text-xs font-normal text-gray-400">(15%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">GK<br/><span className="text-xs font-normal text-gray-400">(25%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CK<br/><span className="text-xs font-normal text-gray-400">(50%)</span></th>
+                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CC<br /><span className="text-xs font-normal text-gray-400">(10%)</span></th>
+                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(15%)</span></th>
+                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(25%)</span></th>
+                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CK<br /><span className="text-xs font-normal text-gray-400">(50%)</span></th>
                           <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">TB</th>
                           <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">Xếp loại</th>
                         </tr>
                       </thead>
                       <tbody>
                         {bulkGrades.map((grade, idx) => {
-                          const scored    = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
+                          const scored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
                           const hasRowErr = SCORE_FIELDS.some(f => grade.rowErrors?.[f]);
-                          const t10       = scored && !hasRowErr ? calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy) : null;
-                          const gpa       = t10 ? convertToGPA(t10) : null;
+                          const t10 = scored && !hasRowErr ? calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy) : null;
+                          const gpa = t10 ? convertToGPA(t10) : null;
                           return (
                             <tr key={idx} className={`border-b border-gray-100 ${grade.alreadyExists ? 'bg-blue-50/40' : ''} ${hasRowErr ? 'bg-red-50/30' : ''}`}>
                               <td className="py-3 px-4 text-sm font-medium text-gray-800">

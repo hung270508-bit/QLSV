@@ -5,6 +5,7 @@ import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
+import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
@@ -83,6 +84,7 @@ function ClassManagement() {
     show: false,
     message: ''
   });
+  const [deleteDialog, setDeleteDialog] = useState({ show: false, classInfo: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   const removeVietnameseTones = useCallback((str) => {
@@ -337,20 +339,21 @@ function ClassManagement() {
   };
 
   const handleDelete = (cls) => {
-    setConfirmDialog({
-      show: true,
-      message: `Bạn có chắc chắn muốn xóa vĩnh viễn "${cls.TenLop}" "${cls.MaLop}"? Hành động này không thể hoàn tác.`,
-      onConfirm: async () => {
-        try {
-          await axios.delete(`${API_BASE}/classes/${encodeURIComponent(cls.MaLop)}`);
-          setToast({ show: true, message: 'Xóa lớp học thành công!', type: 'success' });
-          fetchData();
-        } catch (error) {
-          console.error('Error deleting class:', error);
-          setErrorDialog({ show: true, message: 'Lỗi khi xóa lớp học!' });
-        }
-      }
-    });
+    setDeleteDialog({ show: true, classInfo: cls });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.classInfo) return;
+    try {
+      await axios.delete(`${API_BASE}/classes/${encodeURIComponent(deleteDialog.classInfo.MaLop)}`);
+      setToast({ show: true, message: 'Xóa lớp học thành công!', type: 'success' });
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting class:', error);
+      setErrorDialog({ show: true, message: 'Lỗi khi xóa lớp học!' });
+    } finally {
+      setDeleteDialog({ show: false, classInfo: null });
+    }
   };
 
   const loadClassDetailsFallback = async (maLop) => {
@@ -878,6 +881,13 @@ function ClassManagement() {
         show={errorDialog.show}
         message={errorDialog.message}
         onClose={() => setErrorDialog({ show: false, message: '' })}
+      />
+      <ConfirmDeleteModal
+        isOpen={deleteDialog.show}
+        onClose={() => setDeleteDialog({ show: false, classInfo: null })}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa lớp học"
+        message={`Bạn có chắc chắn muốn xóa vĩnh viễn lớp "${deleteDialog.classInfo?.TenLop}" (${deleteDialog.classInfo?.MaLop}) không? Hành động này không thể hoàn tác.`}
       />
       <Toast
         show={toast.show}

@@ -6,6 +6,7 @@ import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
+import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 
 function AnnouncementManagement() {
   const [announcements, setAnnouncements] = useState([]);
@@ -29,6 +30,7 @@ function AnnouncementManagement() {
     MaLop_Nhan: ''
   });
   const [formErrors, setFormErrors] = useState({});
+  const [deleteDialog, setDeleteDialog] = useState({ show: false, itemId: null });
 
   useEffect(() => {
     fetchData();
@@ -144,16 +146,21 @@ function AnnouncementManagement() {
     setShowModal(true);
   };
 
-  const handleDelete = async (maThongBao) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa thông báo này?')) {
-      try {
-        await axios.delete(`${API_URL}/api/announcements/${maThongBao}`);
-        alert('Xóa thông báo thành công!');
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting announcement:', error);
-        alert('Lỗi khi xóa thông báo: ' + (error.response?.data?.message || error.message));
-      }
+  const handleDelete = (maThongBao) => {
+    setDeleteDialog({ show: true, itemId: maThongBao });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.itemId) return;
+    try {
+      await axios.delete(`${API_URL}/api/announcements/${deleteDialog.itemId}`);
+      alert('Xóa thông báo thành công!');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      alert('Lỗi khi xóa thông báo: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setDeleteDialog({ show: false, itemId: null });
     }
   };
 
@@ -640,6 +647,12 @@ function AnnouncementManagement() {
         </div>
         </ModalPortal>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={deleteDialog.show}
+        onClose={() => setDeleteDialog({ show: false, itemId: null })}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
