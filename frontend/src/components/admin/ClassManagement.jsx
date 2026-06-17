@@ -494,10 +494,8 @@ function ClassManagement() {
 
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-        {/* Thay flex-col md:flex-row bằng justify-between để đẩy button sang phải */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between">
-          {/* Rút ngắn thanh tìm kiếm bằng w-full md:max-w-md (hoặc md:w-1/3) thay vì flex-1 */}
-          <div className="relative w-full md:max-w-md">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
