@@ -11,6 +11,7 @@ const API_BASE = `${API_URL}/api`;
 
 function TeacherManagement() {
   const [teachers, setTeachers] = useState([]);
+  const [students, setStudents] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -77,12 +78,14 @@ function TeacherManagement() {
 
   const fetchData = async () => {
     try {
-      const [teachersRes, facultiesRes] = await Promise.all([
+      const [teachersRes, facultiesRes, studentsRes] = await Promise.all([
         axios.get(`${API_BASE}/teachers`),
-        axios.get(`${API_BASE}/faculties`)
+        axios.get(`${API_BASE}/faculties`),
+        axios.get(`${API_BASE}/students`)
       ]);
       setTeachers(teachersRes.data);
       setFaculties(facultiesRes.data);
+      setStudents(studentsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -128,13 +131,21 @@ function TeacherManagement() {
       if (!emailRegex.test(formData.Email)) {
         newErrors.Email = 'Email không đúng định dạng (VD: @gmail.com)';
       } else {
-        // Validate trùng email
+        // Validate trùng email với giảng viên
         const duplicateEmail = teachers.find(
           teacher => teacher.Email === formData.Email &&
                      (!editingTeacher || teacher.MaGiangVien !== editingTeacher.MaGiangVien)
         );
         if (duplicateEmail) {
           newErrors.Email = 'Email đã tồn tại trong hệ thống';
+        } else {
+          // Validate trùng email với sinh viên
+          const duplicateEmailStudent = students.find(
+            student => student.Email === formData.Email
+          );
+          if (duplicateEmailStudent) {
+            newErrors.Email = 'Email đã tồn tại trong hệ thống (đã được sinh viên sử dụng)';
+          }
         }
       }
     }
@@ -169,6 +180,14 @@ function TeacherManagement() {
       );
       if (duplicatePhone) {
         newErrors.SoDienThoai = 'Số điện thoại đã tồn tại trong hệ thống';
+      } else {
+        // Validate trùng số điện thoại với sinh viên
+        const duplicatePhoneStudent = students.find(
+          student => student.SoDienThoai === formData.SoDienThoai
+        );
+        if (duplicatePhoneStudent) {
+          newErrors.SoDienThoai = 'Số điện thoại đã tồn tại trong hệ thống (đã được sinh viên sử dụng)';
+        }
       }
     }
 

@@ -10,6 +10,7 @@ import API_URL from '../../api';
 const API_BASE = `${API_URL}/api`;
 function StudentManagement() {
   const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,14 +92,16 @@ function StudentManagement() {
 
   const fetchData = async () => {
     try {
-      const [studentsRes, classesRes, facultiesRes] = await Promise.all([
+      const [studentsRes, classesRes, facultiesRes, teachersRes] = await Promise.all([
         axios.get(`${API_BASE}/students`),
         axios.get(`${API_BASE}/classes`),
-        axios.get(`${API_BASE}/faculties`)
+        axios.get(`${API_BASE}/faculties`),
+        axios.get(`${API_BASE}/teachers`)
       ]);
       setStudents(studentsRes.data);
       setClasses(classesRes.data);
       setFaculties(facultiesRes.data);
+      setTeachers(teachersRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -199,6 +202,14 @@ function StudentManagement() {
         newErrors.Email = 'Email không đúng định dạng';
       } else if (formData.Email.length > 100) {
         newErrors.Email = 'Email không được vượt quá 100 ký tự';
+      } else {
+        // Validate trùng email với giảng viên
+        const duplicateEmailTeacher = teachers.find(
+          teacher => teacher.Email === formData.Email
+        );
+        if (duplicateEmailTeacher) {
+          newErrors.Email = 'Email đã tồn tại trong hệ thống (đã được giảng viên sử dụng)';
+        }
       }
     }
 
@@ -221,6 +232,14 @@ function StudentManagement() {
           const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
           if (!phoneRegex.test(formData.SoDienThoai)) {
             newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84)';
+          } else {
+            // Validate trùng số điện thoại với giảng viên
+            const duplicatePhoneTeacher = teachers.find(
+              teacher => teacher.SoDienThoai === formData.SoDienThoai
+            );
+            if (duplicatePhoneTeacher) {
+              newErrors.SoDienThoai = 'Số điện thoại đã tồn tại trong hệ thống (đã được giảng viên sử dụng)';
+            }
           }
         }
       }
