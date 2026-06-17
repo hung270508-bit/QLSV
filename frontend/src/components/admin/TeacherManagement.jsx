@@ -202,9 +202,10 @@ function TeacherManagement() {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // Chuẩn hóa tên trước khi gửi
+    // Chuẩn hóa tên và ngày sinh trước khi gửi
     const formattedName = formatTitleCase(formData.HoTen.trim());
-    const dataToSubmit = { ...formData, HoTen: formattedName };
+    const formattedNgaySinh = formData.NgaySinh ? formData.NgaySinh.split('T')[0] : '';
+    const dataToSubmit = { ...formData, HoTen: formattedName, NgaySinh: formattedNgaySinh };
 
     try {
       if (editingTeacher) {
