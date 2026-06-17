@@ -249,7 +249,7 @@ function TeacherManagement() {
       MaKhoa: teacher.MaKhoa || '',
       TrangThai: teacher.TrangThai || 'Đang dạy',
       GioiTinh: teacher.GioiTinh || '',
-      NgaySinh: teacher.NgaySinh || ''
+      NgaySinh: teacher.NgaySinh ? teacher.NgaySinh.split('T')[0] : ''
     });
     setShowModal(true);
   };
