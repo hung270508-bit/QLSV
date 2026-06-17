@@ -299,8 +299,8 @@ function AnnouncementManagement() {
                 filteredAnnouncements.map((announcement, index) => (
                   <motion.tr
                     key={announcement.MaThongBao}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleViewDetail(announcement)}
                     className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"

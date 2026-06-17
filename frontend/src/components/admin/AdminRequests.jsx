@@ -100,8 +100,8 @@ function AdminRequests() {
   });
 
   const rowVariants = {
-    hidden: { opacity: 0, y: 8 },
-    visible: (i) => ({ opacity: 1, y: 0, transition: { delay: i * 0.04, duration: 0.2 } }),
+    hidden: { opacity: 0, x: -20 },
+    visible: (i) => ({ opacity: 1, x: 0, transition: { delay: i * 0.04, duration: 0.2 } }),
   };
 
   if (loading) return <RequestsSkeleton />;

@@ -325,8 +325,8 @@ function TeachingAssignment() {
                 filteredAssignments.map((assign, index) => (
                   <motion.tr
                     key={assign.MaLopHocPhan}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
                     className="hover:bg-orange-50/40 transition-colors"
                   >

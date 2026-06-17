@@ -51,23 +51,32 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
 
   const config = typeConfig[type] || typeConfig.success;
   const Icon = config.icon;
+  const isSuccess = type === 'success';
 
   return (
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 0, y: -50, x: '-50%' }}
-          animate={{ opacity: 1, y: 0, x: '-50%' }}
-          exit={{ opacity: 0, y: -50, x: '-50%' }}
-          className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 ${config.bg} text-white`}
+          initial={{ opacity: 0, y: -50, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.9 }}
+          className={`fixed top-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 ${
+            isSuccess 
+              ? 'bg-white border-green-500 text-gray-800' 
+              : 'bg-white border-red-500 text-gray-800'
+          }`}
         >
-          <Icon className="w-5 h-5 flex-shrink-0" />
-          <span className="font-semibold">{message}</span>
-          <button
-            onClick={onClose}
-            className="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors"
-          >
-            <X className="w-4 h-4" />
+          {isSuccess ? (
+            <div className="bg-green-100 p-2 rounded-full"><CheckCircle className="w-6 h-6 text-green-600" /></div>
+          ) : (
+            <div className="bg-red-100 p-2 rounded-full"><Icon className="w-6 h-6 text-red-600" /></div>
+          )}
+          <div>
+            <p className="font-bold text-sm">{isSuccess ? 'Thành công' : 'Thất bại'}</p>
+            <p className="text-gray-600 font-medium text-sm">{message}</p>
+          </div>
+          <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
           </button>
         </motion.div>
       )}
@@ -104,8 +113,8 @@ export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xá
               <p className="text-gray-600 mb-6">{message}</p>
               <div className="flex gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={onConfirm}
                   className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
                 >
@@ -156,8 +165,8 @@ export const SuccessDialog = ({ show, message, onClose, title = 'Thông báo' })
               </div>
               <p className="text-gray-600 mb-6">{message}</p>
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={onClose}
                 className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
               >
@@ -199,8 +208,8 @@ export const ErrorDialog = ({ show, message, onClose, title = 'Lỗi' }) => {
               </div>
               <p className="text-gray-600 mb-6">{message}</p>
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={onClose}
                 className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
               >
@@ -242,8 +251,8 @@ export const InfoDialog = ({ show, message, onClose, title = 'Thông tin' }) => 
               </div>
               <p className="text-gray-600 mb-6">{message}</p>
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={onClose}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl font-semibold shadow-lg transition-all"
               >

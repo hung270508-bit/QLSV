@@ -470,16 +470,31 @@ function ClassManagement() {
 
   return (
     <div className="space-y-8">
+      {/* Toast Notification */}
+      <Toast 
+        show={toast.show} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast({ ...toast, show: false })} 
+      />
+
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="text-white">
-            <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
-              <Users className="w-8 h-8" />
+      <motion.div
+        initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6"
+      >
+        <div className="flex items-center gap-5 relative z-10">
+          <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-sm">
+            <Users className="w-10 h-10 text-white" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-1">
               Quản lý lớp học
             </h2>
             <p className="text-orange-100 text-lg">Thêm, sửa và xem chi tiết thông tin lớp học</p>
           </div>
+        </div>
+        <div className="relative z-10">
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
             whileTap={{ scale: 0.95 }}
@@ -490,10 +505,11 @@ function ClassManagement() {
             Thêm lớp học
           </motion.button>
         </div>
-      </div>
+        <Users className="absolute -right-6 -bottom-6 w-48 h-48 text-white opacity-10 transform rotate-12" />
+      </motion.div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -503,7 +519,7 @@ function ClassManagement() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
-              className="w-full pl-12 pr-10 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-gray-700"
+              className="w-full pl-11 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all text-gray-700 placeholder:font-semibold"
             />
             {searchTerm && (
               <button
@@ -519,12 +535,13 @@ function ClassManagement() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${hasActiveFilters
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
+                hasActiveFilters 
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
+                  : 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100'
+              }`}
             >
-              <Filter className="w-5 h-5" />
+              <Filter className="w-4 h-4" />
               Bộ lọc
               {activeFilterCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
@@ -537,9 +554,9 @@ function ClassManagement() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={clearFilters}
-                className="px-5 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors flex items-center gap-2 border-2 border-red-200/60"
+                className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-100"
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle className="w-4 h-4" />
                 Xóa lọc
               </motion.button>
             )}
@@ -628,10 +645,10 @@ function ClassManagement() {
                 filteredClasses.map((cls, index) => (
                   <motion.tr
                     key={cls.MaLop}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
+                    className="border-b border-gray-100 hover:bg-orange-50/20 transition-colors cursor-pointer"
                     onClick={() => handleViewDetails(cls)}
                   >
                     <td className="py-5 px-6">

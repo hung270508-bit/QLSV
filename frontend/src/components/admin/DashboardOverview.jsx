@@ -380,9 +380,9 @@ function DashboardOverview({ onNavigate }) {
                     students.slice(0, 10).map((student, i) => (
                       <motion.tr
                         key={student.MSSV}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.03 }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
                         className="border-b border-gray-50 hover:bg-orange-50/40 transition-colors duration-150"
                       >
                         <td className="py-3.5 px-6">
@@ -427,9 +427,9 @@ function DashboardOverview({ onNavigate }) {
                     teachers.slice(0, 10).map((teacher, i) => (
                       <motion.tr
                         key={teacher.MaGiangVien}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.03 }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
                         className="border-b border-gray-50 hover:bg-orange-50/40 transition-colors duration-150"
                       >
                         <td className="py-3.5 px-6">

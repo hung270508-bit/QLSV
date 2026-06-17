@@ -725,7 +725,7 @@ function GradeManagement() {
       </div>
 
       {/* ── Thống kê ── */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
         className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
       >
         <div className="flex items-center gap-2 mb-4">

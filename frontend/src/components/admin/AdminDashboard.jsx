@@ -240,9 +240,9 @@ useEffect(() => {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeMenu}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.22, ease: 'easeOut' }}
               className="h-full"
             >
