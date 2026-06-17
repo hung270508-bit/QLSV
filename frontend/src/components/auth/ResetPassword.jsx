@@ -5,6 +5,34 @@ import { Lock, Eye, EyeOff, Loader2, CheckCircle, XCircle, ArrowLeft } from 'luc
 import axios from 'axios';
 import API_URL from '../../api';
 
+const getPasswordStrength = (pwd) => {
+  if (!pwd) return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-400' };
+  let score = 0;
+  
+  if (pwd.length >= 8) score++;
+  if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(pwd)) score++;
+  
+  if (pwd.length < 6 && score > 1) {
+    score = 1;
+  }
+  
+  switch (score) {
+    case 0:
+    case 1:
+      return { score, label: 'Yếu', color: 'bg-red-500', textClass: 'text-red-500' };
+    case 2:
+      return { score, label: 'Trung bình', color: 'bg-orange-500', textClass: 'text-orange-500' };
+    case 3:
+      return { score, label: 'Mạnh', color: 'bg-blue-500', textClass: 'text-blue-500' };
+    case 4:
+      return { score, label: 'Rất mạnh', color: 'bg-green-500', textClass: 'text-green-500' };
+    default:
+      return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-400' };
+  }
+};
+
 function ResetPassword() {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -53,6 +81,30 @@ function ResetPassword() {
 
     if (trimmedNew.length > 20) {
       setMessage({ type: 'error', text: 'Mật khẩu chỉ được tối đa 20 ký tự!' });
+      setLoading(false);
+      return;
+    }
+
+    if (!/[a-z]/.test(trimmedNew)) {
+      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một chữ thường!' });
+      setLoading(false);
+      return;
+    }
+
+    if (!/[A-Z]/.test(trimmedNew)) {
+      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một chữ hoa!' });
+      setLoading(false);
+      return;
+    }
+
+    if (!/[0-9]/.test(trimmedNew)) {
+      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một số!' });
+      setLoading(false);
+      return;
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(trimmedNew)) {
+      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một ký tự đặc biệt!' });
       setLoading(false);
       return;
     }
@@ -214,6 +266,28 @@ function ResetPassword() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </motion.button>
               </div>
+              {newPassword && (
+                <div className="mt-2.5 space-y-1.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 font-medium">Độ mạnh mật khẩu:</span>
+                    <span className={`font-bold transition-colors duration-300 ${getPasswordStrength(newPassword).textClass}`}>
+                      {getPasswordStrength(newPassword).label}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex gap-1">
+                    {[1, 2, 3, 4].map((index) => (
+                      <div
+                        key={index}
+                        className={`h-full flex-1 transition-all duration-300 ${
+                          index <= getPasswordStrength(newPassword).score
+                            ? getPasswordStrength(newPassword).color
+                            : 'bg-gray-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
 
             <motion.div
