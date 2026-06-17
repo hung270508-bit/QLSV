@@ -644,27 +644,6 @@ function TeacherManagement() {
               <input type="hidden" value={formData.MaGiangVien} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa chuyên môn</label>
-                  <select
-                    value={formData.MaKhoa}
-                    onChange={(e) => {
-                      handleKhoaChange(e);
-                      if (errors.MaKhoa) setErrors({ ...errors, MaKhoa: '' });
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${
-                      errors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
-                  >
-                    <option value="">Chọn khoa</option>
-                    {uniqueFaculties.map((faculty) => (
-                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                        {faculty.TenKhoa}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.MaKhoa && <p className="text-red-500 text-sm mt-1">{errors.MaKhoa}</p>}
-                </div>
-                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
                   <input
                     type="text"
@@ -682,6 +661,33 @@ function TeacherManagement() {
                     }`}
                   />
                   {errors.HoTen && <p className="text-red-500 text-sm mt-1">{errors.HoTen}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                  <input
+                    type="date"
+                    value={formData.NgaySinh}
+                    onChange={(e) => {
+                      setFormData({ ...formData, NgaySinh: e.target.value });
+                      if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    } focus:bg-white text-gray-700`}
+                  />
+                  {errors.NgaySinh && <p className="text-red-500 text-sm mt-1">{errors.NgaySinh}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
+                  <select
+                    value={formData.GioiTinh}
+                    onChange={(e) => setFormData({ ...formData, GioiTinh: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
+                  >
+                    <option value="">Chọn giới tính</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
@@ -713,32 +719,26 @@ function TeacherManagement() {
                   />
                   {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa chuyên môn</label>
                   <select
-                    value={formData.GioiTinh}
-                    onChange={(e) => setFormData({ ...formData, GioiTinh: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-colors text-gray-700"
-                  >
-                    <option value="">Chọn giới tính</option>
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
-                  <input
-                    type="date"
-                    value={formData.NgaySinh}
+                    value={formData.MaKhoa}
                     onChange={(e) => {
-                      setFormData({ ...formData, NgaySinh: e.target.value });
-                      if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '' });
+                      handleKhoaChange(e);
+                      if (errors.MaKhoa) setErrors({ ...errors, MaKhoa: '' });
                     }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
-                      errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    } focus:bg-white text-gray-700`}
-                  />
-                  {errors.NgaySinh && <p className="text-red-500 text-sm mt-1">{errors.NgaySinh}</p>}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${
+                      errors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                    }`}
+                  >
+                    <option value="">Chọn khoa</option>
+                    {uniqueFaculties.map((faculty) => (
+                      <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                        {faculty.TenKhoa}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.MaKhoa && <p className="text-red-500 text-sm mt-1">{errors.MaKhoa}</p>}
                 </div>
                 {editingTeacher && (
                   <div className="md:col-span-2">
