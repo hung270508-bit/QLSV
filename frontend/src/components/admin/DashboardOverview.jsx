@@ -22,10 +22,14 @@ const scaleIn = {
 /* ─── Custom Tooltip ──────────────────────────────────────────────── */
 const CustomBarTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
+
+  const order = ['Sinh viên', 'Giảng viên', 'Lớp học'];
+  const sortedPayload = [...payload].sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+
   return (
     <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-2xl p-4 min-w-[160px]">
       <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
-      {payload.map((p, i) => (
+      {sortedPayload.map((p, i) => (
         <div key={i} className="flex items-center gap-2 mb-1">
           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.fill }} />
           <span className="text-xs text-gray-600">{p.name}</span>
