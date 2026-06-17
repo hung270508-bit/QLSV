@@ -170,19 +170,27 @@ function TeacherManagement() {
       }
     }
 
-    // Validate Ngày sinh - phải từ 18 tuổi trở lên
-    if (formData.NgaySinh) {
+    // Validate Ngày sinh
+    if (!formData.NgaySinh) {
+      newErrors.NgaySinh = 'Ngày sinh không được để trống';
+    } else {
       const birthDate = new Date(formData.NgaySinh);
       const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-      
-      if (age < 18) {
-        newErrors.NgaySinh = 'Giảng viên phải từ 18 tuổi trở lên';
+      if (isNaN(birthDate.getTime())) {
+        newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
+      } else {
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        
+        if (age < 18) {
+          newErrors.NgaySinh = 'Ngày sinh không hợp lệ (giảng viên phải từ 18 tuổi trở lên)';
+        } else if (age > 100) {
+          newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
+        }
       }
     }
 
