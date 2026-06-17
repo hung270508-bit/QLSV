@@ -336,7 +336,7 @@ app.post('/api/forgot-password', (req, res) => {
                             <p style="color: #9ca3af; font-size: 13px; border-top: 1px solid #f3f4f6; padding-top: 20px; margin-bottom: 0;">Trân trọng,<br><strong style="color: #4b5563;">Hệ thống Quản lý Sinh viên</strong></p>
                         </div>
                         <!-- Footer -->
-                        <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #f3f4f6;">
+                        <div style="background-color: #ffffff; padding: 20px 30px; text-align: center; border-top: 1px solid #f3f4f6;">
                             <p style="color: #9ca3af; font-size: 12px; margin: 0;">Đây là email tự động từ hệ thống, vui lòng không trả lời trực tiếp thư này.</p>
                         </div>
                     </div>
