@@ -23,10 +23,20 @@ function AdminTrainingPoints() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
+  // Năm học (niên khóa) hiện tại được tính tự động theo ngày hệ thống,
+  // tránh để Admin gõ tay -> không thể tạo niên khóa quá khứ/tương lai.
+  // Niên khóa VN thường bắt đầu từ tháng 9 (VD: 09/2025 -> 2025-2026, 06/2026 vẫn thuộc 2025-2026)
+  const getCurrentNienKhoa = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // 1-12
+    return month >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  };
+
   // === STATES: ĐỢT ĐÁNH GIÁ ===
   const [periods, setPeriods] = useState([]);
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
-  const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: '2025-2026', NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
+  const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
   const [periodFormErrors, setPeriodFormErrors] = useState({});
 
   // === STATES: XÉT DUYỆT ĐIỂM ===
@@ -76,22 +86,6 @@ function AdminTrainingPoints() {
   const minNgay = nienKhoaRange ? `${nienKhoaRange.start}-01-01` : '';
   const maxNgay = nienKhoaRange ? `${nienKhoaRange.end}-12-31` : '';
 
-  // Khi đổi Năm học: nếu ngày đã chọn rơi ngoài niên khóa mới thì xóa để bắt nhập lại
-  const handleNamHocChange = (value) => {
-    setPeriodForm(prev => {
-      const range = parseNienKhoa(value);
-      let { NgayBatDau, NgayKetThuc } = prev;
-      if (range) {
-        const min = `${range.start}-01-01`;
-        const max = `${range.end}-12-31`;
-        if (NgayBatDau && (NgayBatDau < min || NgayBatDau > max)) NgayBatDau = '';
-        if (NgayKetThuc && (NgayKetThuc < min || NgayKetThuc > max)) NgayKetThuc = '';
-      }
-      return { ...prev, NamHoc: value, NgayBatDau, NgayKetThuc };
-    });
-    setPeriodFormErrors(prev => ({ ...prev, NamHoc: '', NgayBatDau: '', NgayKetThuc: '' }));
-  };
-
   // Khi chọn ngày: chặn ngay nếu nằm ngoài niên khóa, kèm thông báo lỗi rõ ràng
   const handleNgayChange = (field, value) => {
     setPeriodFormErrors(prev => ({ ...prev, [field]: '' }));
@@ -127,7 +121,7 @@ function AdminTrainingPoints() {
       
       // Thành công: Đóng Modal, reset form, load lại data và báo thành công
       setIsPeriodModalOpen(false);
-      setPeriodForm({ HocKy: 'HK1', NamHoc: '2025-2026', NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
+      setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
       setPeriodFormErrors({});
       fetchData(); 
       showToast(response.data.message, 'success');
@@ -322,7 +316,11 @@ function AdminTrainingPoints() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-800">Danh sách các đợt đã thiết lập</h3>
               <button 
-                onClick={() => setIsPeriodModalOpen(true)}
+                onClick={() => {
+                  setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
+                  setPeriodFormErrors({});
+                  setIsPeriodModalOpen(true);
+                }}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-sm flex items-center gap-2"
               >
                 <PlusCircle className="w-5 h-5" /> Mở đợt mới
@@ -517,17 +515,18 @@ function AdminTrainingPoints() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Năm học</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Năm học (Niên khóa)</label>
                     <input
                       type="text"
-                      placeholder="VD: 2025-2026"
                       value={periodForm.NamHoc}
-                      onChange={e => handleNamHocChange(e.target.value)}
-                      className={`w-full p-3 bg-gray-50 border rounded-xl outline-none font-bold text-gray-700 ${!nienKhoaRange && periodForm.NamHoc ? 'border-red-400 focus:border-red-500' : 'border-gray-200'}`}
+                      readOnly
+                      disabled
+                      className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl outline-none font-bold text-gray-500 cursor-not-allowed"
                     />
-                    {!nienKhoaRange && periodForm.NamHoc && (
-                      <p className="text-red-500 text-xs mt-1.5 font-medium">Định dạng phải là YYYY-YYYY, VD: 2025-2026</p>
-                    )}
+                    <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      Niên khóa tự động tính theo năm hiện tại.
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
