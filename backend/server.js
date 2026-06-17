@@ -940,7 +940,7 @@ app.get('/api/subjects/:maMH/grade-stats', (req, res) => {
                SUM(CASE WHEN d.DiemTong >= 7.0 AND d.DiemTong < 8.5 THEN 1 ELSE 0 END) as good,
                SUM(CASE WHEN d.DiemTong >= 5.0 AND d.DiemTong < 7.0 THEN 1 ELSE 0 END) as averageGrade,
                SUM(CASE WHEN d.DiemTong < 5.0 THEN 1 ELSE 0 END) as fail
-        FROM diem d JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan WHERE lhp.MaMonHoc = ? OR d.MaMonHoc = ?
+        FROM diem d LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan WHERE lhp.MaMonHoc = ? OR d.MaLopHocPhan = ?
     `;
     db.query(query, [req.params.maMH, req.params.maMH], (err, rows) => {
         if (err) return res.status(500).json({ success: false });
