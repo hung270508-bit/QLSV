@@ -8,16 +8,16 @@ import API_URL from '../../api';
 const getPasswordStrength = (pwd) => {
   if (!pwd) return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-400' };
   let score = 0;
-  
+
   if (pwd.length >= 8) score++;
   if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
   if (/[0-9]/.test(pwd)) score++;
   if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(pwd)) score++;
-  
+
   if (pwd.length < 6 && score > 1) {
     score = 1;
   }
-  
+
   switch (score) {
     case 0:
     case 1:
@@ -43,68 +43,58 @@ function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [success, setSuccess] = useState(false);
+  const [errors, setErrors] = useState({ newPassword: '', confirmPassword: '' });
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    const trimmedNew = newPassword.trim();
-    const trimmedConfirm = confirmPassword.trim();
+    const newErrors = { newPassword: '', confirmPassword: '' };
+    let hasError = false;
 
-    setNewPassword(trimmedNew);
-    setConfirmPassword(trimmedConfirm);
-
-    if (!trimmedNew || !trimmedConfirm) {
-      setMessage({ type: 'error', text: 'Vui lòng nhập đầy đủ mật khẩu!' });
-      setLoading(false);
-      return;
+    if (!newPassword) {
+      newErrors.newPassword = 'Vui lòng nhập mật khẩu';
+      hasError = true;
+    } else if (/\s/.test(newPassword)) {
+      newErrors.newPassword = 'Mật khẩu không được chứa khoảng trắng!';
+      hasError = true;
+    } else {
+      if (newPassword.length < 8) {
+        newErrors.newPassword = 'Mật khẩu phải có ít nhất 8 ký tự!';
+        hasError = true;
+      } else if (newPassword.length > 20) {
+        newErrors.newPassword = 'Mật khẩu chỉ được tối đa 20 ký tự!';
+        hasError = true;
+      } else if (!/[a-z]/.test(newPassword)) {
+        newErrors.newPassword = 'Mật khẩu phải chứa ít nhất một chữ thường!';
+        hasError = true;
+      } else if (!/[A-Z]/.test(newPassword)) {
+        newErrors.newPassword = 'Mật khẩu phải chứa ít nhất một chữ hoa!';
+        hasError = true;
+      } else if (!/[0-9]/.test(newPassword)) {
+        newErrors.newPassword = 'Mật khẩu phải chứa ít nhất một số!';
+        hasError = true;
+      } else if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(newPassword)) {
+        newErrors.newPassword = 'Mật khẩu phải chứa ít nhất một ký tự đặc biệt!';
+        hasError = true;
+      }
     }
 
-    if (trimmedNew !== trimmedConfirm) {
-      setMessage({ type: 'error', text: 'Mật khẩu không khớp!' });
-      setLoading(false);
-      return;
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Vui lòng nhập mật khẩu';
+      hasError = true;
+    } else if (/\s/.test(confirmPassword)) {
+      newErrors.confirmPassword = 'Mật khẩu không được chứa khoảng trắng!';
+      hasError = true;
+    } else if (newPassword !== confirmPassword) {
+      newErrors.confirmPassword = 'Mật khẩu không khớp!';
+      hasError = true;
     }
 
-    if (/\s{2,}/.test(newPassword)) {
-      setMessage({ type: 'error', text: 'Mật khẩu không được chứa quá nhiều khoảng trắng liên tiếp!' });
-      setLoading(false);
-      return;
-    }
+    setErrors(newErrors);
 
-    if (trimmedNew.length < 8) {
-      setMessage({ type: 'error', text: 'Mật khẩu phải có ít nhất 8 ký tự!' });
-      setLoading(false);
-      return;
-    }
-
-    if (trimmedNew.length > 20) {
-      setMessage({ type: 'error', text: 'Mật khẩu chỉ được tối đa 20 ký tự!' });
-      setLoading(false);
-      return;
-    }
-
-    if (!/[a-z]/.test(trimmedNew)) {
-      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một chữ thường!' });
-      setLoading(false);
-      return;
-    }
-
-    if (!/[A-Z]/.test(trimmedNew)) {
-      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một chữ hoa!' });
-      setLoading(false);
-      return;
-    }
-
-    if (!/[0-9]/.test(trimmedNew)) {
-      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một số!' });
-      setLoading(false);
-      return;
-    }
-
-    if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(trimmedNew)) {
-      setMessage({ type: 'error', text: 'Mật khẩu phải chứa ít nhất một ký tự đặc biệt!' });
+    if (hasError) {
       setLoading(false);
       return;
     }
@@ -112,7 +102,7 @@ function ResetPassword() {
     try {
       const response = await axios.post(`${API_URL}/api/reset-password`, {
         token,
-        newPassword: trimmedNew
+        newPassword
       });
 
       if (response.data.success) {
@@ -217,18 +207,17 @@ function ResetPassword() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`p-4 rounded-xl text-sm mb-6 text-center font-medium ${
-              message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 
+            className={`p-4 rounded-xl text-sm mb-6 text-center font-medium ${message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' :
               message.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
-              'bg-blue-50 text-blue-600 border border-blue-200'
-            }`}
+                'bg-blue-50 text-blue-600 border border-blue-200'
+              }`}
           >
             {message.text}
           </motion.div>
         )}
 
         {!success && (
-          <form onSubmit={handleResetPassword} className="space-y-5">
+          <form onSubmit={handleResetPassword} noValidate className="space-y-5">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -245,16 +234,10 @@ function ResetPassword() {
                   onChange={(e) => {
                     const val = e.target.value;
                     setNewPassword(val);
-                    if (val.length > 20) {
-                      setMessage({ type: 'error', text: 'Mật khẩu chỉ được tối đa 20 ký tự!' });
-                    } else {
-                      setMessage({ type: '', text: '' });
-                    }
+                    setErrors(prev => ({ ...prev, newPassword: '' }));
                   }}
-                  onBlur={() => setNewPassword(newPassword.trim())}
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                   placeholder="Nhập mật khẩu mới..."
-                  required
                 />
                 <motion.button
                   type="button"
@@ -278,15 +261,23 @@ function ResetPassword() {
                     {[1, 2, 3, 4].map((index) => (
                       <div
                         key={index}
-                        className={`h-full flex-1 transition-all duration-300 ${
-                          index <= getPasswordStrength(newPassword).score
-                            ? getPasswordStrength(newPassword).color
-                            : 'bg-gray-200'
-                        }`}
+                        className={`h-full flex-1 transition-all duration-300 ${index <= getPasswordStrength(newPassword).score
+                          ? getPasswordStrength(newPassword).color
+                          : 'bg-gray-200'
+                          }`}
                       />
                     ))}
                   </div>
                 </div>
+              )}
+              {errors.newPassword && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                >
+                  {errors.newPassword}
+                </motion.p>
               )}
             </motion.div>
 
@@ -306,16 +297,10 @@ function ResetPassword() {
                   onChange={(e) => {
                     const val = e.target.value;
                     setConfirmPassword(val);
-                    if (val.length > 20) {
-                      setMessage({ type: 'error', text: 'Mật khẩu chỉ được tối đa 20 ký tự!' });
-                    } else {
-                      setMessage({ type: '', text: '' });
-                    }
+                    setErrors(prev => ({ ...prev, confirmPassword: '' }));
                   }}
-                  onBlur={() => setConfirmPassword(confirmPassword.trim())}
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700 group-hover:border-gray-300"
                   placeholder="Nhập lại mật khẩu mới..."
-                  required
                 />
                 <motion.button
                   type="button"
@@ -327,6 +312,15 @@ function ResetPassword() {
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </motion.button>
               </div>
+              {errors.confirmPassword && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                >
+                  {errors.confirmPassword}
+                </motion.p>
+              )}
             </motion.div>
 
             <motion.button

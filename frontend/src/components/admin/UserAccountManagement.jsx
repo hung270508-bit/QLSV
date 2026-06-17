@@ -9,16 +9,16 @@ import ModalPortal from '../common/ModalPortal';
 const getPasswordStrength = (pwd) => {
   if (!pwd) return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-400' };
   let score = 0;
-  
+
   if (pwd.length >= 8) score++;
   if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
   if (/[0-9]/.test(pwd)) score++;
   if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\';/`~]/.test(pwd)) score++;
-  
+
   if (pwd.length < 5 && score > 1) {
     score = 1;
   }
-  
+
   switch (score) {
     case 0:
     case 1:
@@ -92,8 +92,10 @@ function UserAccountManagement() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.password?.trim()) {
-      errors.password = 'Mật khẩu không được để trống';
+    if (!formData.password) {
+      errors.password = 'Vui lòng nhập mật khẩu';
+    } else if (/\s/.test(formData.password)) {
+      errors.password = 'Mật khẩu không được chứa khoảng trắng';
     } else {
       if (formData.password.length < 5) {
         errors.password = 'Mật khẩu phải có ít nhất 5 ký tự';
@@ -358,7 +360,7 @@ function UserAccountManagement() {
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} noValidate className="p-6 space-y-6">
                   {/* Account Name Readonly */}
                   <div className="bg-orange-50 border border-orange-100 rounded-xl px-5 py-4 text-sm flex justify-between items-center">
                     <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Tài khoản thao tác:</span>
@@ -405,11 +407,10 @@ function UserAccountManagement() {
                           {[1, 2, 3, 4].map((index) => (
                             <div
                               key={index}
-                              className={`h-full flex-1 transition-all duration-300 ${
-                                index <= getPasswordStrength(formData.password).score
+                              className={`h-full flex-1 transition-all duration-300 ${index <= getPasswordStrength(formData.password).score
                                   ? getPasswordStrength(formData.password).color
                                   : 'bg-gray-200'
-                              }`}
+                                }`}
                             />
                           ))}
                         </div>
