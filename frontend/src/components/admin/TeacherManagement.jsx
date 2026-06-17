@@ -4,6 +4,7 @@ import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileTe
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
+import Pagination from '../common/Pagination';
 import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
@@ -65,6 +66,7 @@ function TeacherManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -346,16 +348,19 @@ function TeacherManagement() {
 
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
+    setCurrentPage(1);
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
     setDisplaySearchTerm('');
+    setCurrentPage(1);
   };
 
   const handleApplyFilters = () => {
     setFilters({ ...displayFilters });
     setShowFilters(false);
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
@@ -363,7 +368,16 @@ function TeacherManagement() {
     setDisplayFilters({ facultyFilter: '', statusFilter: '' });
     setSearchTerm('');
     setDisplaySearchTerm('');
+    setCurrentPage(1);
   };
+
+  // Pagination calculations
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredTeachers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
 
   const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
   const hasActiveFilters = filters.facultyFilter || filters.statusFilter || searchTerm.trim();
@@ -542,8 +556,8 @@ function TeacherManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredTeachers.length > 0 ? (
-                filteredTeachers.map((teacher, index) => (
+              {currentItems.length > 0 ? (
+                currentItems.map((teacher, index) => (
                   <motion.tr
                     key={teacher.MaGiangVien}
                     initial={{ opacity: 0, x: -20 }}
@@ -621,6 +635,12 @@ function TeacherManagement() {
             </tbody>
           </table>
         </div>
+        
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Form Modal (Add / Edit) */}

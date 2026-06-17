@@ -8,6 +8,7 @@ import {
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
+import Pagination from '../common/Pagination';
 import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
@@ -95,6 +96,7 @@ function SubjectManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -543,45 +545,11 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
           </table>
         </div>
 
-        {/* Component Phân trang */}
-        {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <div className="text-sm text-gray-500">
-              Hiển thị <span className="font-medium text-gray-700">{indexOfFirstItem + 1}</span> đến <span className="font-medium text-gray-700">{Math.min(indexOfLastItem, filteredSubjects.length)}</span> trong số <span className="font-medium text-gray-700">{filteredSubjects.length}</span> môn học
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-1">
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
-                      currentPage === i + 1
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20'
-                        : 'text-gray-600 hover:bg-gray-100 border border-transparent'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Modal Thêm/Sửa */}

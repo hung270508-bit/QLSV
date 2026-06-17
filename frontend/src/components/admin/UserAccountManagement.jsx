@@ -5,6 +5,7 @@ import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock } from 'lucide-r
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
+import Pagination from '../common/Pagination';
 
 const getPasswordStrength = (pwd) => {
   if (!pwd) return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-400' };
@@ -176,6 +177,18 @@ function UserAccountManagement() {
     return 0;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, sortBy]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
   };
@@ -288,8 +301,8 @@ function UserAccountManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user, index) => (
+                {currentUsers.length > 0 ? (
+                  currentUsers.map((user, index) => (
                     <motion.tr
                       key={user.TaiKhoan}
                       initial={{ opacity: 0, x: -20 }}
@@ -334,6 +347,16 @@ function UserAccountManagement() {
             </table>
           </div>
         </div>
+
+        {totalPages > 1 && (
+          <div className="mt-4 pb-4">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
 
       {/* Modal Chỉnh Sửa Mật Khẩu (Khóa quyền) */}

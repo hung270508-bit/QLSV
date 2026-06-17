@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { TrainingPointsSkeleton } from '../common/AdminSkeleton';
+import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator, 
@@ -167,6 +168,23 @@ function AdminTrainingPoints() {
     return true;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, filterHocKy, filterTrangThai]);
+
+  const indexOfLastPeriod = currentPage * itemsPerPage;
+  const indexOfFirstPeriod = indexOfLastPeriod - itemsPerPage;
+  const currentPeriods = periods.slice(indexOfFirstPeriod, indexOfLastPeriod);
+  const totalPagesPeriods = Math.ceil(periods.length / itemsPerPage);
+
+  const indexOfLastReview = currentPage * itemsPerPage;
+  const indexOfFirstReview = indexOfLastReview - itemsPerPage;
+  const currentReviews = filteredData.slice(indexOfFirstReview, indexOfLastReview);
+  const totalPagesReviews = Math.ceil(filteredData.length / itemsPerPage);
+
   const uniqueSemesters = [...new Set(pointsData.map(item => item.HocKy))];
 
   const handleOpenReviewModal = (record) => {
@@ -324,7 +342,7 @@ function AdminTrainingPoints() {
                     </tr>
                   </thead>
                   <tbody>
-                    {periods.map(p => (
+                    {currentPeriods.map(p => (
                       <tr key={p.MaDotDanhGia} className="border-b border-gray-50 hover:bg-orange-50/20 transition-colors">
                         <td className="p-4 font-bold text-gray-400">#{p.MaDotDanhGia}</td>
                         <td className="p-4 font-bold text-gray-800">
@@ -360,6 +378,16 @@ function AdminTrainingPoints() {
                 </table>
               </div>
             </div>
+            
+            {totalPagesPeriods > 1 && (
+              <div className="mt-4 pb-4">
+                <Pagination 
+                  currentPage={currentPage}
+                  totalPages={totalPagesPeriods}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -409,7 +437,7 @@ function AdminTrainingPoints() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredData.map((item) => (
+                    {currentReviews.map((item) => (
                       <tr key={item.MaDanhGia} className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
                         <td className="p-4">
                           <p className="font-bold text-gray-800">{item.HoTen}</p>
@@ -453,6 +481,16 @@ function AdminTrainingPoints() {
                 </table>
               </div>
             </div>
+
+            {totalPagesReviews > 1 && (
+              <div className="mt-4 pb-4">
+                <Pagination 
+                  currentPage={currentPage}
+                  totalPages={totalPagesReviews}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

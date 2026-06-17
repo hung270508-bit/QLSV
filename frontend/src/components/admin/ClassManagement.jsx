@@ -4,6 +4,7 @@ import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, BarChart3, Boo
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
+import Pagination from '../common/Pagination';
 import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
@@ -107,6 +108,7 @@ function ClassManagement() {
     setDisplayFilters({ facultyFilter: '', nienKhoaFilter: '' });
     setSearchTerm('');
     setDisplaySearchTerm('');
+    setCurrentPage(1);
   };
 
   const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.nienKhoaFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
@@ -116,6 +118,7 @@ function ClassManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -453,9 +456,17 @@ function ClassManagement() {
     return matchesSearch && matchesFaculty && matchesNienKhoa;
   });
 
-  const handleSearch = () => setSearchTerm(displaySearchTerm);
-  const handleClearSearch = () => { setSearchTerm(''); setDisplaySearchTerm(''); };
-  const handleApplyFilters = () => { setFilters({ ...displayFilters }); setShowFilters(false); };
+  const handleSearch = () => { setSearchTerm(displaySearchTerm); setCurrentPage(1); };
+  const handleClearSearch = () => { setSearchTerm(''); setDisplaySearchTerm(''); setCurrentPage(1); };
+  const handleApplyFilters = () => { setFilters({ ...displayFilters }); setShowFilters(false); setCurrentPage(1); };
+
+  // Pagination calculations
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredClasses.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredClasses.length / itemsPerPage);
 
   // Xử lý data cho thẻ select Khoa để chặn rác
 
@@ -641,8 +652,8 @@ function ClassManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredClasses.length > 0 ? (
-                filteredClasses.map((cls, index) => (
+              {currentItems.length > 0 ? (
+                currentItems.map((cls, index) => (
                   <motion.tr
                     key={cls.MaLop}
                     initial={{ opacity: 0, x: -20 }}
@@ -710,6 +721,12 @@ function ClassManagement() {
             </tbody>
           </table>
         </div>
+        
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Modal Add/Edit */}

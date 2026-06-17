@@ -4,6 +4,7 @@ import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, Bar
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast } from '../common/ModalPortal';
+import Pagination from '../common/Pagination';
 import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
@@ -67,6 +68,7 @@ function FacultyManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -255,13 +257,14 @@ function FacultyManagement() {
   const handleClearSearch = () => {
     setSearchTerm('');
     setDebouncedSearchTerm('');
+    setCurrentPage(1);
   };
 
   const handleApplyFilters = () => {
     setFilters({ ...displayFilters });
     setSortBy(displaySortBy);
     setShowFilters(false);
-
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
@@ -269,9 +272,18 @@ function FacultyManagement() {
     setDisplayFilters({ facultyFilter: '' });
     setSearchTerm('');
     setDebouncedSearchTerm('');
-    setSortBy('default'); // Thêm dòng này
-    setDisplaySortBy('default'); // Thêm dòng này
+    setSortBy('default');
+    setDisplaySortBy('default');
+    setCurrentPage(1);
   };
+
+  // Pagination calculations
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredAndSortedFaculties.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredAndSortedFaculties.length / itemsPerPage);
 
   const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
   const hasActiveFilters = filters.facultyFilter || searchTerm;
@@ -454,8 +466,8 @@ function FacultyManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredAndSortedFaculties.length > 0 ? (
-                filteredAndSortedFaculties.map((faculty, index) => (
+              {currentItems.length > 0 ? (
+                currentItems.map((faculty, index) => (
                   <motion.tr
                     key={faculty.MaKhoa}
                     initial={{ opacity: 0, x: -20 }}
@@ -499,6 +511,12 @@ function FacultyManagement() {
             </tbody>
           </table>
         </div>
+        
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Modal CRUD */}

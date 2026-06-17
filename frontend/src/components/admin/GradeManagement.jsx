@@ -8,6 +8,7 @@ import {
 import axios from 'axios';
 import { GradeSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
+import Pagination from '../common/Pagination';
 
 // ================================================================
 // Toast — góc trên phải, tự biến mất sau 4s
@@ -198,6 +199,10 @@ function GradeManagement() {
   const [showFilters, setShowFilters]             = useState(false);
   const [filters, setFilters]                     = useState({ khoaFilter: '', sectionFilter: '' });
   const [displayFilters, setDisplayFilters]       = useState({ khoaFilter: '', sectionFilter: '' });
+
+  // Pagination calculations
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Stats — khai báo riêng, không lẫn với confirm
   const [gradeStats, setGradeStats] = useState(
@@ -551,6 +556,7 @@ function GradeManagement() {
     setFilters({ khoaFilter: '', sectionFilter: '' });
     setDisplayFilters({ khoaFilter: '', sectionFilter: '' });
     setSearchTerm(''); setDisplaySearchTerm('');
+    setCurrentPage(1);
   };
 
   // ================================================================
@@ -577,6 +583,12 @@ function GradeManagement() {
   // ================================================================
   // Export CSV
   // ================================================================
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredGrades.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredGrades.length / itemsPerPage);
+
   const handleExport = () => {
     const rows = [
       ['MSSV','Sinh viên','Môn học','Khoa','Học kỳ','CC(10%)','BT(15%)','GK(25%)','CK(50%)','TB','GPA','Điểm chữ','Xếp loại'],
@@ -656,7 +668,12 @@ function GradeManagement() {
               placeholder="Tìm theo MSSV, tên sinh viên, tên môn, khoa, mã lớp học phần..."
               value={displaySearchTerm}
               onChange={e => setDisplaySearchTerm(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setSearchTerm(displaySearchTerm)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setSearchTerm(displaySearchTerm);
+                  setCurrentPage(1);
+                }
+              }}
               className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
             />
             <button type="button" onClick={() => setShowFilters(v => !v)}
@@ -671,7 +688,10 @@ function GradeManagement() {
             </button>
           </div>
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={() => setSearchTerm(displaySearchTerm)}
+            onClick={() => {
+              setSearchTerm(displaySearchTerm);
+              setCurrentPage(1);
+            }}
             className="flex items-center gap-2 bg-orange-500 text-white px-5 py-3 rounded-xl shadow-lg"
           ><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
           {hasActiveFilters && (
@@ -713,10 +733,10 @@ function GradeManagement() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => { setFilters({ ...displayFilters }); setShowFilters(false); }}
+              <button onClick={() => { setFilters({ ...displayFilters }); setShowFilters(false); setCurrentPage(1); }}
                 className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600"
               >Áp dụng</button>
-              <button onClick={() => setDisplayFilters({ khoaFilter: '', sectionFilter: '' })}
+              <button onClick={() => { setDisplayFilters({ khoaFilter: '', sectionFilter: '' }); setCurrentPage(1); }}
                 className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300"
               >Đặt lại</button>
             </div>
@@ -777,7 +797,7 @@ function GradeManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredGrades.length > 0 ? filteredGrades.map((grade, idx) => {
+              {currentItems.length > 0 ? currentItems.map((grade, idx) => {
                 const scored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
                 const t10    = scored ? calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy) : null;
                 const gpa    = t10 ? convertToGPA(t10) : null;
@@ -829,6 +849,12 @@ function GradeManagement() {
             </tbody>
           </table>
         </div>
+
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* ── Modal Thêm / Sửa ── */}

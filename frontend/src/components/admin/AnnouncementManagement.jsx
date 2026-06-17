@@ -5,6 +5,7 @@ import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, User
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
+import Pagination from '../common/Pagination';
 
 function AnnouncementManagement() {
   const [announcements, setAnnouncements] = useState([]);
@@ -198,6 +199,18 @@ function AnnouncementManagement() {
     return matchesSearch;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAnnouncements = filteredAnnouncements.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredAnnouncements.length / itemsPerPage);
+
   const handleSearch = () => {
     setSearchTerm(displaySearchTerm);
   };
@@ -295,8 +308,8 @@ function AnnouncementManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredAnnouncements.length > 0 ? (
-                filteredAnnouncements.map((announcement, index) => (
+              {currentAnnouncements.length > 0 ? (
+                currentAnnouncements.map((announcement, index) => (
                   <motion.tr
                     key={announcement.MaThongBao}
                     initial={{ opacity: 0, x: -20 }}
@@ -358,6 +371,16 @@ function AnnouncementManagement() {
             </tbody>
           </table>
         </div>
+        
+        {totalPages > 1 && (
+          <div className="mt-4 pb-4">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
 
       {/* Modal */}

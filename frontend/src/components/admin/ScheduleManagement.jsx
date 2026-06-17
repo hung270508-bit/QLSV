@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { ScheduleSkeleton } from '../common/AdminSkeleton';
+import Pagination from '../common/Pagination';
 import API_URL from '../../api';
 
 // Danh sách phòng học cố định hệ thống
@@ -79,15 +80,29 @@ function ScheduleManagement() {
     return `${dayName}, ${dd}/${mm}/${yyyy}`;
   };
 
-  const groupedSchedules = useMemo(() => {
-    const filtered = schedules.filter(s =>
+  const filteredSchedules = useMemo(() => {
+    return schedules.filter(s =>
       s.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.TenGiangVien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.MaLopHocPhan?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+  }, [schedules, searchTerm]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredSchedules.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
+
+  const groupedSchedules = useMemo(() => {
     const groups = {};
-    filtered.forEach(s => {
+    currentItems.forEach(s => {
       const dateKey = s.NgayHoc ? getLocalYYYYMMDD(s.NgayHoc) : 'Chưa xác định';
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(s);
@@ -98,7 +113,7 @@ function ScheduleManagement() {
     });
 
     return Object.entries(groups).sort((a, b) => new Date(b[0]) - new Date(a[0]));
-  }, [schedules, searchTerm]);
+  }, [currentItems]);
 
   // LOGIC AUTO TÍNH BUỔI HỌC DỰA VÀO TÍN CHỈ
   const selectedLHPInfo = useMemo(() => {
@@ -417,6 +432,16 @@ function ScheduleManagement() {
           <div className="text-center py-16 bg-white border border-gray-200 rounded-xl shadow-sm">
             <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 font-medium text-sm">Chưa có lịch học nào được xếp.</p>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-6">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

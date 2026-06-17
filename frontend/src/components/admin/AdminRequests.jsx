@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { RequestsSkeleton } from '../common/AdminSkeleton';
+import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search
@@ -99,6 +100,18 @@ function AdminRequests() {
     return true;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterRole, filterStatus]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
   const rowVariants = {
     hidden: { opacity: 0, x: -20 },
     visible: (i) => ({ opacity: 1, x: 0, transition: { delay: i * 0.04, duration: 0.2 } }),
@@ -191,7 +204,7 @@ function AdminRequests() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((req, i) => (
+              {currentItems.map((req, i) => (
                 <motion.tr
                   key={req.MaYeuCau}
                   custom={i}
@@ -238,6 +251,16 @@ function AdminRequests() {
             </tbody>
           </table>
         </div>
+        
+        {totalPages > 1 && (
+          <div className="mt-4 pb-4">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </motion.div>
 
       {/* Modal */}
