@@ -810,7 +810,7 @@ function StudentManagement() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" noValidate>
                 <input type="hidden" value={formData.MSSV} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 

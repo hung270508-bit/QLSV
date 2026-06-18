@@ -129,7 +129,7 @@ function TeacherManagement() {
     } else {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
       if (!emailRegex.test(formData.Email)) {
-        newErrors.Email = 'Email không đúng định dạng (VD: @gmail.com)';
+        newErrors.Email = 'Email không đúng định dạng';
       } else {
         // Validate trùng email với giảng viên
         const duplicateEmail = teachers.find(
@@ -702,7 +702,7 @@ function TeacherManagement() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" noValidate>
               <input type="hidden" value={formData.MaGiangVien} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
