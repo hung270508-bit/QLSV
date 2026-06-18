@@ -38,6 +38,8 @@ function AdminTrainingPoints() {
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
   const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
   const [periodFormErrors, setPeriodFormErrors] = useState({});
+  // State cho Modal xác nhận chuyển trạng thái đợt (thay cho window.confirm)
+  const [confirmModal, setConfirmModal] = useState({ show: false, id: null, newStatus: '' });
 
   // === STATES: XÉT DUYỆT ĐIỂM ===
   const [pointsData, setPointsData] = useState([]);
@@ -136,9 +138,16 @@ function AdminTrainingPoints() {
     }
   };
 
-  const handleTogglePeriodStatus = async (id, currentStatus) => {
+  // Bước 1: Bấm nút -> chỉ mở Modal xác nhận, chưa gọi API
+  const handleTogglePeriodStatus = (id, currentStatus) => {
     const newStatus = currentStatus === 'Đang tự đánh giá' ? 'Đã đóng đợt' : 'Đang tự đánh giá';
-    if (!window.confirm(`Bạn có chắc muốn chuyển trạng thái thành: "${newStatus}"?`)) return;
+    setConfirmModal({ show: true, id, newStatus });
+  };
+
+  // Bước 2: Bấm "Xác nhận" trong Modal -> mới thực sự gọi API
+  const confirmTogglePeriodStatus = async () => {
+    const { id, newStatus } = confirmModal;
+    setConfirmModal({ show: false, id: null, newStatus: '' });
     try {
       await axios.put(`${API_URL}/api/admin/training-periods/${id}/status`, { TrangThai: newStatus });
       fetchData();
@@ -585,6 +594,46 @@ function AdminTrainingPoints() {
       </AnimatePresence>
 
       {/* ======================================================= */}
+      {/* MODAL: XÁC NHẬN CHUYỂN TRẠNG THÁI ĐỢT (thay window.confirm) */}
+      {/* ======================================================= */}
+      <AnimatePresence>
+        {confirmModal.show && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 text-center">
+                <div className={`mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4 ${confirmModal.newStatus === 'Đã đóng đợt' ? 'bg-red-50' : 'bg-green-50'}`}>
+                  <Power className={`w-7 h-7 ${confirmModal.newStatus === 'Đã đóng đợt' ? 'text-red-500' : 'text-green-500'}`} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Xác nhận thay đổi trạng thái</h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  Bạn có chắc muốn chuyển trạng thái thành: <span className="font-bold text-gray-700">"{confirmModal.newStatus}"</span>?
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-center gap-3">
+                <button
+                  onClick={() => setConfirmModal({ show: false, id: null, newStatus: '' })}
+                  className="px-5 py-2.5 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmTogglePeriodStatus}
+                  className={`px-6 py-2.5 font-bold text-white rounded-xl shadow-md ${confirmModal.newStatus === 'Đã đóng đợt' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-green-600 hover:bg-green-700 shadow-green-200'}`}
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ======================================================= */}
       {/* MODAL: XÉT DUYỆT ĐIỂM */}
       {/* ======================================================= */}
       <AnimatePresence>
@@ -634,29 +683,6 @@ function AdminTrainingPoints() {
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
-      
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 ${
-              toast.type === 'success' 
-                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' 
-                : 'bg-gradient-to-r from-red-500 to-orange-600 text-white'
-            }`}
-          >
-            {toast.type === 'success' ? (
-              <CheckCircle2 className="w-6 h-6" />
-            ) : (
-              <AlertCircle className="w-6 h-6" />
-            )}
-            <span className="font-bold text-lg">{toast.message}</span>
-          </motion.div>
         )}
       </AnimatePresence>
     </div>
