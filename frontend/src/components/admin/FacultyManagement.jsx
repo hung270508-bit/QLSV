@@ -18,8 +18,6 @@ function FacultyManagement() {
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ facultyFilter: '' });
-  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '' });
   const [formData, setFormData] = useState({
     MaKhoa: '',
     TenKhoa: ''
@@ -261,15 +259,12 @@ function FacultyManagement() {
   };
 
   const handleApplyFilters = () => {
-    setFilters({ ...displayFilters });
     setSortBy(displaySortBy);
     setShowFilters(false);
     setCurrentPage(1);
   };
 
   const clearFilters = () => {
-    setFilters({ facultyFilter: '' });
-    setDisplayFilters({ facultyFilter: '' });
     setSearchTerm('');
     setDebouncedSearchTerm('');
     setSortBy('default');
@@ -285,8 +280,8 @@ function FacultyManagement() {
   const currentItems = filteredAndSortedFaculties.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredAndSortedFaculties.length / itemsPerPage);
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || searchTerm;
+  const activeFilterCount = searchTerm ? 1 : 0;
+  const hasActiveFilters = searchTerm;
 
   if (loading) {
     return <TableSkeleton columns={4} rows={5} />;
@@ -396,25 +391,8 @@ function FacultyManagement() {
             exit={{ opacity: 0, height: 0 }}
             className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
           >
-            {/* Sử dụng grid để chia 2 cột */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
-                <select
-                  value={displayFilters.facultyFilter}
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
-                >
-                  <option value="">Tất cả khoa</option>
-                  {faculties.map((faculty) => (
-                    <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                      {faculty.TenKhoa}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Thêm mới Box Sắp xếp */}
+            {/* Box Sắp xếp */}
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sắp xếp theo tên</label>
                 <select
@@ -442,8 +420,7 @@ function FacultyManagement() {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 onClick={() => {
-                  setDisplayFilters({ facultyFilter: '' });
-                  setDisplaySortBy('default'); // Đặt lại Select box sắp xếp
+                  setDisplaySortBy('default');
                 }}
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
