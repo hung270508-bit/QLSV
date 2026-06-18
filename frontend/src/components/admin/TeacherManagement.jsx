@@ -246,13 +246,24 @@ function TeacherManagement() {
           }
         });
       } else {
-        const resCode = await axios.get(`${API_BASE}/teachers/next-code/${formData.MaKhoa}`);
-        const newMaGV = resCode.data.MaGiangVien;
-        
-        await axios.post(`${API_BASE}/teachers`, { ...dataToSubmit, MaGiangVien: newMaGV });
-        setToast({ show: true, message: 'Thêm giảng viên thành công!', type: 'success' });
-        fetchData();
-        handleCloseModal();
+        setConfirmDialog({
+          show: true,
+          message: `Bạn có chắc chắn muốn thêm giảng viên "${dataToSubmit.HoTen}" không?`,
+          onConfirm: async () => {
+            try {
+              const resCode = await axios.get(`${API_BASE}/teachers/next-code/${formData.MaKhoa}`);
+              const newMaGV = resCode.data.MaGiangVien;
+              
+              await axios.post(`${API_BASE}/teachers`, { ...dataToSubmit, MaGiangVien: newMaGV });
+              setToast({ show: true, message: 'Thêm giảng viên thành công!', type: 'success' });
+              fetchData();
+              handleCloseModal();
+            } catch (error) {
+              console.error('Lỗi lưu dữ liệu:', error);
+              setErrorDialog({ show: true, message: 'Lỗi khi lưu dữ liệu: ' + (error.response?.data?.error || error.message) });
+            }
+          }
+        });
       }
     } catch (error) {
       console.error('Lỗi lưu dữ liệu:', error);

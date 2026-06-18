@@ -343,15 +343,21 @@ function StudentManagement() {
         }
       });
     } else {
-      try {
-        await axios.post(`${API_BASE}/students`, formDataWithCapitalizedName);
-        setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
-        fetchData();
-        handleCloseModal();
-      } catch (error) {
-        console.error('Error saving student:', error);
-        setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
-      }
+      setConfirmDialog({
+        show: true,
+        message: `Bạn có chắc chắn muốn thêm sinh viên "${formDataWithCapitalizedName.HoTen}" không?`,
+        onConfirm: async () => {
+          try {
+            await axios.post(`${API_BASE}/students`, formDataWithCapitalizedName);
+            setToast({ show: true, message: 'Thêm sinh viên mới thành công!', type: 'success' });
+            fetchData();
+            handleCloseModal();
+          } catch (error) {
+            console.error('Error saving student:', error);
+            setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi lưu sinh viên!' });
+          }
+        }
+      });
     }
   };
 
