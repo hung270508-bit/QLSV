@@ -85,12 +85,12 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
 };
 
 // Confirmation Dialog Component
-export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xác nhận' }) => {
-  const [countdown, setCountdown] = useState(5);
+export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xác nhận', requireCountdown = false }) => {
+  const [countdown, setCountdown] = useState(requireCountdown ? 5 : 0);
 
   useEffect(() => {
     let timer;
-    if (show) {
+    if (show && requireCountdown) {
       setCountdown(5);
       timer = setInterval(() => {
         setCountdown((prev) => {
@@ -101,11 +101,13 @@ export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xá
           return prev - 1;
         });
       }, 1000);
+    } else if (show) {
+      setCountdown(0);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [show]);
+  }, [show, requireCountdown]);
 
   return (
     <AnimatePresence>

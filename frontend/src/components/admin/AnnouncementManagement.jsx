@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
-import ModalPortal from '../common/ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
 import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 
@@ -31,6 +31,8 @@ function AnnouncementManagement() {
   });
   const [formErrors, setFormErrors] = useState({});
   const [deleteDialog, setDeleteDialog] = useState({ show: false, itemId: null });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   useEffect(() => {
     fetchData();
@@ -85,33 +87,42 @@ function AnnouncementManagement() {
       NguoiTao: formData.NguoiTao || 'admin',
     };
 
-    try {
-      if (editingAnnouncement) {
-        await axios.put(`${API_URL}/api/announcements/${editingAnnouncement.MaThongBao}`, {
-          ...baseData,
-          MaLop_Nhan: recipientMode === 'all' ? null : selectedClasses[0],
-        });
-      } else if (recipientMode === 'all') {
-        await axios.post(`${API_URL}/api/announcements`, {
-          ...baseData,
-          MaLop_Nhan: null,
-        });
-      } else {
-        await Promise.all(
-          selectedClasses.map((maLop) =>
-            axios.post(`${API_URL}/api/announcements`, {
+    const actionText = editingAnnouncement ? 'cập nhật' : 'thêm';
+
+    setConfirmDialog({
+      show: true,
+      message: `Bạn có chắc chắn muốn ${actionText} thông báo "${baseData.TieuDe}" không?`,
+      onConfirm: async () => {
+        try {
+          if (editingAnnouncement) {
+            await axios.put(`${API_URL}/api/announcements/${editingAnnouncement.MaThongBao}`, {
               ...baseData,
-              MaLop_Nhan: maLop,
-            })
-          )
-        );
+              MaLop_Nhan: recipientMode === 'all' ? null : selectedClasses[0],
+            });
+          } else if (recipientMode === 'all') {
+            await axios.post(`${API_URL}/api/announcements`, {
+              ...baseData,
+              MaLop_Nhan: null,
+            });
+          } else {
+            await Promise.all(
+              selectedClasses.map((maLop) =>
+                axios.post(`${API_URL}/api/announcements`, {
+                  ...baseData,
+                  MaLop_Nhan: maLop,
+                })
+              )
+            );
+          }
+          setToast({ show: true, message: `${editingAnnouncement ? 'Cập nhật' : 'Thêm'} thông báo thành công!`, type: 'success' });
+          fetchData();
+          handleCloseModal();
+        } catch (error) {
+          console.error('Error saving announcement:', error);
+          setFormErrors({ general: 'Lỗi khi lưu thông báo: ' + (error.response?.data?.message || error.message) });
+        }
       }
-      fetchData();
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error saving announcement:', error);
-      setFormErrors({ general: 'Lỗi khi lưu thông báo: ' + (error.response?.data?.message || error.message) });
-    }
+    });
   };
 
   const openAddModal = () => {
@@ -244,6 +255,14 @@ function AnnouncementManagement() {
 
   return (
     <div className="space-y-8">
+      {/* Toast Notification */}
+      <Toast 
+        show={toast.show} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast({ ...toast, show: false })} 
+      />
+
       {/* Header Section */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl">
         <div className="flex items-center justify-between">
@@ -652,6 +671,14 @@ function AnnouncementManagement() {
         isOpen={deleteDialog.show}
         onClose={() => setDeleteDialog({ show: false, itemId: null })}
         onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onClose={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
+        requireCountdown={false}
       />
     </div>
   );

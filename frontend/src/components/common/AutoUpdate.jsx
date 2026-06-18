@@ -1,0 +1,142 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const AutoUpdate = () => {
+  const currentVersion = useRef(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      // Nếu đang update rồi thì không check nữa
+      if (isUpdating) return; 
+
+      try {
+        const res = await fetch(`/version.json?t=${Date.now()}`);
+        if (!res.ok) return; // Bỏ qua nếu file chưa tồn tại
+        
+        const data = await res.json();
+        
+        if (!currentVersion.current) {
+          // Lưu version lần đầu
+          currentVersion.current = data.version;
+        } else if (currentVersion.current !== data.version) {
+          // Bật UI Loading
+          setIsUpdating(true);
+          
+          // Delay 2.5 giây để chạy hết animation rồi mới reload
+          setTimeout(() => {
+            window.location.reload(true);
+          }, 2500);
+        }
+      } catch (error) {
+        console.error('AutoUpdate check failed:', error);
+      }
+    };
+
+    fetchVersion(); // Check ngay khi load
+    const intervalId = setInterval(fetchVersion, 60000); // Check mỗi 60s
+
+    return () => clearInterval(intervalId);
+  }, [isUpdating]);
+
+  return (
+    <AnimatePresence>
+      {isUpdating && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
+        >
+          {/* Glassmorphism Background Overlay */}
+          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md" />
+          
+          {/* Animated Gradient Background Blob */}
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.2, 1],
+              rotate: [0, 90, 0],
+            }}
+            transition={{ 
+              duration: 4, 
+              repeat: Infinity,
+              ease: "linear" 
+            }}
+            className="absolute h-96 w-96 rounded-full bg-blue-600/20 blur-3xl"
+          />
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.5, 1],
+              rotate: [0, -90, 0],
+            }}
+            transition={{ 
+              duration: 5, 
+              repeat: Infinity,
+              ease: "linear" 
+            }}
+            className="absolute mt-32 ml-32 h-64 w-64 rounded-full bg-indigo-600/20 blur-3xl"
+          />
+
+          {/* Main Content Box */}
+          <motion.div 
+            initial={{ y: 50, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2, type: "spring", bounce: 0.4 }}
+            className="relative z-10 flex w-[90%] max-w-sm flex-col items-center rounded-3xl border border-white/10 bg-slate-800/40 p-10 text-center shadow-2xl backdrop-blur-xl"
+          >
+            {/* Pulsing Icon */}
+            <div className="relative mb-8 flex items-center justify-center">
+              <motion.div 
+                animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute h-24 w-24 rounded-full bg-blue-500/30"
+              />
+              <motion.div 
+                animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                className="absolute h-20 w-20 rounded-full bg-cyan-400/30"
+              />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+                <svg className="h-8 w-8 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            </div>
+
+            {/* Typography */}
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mb-3 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent"
+            >
+              Phát hiện phiên bản mới
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="text-sm font-medium text-slate-300"
+            >
+              Hệ thống đang đồng bộ và tải lại...
+            </motion.p>
+            
+            {/* Progress Bar Simulator */}
+            <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-slate-700/50">
+              <motion.div 
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 2.5, ease: "linear" }}
+                className="h-full bg-gradient-to-r from-blue-500 to-cyan-400"
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default AutoUpdate;
