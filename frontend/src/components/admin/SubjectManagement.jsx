@@ -152,6 +152,15 @@ function SubjectManagement() {
     } else if (/\s{2,}/.test(data.TenMonHoc)) {
       errors.TenMonHoc = 'Tên môn học không được chứa nhiều khoảng trắng liên tiếp';
       isValid = false;
+    } else {
+      // Check for duplicate subject name
+      const duplicateSubject = subjects.find(
+        subject => subject.TenMonHoc.toLowerCase() === data.TenMonHoc.trim().toLowerCase()
+      );
+      if (duplicateSubject) {
+        errors.TenMonHoc = 'Tên môn học đã tồn tại!';
+        isValid = false;
+      }
     }
 
     if (!data.SoTinChi) {
