@@ -202,7 +202,7 @@ function StudentManagement() {
     if (!formData.Email.trim()) {
       newErrors.Email = 'Email không được để trống';
     } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{3,}$/;
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
       if (!emailRegex.test(formData.Email)) {
         newErrors.Email = 'Email không đúng định dạng';
       } else if (formData.Email.length > 100) {
