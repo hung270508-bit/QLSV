@@ -911,9 +911,9 @@ function StudentManagement() {
                         <input
                           type="text"
                           value={formData.endYear}
-                          onChange={handleEndYearChange}
+                          disabled
                           placeholder="Năm kết thúc"
-                          className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                          className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-400 cursor-not-allowed focus:outline-none"
                           maxLength={4}
                         />
                         {errors.endYear && (

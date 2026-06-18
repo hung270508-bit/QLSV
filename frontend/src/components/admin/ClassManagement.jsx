@@ -795,9 +795,9 @@ function ClassManagement() {
                         <input
                           type="text"
                           value={formData.endYear}
-                          readOnly // Khóa không cho chỉnh sửa
+                          disabled
                           placeholder="Năm kết thúc"
-                          className="w-full px-4 py-3 bg-gray-200 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-500 cursor-not-allowed font-semibold"
+                          className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-400 cursor-not-allowed focus:outline-none"
                           maxLength={4}
                         />
                         {/* Đã gỡ bỏ formErrors.endYear ở UI vì người dùng không thể tự nhập sai */}
