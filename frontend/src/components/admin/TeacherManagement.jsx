@@ -156,9 +156,11 @@ function TeacherManagement() {
     } else {
       const phoneDigits = formData.SoDienThoai.replace(/\D/g, ''); // Remove non-digit characters
       if (phoneDigits.length < 10) {
-        newErrors.SoDienThoai = 'SĐT không dưới 10 số';
+        newErrors.SoDienThoai = 'SĐT phải đủ 10 số';
       } else if (phoneDigits.length > 10) {
-        newErrors.SoDienThoai = 'SĐT không trên 10 số';
+        newErrors.SoDienThoai = 'SĐT tối đa 10 số';
+      } else if (/^[1-9]/.test(phoneDigits)) {
+        newErrors.SoDienThoai = 'Số điện thoại không đúng định dạng (bắt đầu bằng 0)';
       } else {
         const phoneRegex = /^(0[3-9]|\+84[3-9])[0-9]{8}$/;
         if (!phoneRegex.test(formData.SoDienThoai)) {
