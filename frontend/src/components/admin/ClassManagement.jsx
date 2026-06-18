@@ -795,14 +795,12 @@ function ClassManagement() {
                         <input
                           type="text"
                           value={formData.endYear}
-                          onChange={handleEndYearChange}
+                          readOnly // Khóa không cho chỉnh sửa
                           placeholder="Năm kết thúc"
-                          className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.endYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                          className="w-full px-4 py-3 bg-gray-200 border-2 border-gray-200 rounded-xl focus:outline-none text-gray-500 cursor-not-allowed font-semibold"
                           maxLength={4}
                         />
-                        {formErrors.endYear && (
-                          <p className="text-red-500 text-xs mt-1">{formErrors.endYear}</p>
-                        )}
+                        {/* Đã gỡ bỏ formErrors.endYear ở UI vì người dùng không thể tự nhập sai */}
                       </div>
                     </div>
                   </div>
@@ -832,23 +830,40 @@ function ClassManagement() {
 
                   {/* Tên lớp */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
-                    <input
-                      type="text"
-                      value={formData.TenLop}
-                      onChange={(e) => {
-                        let value = e.target.value;
-                        value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
-                        setFormData({ ...formData, TenLop: value });
-                        if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
-                      }}
-                      placeholder="Nhập tên lớp học"
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                    />
-                    {formErrors.TenLop && (
-                      <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
-                    )}
-                  </div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
+                      <input
+                        type="text"
+                        value={formData.TenLop}
+                        onChange={(e) => {
+                          let value = e.target.value;
+                          
+                          // 1. Loại bỏ ký tự đặc biệt, chỉ giữ chữ, số, khoảng trắng và dấu gạch ngang
+                          value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
+                          
+                          // 2. CHUẨN HÓA VIẾT HOA / VIẾT THƯỜNG
+                          if (value.length > 0) {
+                            // Cách 1: Chỉ viết hoa chữ cái đầu câu, các chữ sau ép về in thường 
+                            // VD: "Valorant NhẬp MôN" -> "Valorant nhập môn"
+                            value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+                            
+                            // --- HOẶC ---
+                            
+                            // Cách 2: Nếu muốn viết hoa chữ cái đầu của MỖI TỪ (đúng chuẩn danh từ riêng)
+                            // VD: "Valorant NhẬp MôN" -> "Valorant Nhập Môn"
+                            // (Xóa comment dòng dưới và bỏ Cách 1 nếu muốn dùng cách này)
+                            value = value.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+                          }
+
+                          setFormData({ ...formData, TenLop: value });
+                          if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
+                        }}
+                        placeholder="Nhập tên lớp học"
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                      />
+                      {formErrors.TenLop && (
+                        <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
+                      )}
+                    </div>
                 </div>
 
                 <div className="flex gap-3 pt-2">
