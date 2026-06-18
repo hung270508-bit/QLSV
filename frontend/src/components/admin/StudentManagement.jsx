@@ -39,7 +39,7 @@ function StudentManagement() {
     MSSV: '',
     HoTen: '',
     NgaySinh: '',
-    GioiTinh: 'Nam',
+    GioiTinh: '',
     Email: '',
     SoDienThoai: '',
     MaLop: '',
@@ -191,6 +191,11 @@ function StudentManagement() {
           newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
         }
       }
+    }
+
+    // Validate Giới tính
+    if (!formData.GioiTinh) {
+      newErrors.GioiTinh = 'Vui lòng chọn giới tính';
     }
 
     // Validate Email
@@ -388,7 +393,7 @@ function StudentManagement() {
       MSSV: '',
       HoTen: '',
       NgaySinh: '',
-      GioiTinh: 'Nam',
+      GioiTinh: '',
       Email: '',
       SoDienThoai: '',
       MaLop: '',
@@ -843,12 +848,19 @@ function StudentManagement() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
                     <select
                       value={formData.GioiTinh}
-                      onChange={(e) => setFormData({ ...formData, GioiTinh: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                      onChange={(e) => {
+                        setFormData({ ...formData, GioiTinh: e.target.value });
+                        if (errors.GioiTinh) setErrors({ ...errors, GioiTinh: '' });
+                      }}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                        errors.GioiTinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      }`}
                     >
+                      <option value="">Chọn giới tính</option>
                       <option value="Nam">Nam</option>
                       <option value="Nữ">Nữ</option>
                     </select>
+                    {errors.GioiTinh && <p className="text-red-500 text-sm mt-1">{errors.GioiTinh}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
