@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { motion } from 'framer-motion';
-import { Bell, Plus, Edit, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
+import { Bell, Plus, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
@@ -13,9 +13,7 @@ function AnnouncementManagement() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({});
   const [displayFilters, setDisplayFilters] = useState({});
@@ -33,6 +31,8 @@ function AnnouncementManagement() {
   const [deleteDialog, setDeleteDialog] = useState({ show: false, itemId: null });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
+  const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
 
   useEffect(() => {
     fetchData();
@@ -87,19 +87,12 @@ function AnnouncementManagement() {
       NguoiTao: formData.NguoiTao || 'admin',
     };
 
-    const actionText = editingAnnouncement ? 'cập nhật' : 'thêm';
-
     setConfirmDialog({
       show: true,
-      message: `Bạn có chắc chắn muốn ${actionText} thông báo "${baseData.TieuDe}" không?`,
+      message: `Bạn có chắc chắn muốn thêm thông báo "${baseData.TieuDe}" không?`,
       onConfirm: async () => {
         try {
-          if (editingAnnouncement) {
-            await axios.put(`${API_URL}/api/announcements/${editingAnnouncement.MaThongBao}`, {
-              ...baseData,
-              MaLop_Nhan: recipientMode === 'all' ? null : selectedClasses[0],
-            });
-          } else if (recipientMode === 'all') {
+          if (recipientMode === 'all') {
             await axios.post(`${API_URL}/api/announcements`, {
               ...baseData,
               MaLop_Nhan: null,
@@ -114,19 +107,20 @@ function AnnouncementManagement() {
               )
             );
           }
-          setToast({ show: true, message: `${editingAnnouncement ? 'Cập nhật' : 'Thêm'} thông báo thành công!`, type: 'success' });
+          setToast({ show: true, message: 'Thêm thông báo thành công!', type: 'success' });
           fetchData();
           handleCloseModal();
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         } catch (error) {
           console.error('Error saving announcement:', error);
           setFormErrors({ general: 'Lỗi khi lưu thông báo: ' + (error.response?.data?.message || error.message) });
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         }
       }
     });
   };
 
   const openAddModal = () => {
-    setEditingAnnouncement(null);
     setRecipientMode('all');
     setSelectedClasses([]);
     setFormErrors({});
@@ -139,23 +133,6 @@ function AnnouncementManagement() {
     setShowModal(true);
   };
 
-  const handleEdit = (announcement) => {
-    setEditingAnnouncement(announcement);
-    if (announcement.MaLop_Nhan) {
-      setRecipientMode('custom');
-      setSelectedClasses([announcement.MaLop_Nhan]);
-    } else {
-      setRecipientMode('all');
-      setSelectedClasses([]);
-    }
-    setFormData({
-      TieuDe: announcement.TieuDe,
-      NoiDung: announcement.NoiDung,
-      NguoiTao: announcement.NguoiTao || '',
-      MaLop_Nhan: announcement.MaLop_Nhan || ''
-    });
-    setShowModal(true);
-  };
 
   const handleDelete = (maThongBao) => {
     setDeleteDialog({ show: true, itemId: maThongBao });
@@ -165,11 +142,11 @@ function AnnouncementManagement() {
     if (!deleteDialog.itemId) return;
     try {
       await axios.delete(`${API_URL}/api/announcements/${deleteDialog.itemId}`);
-      alert('Xóa thông báo thành công!');
+      setSuccessDialog({ show: true, message: 'Xóa thông báo thành công!' });
       fetchData();
     } catch (error) {
       console.error('Error deleting announcement:', error);
-      alert('Lỗi khi xóa thông báo: ' + (error.response?.data?.message || error.message));
+      setErrorDialog({ show: true, message: 'Lỗi khi xóa thông báo: ' + (error.response?.data?.message || error.message) });
     } finally {
       setDeleteDialog({ show: false, itemId: null });
     }
@@ -177,7 +154,6 @@ function AnnouncementManagement() {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setEditingAnnouncement(null);
     setRecipientMode('all');
     setSelectedClasses([]);
     setFormErrors({});
@@ -229,9 +205,6 @@ function AnnouncementManagement() {
   const currentAnnouncements = filteredAnnouncements.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredAnnouncements.length / itemsPerPage);
 
-  const handleSearch = () => {
-    setSearchTerm(displaySearchTerm);
-  };
 
   const handleApplyFilters = () => {
     setFilters({ ...displayFilters });
@@ -242,7 +215,6 @@ function AnnouncementManagement() {
     setFilters({});
     setDisplayFilters({});
     setSearchTerm('');
-    setDisplaySearchTerm('');
   };
 
   const activeFilterCount = (searchTerm ? 1 : 0);
@@ -271,7 +243,7 @@ function AnnouncementManagement() {
               <Bell className="w-8 h-8" />
               Quản lý thông báo
             </h2>
-            <p className="text-orange-100 text-lg">Thêm, sửa, xóa và xem chi tiết thông báo</p>
+            <p className="text-orange-100 text-lg">Thêm, xóa và xem chi tiết thông báo</p>
           </div>
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
@@ -293,20 +265,11 @@ function AnnouncementManagement() {
             <input
               type="text"
               placeholder="Tìm kiếm thông báo theo tiêu đề hoặc nội dung..."
-              value={displaySearchTerm}
-              onChange={(e) => setDisplaySearchTerm(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
             />
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-orange-200 transition-all"
-          >
-            <Search className="w-5 h-5" />
-            Tìm kiếm
-          </motion.button>
           {hasActiveFilters && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -364,15 +327,6 @@ function AnnouncementManagement() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(announcement)}
-                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
                           onClick={() => handleDelete(announcement.MaThongBao)}
                           className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all shadow-sm"
                           title="Xóa"
@@ -422,10 +376,10 @@ function AnnouncementManagement() {
               <div className="text-white">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <Bell className="w-5 h-5" />
-                  {editingAnnouncement ? 'Cập nhật thông báo' : 'Thêm thông báo mới'}
+                  Thêm thông báo mới
                 </h3>
                 <p className="text-orange-100 text-sm mt-0.5">
-                  {editingAnnouncement ? 'Chỉnh sửa nội dung và đối tượng nhận' : 'Tạo thông báo gửi đến sinh viên'}
+                  Tạo thông báo gửi đến sinh viên
                 </p>
               </div>
               <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
@@ -558,7 +512,7 @@ function AnnouncementManagement() {
                   type="submit"
                   className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
                 >
-                  {editingAnnouncement ? 'Lưu thay đổi' : 'Thêm thông báo'}
+                  Thêm thông báo
                 </button>
               </div>
             </form>
@@ -644,18 +598,6 @@ function AnnouncementManagement() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  handleCloseDetailModal();
-                  handleEdit(selectedAnnouncement);
-                }}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all flex items-center justify-center gap-2"
-              >
-                <Edit className="w-5 h-5" />
-                Chỉnh sửa thông báo
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 onClick={handleCloseDetailModal}
                 className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold hover:bg-gray-200 transition-all"
               >
@@ -677,8 +619,20 @@ function AnnouncementManagement() {
         show={confirmDialog.show}
         message={confirmDialog.message}
         onConfirm={confirmDialog.onConfirm}
-        onClose={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
         requireCountdown={false}
+      />
+
+      <SuccessDialog
+        show={successDialog.show}
+        message={successDialog.message}
+        onClose={() => setSuccessDialog({ show: false, message: '' })}
+      />
+
+      <ErrorDialog
+        show={errorDialog.show}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ show: false, message: '' })}
       />
     </div>
   );
