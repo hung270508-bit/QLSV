@@ -258,63 +258,75 @@ function ClassManagement() {
     }
   };
 
+  // Thực hiện lưu (thêm/cập nhật) lớp học với tên cuối cùng đã được xác nhận
+  const saveClass = async (tenLop) => {
+    const nienKhoa = `${formData.startYear}-${formData.endYear}`;
+
+    try {
+      if (editingClass) {
+        await axios.put(`${API_BASE}/classes/${encodeURIComponent(editingClass.MaLop)}`, {
+          ...formData,
+          TenLop: tenLop,
+          NienKhoa: nienKhoa
+        });
+      } else {
+        const resCode = await axios.get(`${API_BASE}/classes/next-code/${formData.startYear}/${formData.MaKhoa}`);
+        const newMaLop = resCode.data.MaLop;
+
+        await axios.post(`${API_BASE}/classes`, {
+          MaLop: newMaLop,
+          TenLop: tenLop,
+          MaKhoa: formData.MaKhoa,
+          NienKhoa: nienKhoa
+        });
+      }
+
+      setToast({ show: true, message: editingClass ? 'Cập nhật thành công!' : 'Thêm lớp học thành công!', type: 'success' });
+      fetchData();
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving class:', error);
+      setErrorDialog({ show: true, message: 'Lỗi khi lưu lớp học: ' + (error.response?.data?.error || error.message) });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Tự động xử lý trùng tên lớp: Tìm trong danh sách local xem có trùng không
-    let finalTenLop = formData.TenLop.trim();
+    const tenLopTrimmed = formData.TenLop.trim();
+
+    // Kiểm tra trùng tên trong cùng Khoa
     const isDuplicate = classes.some(
-      c => c.TenLop.trim().toLowerCase() === finalTenLop.toLowerCase() &&
+      c => c.TenLop.trim().toLowerCase() === tenLopTrimmed.toLowerCase() &&
         c.MaKhoa === formData.MaKhoa &&
         (!editingClass || c.MaLop !== editingClass.MaLop)
     );
 
-    // Nếu trùng, gọi API để lấy tên mới (ví dụ: "Lớp A" -> "Lớp A 1")
     if (isDuplicate) {
+      // Báo cho người dùng biết tên đã trùng, hỏi xác nhận trước khi tự thêm số vào sau
       try {
-        const res = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(finalTenLop)}/${formData.MaKhoa}`);
-        finalTenLop = res.data.TenLop;
+        const res = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(tenLopTrimmed)}/${formData.MaKhoa}`);
+        const suggestedName = res.data.TenLop;
+
+        setConfirmDialog({
+          show: true,
+          message: `Tên lớp "${tenLopTrimmed}" đã tồn tại trong khoa này. Hệ thống sẽ tự đổi thành "${suggestedName}". Bạn có muốn tiếp tục thêm không?`,
+          onConfirm: () => saveClass(suggestedName)
+        });
       } catch (err) {
         console.error('Lỗi khi lấy tên lớp tiếp theo:', err);
+        setErrorDialog({ show: true, message: 'Không thể kiểm tra tên lớp trùng, vui lòng thử lại!' });
       }
+      return;
     }
 
     setConfirmDialog({
       show: true,
       message: editingClass
-        ? `Bạn có chắc chắn muốn cập nhật lớp "${finalTenLop}" không?`
-        : `Bạn có chắc chắn muốn thêm lớp "${finalTenLop}" không?`,
-      onConfirm: async () => {
-        const nienKhoa = `${formData.startYear}-${formData.endYear}`;
-
-        try {
-          if (editingClass) {
-            await axios.put(`${API_BASE}/classes/${encodeURIComponent(editingClass.MaLop)}`, {
-              ...formData,
-              TenLop: finalTenLop,
-              NienKhoa: nienKhoa
-            });
-          } else {
-            const resCode = await axios.get(`${API_BASE}/classes/next-code/${formData.startYear}/${formData.MaKhoa}`);
-            const newMaLop = resCode.data.MaLop;
-
-            await axios.post(`${API_BASE}/classes`, {
-              MaLop: newMaLop,
-              TenLop: finalTenLop,
-              MaKhoa: formData.MaKhoa,
-              NienKhoa: nienKhoa
-            });
-          }
-
-          setToast({ show: true, message: editingClass ? 'Cập nhật thành công!' : 'Thêm lớp học thành công!', type: 'success' });
-          fetchData();
-          handleCloseModal();
-        } catch (error) {
-          console.error('Error saving class:', error);
-          setErrorDialog({ show: true, message: 'Lỗi khi lưu lớp học: ' + (error.response?.data?.error || error.message) });
-        }
-      }
+        ? `Bạn có chắc chắn muốn cập nhật lớp "${tenLopTrimmed}" không?`
+        : `Bạn có chắc chắn muốn thêm lớp "${tenLopTrimmed}" không?`,
+      onConfirm: () => saveClass(tenLopTrimmed)
     });
   };
 
