@@ -284,20 +284,7 @@ function StudentManagement() {
       }
     }
 
-    // Validate endYear
-    if (!formData.endYear.trim()) {
-      newErrors.endYear = 'Năm kết thúc không được để trống';
-    } else if (formData.endYear.length !== 4) {
-      newErrors.endYear = 'Năm kết thúc phải có 4 chữ số';
-    } else {
-      const start = parseInt(formData.startYear, 10);
-      const end = parseInt(formData.endYear, 10);
-      if (!isNaN(start) && !isNaN(end)) {
-        if (start >= end) {
-          newErrors.endYear = 'Năm kết thúc phải lớn hơn năm bắt đầu';
-        }
-      }
-    }
+
 
     // Validate Lớp
     if (!formData.MaLop) {
