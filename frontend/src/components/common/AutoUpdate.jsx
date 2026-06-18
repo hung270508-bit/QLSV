@@ -7,25 +7,36 @@ const AutoUpdate = () => {
 
   useEffect(() => {
     const fetchVersion = async () => {
-      // Nếu đang update rồi thì không check nữa
       if (isUpdating) return; 
 
       try {
-        const res = await fetch(`/version.json?t=${Date.now()}`);
-        if (!res.ok) return; // Bỏ qua nếu file chưa tồn tại
+        const basePath = import.meta.env.BASE_URL || '/';
+        const url = `${basePath.endsWith('/') ? basePath : basePath + '/'}version.json?t=${Date.now()}`;
+        
+        const res = await fetch(url, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          cache: 'no-store'
+        });
+
+        if (!res.ok) {
+          console.warn('AutoUpdate version.json fetch returned status:', res.status);
+          return;
+        }
         
         const data = await res.json();
         
         if (!currentVersion.current) {
-          // Lưu version lần đầu
           currentVersion.current = data.version;
+          console.log('AutoUpdate: Initialized version tracker at', data.version);
         } else if (currentVersion.current !== data.version) {
-          // Bật UI Loading
+          console.log(`AutoUpdate: New version detected! Local: ${currentVersion.current}, Server: ${data.version}`);
           setIsUpdating(true);
           
-          // Delay 2.5 giây để chạy hết animation rồi mới reload
           setTimeout(() => {
-            window.location.reload(true);
+            window.location.reload();
           }, 2500);
         }
       } catch (error) {
@@ -33,10 +44,20 @@ const AutoUpdate = () => {
       }
     };
 
-    fetchVersion(); // Check ngay khi load
-    const intervalId = setInterval(fetchVersion, 60000); // Check mỗi 60s
+    fetchVersion();
+    const intervalId = setInterval(fetchVersion, 10000);
 
-    return () => clearInterval(intervalId);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchVersion();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [isUpdating]);
 
   return (
