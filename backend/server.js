@@ -1356,7 +1356,7 @@ app.get('/api/admin/training-points', (req, res) => {
 });
 
 app.put('/api/admin/training-points/:id', (req, res) => {
-    const { DiemKhoaDanhGia, TongDiem, TrangThai } = req.body;
+    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet } = req.body;
     let xepLoai = 'Yếu';
     const diem = Number(TongDiem);
     if (diem >= 90) xepLoai = 'Xuất sắc';
@@ -1365,7 +1365,63 @@ app.put('/api/admin/training-points/:id', (req, res) => {
     else if (diem >= 50) xepLoai = 'Trung bình';
 
     const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ? WHERE MaDanhGia = ?';
-    executeUpdate(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, req.params.id], res, 'Đã chốt điểm!', 'Lỗi cập nhật điểm!');
+    db.query(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, req.params.id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
+        
+        const nguoiDuyet = NguoiDuyet || 'admin';
+        const logMsg = `Đã chốt điểm: Cộng thêm ${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
+        db.query('INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES (?, ?, ?)', [req.params.id, nguoiDuyet, logMsg], (logErr) => {
+            if (logErr) console.error('Lỗi lưu log duyệt:', logErr);
+            res.json({ success: true, message: 'Đã chốt điểm và lưu nhật ký!' });
+        });
+    });
+});
+
+app.get('/api/admin/training-points/logs', (req, res) => {
+    const query = `
+        SELECT l.*, d.HocKy, s.HoTen, s.MSSV 
+        FROM lichsu_duyet l
+        JOIN danhgia_renluyen d ON l.MaDanhGia = d.MaDanhGia
+        JOIN sinhvien s ON d.MSSV = s.MSSV
+        ORDER BY l.ThoiGian DESC
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy tất cả nhật ký duyệt!');
+});
+
+app.get('/api/admin/training-points/:id/logs', (req, res) => {
+    executeQuery('SELECT * FROM lichsu_duyet WHERE MaDanhGia = ? ORDER BY ThoiGian DESC', [req.params.id], res, 'Lỗi lấy lịch sử duyệt!');
+});
+
+app.put('/api/admin/training-points/bulk-approve', (req, res) => {
+    const { ids, NguoiDuyet } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ success: false, message: 'Danh sách ID không hợp lệ!' });
+    }
+    
+    const query = `
+        UPDATE danhgia_renluyen 
+        SET TrangThai = 'Đã xác nhận',
+            TongDiem = DiemTuDanhGia + DiemKhoaDanhGia,
+            XepLoai = CASE 
+                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 90 THEN 'Xuất sắc'
+                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 80 THEN 'Tốt'
+                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 65 THEN 'Khá'
+                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 50 THEN 'Trung bình'
+                ELSE 'Yếu'
+            END
+        WHERE MaDanhGia IN (?)
+    `;
+    db.query(query, [ids], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message });
+        
+        const nguoiDuyet = NguoiDuyet || 'admin';
+        const logValues = ids.map(id => [id, nguoiDuyet, 'Phê duyệt hàng loạt (Chốt sổ)']);
+        const logBulkQuery = 'INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES ?';
+        db.query(logBulkQuery, [logValues], (logErr) => {
+            if (logErr) console.error('Lỗi lưu log duyệt hàng loạt:', logErr);
+            res.json({ success: true, message: 'Phê duyệt hàng loạt thành công!' });
+        });
+    });
 });
 
 app.get('/api/admin/support-requests', (req, res) => {
@@ -1382,6 +1438,11 @@ app.put('/api/admin/support-requests/:id', (req, res) => {
     executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ? WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
 });
 
+// Lấy chi tiết tiêu chí đã tích của 1 phiếu đánh giá (dùng chung cho SV xem lại / Admin xem breakdown)
+app.get('/api/training-points/:id/details', (req, res) => {
+    executeQuery('SELECT * FROM chitiet_danhgia WHERE MaDanhGia = ? ORDER BY MaTieuChi', [req.params.id], res, 'Lỗi lấy chi tiết đánh giá!');
+});
+
 // ==================== [SINH VIÊN] ĐÁNH GIÁ RÈN LUYỆN ====================
 app.get('/api/training-points/student/:mssv', (req, res) => {
     const query = 'SELECT * FROM danhgia_renluyen WHERE MSSV = ? ORDER BY HocKy DESC';
@@ -1389,7 +1450,7 @@ app.get('/api/training-points/student/:mssv', (req, res) => {
 });
 
 app.post('/api/training-points', (req, res) => {
-    const { MSSV, HocKy, DiemTuDanhGia } = req.body;
+    const { MSSV, HocKy, DiemTuDanhGia, ChiTiet } = req.body;
     let xepLoai = 'Yếu';
     if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
     else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
@@ -1397,11 +1458,29 @@ app.post('/api/training-points', (req, res) => {
     else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
     const query = "INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai) VALUES (?, ?, ?, ?, ?, 'Chờ lớp duyệt')";
-    executeInsert(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai], res, 'Nộp đánh giá thành công!', 'Lỗi nộp đánh giá!');
+    db.query(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi nộp đánh giá!', error: err.message });
+
+        const maDanhGia = result.insertId;
+
+        if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
+            const values = ChiTiet.map(ct => [maDanhGia, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption]);
+            const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption) VALUES ?';
+            db.query(detailQuery, [values], (detailErr) => {
+                if (detailErr) {
+                    console.error('Lỗi lưu chi tiết đánh giá:', detailErr);
+                    return res.json({ success: true, message: 'Nộp đánh giá thành công (không lưu được chi tiết)!' });
+                }
+                res.json({ success: true, message: 'Nộp đánh giá thành công!' });
+            });
+        } else {
+            res.json({ success: true, message: 'Nộp đánh giá thành công!' });
+        }
+    });
 });
 
 app.put('/api/training-points/:id', (req, res) => {
-    const { DiemTuDanhGia } = req.body;
+    const { DiemTuDanhGia, ChiTiet } = req.body;
     let xepLoai = 'Yếu';
     if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
     else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
@@ -1409,7 +1488,24 @@ app.put('/api/training-points/:id', (req, res) => {
     else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
     const query = 'UPDATE danhgia_renluyen SET DiemTuDanhGia=?, TongDiem=?, XepLoai=? WHERE MaDanhGia=?';
-    executeUpdate(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], res, 'Cập nhật điểm thành công!', 'Lỗi cập nhật điểm!');
+    db.query(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
+
+        if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
+            db.query('DELETE FROM chitiet_danhgia WHERE MaDanhGia = ?', [req.params.id], (delErr) => {
+                if (delErr) return res.json({ success: true, message: 'Cập nhật điểm thành công (không cập nhật được chi tiết)!' });
+
+                const values = ChiTiet.map(ct => [req.params.id, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption]);
+                const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption) VALUES ?';
+                db.query(detailQuery, [values], (insertErr) => {
+                    if (insertErr) console.error('Lỗi lưu chi tiết đánh giá:', insertErr);
+                    res.json({ success: true, message: 'Cập nhật điểm thành công!' });
+                });
+            });
+        } else {
+            res.json({ success: true, message: 'Cập nhật điểm thành công!' });
+        }
+    });
 });
 
 // ==================== [SINH VIÊN] YÊU CẦU & HỖ TRỢ ====================
