@@ -143,6 +143,12 @@ function AdminTrainingPoints() {
   const [loadingAllLogs, setLoadingAllLogs] = useState(false);
   const [allLogsSearch, setAllLogsSearch] = useState('');
 
+  // States cho bộ lọc nâng cao Khoa và Lớp
+  const [faculties, setFaculties] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [filterKhoa, setFilterKhoa] = useState('All');
+  const [filterLop, setFilterLop] = useState('All');
+
   const handleOpenAllLogs = async () => {
     setIsAllLogsModalOpen(true);
     setLoadingAllLogs(true);
@@ -160,12 +166,16 @@ function AdminTrainingPoints() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [pointsRes, periodsRes] = await Promise.all([
+      const [pointsRes, periodsRes, facultiesRes, classesRes] = await Promise.all([
         axios.get(`${API_URL}/api/admin/training-points`),
-        axios.get(`${API_URL}/api/admin/training-periods`)
+        axios.get(`${API_URL}/api/admin/training-periods`),
+        axios.get(`${API_URL}/api/faculties`),
+        axios.get(`${API_URL}/api/classes`)
       ]);
       setPointsData(pointsRes.data);
       setPeriods(periodsRes.data);
+      setFaculties(facultiesRes.data || []);
+      setClasses(classesRes.data || []);
     } catch (e) {
       console.error(e);
       showToast('Lỗi tải dữ liệu từ máy chủ!', 'error');
@@ -265,6 +275,8 @@ function AdminTrainingPoints() {
   const filteredData = pointsData.filter(item => {
     if (filterHocKy !== 'All' && item.HocKy !== filterHocKy) return false;
     if (filterTrangThai !== 'All' && item.TrangThai !== filterTrangThai) return false;
+    if (filterKhoa !== 'All' && item.MaKhoa !== filterKhoa) return false;
+    if (filterLop !== 'All' && item.MaLop !== filterLop) return false;
     if (searchTerm.trim() !== '') {
       const search = searchTerm.toLowerCase();
       const nameMatch = (item.HoTen || '').toLowerCase().includes(search);
@@ -281,11 +293,11 @@ function AdminTrainingPoints() {
 
   useEffect(() => {
     setCurrentPageReviews(1);
-  }, [filterHocKy, filterTrangThai, searchTerm]);
+  }, [filterHocKy, filterTrangThai, filterKhoa, filterLop, searchTerm]);
 
   useEffect(() => {
     setSelectedIds([]);
-  }, [filterHocKy, filterTrangThai, searchTerm, activeTab]);
+  }, [filterHocKy, filterTrangThai, filterKhoa, filterLop, searchTerm, activeTab]);
 
   const indexOfLastPeriod = currentPagePeriods * itemsPerPage;
   const indexOfFirstPeriod = indexOfLastPeriod - itemsPerPage;
@@ -638,6 +650,29 @@ function AdminTrainingPoints() {
                   <option value="Chờ lớp duyệt">Chờ duyệt</option>
                   <option value="Đã xác nhận">Đã xác nhận</option>
                 </select>
+                <select
+                  value={filterKhoa}
+                  onChange={e => {
+                    setFilterKhoa(e.target.value);
+                    setFilterLop('All');
+                  }}
+                  className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                >
+                  <option value="All">Tất cả khoa</option>
+                  {faculties.map(k => (
+                    <option key={k.MaKhoa} value={k.MaKhoa}>{k.TenKhoa}</option>
+                  ))}
+                </select>
+                <select
+                  value={filterLop}
+                  onChange={e => setFilterLop(e.target.value)}
+                  className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                >
+                  <option value="All">Tất cả lớp</option>
+                  {(filterKhoa === 'All' ? classes : classes.filter(c => c.MaKhoa === filterKhoa)).map(l => (
+                    <option key={l.MaLop} value={l.MaLop}>{l.TenLop || l.MaLop}</option>
+                  ))}
+                </select>
                 <div className="relative w-full max-w-[280px]">
                   <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -982,6 +1017,18 @@ function AdminTrainingPoints() {
                                       <p className="text-xs text-red-500 italic bg-red-50 rounded-lg p-2 font-medium">
                                         Không tích chọn mục này
                                       </p>
+                                    )}
+                                    {sel !== undefined && sel.diem > 0 && sel.MinhChung && (
+                                      <div className="mt-2 pl-1">
+                                        <a
+                                          href={sel.MinhChung}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline bg-orange-50/50 border border-orange-100 px-2 py-0.5 rounded-md"
+                                        >
+                                          🔗 Xem minh chứng đã nộp
+                                        </a>
+                                      </div>
                                     )}
                                   </div>
                                   <div className="shrink-0 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 font-bold text-xs text-gray-600">

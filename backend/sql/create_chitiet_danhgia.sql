@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS chitiet_danhgia (
         REFERENCES danhgia_renluyen(MaDanhGia) ON DELETE CASCADE,
     UNIQUE KEY uk_danhgia_tieuchi (MaDanhGia, MaTieuChi)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+     

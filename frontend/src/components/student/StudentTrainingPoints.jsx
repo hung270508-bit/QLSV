@@ -162,9 +162,34 @@ function StudentTrainingPoints({ user }) {
   const totalItems = EVALUATION_CRITERIA.reduce((sum, sec) => sum + sec.items.length, 0);
   const completedCount = Object.keys(formScores).length;
 
+  const pendingPeriods = activePeriods.filter(period => 
+    !points.some(p => p.HocKy === period.HocKy)
+  );
+
   const handleSelectOption = (itemId, point, optionIndex) => {
     if (viewOnly) return;
-    setFormScores(prev => ({ ...prev, [itemId]: { point, optionIndex } }));
+    setFormScores(prev => {
+      const current = prev[itemId] || {};
+      return { 
+        ...prev, 
+        [itemId]: { 
+          point, 
+          optionIndex, 
+          MinhChung: current.MinhChung || '' 
+        } 
+      };
+    });
+  };
+
+  const handleProofChange = (itemId, value) => {
+    if (viewOnly) return;
+    setFormScores(prev => {
+      const current = prev[itemId] || { point: 0, optionIndex: 0 };
+      return {
+        ...prev,
+        [itemId]: { ...current, MinhChung: value }
+      };
+    });
   };
 
   const handleOpenNew = (hocKy) => {
@@ -185,7 +210,11 @@ function StudentTrainingPoints({ user }) {
       if (res.data && res.data.length > 0) {
         const restored = {};
         res.data.forEach(ct => {
-          restored[ct.MaTieuChi] = { point: ct.DiemChon, optionIndex: ct.ChiSoOption };
+          restored[ct.MaTieuChi] = { 
+            point: ct.DiemChon, 
+            optionIndex: ct.ChiSoOption, 
+            MinhChung: ct.MinhChung || '' 
+          };
         });
         setFormScores(restored);
       }
@@ -205,7 +234,11 @@ function StudentTrainingPoints({ user }) {
       if (res.data && res.data.length > 0) {
         const restored = {};
         res.data.forEach(ct => {
-          restored[ct.MaTieuChi] = { point: ct.DiemChon, optionIndex: ct.ChiSoOption };
+          restored[ct.MaTieuChi] = { 
+            point: ct.DiemChon, 
+            optionIndex: ct.ChiSoOption, 
+            MinhChung: ct.MinhChung || '' 
+          };
         });
         setFormScores(restored);
       }
@@ -219,7 +252,8 @@ function StudentTrainingPoints({ user }) {
     return Object.entries(formScores).map(([maTieuChi, data]) => ({
       MaTieuChi: maTieuChi,
       DiemChon: data.point,
-      ChiSoOption: data.optionIndex
+      ChiSoOption: data.optionIndex,
+      MinhChung: data.MinhChung || null
     }));
   };
 
@@ -350,6 +384,42 @@ function StudentTrainingPoints({ user }) {
         <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl"><Award className="w-10 h-10" /></div>
         <div><h2 className="text-3xl font-black mb-1">Đánh giá rèn luyện</h2><p className="text-orange-100 font-medium">Khai báo tự đánh giá và theo dõi điểm rèn luyện</p></div>
       </motion.div>
+
+      {/* BANNER NHẮC NHỞ TỰ ĐÁNH GIÁ (REMINDERS) */}
+      <AnimatePresence>
+        {pendingPeriods.map(period => {
+          const daysLeft = getDaysLeft(period.NgayKetThuc);
+          return (
+            <motion.div
+              key={period.MaDotDanhGia}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+            >
+              <div className="flex items-center gap-3.5 text-center sm:text-left">
+                <div className="p-3 bg-rose-100 rounded-2xl text-rose-600 shrink-0 animate-bounce">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-rose-800 text-base leading-tight">Yêu cầu hoàn thành Phiếu Tự Đánh Giá</h4>
+                  <p className="text-xs text-rose-600 font-medium mt-1">
+                    Đợt đánh giá rèn luyện <span className="font-black text-rose-800">{period.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</span> đang mở! 
+                    Hạn chót: <span className="font-bold text-rose-800">{formatDate(period.NgayKetThuc)}</span> 
+                    {daysLeft !== null && ` (Còn ${daysLeft >= 0 ? daysLeft : 0} ngày)`}.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleOpenNew(period.HocKy)}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-rose-100 shrink-0"
+              >
+                Khai báo ngay
+              </button>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         
@@ -606,6 +676,37 @@ function StudentTrainingPoints({ user }) {
                                 );
                               })}
                             </div>
+                            
+                            {/* Minh chứng hoạt động */}
+                            {formScores[item.id] !== undefined && formScores[item.id].point > 0 && (
+                              <div className="mt-4 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1.5">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                  🔗 Minh chứng hoạt động
+                                </label>
+                                {viewOnly ? (
+                                  formScores[item.id]?.MinhChung ? (
+                                    <a 
+                                      href={formScores[item.id].MinhChung} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="text-xs font-bold text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 pl-1"
+                                    >
+                                      Xem link minh chứng đã nộp ↗
+                                    </a>
+                                  ) : (
+                                    <span className="text-xs font-medium text-slate-400 italic pl-1 mt-1">Không nộp kèm minh chứng</span>
+                                  )
+                                ) : (
+                                  <input
+                                    type="text"
+                                    placeholder="Nhập đường dẫn Google Drive hoặc link ảnh chứng nhận..."
+                                    value={formScores[item.id]?.MinhChung || ''}
+                                    onChange={e => handleProofChange(item.id, e.target.value)}
+                                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-400 transition-colors font-medium text-slate-700"
+                                  />
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="md:w-32 flex items-center justify-center bg-slate-50 rounded-2xl p-4 border border-slate-100 shrink-0">
                             <span className={`text-3xl font-black ${formScores[item.id] !== undefined ? 'text-blue-600' : 'text-slate-200'}`}>

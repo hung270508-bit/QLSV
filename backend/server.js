@@ -1352,7 +1352,14 @@ app.get('/api/training-periods/active', (req, res) => {
 });
 
 app.get('/api/admin/training-points', (req, res) => {
-    executeQuery('SELECT d.*, s.HoTen, s.MaLop FROM danhgia_renluyen d JOIN sinhvien s ON d.MSSV = s.MSSV ORDER BY d.MaDanhGia DESC', [], res, 'Lỗi lấy điểm RL!');
+    const query = `
+        SELECT d.*, s.HoTen, s.MaLop, l.MaKhoa 
+        FROM danhgia_renluyen d 
+        JOIN sinhvien s ON d.MSSV = s.MSSV 
+        LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+        ORDER BY d.MaDanhGia DESC
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy điểm RL!');
 });
 
 app.put('/api/admin/training-points/:id', (req, res) => {
@@ -1464,8 +1471,8 @@ app.post('/api/training-points', (req, res) => {
         const maDanhGia = result.insertId;
 
         if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
-            const values = ChiTiet.map(ct => [maDanhGia, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption]);
-            const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption) VALUES ?';
+            const values = ChiTiet.map(ct => [maDanhGia, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.MinhChung || null]);
+            const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
             db.query(detailQuery, [values], (detailErr) => {
                 if (detailErr) {
                     console.error('Lỗi lưu chi tiết đánh giá:', detailErr);
@@ -1495,8 +1502,8 @@ app.put('/api/training-points/:id', (req, res) => {
             db.query('DELETE FROM chitiet_danhgia WHERE MaDanhGia = ?', [req.params.id], (delErr) => {
                 if (delErr) return res.json({ success: true, message: 'Cập nhật điểm thành công (không cập nhật được chi tiết)!' });
 
-                const values = ChiTiet.map(ct => [req.params.id, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption]);
-                const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption) VALUES ?';
+                const values = ChiTiet.map(ct => [req.params.id, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.MinhChung || null]);
+                const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
                 db.query(detailQuery, [values], (insertErr) => {
                     if (insertErr) console.error('Lỗi lưu chi tiết đánh giá:', insertErr);
                     res.json({ success: true, message: 'Cập nhật điểm thành công!' });
