@@ -342,16 +342,22 @@ function ClassManagement() {
 
   const confirmDelete = async () => {
     if (!deleteDialog.classInfo) return;
-    try {
-      await axios.delete(`${API_BASE}/classes/${encodeURIComponent(deleteDialog.classInfo.MaLop)}`);
-      setToast({ show: true, message: 'Xóa lớp học thành công!', type: 'success' });
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting class:', error);
-      setErrorDialog({ show: true, message: 'Lỗi khi xóa lớp học!' });
-    } finally {
-      setDeleteDialog({ show: false, classInfo: null });
-    }
+    const classToDelete = deleteDialog.classInfo;
+    setDeleteDialog({ show: false, classInfo: null });
+    setConfirmDialog({
+      show: true,
+      message: 'Bạn có chắc chắn muốn xóa lớp học này không?',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API_BASE}/classes/${encodeURIComponent(classToDelete.MaLop)}`);
+          setToast({ show: true, message: 'Xóa lớp học thành công!', type: 'success' });
+          fetchData();
+        } catch (error) {
+          console.error('Error deleting class:', error);
+          setErrorDialog({ show: true, message: 'Lỗi khi xóa lớp học!' });
+        }
+      }
+    });
   };
 
   const loadClassDetailsFallback = async (maLop) => {
