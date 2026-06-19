@@ -417,19 +417,21 @@ function StudentManagement() {
         newErrors.Email = 'Email không được vượt quá 100 ký tự';
 
       } else {
-
-        // Validate trùng email với giảng viên
-
-        const duplicateEmailTeacher = teachers.find(
-
-          teacher => teacher.Email === formData.Email
-
+        // Validate trùng email với sinh viên
+        const duplicateEmail = students.find(
+          student => student.Email === formData.Email &&
+                     (!editingStudent || student.MSSV !== editingStudent.MSSV)
         );
-
-        if (duplicateEmailTeacher) {
-
-          newErrors.Email = 'Email đã tồn tại trong hệ thống (đã được giảng viên sử dụng)';
-
+        if (duplicateEmail) {
+          newErrors.Email = 'Email đã tồn tại trong hệ thống';
+        } else {
+          // Validate trùng email với giảng viên
+          const duplicateEmailTeacher = teachers.find(
+            teacher => teacher.Email === formData.Email
+          );
+          if (duplicateEmailTeacher) {
+            newErrors.Email = 'Email đã tồn tại trong hệ thống (đã được giảng viên sử dụng)';
+          }
         }
 
       }
