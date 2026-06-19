@@ -9,7 +9,7 @@ import API_URL from '../../api';
 import Toast from '../common/Toast';
 import ConfirmDialog from '../common/ConfirmDialog';
 
-const EVALUATION_CRITERIA = [
+const DEFAULT_CRITERIA = [
   {
     id: 'sec1',
     title: '1. Đánh giá về ý thức tham gia học tập (Tối đa 20đ)',
@@ -158,8 +158,19 @@ function StudentTrainingPoints({ user }) {
     if (user?.username) fetchData(); 
   }, [user]);
 
+  const currentCriteria = (() => {
+    if (editingRecord?.CauTrucTieuChi) {
+      return typeof editingRecord.CauTrucTieuChi === 'string' ? JSON.parse(editingRecord.CauTrucTieuChi) : editingRecord.CauTrucTieuChi;
+    }
+    if (selectedSemester) {
+      const p = activePeriods.find(p => p.HocKy === selectedSemester);
+      if (p?.CauTrucTieuChi) return typeof p.CauTrucTieuChi === 'string' ? JSON.parse(p.CauTrucTieuChi) : p.CauTrucTieuChi;
+    }
+    return DEFAULT_CRITERIA;
+  })();
+
   const currentTotalScore = Object.values(formScores).reduce((sum, item) => sum + item.point, 0);
-  const totalItems = EVALUATION_CRITERIA.reduce((sum, sec) => sum + sec.items.length, 0);
+  const totalItems = currentCriteria.reduce((sum, sec) => sum + (sec.items?.length || 0), 0);
   const completedCount = Object.keys(formScores).length;
 
   const pendingPeriods = activePeriods.filter(period => 
@@ -272,7 +283,14 @@ function StudentTrainingPoints({ user }) {
             await axios.put(`${API_URL}/api/training-points/${editingRecord.MaDanhGia}`, { DiemTuDanhGia: currentTotalScore, ChiTiet: chiTiet });
             showToast("Cập nhật thành công!", "success");
           } else {
-            await axios.post(`${API_URL}/api/training-points`, { MSSV: user.username, HocKy: selectedSemester, DiemTuDanhGia: currentTotalScore, ChiTiet: chiTiet });
+            const activeP = activePeriods.find(p => p.HocKy === selectedSemester);
+            await axios.post(`${API_URL}/api/training-points`, { 
+              MSSV: user.username, 
+              HocKy: selectedSemester, 
+              DiemTuDanhGia: currentTotalScore, 
+              ChiTiet: chiTiet,
+              MaDotDanhGia: activeP ? activeP.MaDotDanhGia : null
+            });
             showToast("Nộp phiếu thành công!", "success");
           }
           setIsModalOpen(false); 
@@ -639,7 +657,7 @@ function StudentTrainingPoints({ user }) {
 
               {/* Form Content */}
               <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 custom-scrollbar">
-                {EVALUATION_CRITERIA.map((section) => (
+                {currentCriteria.map((section) => (
                   <div key={section.id} className="border border-slate-200 rounded-3xl overflow-hidden bg-white shadow-sm">
                     <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
                       <h3 className="font-black text-slate-800 text-base">{section.title}</h3>

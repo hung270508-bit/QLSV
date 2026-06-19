@@ -1502,14 +1502,15 @@ app.get('/api/admin/training-periods', (req, res) => {
 });
 
 app.post('/api/admin/training-periods', (req, res) => {
-    const { HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai } = req.body;
+    const { HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai, CauTrucTieuChi } = req.body;
     const checkQuery = 'SELECT MaDotDanhGia FROM dot_danhgia WHERE HocKy = ? AND NamHoc = ?';
     db.query(checkQuery, [HocKy, NamHoc], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra trùng lặp!' });
         if (results.length > 0) return res.status(400).json({ success: false, message: 'Đợt đánh giá cho học kỳ này đã tồn tại!' });
 
-        const query = 'INSERT INTO dot_danhgia (HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai) VALUES (?, ?, ?, ?, ?)';
-        executeInsert(query, [HocKy, NamHoc, NgayBatDau || null, NgayKetThuc || null, TrangThai || 'Đang tự đánh giá'], res, 'Tạo đợt đánh giá thành công!', 'Lỗi tạo đợt!');
+        const query = 'INSERT INTO dot_danhgia (HocKy, NamHoc, NgayBatDau, NgayKetThuc, TrangThai, CauTrucTieuChi) VALUES (?, ?, ?, ?, ?, ?)';
+        const cauTrucJson = CauTrucTieuChi ? JSON.stringify(CauTrucTieuChi) : null;
+        executeInsert(query, [HocKy, NamHoc, NgayBatDau || null, NgayKetThuc || null, TrangThai || 'Đang tự đánh giá', cauTrucJson], res, 'Tạo đợt đánh giá thành công!', 'Lỗi tạo đợt!');
     });
 });
 
@@ -1530,10 +1531,11 @@ app.get('/api/training-periods/active', (req, res) => {
 
 app.get('/api/admin/training-points', (req, res) => {
     const query = `
-        SELECT d.*, s.HoTen, s.MaLop, l.MaKhoa 
+        SELECT d.*, s.HoTen, s.MaLop, l.MaKhoa, dd.CauTrucTieuChi 
         FROM danhgia_renluyen d 
         JOIN sinhvien s ON d.MSSV = s.MSSV 
         LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+        LEFT JOIN dot_danhgia dd ON d.MaDotDanhGia = dd.MaDotDanhGia
         ORDER BY d.MaDanhGia DESC
     `;
     executeQuery(query, [], res, 'Lỗi lấy điểm RL!');
@@ -1629,20 +1631,26 @@ app.get('/api/training-points/:id/details', (req, res) => {
 
 // ==================== [SINH VIÊN] ĐÁNH GIÁ RÈN LUYỆN ====================
 app.get('/api/training-points/student/:mssv', (req, res) => {
-    const query = 'SELECT * FROM danhgia_renluyen WHERE MSSV = ? ORDER BY HocKy DESC';
+    const query = `
+        SELECT d.*, dd.CauTrucTieuChi 
+        FROM danhgia_renluyen d
+        LEFT JOIN dot_danhgia dd ON d.MaDotDanhGia = dd.MaDotDanhGia
+        WHERE d.MSSV = ? 
+        ORDER BY d.HocKy DESC
+    `;
     executeQuery(query, [req.params.mssv], res, 'Lỗi lấy điểm rèn luyện!');
 });
 
 app.post('/api/training-points', (req, res) => {
-    const { MSSV, HocKy, DiemTuDanhGia, ChiTiet } = req.body;
+    const { MSSV, HocKy, DiemTuDanhGia, ChiTiet, MaDotDanhGia } = req.body;
     let xepLoai = 'Yếu';
     if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
     else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
     else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
     else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
-    const query = "INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai) VALUES (?, ?, ?, ?, ?, 'Chờ lớp duyệt')";
-    db.query(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai], (err, result) => {
+    const query = "INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai, MaDotDanhGia) VALUES (?, ?, ?, ?, ?, 'Chờ lớp duyệt', ?)";
+    db.query(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai, MaDotDanhGia || null], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi nộp đánh giá!', error: err.message });
 
         const maDanhGia = result.insertId;
