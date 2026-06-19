@@ -1,32 +1,94 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Calendar as CalendarIcon, Plus, Edit, Trash2, Search, X,
-  RefreshCw, CheckCircle2, AlertCircle, Clock, MapPin, Repeat, CalendarDays, BookOpen, Layers
+import { 
+  Calendar as CalendarIcon, Plus, Edit, Trash2, Search, X, 
+  RefreshCw, CheckCircle2, AlertCircle, Clock, MapPin, Repeat, CalendarDays, BookOpen
 } from 'lucide-react';
 import axios from 'axios';
 import { ScheduleSkeleton } from '../common/AdminSkeleton';
-import Pagination from '../common/Pagination';
 import API_URL from '../../api';
 
-// Danh sách phòng học cố định hệ thống
-const ROOM_LIST = [
-  'E-0101', 'E-0102', 'E-0201', 'E-0202', 'E-0301', 'E-0302',
-  'A-0101', 'A-0102', 'A-0201', 'A-0202',
-  'B-0101', 'B-0102', 'B-0201', 'B-0202',
-  'C-0101', 'C-0102', 'C-0201', 'C-0202'
-];
+// ================================================================
+// HẰNG SỐ NGHIỆP VỤ DUY NHẤT (Quy định 1 TC = 9 tiết)
+// ================================================================
+const TC_TO_TIET = 9;
 
+// ================================================================
+// CÁC HÀM XỬ LÝ LÔGIC THỜI GIAN VÀ SỐ TIẾT
+// ================================================================
+const parsePeriods = (caHocStr) => {
+  const str = String(caHocStr).trim();
+  const matchXY = str.match(/(\d+)\s*-\s*(\d+)/);
+  if (matchXY) return { start: parseInt(matchXY[1]), end: parseInt(matchXY[2]) };
+  return { start: 0, end: 0 }; 
+};
+
+function tinhTietDaHoc(schedules, maLopHocPhan) {
+  return schedules
+    .filter(s => String(s.MaLopHocPhan).trim() === String(maLopHocPhan).trim())
+    .reduce((sum, s) => {
+      if (s.SoTiet) return sum + parseInt(s.SoTiet);
+      const p = parsePeriods(s.CaHoc);
+      const soTiet = p.start > 0 ? (p.end - p.start + 1) : 0;
+      return sum + soTiet;
+    }, 0);
+}
+
+const getTimeString = (startPeriod, endPeriod, periodsConfig) => {
+  if (!periodsConfig || !periodsConfig[startPeriod] || !periodsConfig[endPeriod]) return '';
+  return `${periodsConfig[startPeriod].start} - ${periodsConfig[endPeriod].end}`;
+};
+
+const isOverlap = (ca1, ca2) => {
+  const p1 = parsePeriods(ca1);
+  const p2 = parsePeriods(ca2);
+  if (p1.start === 0 || p2.start === 0) return false;
+  return p1.start <= p2.end && p1.end >= p2.start;
+};
+
+const formatCaHocToDisplay = (caHocStr, soTiet, periodsConfig) => {
+  if (!caHocStr || String(caHocStr).trim().toLowerCase() === 'null') {
+    return soTiet ? `Học ${soTiet} tiết` : 'Chưa phân tiết';
+  }
+  const p = parsePeriods(caHocStr);
+  if (p.start === 0) return `Ca ${caHocStr}`;
+  const time = getTimeString(p.start, p.end, periodsConfig);
+  return `Tiết ${p.start}-${p.end} ${time ? `(${time})` : ''}`;
+};
+
+const getLocalYYYYMMDD = (dateInput) => {
+  if (!dateInput) return '';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+const getDayAndDateStr = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  const names = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+  return `${names[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+};
+
+// ================================================================
+// COMPONENT CHÍNH
+// ================================================================
 function ScheduleManagement() {
-  const [schedules, setSchedules] = useState([]);
-  const [lhpList, setLhpList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [schedules, setSchedules]   = useState([]);
+  const [lhpList, setLhpList]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [showModal, setShowModal]   = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
+
+  // STATE NHẬN DỮ LIỆU CẤU HÌNH TỪ API
+  const [sysConfig, setSysConfig]   = useState({
+    rooms: [], periods: {}, tanSuat: [], thuList: []
+  });
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -34,8 +96,12 @@ function ScheduleManagement() {
   };
 
   const [isRecurring, setIsRecurring] = useState(true);
+  
   const [formData, setFormData] = useState({
-    MaLopHocPhan: '', NgayHoc: '', NgayBatDau: '', CaHoc: '', PhongHoc: ''
+    MaLopHocPhan: '', NgayHoc: '', NgayBatDau: '', PhongHoc: '',
+    tanSuat: 1, thu1: '', thu2: '',
+    tietBatDau1: '', soTiet1: '',
+    tietBatDau2: '', soTiet2: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -44,12 +110,21 @@ function ScheduleManagement() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [schedRes, lhpRes] = await Promise.all([
+      const [schedRes, lhpRes, configRes] = await Promise.all([
         axios.get(`${API_URL}/api/schedules`),
-        axios.get(`${API_URL}/api/teaching-assignments`)
+        axios.get(`${API_URL}/api/teaching-assignments`),
+        axios.get(`${API_URL}/api/schedule-configs`)
       ]);
       setSchedules(schedRes.data);
       lhpList && setLhpList(lhpRes.data);
+      if (configRes.data && configRes.data.success) {
+        setSysConfig({
+          rooms: configRes.data.rooms,
+          periods: configRes.data.periods,
+          tanSuat: configRes.data.tanSuat,
+          thuList: configRes.data.thuList
+        });
+      }
     } catch (e) {
       showToast('Lỗi tải dữ liệu!', 'error');
     } finally {
@@ -57,154 +132,236 @@ function ScheduleManagement() {
     }
   };
 
-  const getLocalYYYYMMDD = (dateInput) => {
-    if (!dateInput) return '';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '';
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  const selectedLHPInfo = useMemo(() => {
+    if (!formData.MaLopHocPhan) return null;
+    const lhp = lhpList.find(l =>
+      String(l.MaLopHocPhan).trim().toLowerCase() ===
+      String(formData.MaLopHocPhan).trim().toLowerCase()
+    );
+    if (!lhp) return null;
 
-  // Hàm chuyển đổi Date -> "Thứ..., DD/MM/YYYY"
-  const getDayAndDateStr = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    if (isNaN(d.getTime())) return '';
-    const names = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    const dayName = names[d.getDay()];
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${dayName}, ${dd}/${mm}/${yyyy}`;
-  };
+    const tc         = lhp.TinChi || lhp.SoTinChi || 3;
+    const tongTiet   = tc * TC_TO_TIET; 
 
-  const filteredSchedules = useMemo(() => {
-    return schedules.filter(s =>
+    let tietDaHoc = tinhTietDaHoc(schedules, formData.MaLopHocPhan);
+    
+    // Nếu đang Edit, trả lại số tiết của chính lịch đó để giả lập tình trạng ban đầu
+    if (editingSchedule && String(editingSchedule.MaLopHocPhan).trim() === String(formData.MaLopHocPhan).trim()) {
+      if (editingSchedule.SoTiet) {
+        tietDaHoc -= parseInt(editingSchedule.SoTiet); 
+      } else {
+        const p = parsePeriods(editingSchedule.CaHoc);
+        tietDaHoc -= (p.start > 0 ? (p.end - p.start + 1) : 0);
+      }
+    }
+
+    const tietConLai = tongTiet - tietDaHoc;
+    const hoanThanh  = tietConLai <= 0;
+
+    return { tc, tongTiet, tietDaHoc, tietConLai, hoanThanh, lhp };
+  }, [formData.MaLopHocPhan, lhpList, schedules, editingSchedule]);
+
+  const previewSchedule = useMemo(() => {
+    if (!isRecurring || !formData.NgayBatDau || !formData.MaLopHocPhan || !selectedLHPInfo) return [];
+    if (formData.tanSuat === 1 && (!formData.thu1 || !formData.tietBatDau1 || !formData.soTiet1)) return [];
+    if (formData.tanSuat === 2 && (!formData.thu2 || !formData.tietBatDau2 || !formData.soTiet2)) return [];
+
+    const s1 = parseInt(formData.soTiet1);
+    const s2 = formData.tanSuat === 2 ? parseInt(formData.soTiet2) : s1;
+    if (isNaN(s1) || s1 <= 0) return [];
+
+    const startDate = new Date(formData.NgayBatDau + 'T00:00:00');
+    if (isNaN(startDate.getTime())) return [];
+
+    let remaining = selectedLHPInfo.tietConLai;
+    if (remaining <= 0) return [];
+
+    const thu1   = parseInt(formData.thu1);
+    const thu2   = parseInt(formData.thu2);
+    const jsDay1 = thu1 === 0 ? 0 : thu1;
+    const jsDay2 = thu2 === 0 ? 0 : thu2;
+
+    const findFirst = (fromDate, targetDay) => {
+      const d = new Date(fromDate);
+      const targetJS = targetDay === 0 ? 0 : targetDay; 
+      d.setDate(d.getDate() + ((targetJS - d.getDay() + 7) % 7));
+      return d;
+    };
+
+    const sessions = [];
+    if (formData.tanSuat === 1) {
+      let curr = findFirst(startDate, jsDay1);
+      while (remaining > 0) {
+        const tietToHoc = Math.min(s1, remaining);
+        const endTietThucTe = parseInt(formData.tietBatDau1) + tietToHoc - 1;
+        sessions.push({ date: new Date(curr), caHoc: `${formData.tietBatDau1}-${endTietThucTe}`, tietBatDau: parseInt(formData.tietBatDau1), soTiet: tietToHoc });
+        curr.setDate(curr.getDate() + 7);
+        remaining -= tietToHoc;
+      }
+    } else {
+      let curr1 = findFirst(startDate, jsDay1);
+      let curr2 = findFirst(startDate, jsDay2);
+
+      while (remaining > 0) {
+        if (curr1 <= curr2) {
+          const tietToHoc = Math.min(s1, remaining);
+          const endTietThucTe = parseInt(formData.tietBatDau1) + tietToHoc - 1;
+          sessions.push({ date: new Date(curr1), caHoc: `${formData.tietBatDau1}-${endTietThucTe}`, tietBatDau: parseInt(formData.tietBatDau1), soTiet: tietToHoc });
+          curr1.setDate(curr1.getDate() + 7);
+          remaining -= tietToHoc;
+        } else {
+          if (remaining <= 0) break;
+          const tietToHoc = Math.min(s2, remaining);
+          const endTietThucTe = parseInt(formData.tietBatDau2) + tietToHoc - 1;
+          sessions.push({ date: new Date(curr2), caHoc: `${formData.tietBatDau2}-${endTietThucTe}`, tietBatDau: parseInt(formData.tietBatDau2), soTiet: tietToHoc });
+          curr2.setDate(curr2.getDate() + 7);
+          remaining -= tietToHoc;
+        }
+      }
+    }
+
+    return sessions;
+  }, [isRecurring, formData, selectedLHPInfo]);
+
+  const groupedSchedules = useMemo(() => {
+    const filtered = schedules.filter(s =>
       s.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.TenGiangVien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.MaLopHocPhan?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [schedules, searchTerm]);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredSchedules.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
-
-  const groupedSchedules = useMemo(() => {
     const groups = {};
-    currentItems.forEach(s => {
+    filtered.forEach(s => {
       const dateKey = s.NgayHoc ? getLocalYYYYMMDD(s.NgayHoc) : 'Chưa xác định';
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(s);
     });
-
     Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => parseInt(String(a.CaHoc).replace(/\D/g, '')) - parseInt(String(b.CaHoc).replace(/\D/g, '')));
+      groups[key].sort((a, b) => parsePeriods(a.CaHoc).start - parsePeriods(b.CaHoc).start);
     });
-
     return Object.entries(groups).sort((a, b) => new Date(b[0]) - new Date(a[0]));
-  }, [currentItems]);
+  }, [schedules, searchTerm]);
 
-  // LOGIC AUTO TÍNH BUỔI HỌC DỰA VÀO TÍN CHỈ
-  const selectedLHPInfo = useMemo(() => {
-    const lhp = lhpList.find(l => String(l.MaLopHocPhan).trim().toLowerCase() === String(formData.MaLopHocPhan).trim().toLowerCase());
-    if (!lhp) return { tinChi: 0, soBuoiHoc: 0, soTietHoc: 0 };
-    const tc = lhp.TinChi || lhp.SoTinChi || 3;
-    return { tinChi: tc, soBuoiHoc: tc * 3, soTietHoc: tc * 9 };
-  }, [formData.MaLopHocPhan, lhpList]);
-
-  // TẠO LỘ TRÌNH LỊCH HỌC TỰ ĐỘNG (1 Buổi/Tuần)
-  const previewDates = useMemo(() => {
-    if (!isRecurring || !formData.NgayBatDau || !formData.MaLopHocPhan) return [];
-
-    let dates = [];
-    let curr = new Date(formData.NgayBatDau + 'T00:00:00');
-    if (isNaN(curr.getTime())) return [];
-
-    const numSessions = selectedLHPInfo.soBuoiHoc;
-
-    for (let i = 0; i < numSessions; i++) {
-      dates.push(new Date(curr));
-      curr.setDate(curr.getDate() + 7);
-    }
-    return dates;
-  }, [isRecurring, formData.NgayBatDau, formData.MaLopHocPhan, selectedLHPInfo]);
-
-  // LOGIC RÀNG BUỘC THỜI GIAN THỜI GIAN THỰC (REAL-TIME)
-  const handleDateChange = (field, value) => {
+  // Xóa trắng lỗi Real-time khi User bắt đầu sửa
+  const handleFieldChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
     let errorMsg = '';
-
-    if (value) {
-      const selectedDate = new Date(value + 'T00:00:00');
-      const isSameOldDate = editingSchedule && getLocalYYYYMMDD(editingSchedule.NgayHoc) === value;
-
-      if (!isSameOldDate) {
-        if (selectedDate < today) {
-          errorMsg = 'Không được xếp lịch vào ngày ở quá khứ.';
-        } else if (selectedDate.getFullYear() > currentYear) {
-          errorMsg = `Chỉ được phép xếp lịch trong năm hiện tại (${currentYear}).`;
-        }
+    
+    if (value && (field === 'NgayBatDau' || field === 'NgayHoc')) {
+      const sel = new Date(value + 'T00:00:00');
+      const isSame = editingSchedule && getLocalYYYYMMDD(editingSchedule.NgayHoc) === value;
+      if (!isSame) {
+        if (sel < today) errorMsg = 'Lỗi: Không được xếp lịch vào ngày ở quá khứ.';
+        else if (sel.getFullYear() > currentYear) errorMsg = `Lỗi: Chỉ được xếp lịch trong năm hiện tại (${currentYear}).`;
       }
     }
-    setFormErrors(prev => ({ ...prev, [field]: errorMsg }));
+    
+    setFormErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      if (field.includes('tietBatDau') || field.includes('soTiet')) {
+        delete newErrors.buoi1;
+        delete newErrors.buoi2;
+      }
+      if (errorMsg) {
+        newErrors[field] = errorMsg;
+      }
+      return newErrors;
+    });
   };
 
   const validateScheduleForm = () => {
-    const errors = { ...formErrors }; // Kế thừa các lỗi đã bắt real-time
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const errors = {}; // Bắt đầu bằng mảng rỗng để không bị kẹt lỗi cũ
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
 
     if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
+    if (!formData.PhongHoc) errors.PhongHoc = 'Vui lòng chọn phòng học';
+
+    if (!editingSchedule && selectedLHPInfo?.hoanThanh) {
+      errors.MaLopHocPhan = 'Môn học này đã hoàn thành đủ tiết, không thể tạo thêm lịch!';
+    }
+
+    const validateTiet = (startStr, numStr, fieldPrefix) => {
+      if (!startStr) { errors[fieldPrefix] = 'Chọn tiết bắt đầu'; return 0; }
+      if (!numStr) { errors[fieldPrefix] = 'Nhập số tiết học'; return 0; }
+      
+      const s = parseInt(startStr);
+      const num = parseInt(numStr);
+      
+      if (num < 2 || num > 5) {
+        errors[fieldPrefix] = `Số tiết học mỗi buổi phải từ 2 đến 5 tiết.`;
+        return 0;
+      }
+      
+      const e = s + num - 1;
+      if (e > 12) {
+        errors[fieldPrefix] = `Tiết kết thúc (${e}) vượt quá 12 tiết.`;
+        return 0;
+      }
+      
+      if (s <= 6 && e >= 7) {
+        errors[fieldPrefix] = 'Lỗi: Lịch học không được vắt ngang giờ nghỉ trưa (Qua tiết 6 và 7).';
+        return 0;
+      }
+      return num;
+    };
+
+    let soTiet1 = 0;
 
     if (isRecurring && !editingSchedule) {
       if (!formData.NgayBatDau) {
         errors.NgayBatDau = 'Chọn ngày bắt đầu';
       } else {
-        const startDate = new Date(formData.NgayBatDau + 'T00:00:00');
-        if (startDate < today) errors.NgayBatDau = 'Không được xếp lịch vào ngày ở quá khứ.';
-        else if (startDate.getFullYear() > currentYear) errors.NgayBatDau = `Chỉ được phép bắt đầu lịch học trong năm hiện tại (${currentYear}).`;
+        const d = new Date(formData.NgayBatDau + 'T00:00:00');
+        if (d < today) errors.NgayBatDau = 'Không được xếp lịch vào ngày ở quá khứ.';
+        else if (d.getFullYear() > currentYear) errors.NgayBatDau = `Chỉ được phép bắt đầu trong năm ${currentYear}.`;
+      }
+      if (!formData.thu1) errors.thu1 = 'Chọn thứ học';
+      
+      soTiet1 = validateTiet(formData.tietBatDau1, formData.soTiet1, 'buoi1');
+
+      if (formData.tanSuat === 2) {
+        if (!formData.thu2) errors.thu2 = 'Chọn thứ học buổi 2';
+        if (formData.thu1 && formData.thu2 && formData.thu1 === formData.thu2)
+          errors.thu2 = 'Thứ buổi 2 phải khác thứ buổi 1';
+        validateTiet(formData.tietBatDau2, formData.soTiet2, 'buoi2');
       }
     } else {
       if (!formData.NgayHoc) {
         errors.NgayHoc = 'Vui lòng chọn ngày học';
       } else {
-        const singleDate = new Date(formData.NgayHoc + 'T00:00:00');
-        const isSameOldDate = editingSchedule && getLocalYYYYMMDD(editingSchedule.NgayHoc) === formData.NgayHoc;
+        const d = new Date(formData.NgayHoc + 'T00:00:00');
+        const isSame = editingSchedule && getLocalYYYYMMDD(editingSchedule.NgayHoc) === formData.NgayHoc;
+        if (!isSame) {
+          if (d < today) errors.NgayHoc = 'Không được xếp lịch vào ngày ở quá khứ.';
+          else if (d.getFullYear() > currentYear) errors.NgayHoc = `Chỉ được phép xếp lịch trong năm ${currentYear}.`;
+        }
+      }
+      soTiet1 = validateTiet(formData.tietBatDau1, formData.soTiet1, 'buoi1');
 
-        if (!isSameOldDate) {
-          if (singleDate < today) errors.NgayHoc = 'Không được xếp lịch vào ngày ở quá khứ.';
-          else if (singleDate.getFullYear() > currentYear) errors.NgayHoc = `Chỉ được phép xếp lịch trong năm hiện tại (${currentYear}).`;
+      if (selectedLHPInfo && soTiet1 > 0 && !isRecurring) {
+        if (soTiet1 > selectedLHPInfo.tietConLai) {
+          errors.buoi1 = `Số tiết của buổi học (${soTiet1} tiết) vượt quá số tiết còn lại của môn (${selectedLHPInfo.tietConLai} tiết).`;
         }
       }
     }
-    if (!formData.CaHoc) errors.CaHoc = 'Vui lòng chọn ca học';
-    if (!formData.PhongHoc) errors.PhongHoc = 'Vui lòng chọn phòng học';
 
+    // In chi tiết lỗi ra F12 để bạn dễ nắm bắt nếu nút Lưu không chạy
+    if (Object.keys(errors).length > 0) {
+      console.log("CHI TIẾT LỖI FORM:", errors);
+    }
+    
     setFormErrors(errors);
-    // Chỉ submit khi tất cả giá trị lỗi đều rỗng
-    return Object.values(errors).every(err => !err);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!validateScheduleForm()) {
-      showToast('Vui lòng kiểm tra lại các trường bị thiếu hoặc sai ngày!', 'error');
+      showToast('Vui lòng kiểm tra lại các cảnh báo lỗi màu đỏ!', 'error');
       return;
     }
 
@@ -213,59 +370,56 @@ function ScheduleManagement() {
     if (!selectedLHP) { showToast('Không tìm thấy lớp học phần hợp lệ!', 'error'); return; }
 
     if (isRecurring && !editingSchedule) {
-      const isAlreadyScheduled = schedules.some(s => String(s.MaLopHocPhan).trim().toLowerCase() === currentFormLHP);
-      if (isAlreadyScheduled) {
-        showToast(`Lớp HP ${formData.MaLopHocPhan} đã được xếp lịch chính thức! Vui lòng chọn chế độ "Học bù (1 buổi)".`, 'error');
+      const alreadyScheduled = schedules.some(s =>
+        String(s.MaLopHocPhan).trim().toLowerCase() === currentFormLHP
+      );
+      if (alreadyScheduled) {
+        showToast('Môn học đã được xếp lịch trước đó, không thể tạo thêm lịch lặp định kỳ.', 'error');
         return;
       }
     }
 
-    const caNew = String(formData.CaHoc).replace(/\D/g, '');
-    let targetDates = [];
+    let sessionsPayload = [];
     if (editingSchedule) {
-      targetDates.push(getLocalYYYYMMDD(formData.NgayHoc));
-    } else if (isRecurring && previewDates.length > 0) {
-      previewDates.forEach(dateObj => targetDates.push(getLocalYYYYMMDD(dateObj)));
+      sessionsPayload.push({
+        NgayHoc: formData.NgayHoc,
+        TietBatDau: parseInt(formData.tietBatDau1),
+        SoTiet: parseInt(formData.soTiet1),
+        PhongHoc: formData.PhongHoc
+      });
+    } else if (isRecurring && previewSchedule.length > 0) {
+      sessionsPayload = previewSchedule.map(s => ({
+        NgayHoc: getLocalYYYYMMDD(s.date),
+        TietBatDau: s.tietBatDau,
+        SoTiet: s.soTiet,
+        PhongHoc: formData.PhongHoc
+      }));
+    } else if (!isRecurring) {
+      sessionsPayload.push({
+        NgayHoc: formData.NgayHoc,
+        TietBatDau: parseInt(formData.tietBatDau1),
+        SoTiet: parseInt(formData.soTiet1),
+        PhongHoc: formData.PhongHoc
+      });
     } else {
-      targetDates.push(getLocalYYYYMMDD(formData.NgayHoc));
+       showToast('Lỗi logic: Không sinh được dữ liệu buổi học!', 'error');
+       return;
     }
 
-    // SIÊU LƯỚI LỌC TRÙNG LỊCH: Kiểm tra kỹ Phòng học
-    for (const targetDate of targetDates) {
-      const displayDate = targetDate.split('-').reverse().join('/');
+    // CHECK TRÙNG LỊCH Ở FRONTEND TRƯỚC KHI GỬI
+    for (const session of sessionsPayload) {
+      const displayDate = session.NgayHoc.split('-').reverse().join('/'); 
+      const eTiet = session.TietBatDau + session.SoTiet - 1;
+      const caHocCheck = `${session.TietBatDau}-${eTiet}`;
 
       const conflictingSchedules = schedules.filter(s => {
         if (editingSchedule && s.MaLichHoc === editingSchedule.MaLichHoc) return false;
-        const existingDate = getLocalYYYYMMDD(s.NgayHoc);
-        const caExisting = String(s.CaHoc).replace(/\D/g, '');
-        return existingDate === targetDate && caExisting === caNew;
+        return getLocalYYYYMMDD(s.NgayHoc) === session.NgayHoc && isOverlap(s.CaHoc, caHocCheck);
       });
 
-      for (const conflict of conflictingSchedules) {
-        // TRÙNG PHÒNG HỌC -> CHẶN
-        if (String(conflict.PhongHoc).trim().toLowerCase() === String(formData.PhongHoc).trim().toLowerCase()) {
-          showToast(`Trùng lịch: Phòng ${formData.PhongHoc} đã có lớp học vào Ca ${caNew} ngày ${displayDate}!`, 'error');
-          return;
-        }
-
-        const conflictLHP = lhpList.find(l => String(l.MaLopHocPhan).trim().toLowerCase() === String(conflict.MaLopHocPhan).trim().toLowerCase());
-        if (conflictLHP) {
-          const sameTeacherMa = selectedLHP.MaGiangVien && conflictLHP.MaGiangVien && String(selectedLHP.MaGiangVien) === String(conflictLHP.MaGiangVien);
-          const sameTeacherTen = selectedLHP.TenGiangVien && conflictLHP.TenGiangVien && String(selectedLHP.TenGiangVien).trim().toLowerCase() === String(conflictLHP.TenGiangVien).trim().toLowerCase();
-
-          if (sameTeacherMa || sameTeacherTen) {
-            showToast(`Trùng lịch: GV ${conflictLHP.TenGiangVien} đã bị kẹt dạy lớp khác vào Ca ${caNew} ngày ${displayDate}!`, 'error');
-            return;
-          }
-
-          const sameClassMa = selectedLHP.MaLop && conflictLHP.MaLop && String(selectedLHP.MaLop) === String(conflictLHP.MaLop);
-          const sameClassTen = selectedLHP.TenLop && conflictLHP.TenLop && String(selectedLHP.TenLop).trim().toLowerCase() === String(conflictLHP.TenLop).trim().toLowerCase();
-
-          if (sameClassMa || sameClassTen) {
-            showToast(`Trùng lịch: Lớp ${conflictLHP.TenLop} đã bận học môn khác vào Ca ${caNew} ngày ${displayDate}!`, 'error');
-            return;
-          }
-        }
+      if (conflictingSchedules.some(s => String(s.PhongHoc) === String(formData.PhongHoc))) {
+        showToast(`Trùng lịch: Phòng ${formData.PhongHoc} bận vào ${displayDate}`, 'error');
+        return; 
       }
     }
 
@@ -273,38 +427,32 @@ function ScheduleManagement() {
       show: true,
       title: editingSchedule ? 'Xác nhận cập nhật' : 'Xác nhận xếp lịch',
       message: editingSchedule
-        ? 'Bạn có chắc chắn muốn lưu thay đổi cho buổi học này?'
-        : isRecurring
-          ? `Hệ thống sẽ tạo ${previewDates.length} buổi học định kỳ (1 buổi/tuần). Xác nhận lưu?`
-          : 'Bạn có chắc chắn muốn thêm buổi học bù này?',
+        ? `Lưu thay đổi cho lịch học này?`
+        : `Hệ thống sẽ tạo ${sessionsPayload.length} buổi học. Lưu vào Database?`,
       action: async () => {
         setConfirmDialog({ show: false, title: '', message: '', action: null });
         try {
           if (editingSchedule) {
             await axios.put(`${API_URL}/api/schedules/${editingSchedule.MaLichHoc}`, {
-              MaLopHocPhan: formData.MaLopHocPhan, NgayHoc: getLocalYYYYMMDD(formData.NgayHoc), CaHoc: formData.CaHoc, PhongHoc: formData.PhongHoc
+              MaLopHocPhan: targetLHP,
+              ...sessionsPayload[0]
             });
             showToast('Cập nhật lịch học thành công!', 'success');
           } else {
-            if (isRecurring && previewDates && previewDates.length > 0) {
-              const promises = previewDates.map(dateObj => {
-                return axios.post(`${API_URL}/api/schedules`, {
-                  MaLopHocPhan: formData.MaLopHocPhan, NgayHoc: getLocalYYYYMMDD(dateObj), CaHoc: formData.CaHoc, PhongHoc: formData.PhongHoc
-                });
-              });
-              await Promise.all(promises);
-              showToast(`Đã xếp thành công ${previewDates.length} buổi học định kỳ!`, 'success');
-            } else {
+            // LOOP FOR...OF ĐỂ GỬI NỐI TIẾP, TRÁNH LỖI QUÁ TẢI/TRÙNG LẶP SỐ TIẾT BÊN BACKEND
+            for (const session of sessionsPayload) {
               await axios.post(`${API_URL}/api/schedules`, {
-                MaLopHocPhan: formData.MaLopHocPhan, NgayHoc: getLocalYYYYMMDD(formData.NgayHoc), CaHoc: formData.CaHoc, PhongHoc: formData.PhongHoc
+                MaLopHocPhan: targetLHP,
+                ...session
               });
-              showToast('Thêm lịch học phát sinh thành công!', 'success');
             }
+            showToast('Lưu lịch học thành công!', 'success');
           }
           fetchData();
           handleCloseModal();
-        } catch {
-          showToast('Có lỗi xảy ra khi lưu lịch học!', 'error');
+        } catch (err) {
+          const msg = err.response?.data?.message || 'Có lỗi xảy ra khi lưu lịch học!';
+          showToast(msg, 'error');
         }
       }
     });
@@ -329,19 +477,23 @@ function ScheduleManagement() {
   const handleEdit = (s) => {
     setEditingSchedule(s);
     setIsRecurring(false);
+    const p = parsePeriods(s.CaHoc);
+    const soTiet = p.start > 0 ? (p.end - p.start + 1) : s.SoTiet || 3;
     setFormData({
       MaLopHocPhan: s.MaLopHocPhan,
       NgayHoc: getLocalYYYYMMDD(s.NgayHoc),
-      CaHoc: String(s.CaHoc).replace(/\D/g, ''),
+      tietBatDau1: String(p.start || ''),
+      soTiet1: String(soTiet),
       PhongHoc: s.PhongHoc,
-      NgayBatDau: ''
+      NgayBatDau: '', tanSuat: 1, thu1: '', thu2: '', tietBatDau2: '', soTiet2: ''
     });
+    setFormErrors({});
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false); setEditingSchedule(null);
-    setFormData({ MaLopHocPhan: '', NgayHoc: '', CaHoc: '', PhongHoc: '', NgayBatDau: '' });
+    setFormData({ MaLopHocPhan:'', NgayHoc:'', NgayBatDau:'', PhongHoc:'', tanSuat:1, thu1:'', thu2:'', tietBatDau1:'', soTiet1:'', tietBatDau2:'', soTiet2:'' });
     setFormErrors({}); setIsRecurring(true);
   };
 
@@ -349,58 +501,62 @@ function ScheduleManagement() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 px-4">
-      {/* Toast Notification */}
       <AnimatePresence>
         {toast.show && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded border-l-4 shadow-xl ${toast.type === 'success' ? 'bg-white border-green-500' : 'bg-white border-red-500'}`}>
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded border-l-4 shadow-xl ${toast.type === 'success' ? 'bg-white border-green-500' : 'bg-white border-red-500'}`}
+          >
             {toast.type === 'success' ? <CheckCircle2 className="text-green-500 w-5 h-5" /> : <AlertCircle className="text-red-500 w-5 h-5" />}
             <p className="font-bold text-sm text-gray-800">{toast.message}</p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Header Banner */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl text-white flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="bg-white/20 p-3 rounded-full border border-white/10 flex items-center justify-center shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>
+          <div className="bg-white/20 p-3 rounded-full shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>
           <div>
             <h2 className="text-2xl font-bold">Quản lý lịch học</h2>
-            <p className="text-orange-100 text-sm mt-0.5">Xếp lịch giảng dạy và điều phối thời gian biểu học phần</p>
+            <p className="text-orange-100 text-sm mt-0.5">Xếp lịch giảng dạy linh hoạt theo tiết</p>
           </div>
         </div>
-        <button onClick={() => setShowModal(true)} className="bg-white text-orange-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"><Plus className="w-5 h-5" /> Xếp lịch học</button>
+        <button onClick={() => { handleCloseModal(); setShowModal(true); }}
+          className="bg-white text-orange-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:scale-105"
+        ><Plus className="w-5 h-5"/> Xếp lịch học</button>
       </div>
 
-      {/* Tìm kiếm */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input type="text" placeholder="Tìm kiếm mã lớp học phần, tên môn học, giảng viên..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:border-orange-500 text-sm font-medium" />
+        <input type="text" placeholder="Tìm kiếm mã lớp học phần, tên môn..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+          className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:border-orange-500 text-sm font-medium"
+        />
       </div>
 
-      {/* Danh sách Timeline */}
       <div className="space-y-6">
         {groupedSchedules.length > 0 ? groupedSchedules.map(([date, items]) => (
           <div key={date} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="font-bold text-gray-800 text-sm md:text-base">
-                ▼ {getDayAndDateStr(date)}
-              </h3>
+              <h3 className="font-bold text-gray-800 text-sm md:text-base">▼ {getDayAndDateStr(date)}</h3>
               <span className="bg-orange-50 text-orange-600 text-xs font-bold px-3 py-1 rounded-full border border-orange-100">
-                {items.length} ca học
+                {items.length} buổi học
               </span>
             </div>
-
             <div className="divide-y divide-gray-100">
-              {items.map(s => (
+              {items.map(s => {
+                const p = parsePeriods(s.CaHoc);
+                const soTietHienThi = s.SoTiet || (p.start > 0 ? (p.end - p.start + 1) : '?');
+                return (
                 <div key={s.MaLichHoc} className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
                   <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 items-center w-full">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Ca:</span>
-                      <span className="font-black text-orange-700 bg-orange-50 px-3 py-1 rounded-full text-xs border border-orange-100">Ca {String(s.CaHoc).replace(/\D/g, '')}</span>
+                    <div className="col-span-2 md:col-span-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Thời gian ({soTietHienThi} tiết)</span>
+                      <span className="font-black text-orange-700 bg-orange-50 px-3 py-1 rounded-lg text-xs border border-orange-100 inline-block">
+                        {formatCaHocToDisplay(s.CaHoc, s.SoTiet, sysConfig.periods)}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Phòng</span>
-                      <span className="font-bold text-gray-800 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-red-500" /> P.{s.PhongHoc}</span>
+                      <span className="font-bold text-gray-800 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-red-500"/> P.{s.PhongHoc}</span>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Môn học</span>
@@ -415,17 +571,16 @@ function ScheduleManagement() {
                       <span className="font-medium text-gray-600 text-sm line-clamp-1">{s.TenGiangVien}</span>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
                     <button onClick={() => handleEdit(s)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-orange-600 hover:border-orange-300 transition-colors">
-                      <Edit className="w-3.5 h-3.5" /> Sửa
+                      <Edit className="w-3.5 h-3.5"/> Sửa
                     </button>
                     <button onClick={() => handleDelete(s.MaLichHoc)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-red-600 hover:border-red-300 transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" /> Xóa
+                      <Trash2 className="w-3.5 h-3.5"/> Xóa
                     </button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         )) : (
@@ -434,61 +589,72 @@ function ScheduleManagement() {
             <p className="text-gray-500 font-medium text-sm">Chưa có lịch học nào được xếp.</p>
           </div>
         )}
-
-        {totalPages > 1 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        )}
       </div>
 
-      {/* Modal Sắp Xếp / Sửa Lịch */}
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCloseModal} />
-            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="relative bg-white rounded-xl w-full max-w-[700px] shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCloseModal}/>
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}
+              className="relative bg-white rounded-xl w-full max-w-[700px] shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
               <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                <h3 className="text-base font-bold text-gray-800 flex items-center gap-2"><CalendarDays className="w-5 h-5 text-orange-500" /> {editingSchedule ? 'Cập nhật lịch học' : 'Xếp lịch học mới'}</h3>
-                <button onClick={handleCloseModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"><X className="w-5 h-5" /></button>
+                <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-orange-500"/>
+                  {editingSchedule ? 'Cập nhật lịch học' : 'Xếp lịch học mới'}
+                </h3>
+                <button onClick={handleCloseModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
+                  <X className="w-5 h-5"/>
+                </button>
               </div>
 
               <div className="p-6 overflow-y-auto space-y-4">
                 <form id="schedule-form" onSubmit={handleSubmit} noValidate className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Lớp học phần <span className="text-red-500">*</span></label>
-                    <select
-                      value={formData.MaLopHocPhan}
-                      onChange={e => setFormData({ ...formData, MaLopHocPhan: e.target.value })}
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Lớp học phần <span className="text-red-500">*</span>
+                    </label>
+                    <select value={formData.MaLopHocPhan}
+                      onChange={e => handleFieldChange('MaLopHocPhan', e.target.value)}
                       disabled={!!editingSchedule}
-                      className={`w-full p-2.5 border rounded-lg outline-none text-sm transition-all ${editingSchedule
-                          ? 'bg-gray-100 border-gray-200 text-gray-500 font-semibold cursor-not-allowed opacity-90'
+                      className={`w-full p-2.5 border rounded-lg outline-none text-sm transition-all ${
+                        editingSchedule
+                          ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed opacity-90'
                           : `bg-white focus:border-orange-500 ${formErrors.MaLopHocPhan ? 'border-red-500' : 'border-gray-300'}`
-                        }`}
+                      }`}
                     >
                       <option value="">-- Chọn lớp học phần --</option>
-                      {lhpList.map(lhp => (<option key={lhp.MaLopHocPhan} value={lhp.MaLopHocPhan}>[{lhp.MaLopHocPhan}] {lhp.TenMonHoc} - GV: {lhp.TenGiangVien}</option>))}
+                      {lhpList.map(lhp => {
+                        const isDone = !editingSchedule && selectedLHPInfo && lhp.MaLopHocPhan === formData.MaLopHocPhan && selectedLHPInfo.hoanThanh;
+                        return (
+                          <option key={lhp.MaLopHocPhan} value={lhp.MaLopHocPhan} disabled={isDone}>
+                            [{lhp.MaLopHocPhan}] {lhp.TenMonHoc}
+                          </option>
+                        );
+                      })}
                     </select>
                     {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
 
-                    {/* KHỐI HIỂN THỊ TÍN CHỈ VÀ LỘ TRÌNH TỰ ĐỘNG MỚI */}
-                    {formData.MaLopHocPhan && !editingSchedule && isRecurring && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 p-4 bg-orange-50 border border-orange-100 rounded-xl shadow-sm overflow-hidden">
-                        <div className="flex flex-col md:flex-row justify-between items-center text-sm w-full gap-3">
-                          <span className="font-semibold text-gray-700 flex items-center gap-1.5 w-full md:w-auto"><BookOpen className="w-4 h-4 text-orange-500" /> Tín chỉ môn: <span className="text-orange-600 font-black text-base ml-1">{selectedLHPInfo.tinChi} TC</span></span>
-                          <span className="font-semibold text-gray-700 flex items-center gap-1.5 w-full md:w-auto"><Layers className="w-4 h-4 text-orange-500" /> Tổng số tiết: <span className="text-orange-600 font-black text-base ml-1">{selectedLHPInfo.soTietHoc} tiết</span></span>
-                          <span className="font-semibold text-gray-700 flex items-center gap-1.5 w-full md:w-auto"><CalendarDays className="w-4 h-4 text-orange-500" /> Lộ trình: <span className="text-orange-600 font-black text-base ml-1">{selectedLHPInfo.soBuoiHoc} buổi học</span></span>
+                    {formData.MaLopHocPhan && selectedLHPInfo && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-3 p-4 bg-orange-50 border border-orange-100 rounded-xl shadow-sm overflow-hidden"
+                      >
+                        <div className="flex items-center text-sm w-full gap-2">
+                          <BookOpen className="w-5 h-5 text-orange-500"/>
+                          <span className="font-semibold text-gray-700">Tổng số tiết môn học:</span>
+                          <span className="text-orange-600 font-black text-lg ml-1">{selectedLHPInfo.tongTiet} tiết</span>
                         </div>
+                        {selectedLHPInfo.hoanThanh && !editingSchedule && (
+                          <div className="mt-3 flex items-center gap-2 text-green-700 bg-green-100 border border-green-200 rounded-lg px-3 py-2 text-xs font-bold">
+                            <CheckCircle2 className="w-4 h-4"/> Môn học này đã được xếp đủ số tiết quy định.
+                          </div>
+                        )}
                       </motion.div>
                     )}
 
                     {editingSchedule && (
                       <p className="text-xs text-orange-600 mt-1.5 font-semibold flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5" />
+                        <AlertCircle className="w-3.5 h-3.5"/>
                         Không thể thay đổi lớp học phần khi đang cập nhật lịch đã xếp
                       </p>
                     )}
@@ -496,97 +662,140 @@ function ScheduleManagement() {
 
                   {!editingSchedule && (
                     <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                      <button type="button" onClick={() => setIsRecurring(true)} className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${isRecurring ? 'bg-orange-500 text-white shadow-sm border-orange-600' : 'text-gray-500 border-transparent'}`}><Repeat className="w-3.5 h-3.5" /> Lặp định kỳ</button>
-                      <button type="button" onClick={() => setIsRecurring(false)} className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${!isRecurring ? 'bg-orange-500 text-white shadow-sm border-orange-600' : 'text-gray-500 border-transparent'}`}><Clock className="w-3.5 h-3.5" /> Học bù (1 buổi)</button>
+                      <button type="button" onClick={() => setIsRecurring(true)}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${isRecurring ? 'bg-orange-500 text-white shadow-sm border-orange-600' : 'text-gray-500 border-transparent'}`}
+                      ><Repeat className="w-3.5 h-3.5"/> Lặp định kỳ</button>
+                      <button type="button" onClick={() => setIsRecurring(false)}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${!isRecurring ? 'bg-orange-500 text-white shadow-sm border-orange-600' : 'text-gray-500 border-transparent'}`}
+                      ><Clock className="w-3.5 h-3.5"/> Học bù (1 buổi)</button>
                     </div>
                   )}
 
                   <div className="p-5 border border-gray-200 rounded-xl bg-gray-50/50 space-y-5">
+                    {/* KHỐI LẶP ĐỊNH KỲ */}
                     {isRecurring && !editingSchedule ? (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tần suất học / Tuần <span className="text-red-500">*</span></label>
+                            <select value={formData.tanSuat} onChange={e => setFormData(p => ({ ...p, tanSuat: parseInt(e.target.value), thu2: '', tietBatDau2: '', soTiet2: '' }))} className="w-full p-2.5 bg-white border border-gray-300 rounded-lg outline-none text-sm font-bold text-gray-700">
+                              {sysConfig.tanSuat.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
+                            <select value={formData.PhongHoc} onChange={e => handleFieldChange('PhongHoc', e.target.value)} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
+                              <option value="">-- Chọn Phòng --</option>
+                              {sysConfig.rooms.map(r => <option key={r} value={r}>Phòng {r}</option>)}
+                            </select>
+                            {formErrors.PhongHoc && <p className="text-red-500 text-xs mt-1">{formErrors.PhongHoc}</p>}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày bắt đầu học <span className="text-red-500">*</span></label>
-                            <input
-                              type="date"
-                              value={formData.NgayBatDau}
-                              onChange={e => handleDateChange('NgayBatDau', e.target.value)}
-                              className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}
-                            />
+                            <input type="date" value={formData.NgayBatDau} onChange={e => handleFieldChange('NgayBatDau', e.target.value)} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}/>
                             {formErrors.NgayBatDau ? (
-                              <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> {formErrors.NgayBatDau}</p>
-                            ) : formData.NgayBatDau ? (
-                              <p className="text-blue-600 text-xs mt-1.5 font-bold flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Lịch khởi động: {getDayAndDateStr(formData.NgayBatDau)}</p>
+                              <p className="text-red-500 text-[11px] mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.NgayBatDau}</p>
+                            ) : (formData.NgayBatDau && formData.thu1 && sysConfig.thuList.length > 0) ? (
+                              <p className="text-blue-600 text-[11px] mt-1.5 font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/> ✓ Học vào {sysConfig.thuList.find(t=>String(t.value) === String(formData.thu1))?.label} hàng tuần</p>
                             ) : null}
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Dự kiến kết thúc</label>
-                            <input type="text" value={previewDates.length > 0 ? getDayAndDateStr(getLocalYYYYMMDD(previewDates[previewDates.length - 1])) : ''} disabled placeholder="Hệ thống tự động tính toán..." className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed" />
-                            {previewDates.length > 0 && (
-                              <p className="text-emerald-600 text-xs mt-1.5 font-bold flex items-center gap-1.5">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                Buổi {selectedLHPInfo.soBuoiHoc}: Mở hệ thống nhập điểm
-                              </p>
-                            )}
+                            <input type="text" value={previewSchedule.length > 0 ? getDayAndDateStr(getLocalYYYYMMDD(previewSchedule[previewSchedule.length - 1].date)) : ''} disabled placeholder="Hệ thống tự động tính toán..." className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed"/>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                          <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
-                            <select value={formData.PhongHoc} onChange={e => setFormData({ ...formData, PhongHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
-                              <option value="">-- Chọn Phòng --</option>
-                              {ROOM_LIST.map(r => <option key={r} value={r}>Phòng {r}</option>)}
-                            </select>
-                            {formErrors.PhongHoc && <p className="text-red-500 text-xs mt-1">{formErrors.PhongHoc}</p>}
+
+                        <div className="p-4 border border-gray-200 rounded-lg bg-white space-y-3">
+                          <label className="block text-sm font-bold text-orange-600 uppercase border-b pb-2 mb-3">Buổi 1</label>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thứ học <span className="text-red-500">*</span></label>
+                              <select value={formData.thu1} onChange={e => handleFieldChange('thu1', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.thu1 ? 'border-red-500' : 'border-gray-300'}`}>
+                                <option value="">Chọn</option>
+                                {sysConfig.thuList.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tiết bắt đầu <span className="text-red-500">*</span></label>
+                              <select value={formData.tietBatDau1} onChange={e => handleFieldChange('tietBatDau1', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}>
+                                <option value="">Chọn Tiết</option>
+                                {Object.keys(sysConfig.periods).map(k => <option key={k} value={k}>Tiết {k} ({sysConfig.periods[k].start})</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số tiết học <span className="text-red-500">*</span></label>
+                              <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}/>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ca học <span className="text-red-500">*</span></label>
-                            <select value={formData.CaHoc} onChange={e => setFormData({ ...formData, CaHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.CaHoc ? 'border-red-500' : 'border-gray-300'}`}>
-                              <option value="">-- Chọn Ca --</option>
-                              <option value="1">Ca 1 (Tiết 1-3 | 07:00 - 09:30)</option>
-                              <option value="2">Ca 2 (Tiết 4-6 | 09:30 - 12:00)</option>
-                              <option value="3">Ca 3 (Tiết 7-9 | 12:30 - 14:30)</option>
-                              <option value="4">Ca 4 (Tiết 10-12 | 14:30 - 16:30)</option>
-                            </select>
-                            {formErrors.CaHoc && <p className="text-red-500 text-xs mt-1">{formErrors.CaHoc}</p>}
-                          </div>
+                          {formErrors.buoi1 && <p className="text-red-500 text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.buoi1}</p>}
                         </div>
+
+                        {formData.tanSuat === 2 && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="p-4 border border-gray-200 rounded-lg bg-white space-y-3">
+                            <label className="block text-sm font-bold text-orange-600 uppercase border-b pb-2 mb-3">Buổi 2</label>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thứ học <span className="text-red-500">*</span></label>
+                                <select value={formData.thu2} onChange={e => handleFieldChange('thu2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.thu2 ? 'border-red-500' : 'border-gray-300'}`}>
+                                  <option value="">Chọn</option>
+                                  {sysConfig.thuList.map(t => <option key={t.value} value={t.value} disabled={String(t.value) === formData.thu1}>{t.label}</option>)}
+                                </select>
+                                {formErrors.thu2 && <p className="text-red-500 text-[10px] mt-1">{formErrors.thu2}</p>}
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tiết bắt đầu <span className="text-red-500">*</span></label>
+                                <select value={formData.tietBatDau2} onChange={e => handleFieldChange('tietBatDau2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`}>
+                                  <option value="">Chọn Tiết</option>
+                                  {Object.keys(sysConfig.periods).map(k => <option key={k} value={k}>Tiết {k} ({sysConfig.periods[k].start})</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số tiết học <span className="text-red-500">*</span></label>
+                                <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet2} onChange={e => handleFieldChange('soTiet2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`}/>
+                              </div>
+                            </div>
+                            {formErrors.buoi2 && <p className="text-red-500 text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.buoi2}</p>}
+                          </motion.div>
+                        )}
                       </>
                     ) : (
-                      // FORM CHO "HỌC BÙ (1 BUỔI)" HOẶC "SỬA LỊCH"
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày học <span className="text-red-500">*</span></label>
-                          <input
-                            type="date"
-                            value={formData.NgayHoc}
-                            onChange={e => handleDateChange('NgayHoc', e.target.value)}
-                            className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayHoc ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}
-                          />
-                          {formErrors.NgayHoc ? (
-                            <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> {formErrors.NgayHoc}</p>
-                          ) : formData.NgayHoc ? (
-                            <p className="text-blue-600 text-[11px] mt-1.5 font-bold flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {getDayAndDateStr(formData.NgayHoc)}</p>
-                          ) : null}
+                      // KHỐI HỌC BÙ / SỬA (MỘT BUỔI)
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày học <span className="text-red-500">*</span></label>
+                            <input type="date" value={formData.NgayHoc} onChange={e => handleFieldChange('NgayHoc', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.NgayHoc ? 'border-red-500' : 'border-gray-300'}`}/>
+                            {formErrors.NgayHoc && <p className="text-red-500 text-[11px] mt-1"><AlertCircle className="w-3 h-3 inline"/>{formErrors.NgayHoc}</p>}
+                            {!formErrors.NgayHoc && formData.NgayHoc && (
+                               <p className="text-blue-600 text-[11px] mt-1.5 font-bold flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5"/> Lịch học: {getDayAndDateStr(formData.NgayHoc)}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
+                            <select value={formData.PhongHoc} onChange={e => handleFieldChange('PhongHoc', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
+                              <option value="">-- Chọn Phòng --</option>
+                              {sysConfig.rooms.map(r => <option key={r} value={r}>Phòng {r}</option>)}
+                            </select>
+                            {formErrors.PhongHoc && <p className="text-red-500 text-[11px] mt-1">{formErrors.PhongHoc}</p>}
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
-                          <select value={formData.PhongHoc} onChange={e => setFormData({ ...formData, PhongHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
-                            <option value="">-- Chọn Phòng --</option>
-                            {ROOM_LIST.map(r => <option key={r} value={r}>Phòng {r}</option>)}
-                          </select>
-                          {formErrors.PhongHoc && <p className="text-red-500 text-xs mt-1">{formErrors.PhongHoc}</p>}
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ca học <span className="text-red-500">*</span></label>
-                          <select value={formData.CaHoc} onChange={e => setFormData({ ...formData, CaHoc: e.target.value })} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.CaHoc ? 'border-red-500' : 'border-gray-300'}`}>
-                            <option value="">-- Chọn Ca --</option>
-                            <option value="1">Ca 1 (Tiết 1-3 | 07:00 - 09:30)</option>
-                            <option value="2">Ca 2 (Tiết 4-6 | 09:30 - 12:00)</option>
-                            <option value="3">Ca 3 (Tiết 7-9 | 12:30 - 14:30)</option>
-                            <option value="4">Ca 4 (Tiết 10-12 | 14:30 - 16:30)</option>
-                          </select>
-                          {formErrors.CaHoc && <p className="text-red-500 text-xs mt-1">{formErrors.CaHoc}</p>}
+
+                        <div className="p-4 border rounded-lg bg-white grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tiết bắt đầu <span className="text-red-500">*</span></label>
+                            <select value={formData.tietBatDau1} onChange={e => handleFieldChange('tietBatDau1', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}>
+                              <option value="">Chọn Tiết</option>
+                              {Object.keys(sysConfig.periods).map(k => <option key={k} value={k}>Tiết {k} ({sysConfig.periods[k].start})</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số tiết học <span className="text-red-500">*</span></label>
+                            <input type="number" min="2" max="5" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}/>
+                          </div>
+                          {formErrors.buoi1 && <div className="col-span-2 text-red-500 text-[11px] font-bold"><AlertCircle className="w-3 h-3 inline"/> {formErrors.buoi1}</div>}
                         </div>
                       </div>
                     )}
@@ -594,28 +803,16 @@ function ScheduleManagement() {
                 </form>
               </div>
 
-              <div className="p-4 border-t border-gray-200 bg-gray-50 flex gap-3 justify-end">
-                <button type="button" onClick={handleCloseModal} className="px-5 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Hủy</button>
-                <button form="schedule-form" type="submit" className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm">
+              <div className="p-4 border-t bg-gray-50 flex gap-3 justify-end">
+                <button type="button" onClick={handleCloseModal} className="px-5 py-2 bg-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-300 text-gray-700">Hủy</button>
+                <button 
+                  type="button" 
+                  onClick={handleSubmit} 
+                  disabled={!!selectedLHPInfo?.hoanThanh && !editingSchedule} 
+                  className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {editingSchedule ? 'Lưu thay đổi' : 'Xác nhận xếp lịch'}
                 </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Confirm Dialog */}
-      <AnimatePresence>
-        {confirmDialog.show && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="bg-white rounded-xl p-6 w-full max-w-sm text-center shadow-2xl border border-gray-100">
-              <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-3 border border-orange-100"><AlertCircle className="w-6 h-6" /></div>
-              <h3 className="text-base font-bold text-gray-800 mb-1.5">{confirmDialog.title}</h3>
-              <p className="text-gray-500 text-xs md:text-sm mb-5 leading-relaxed font-medium">{confirmDialog.message}</p>
-              <div className="flex gap-2.5">
-                <button onClick={() => setConfirmDialog({ show: false })} className="flex-1 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Hủy</button>
-                <button onClick={confirmDialog.action} className="flex-1 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm">Xác nhận</button>
               </div>
             </motion.div>
           </div>
