@@ -243,10 +243,12 @@ function SubjectManagement() {
           await axios.delete(`${API_BASE}/subjects/${subjectToDelete.MaMonHoc}`);
           setSubjects(prev => prev.filter(s => s.MaMonHoc !== subjectToDelete.MaMonHoc));
           setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         } catch (error) {
           console.error('Error deleting subject:', error);
           const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
           setErrorDialog({ show: true, message: errorMessage });
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         }
       }
     });
