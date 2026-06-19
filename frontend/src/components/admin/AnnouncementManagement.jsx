@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Bell, Plus, Trash2, Search, X, XCircle, Calendar, User, Eye, Users } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
-import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog, ErrorDialog } from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
 import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 
@@ -31,7 +31,6 @@ function AnnouncementManagement() {
   const [deleteDialog, setDeleteDialog] = useState({ show: false, itemId: null });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
   const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
 
   useEffect(() => {
@@ -140,18 +139,21 @@ function AnnouncementManagement() {
 
   const confirmDelete = async () => {
     if (!deleteDialog.itemId) return;
+    const itemIdToDelete = deleteDialog.itemId;
     setDeleteDialog({ show: false, itemId: null });
     setConfirmDialog({
       show: true,
       message: 'Bạn có chắc chắn muốn xóa thông báo này không?',
       onConfirm: async () => {
         try {
-          await axios.delete(`${API_URL}/api/announcements/${deleteDialog.itemId}`);
-          setSuccessDialog({ show: true, message: 'Xóa thông báo thành công!' });
+          await axios.delete(`${API_URL}/api/announcements/${itemIdToDelete}`);
+          setToast({ show: true, message: 'Xóa thông báo thành công!', type: 'success' });
           fetchData();
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         } catch (error) {
           console.error('Error deleting announcement:', error);
           setErrorDialog({ show: true, message: 'Lỗi khi xóa thông báo: ' + (error.response?.data?.message || error.message) });
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         }
       }
     });
@@ -626,12 +628,6 @@ function AnnouncementManagement() {
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
         requireCountdown={false}
-      />
-
-      <SuccessDialog
-        show={successDialog.show}
-        message={successDialog.message}
-        onClose={() => setSuccessDialog({ show: false, message: '' })}
       />
 
       <ErrorDialog

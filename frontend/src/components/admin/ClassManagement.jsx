@@ -352,9 +352,11 @@ function ClassManagement() {
           await axios.delete(`${API_BASE}/classes/${encodeURIComponent(classToDelete.MaLop)}`);
           setToast({ show: true, message: 'Xóa lớp học thành công!', type: 'success' });
           fetchData();
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         } catch (error) {
           console.error('Error deleting class:', error);
           setErrorDialog({ show: true, message: 'Lỗi khi xóa lớp học!' });
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
         }
       }
     });
