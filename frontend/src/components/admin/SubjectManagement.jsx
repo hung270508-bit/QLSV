@@ -233,17 +233,23 @@ function SubjectManagement() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteModal.subject) return;
-    try {
-      await axios.delete(`${API_BASE}/subjects/${deleteModal.subject.MaMonHoc}`);
-      setSubjects(prev => prev.filter(s => s.MaMonHoc !== deleteModal.subject.MaMonHoc));
-      setDeleteModal({ show: false, subject: null });
-      setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
-    } catch (error) {
-      console.error('Error deleting subject:', error);
-      const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
-      setErrorDialog({ show: true, message: errorMessage });
-      setDeleteModal({ show: false, subject: null });
-    }
+    const subjectToDelete = deleteModal.subject;
+    setDeleteModal({ show: false, subject: null });
+    setConfirmDialog({
+      show: true,
+      message: 'Bạn có chắc chắn muốn xóa môn học này không?',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API_BASE}/subjects/${subjectToDelete.MaMonHoc}`);
+          setSubjects(prev => prev.filter(s => s.MaMonHoc !== subjectToDelete.MaMonHoc));
+          setToast({ show: true, message: 'Xóa môn học thành công!', type: 'success' });
+        } catch (error) {
+          console.error('Error deleting subject:', error);
+          const errorMessage = error.response?.data?.message || 'Lỗi khi xóa môn học!';
+          setErrorDialog({ show: true, message: errorMessage });
+        }
+      }
+    });
   };
 
   const handleKhoaChange = async (e) => {

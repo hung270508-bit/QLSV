@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import ModalPortal from './ModalPortal';
@@ -10,26 +10,6 @@ export default function ConfirmDeleteModal({
   title = "Xác nhận xóa", 
   message = "Bạn có chắc chắn muốn xóa dữ liệu này không? Hành động này không thể hoàn tác." 
 }) {
-  const [countdown, setCountdown] = useState(5);
-
-  useEffect(() => {
-    let timer;
-    if (isOpen) {
-      setCountdown(5);
-      timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isOpen]);
 
   return (
     <AnimatePresence>
@@ -55,19 +35,10 @@ export default function ConfirmDeleteModal({
                   Hủy
                 </button>
                 <button
-                  onClick={() => {
-                    if (countdown === 0) {
-                      onConfirm();
-                    }
-                  }}
-                  disabled={countdown > 0}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center justify-center gap-2 ${
-                    countdown > 0
-                      ? 'bg-red-200 text-white cursor-not-allowed'
-                      : 'bg-red-500 text-white hover:bg-red-600'
-                  }`}
+                  onClick={onConfirm}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm bg-red-500 text-white hover:bg-red-600"
                 >
-                  {countdown > 0 ? `Chờ ${countdown}s` : 'Xác nhận xóa'}
+                  Xác nhận xóa
                 </button>
               </div>
             </motion.div>

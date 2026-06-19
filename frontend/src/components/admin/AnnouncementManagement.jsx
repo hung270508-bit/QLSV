@@ -140,16 +140,21 @@ function AnnouncementManagement() {
 
   const confirmDelete = async () => {
     if (!deleteDialog.itemId) return;
-    try {
-      await axios.delete(`${API_URL}/api/announcements/${deleteDialog.itemId}`);
-      setSuccessDialog({ show: true, message: 'Xóa thông báo thành công!' });
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting announcement:', error);
-      setErrorDialog({ show: true, message: 'Lỗi khi xóa thông báo: ' + (error.response?.data?.message || error.message) });
-    } finally {
-      setDeleteDialog({ show: false, itemId: null });
-    }
+    setDeleteDialog({ show: false, itemId: null });
+    setConfirmDialog({
+      show: true,
+      message: 'Bạn có chắc chắn muốn xóa thông báo này không?',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API_URL}/api/announcements/${deleteDialog.itemId}`);
+          setSuccessDialog({ show: true, message: 'Xóa thông báo thành công!' });
+          fetchData();
+        } catch (error) {
+          console.error('Error deleting announcement:', error);
+          setErrorDialog({ show: true, message: 'Lỗi khi xóa thông báo: ' + (error.response?.data?.message || error.message) });
+        }
+      }
+    });
   };
 
   const handleCloseModal = () => {
