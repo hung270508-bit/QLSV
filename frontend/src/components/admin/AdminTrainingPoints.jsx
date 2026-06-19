@@ -535,7 +535,7 @@ function AdminTrainingPoints() {
               <h3 className="text-xl font-bold text-gray-800">Danh sách các đợt đã thiết lập</h3>
               <button
                 onClick={() => {
-                  setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá' });
+                  setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: [] });
                   setPeriodFormErrors({});
                   setIsPeriodModalOpen(true);
                 }}
