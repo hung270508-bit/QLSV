@@ -4,9 +4,11 @@ import { RequestsSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search
+  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search, Trash2
 } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal, { ConfirmDialog, Toast } from '../common/ModalPortal';
+import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 
 const statusConfig = {
   'Hoàn thành':   { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
@@ -37,6 +39,9 @@ function AdminRequests() {
   const [replyText, setReplyText] = useState('');
   const [updateStatus, setUpdateStatus] = useState('');
   const [replyErrors, setReplyErrors] = useState({});
+  const [deleteDialog, setDeleteDialog] = useState({ show: false, requestId: null });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   const fetchRequests = async () => {
     try {
@@ -64,7 +69,10 @@ function AdminRequests() {
     if (!updateStatus) {
       errors.updateStatus = 'Vui lòng chọn trạng thái';
     }
-    const requiresReply = ['Đã phản hồi', 'Hoàn thành', 'Từ chối'].includes(updateStatus);
+    if (updateStatus === 'Đang xử lý') {
+      errors.updateStatus = 'Vui lòng phản hồi';
+    }
+    const requiresReply = ['Đang xử lý', 'Đã phản hồi', 'Từ chối'].includes(updateStatus);
     if (requiresReply && !replyText.trim()) {
       errors.replyText = 'Vui lòng nhập nội dung phản hồi';
     } else if (replyText.trim() && replyText.trim().length < 10) {
@@ -84,12 +92,40 @@ function AdminRequests() {
         PhanHoi: replyText,
         NguoiTraLoi: 'Admin QLSV'
       });
+      setToast({ show: true, message: 'Gửi phản hồi thành công!', type: 'success' });
       setSelectedReq(null);
       setReplyErrors({});
       fetchRequests();
     } catch (e) {
       setReplyErrors({ general: 'Có lỗi xảy ra khi xử lý yêu cầu!' });
     }
+  };
+
+  const handleDelete = (requestId) => {
+    setDeleteDialog({ show: true, requestId });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.requestId) return;
+    const requestIdToDelete = deleteDialog.requestId;
+    setDeleteDialog({ show: false, requestId: null });
+    setConfirmDialog({
+      show: true,
+      message: 'Bạn có chắc chắn muốn xóa yêu cầu này không?',
+      onConfirm: async () => {
+        try {
+          console.log('Deleting request:', requestIdToDelete);
+          await axios.delete(`${API_URL}/api/admin/support-requests/${requestIdToDelete}`);
+          console.log('Delete successful');
+          setToast({ show: true, message: 'Xóa yêu cầu thành công!', type: 'success' });
+          fetchRequests();
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
+        } catch (error) {
+          console.error('Error deleting request:', error);
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
+        }
+      }
+    });
   };
 
   const filtered = requests.filter(req => {
@@ -229,14 +265,27 @@ function AdminRequests() {
                   <td className="p-4 text-sm text-gray-500">{new Date(req.NgayGui).toLocaleDateString('vi-VN')}</td>
                   <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
                   <td className="p-4 text-center">
-                    <motion.button
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => handleOpenModal(req)}
-                      className="px-4 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
-                    >
-                      Xử lý
-                    </motion.button>
+                    <div className="flex items-center justify-center gap-2">
+                      {req.TrangThai === 'Chờ xử lý' || req.TrangThai === 'Đang xử lý' ? (
+                        <motion.button
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => handleOpenModal(req)}
+                          className="px-4 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
+                        >
+                          Xử lý
+                        </motion.button>
+                      ) : null}
+                      <motion.button
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => handleDelete(req.MaYeuCau)}
+                        className="p-1.5 bg-red-50 border border-red-200 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
+                        title="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </motion.button>
+                    </div>
                   </td>
                 </motion.tr>
               ))}
@@ -327,7 +376,6 @@ function AdminRequests() {
                     >
                       <option value="Đang xử lý">Đang xử lý</option>
                       <option value="Đã phản hồi">Đã phản hồi</option>
-                      <option value="Hoàn thành">Hoàn thành</option>
                       <option value="Từ chối">Từ chối</option>
                     </select>
                     {replyErrors.updateStatus && (
@@ -343,7 +391,7 @@ function AdminRequests() {
                         if (replyErrors.replyText) setReplyErrors(prev => ({ ...prev, replyText: '' }));
                       }}
                       placeholder={
-                        ['Đã phản hồi', 'Hoàn thành', 'Từ chối'].includes(updateStatus)
+                        ['Đang xử lý', 'Đã phản hồi', 'Từ chối'].includes(updateStatus)
                           ? 'Nội dung phản hồi (bắt buộc)...'
                           : 'Nhập nội dung phản hồi...'
                       }
@@ -384,6 +432,29 @@ function AdminRequests() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmDeleteModal
+        isOpen={deleteDialog.show}
+        onClose={() => setDeleteDialog({ show: false, requestId: null })}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa yêu cầu"
+        message="Bạn có chắc chắn muốn xóa yêu cầu này không? Hành động này không thể hoàn tác."
+      />
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
+        requireCountdown={false}
+      />
+
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+      />
     </div>
   );
 }
