@@ -1382,6 +1382,10 @@ app.put('/api/admin/support-requests/:id', (req, res) => {
     executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ? WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
 });
 
+app.delete('/api/admin/support-requests/:id', (req, res) => {
+    executeUpdate('DELETE FROM yeucau_hotro WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
+});
+
 // ==================== [SINH VIÊN] ĐÁNH GIÁ RÈN LUYỆN ====================
 app.get('/api/training-points/student/:mssv', (req, res) => {
     const query = 'SELECT * FROM danhgia_renluyen WHERE MSSV = ? ORDER BY HocKy DESC';
