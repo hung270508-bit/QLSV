@@ -116,7 +116,7 @@ function ScheduleManagement() {
         axios.get(`${API_URL}/api/schedule-configs`)
       ]);
       setSchedules(schedRes.data);
-      lhpList && setLhpList(lhpRes.data);
+      setLhpList(lhpRes.data);
       if (configRes.data && configRes.data.success) {
         setSysConfig({
           rooms: configRes.data.rooms,
@@ -430,24 +430,23 @@ function ScheduleManagement() {
         ? `Lưu thay đổi cho lịch học này?`
         : `Hệ thống sẽ tạo ${sessionsPayload.length} buổi học. Lưu vào Database?`,
       action: async () => {
-        setConfirmDialog({ show: false, title: '', message: '', action: null });
-        try {
-          if (editingSchedule) {
-            await axios.put(`${API_URL}/api/schedules/${editingSchedule.MaLichHoc}`, {
-              MaLopHocPhan: targetLHP,
-              ...sessionsPayload[0]
-            });
-            showToast('Cập nhật lịch học thành công!', 'success');
-          } else {
-            // LOOP FOR...OF ĐỂ GỬI NỐI TIẾP, TRÁNH LỖI QUÁ TẢI/TRÙNG LẶP SỐ TIẾT BÊN BACKEND
-            for (const session of sessionsPayload) {
-              await axios.post(`${API_URL}/api/schedules`, {
-                MaLopHocPhan: targetLHP,
-                ...session
-              });
-            }
-            showToast('Lưu lịch học thành công!', 'success');
-          }
+     setConfirmDialog({ show: false, title: '', message: '', action: null });
+  try {
+    if (editingSchedule) {
+      await axios.put(`${API_URL}/api/schedules/${editingSchedule.MaLichHoc}`, {
+        MaLopHocPhan: formData.MaLopHocPhan,   // ✅ FIX
+        ...sessionsPayload[0]
+      });
+      showToast('Cập nhật lịch học thành công!', 'success');
+    } else {
+      for (const session of sessionsPayload) {
+        await axios.post(`${API_URL}/api/schedules`, {
+          MaLopHocPhan: formData.MaLopHocPhan, // ✅ FIX
+          ...session
+        });
+      }
+      showToast('Lưu lịch học thành công!', 'success');
+    }
           fetchData();
           handleCloseModal();
         } catch (err) {
@@ -511,7 +510,39 @@ function ScheduleManagement() {
           </motion.div>
         )}
       </AnimatePresence>
-
+{/* CONFIRM DIALOG - THÊM VÀO SAU PHẦN TOAST */}
+<AnimatePresence>
+  {confirmDialog.show && (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/50"
+        onClick={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        className="relative bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm z-10"
+      >
+        <h4 className="text-base font-bold text-gray-800 mb-2">{confirmDialog.title}</h4>
+        <p className="text-sm text-gray-600 mb-5">{confirmDialog.message}</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+            className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-200"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={() => confirmDialog.action && confirmDialog.action()}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600"
+          >
+            Xác nhận
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )}
+</AnimatePresence>
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl text-white flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-white/20 p-3 rounded-full shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>
