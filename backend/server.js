@@ -24,6 +24,26 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
+// TÍCH HỢP SOCKET.IO VÀ BIẾN TRẠNG THÁI RFID TOÀN CỤC 
+const http = require('http').createServer(app);
+const io = require('socket.io')(http, {
+    cors: {
+        origin: ["http://localhost:5173", "http://localhost:5174", "https://hung270508-bit.github.io"],
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+
+global.currentRfidState = {
+    mode: "ATTENDANCE", // "ATTENDANCE" hoặc "REGISTER"
+    targetMSSV: null
+};
+
+io.on('connection', (socket) => {
+    console.log('Có trình duyệt kết nối Real-time:', socket.id);
+    socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
+});
+
 // Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
 app.use(express.json());
 
@@ -1447,6 +1467,56 @@ app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
                 completed++; if (completed === attendanceList.length) res.json({ success: true, message: 'Lưu điểm danh thành công!' });
             });
         });
+    });
+});
+
+// API chuyển đổi chế độ sang Đăng ký thẻ 
+app.post('/api/rfid/activate-register', (req, res) => {
+    const { mssv } = req.body;
+    if (!mssv) return res.status(400).json({ success: false, message: "Thiếu MSSV cần cấp thẻ" });
+
+    currentRfidState.mode = "REGISTER";
+    currentRfidState.targetMSSV = mssv;
+
+    console.log(`[Hệ thống] Đã chuyển sang chế độ ĐĂNG KÝ THẺ cho MSSV: ${mssv}`);
+    return res.json({ success: true, message: `Đã sẵn sàng chờ quét thẻ cho sinh viên ${mssv}` });
+});
+// RFID UID -> MSSV 
+// Accepts { uid, MaLopHocPhan, TrangThai?, NgayDiemDanh? }
+app.post('/api/attendance/uid', (req, res) => {
+    const { uid, MaLopHocPhan, TrangThai, NgayDiemDanh } = req.body;
+    if (!uid || !MaLopHocPhan) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MaLopHocPhan' });
+
+    db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+        if (!results || results.length === 0) return res.status(404).json({ success: false, message: 'UID chưa được mapping tới MSSV' });
+
+        const MSSV = results[0].MSSV;
+        const ngay = NgayDiemDanh || new Date().toISOString().slice(0,10);
+        const trangthai = TrangThai || 'Có mặt';
+
+        db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
+            if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
+            return res.json({ success: true, message: 'Đã ghi điểm danh', MSSV });
+        });
+    });
+});
+
+// Management endpoints for rfid_tags
+app.get('/api/rfid/:uid', (req, res) => {
+    db.query('SELECT * FROM rfid_tags WHERE uid = ? LIMIT 1', [req.params.uid], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+        if (!results || results.length === 0) return res.status(404).json({ success: false });
+        res.json({ success: true, mapping: results[0] });
+    });
+});
+
+app.post('/api/rfid', (req, res) => {
+    const { uid, MSSV } = req.body;
+    if (!uid || !MSSV) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MSSV' });
+    db.query('INSERT INTO rfid_tags (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', [uid, MSSV], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+        res.json({ success: true, message: 'Đã lưu mapping' });
     });
 });
 app.get('/api/attendance/student/:mssv', (req, res) => executeQuery(`SELECT dd.*, dd.NgayDiemDanh as NgayHoc, (SELECT mh.TenMonHoc FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as TenMonHoc, (SELECT PhongHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as PhongHoc, (SELECT CaHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as CaHoc FROM diemdanh dd WHERE dd.MSSV = ? ORDER BY dd.NgayDiemDanh DESC`, [req.params.mssv], res, 'Lỗi!'));
