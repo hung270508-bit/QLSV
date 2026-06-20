@@ -1,8 +1,8 @@
 -- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
 --
--- Host: mysql-d508c3a-hung270508-ae5d.h.aivencloud.com    Database: defaultdb
+-- Host: 127.0.0.1    Database: quanlysv
 -- ------------------------------------------------------
--- Server version	8.4.8
+-- Server version	9.7.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -22,7 +22,37 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 --
 
 SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '4585fac6-63de-11f1-981c-06b3c0baae58:1-111,
+d5f339bb-590b-11f1-b192-e4a8dfba5018:1-988,
 e51c4a2a-63f7-11f1-9ad9-ee12a9ba2a33:1-891';
+
+--
+-- Table structure for table `chitiet_danhgia`
+--
+
+DROP TABLE IF EXISTS `chitiet_danhgia`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `chitiet_danhgia` (
+  `MaChiTiet` int NOT NULL AUTO_INCREMENT,
+  `MaDanhGia` int NOT NULL,
+  `MaTieuChi` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'VD: 1.1, 1.2, 2.1, 3.1...',
+  `DiemChon` int NOT NULL DEFAULT '0' COMMENT 'Điểm SV đã chọn cho tiêu chí này',
+  `ChiSoOption` int NOT NULL DEFAULT '0' COMMENT 'Index option đã chọn (0-based)',
+  `MinhChung` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Link minh chung',
+  PRIMARY KEY (`MaChiTiet`),
+  UNIQUE KEY `uk_danhgia_tieuchi` (`MaDanhGia`,`MaTieuChi`),
+  CONSTRAINT `fk_chitiet_danhgia` FOREIGN KEY (`MaDanhGia`) REFERENCES `danhgia_renluyen` (`MaDanhGia`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `chitiet_danhgia`
+--
+
+LOCK TABLES `chitiet_danhgia` WRITE;
+/*!40000 ALTER TABLE `chitiet_danhgia` DISABLE KEYS */;
+/*!40000 ALTER TABLE `chitiet_danhgia` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `dangky_hocphan`
@@ -165,7 +195,7 @@ CREATE TABLE `dot_danhgia` (
   `NgayKetThuc` date DEFAULT NULL,
   `TrangThai` varchar(50) DEFAULT 'Đang tự đánh giá',
   PRIMARY KEY (`MaDotDanhGia`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -174,7 +204,6 @@ CREATE TABLE `dot_danhgia` (
 
 LOCK TABLES `dot_danhgia` WRITE;
 /*!40000 ALTER TABLE `dot_danhgia` DISABLE KEYS */;
-INSERT INTO `dot_danhgia` VALUES (1,'HK1_2025_2026','2025-2026','2026-06-15','2026-06-17','Đang tự đánh giá');
 /*!40000 ALTER TABLE `dot_danhgia` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -192,6 +221,8 @@ CREATE TABLE `giangvien` (
   `SoDienThoai` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `MaKhoa` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `TrangThai` enum('Đang dạy','Tạm nghỉ','Nghỉ việc') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang dạy',
+  `NgaySinh` date DEFAULT NULL,
+  `GioiTinh` enum('Nam','Nữ') COLLATE utf8mb4_unicode_ci DEFAULT 'Nam',
   PRIMARY KEY (`MaGiangVien`),
   KEY `MaKhoa` (`MaKhoa`),
   CONSTRAINT `giangvien_ibfk_1` FOREIGN KEY (`MaGiangVien`) REFERENCES `users` (`TaiKhoan`) ON DELETE CASCADE,
@@ -205,7 +236,6 @@ CREATE TABLE `giangvien` (
 
 LOCK TABLES `giangvien` WRITE;
 /*!40000 ALTER TABLE `giangvien` DISABLE KEYS */;
-INSERT INTO `giangvien` VALUES ('GVDL003','Νγκουγιεν Τραν Μινχ Πεμ','batnxinhgai@gmail.com','0703007000','DL','Đang dạy'),('GVDLKS001','Á Hahahahaahaahahahahahahahahaa','batmanxinhgai@gmail.com','0900000000','DLKS','Đang dạy'),('GVDLKS002','Á Hahahahaahaahahahahahahahahaa','batmanxinhgai@gmail.com','0900000000','DLKS','Đang dạy'),('GVL001','Ouijijsinvnav Auvjsoivno Hiuhogvjsp Àuoifjfoai Hfvushuoisjgvjd','batmanxingai@gmail.com','0705588842','L','Đang dạy'),('GVL002','Ouijijsinvnav Auvjsoivno Hiuhogvjsp Àuoifjfoai Hfvushuoisjgvjd','batmanxingai@gmail.com','0705588842','L','Đang dạy'),('GVQTKD001','Νγκουγιεν Τραν Μινχ Πεμ','batmanxhgai@gmail.com','0909876331','QTKD','Đang dạy');
 /*!40000 ALTER TABLE `giangvien` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -222,7 +252,7 @@ CREATE TABLE `khoa` (
   `TenKhoa` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`MaKhoa`),
   UNIQUE KEY `ID` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -231,7 +261,6 @@ CREATE TABLE `khoa` (
 
 LOCK TABLES `khoa` WRITE;
 /*!40000 ALTER TABLE `khoa` DISABLE KEYS */;
-INSERT INTO `khoa` VALUES (1,'CNTT','Công Nghệ Thông Tin'),(8,'CTS','Chú Thuật Sư'),(5,'DL','Động Lực'),(4,'DLKS','Du lịch - khách sạn'),(2,'L','Luật'),(7,'MT','Môi Trường'),(6,'NNT','Ngôn Ngữ Trung'),(3,'QTKD','Quản trị kinh doanh');
 /*!40000 ALTER TABLE `khoa` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -246,12 +275,13 @@ CREATE TABLE `lichhoc` (
   `MaLichHoc` int NOT NULL AUTO_INCREMENT,
   `MaLopHocPhan` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `NgayHoc` date DEFAULT NULL,
-  `CaHoc` int DEFAULT NULL,
+  `CaHoc` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `PhongHoc` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `SoTiet` int NOT NULL DEFAULT '3',
   PRIMARY KEY (`MaLichHoc`),
   KEY `MaLopHocPhan` (`MaLopHocPhan`),
   CONSTRAINT `lichhoc_ibfk_1` FOREIGN KEY (`MaLopHocPhan`) REFERENCES `lophocphan` (`MaLopHocPhan`)
-) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -260,8 +290,35 @@ CREATE TABLE `lichhoc` (
 
 LOCK TABLES `lichhoc` WRITE;
 /*!40000 ALTER TABLE `lichhoc` DISABLE KEYS */;
-INSERT INTO `lichhoc` VALUES (1,'DLKS002.HK22627.HP01','1250-05-11',3,'B-0202'),(2,'DLKS002.HK22627.HP01','1250-06-15',3,'B-0202'),(3,'DLKS002.HK22627.HP01','1250-09-14',3,'B-0202'),(4,'DLKS002.HK22627.HP01','1250-09-28',3,'B-0202'),(5,'DLKS002.HK22627.HP01','1250-07-13',3,'B-0202'),(6,'DLKS002.HK22627.HP01','1250-10-05',3,'B-0202'),(7,'DLKS002.HK22627.HP01','1250-06-01',3,'B-0202'),(8,'DLKS002.HK22627.HP01','1250-07-27',3,'B-0202'),(9,'DLKS002.HK22627.HP01','1250-11-02',3,'B-0202'),(10,'DLKS002.HK22627.HP01','1250-07-06',3,'B-0202'),(11,'DLKS002.HK22627.HP01','1250-11-09',3,'B-0202'),(12,'DLKS002.HK22627.HP01','1250-08-31',3,'B-0202'),(13,'DLKS002.HK22627.HP01','1250-08-10',3,'B-0202'),(14,'DLKS002.HK22627.HP01','1250-06-08',3,'B-0202'),(15,'DLKS002.HK22627.HP01','1250-10-19',3,'B-0202'),(16,'DLKS002.HK22627.HP01','1250-06-22',3,'B-0202'),(17,'DLKS002.HK22627.HP01','1250-09-07',3,'B-0202'),(18,'DLKS002.HK22627.HP01','1250-09-21',3,'B-0202'),(19,'DLKS002.HK22627.HP01','1250-10-26',3,'B-0202'),(20,'DLKS002.HK22627.HP01','1250-08-17',3,'B-0202'),(21,'DLKS002.HK22627.HP01','1250-05-25',3,'B-0202'),(22,'DLKS002.HK22627.HP01','1250-08-24',3,'B-0202'),(23,'DLKS002.HK22627.HP01','1250-06-29',3,'B-0202'),(24,'DLKS002.HK22627.HP01','1250-10-12',3,'B-0202'),(25,'DLKS002.HK22627.HP01','1250-08-03',3,'B-0202'),(26,'DLKS002.HK22627.HP01','1250-05-18',3,'B-0202'),(27,'DLKS002.HK22627.HP01','1250-07-20',3,'B-0202'),(28,'DLKS002.HK22627.HP02','2515-06-26',3,'B-0202'),(29,'DLKS002.HK22627.HP02','2515-05-29',3,'B-0202'),(30,'DLKS002.HK22627.HP02','2515-05-08',3,'B-0202'),(31,'DLKS002.HK22627.HP02','2515-07-03',3,'B-0202'),(32,'DLKS002.HK22627.HP02','2515-07-31',3,'B-0202'),(33,'DLKS002.HK22627.HP02','2515-07-24',3,'B-0202'),(34,'DLKS002.HK22627.HP02','2515-10-30',3,'B-0202'),(35,'DLKS002.HK22627.HP02','2515-08-21',3,'B-0202'),(36,'DLKS002.HK22627.HP02','2515-09-04',3,'B-0202'),(37,'DLKS002.HK22627.HP02','2515-05-15',3,'B-0202'),(38,'DLKS002.HK22627.HP02','2515-10-09',3,'B-0202'),(39,'DLKS002.HK22627.HP02','2515-09-25',3,'B-0202'),(40,'DLKS002.HK22627.HP02','2515-10-02',3,'B-0202'),(41,'DLKS002.HK22627.HP02','2515-09-18',3,'B-0202'),(42,'DLKS002.HK22627.HP02','2515-05-22',3,'B-0202'),(43,'DLKS002.HK22627.HP02','2515-10-16',3,'B-0202'),(44,'DLKS002.HK22627.HP02','2515-08-28',3,'B-0202'),(45,'DLKS002.HK22627.HP02','2515-09-11',3,'B-0202'),(46,'DLKS002.HK22627.HP02','2515-06-12',3,'B-0202'),(47,'DLKS002.HK22627.HP02','2515-06-19',3,'B-0202'),(48,'DLKS002.HK22627.HP02','2515-08-14',3,'B-0202'),(49,'DLKS002.HK22627.HP02','2515-06-05',3,'B-0202'),(50,'DLKS002.HK22627.HP02','2515-07-10',3,'B-0202'),(51,'DLKS002.HK22627.HP02','2515-10-23',3,'B-0202'),(52,'DLKS002.HK22627.HP02','2515-08-07',3,'B-0202'),(53,'DLKS002.HK22627.HP02','2515-07-17',3,'B-0202'),(54,'DLKS002.HK22627.HP02','2515-05-01',3,'B-0202'),(55,'DLKS002.HK22627.HP01','1414-02-21',3,'B-0202'),(56,'DLKS002.HK22627.HP02','3068-10-30',3,'C-0101'),(57,'DLKS002.HK22627.HP02','2025-07-07',2,'B-0202'),(58,'DLKS002.HK22627.HP01','5151-11-25',1,'B-0202');
 /*!40000 ALTER TABLE `lichhoc` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `lichsu_duyet`
+--
+
+DROP TABLE IF EXISTS `lichsu_duyet`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lichsu_duyet` (
+  `MaLog` int NOT NULL AUTO_INCREMENT,
+  `MaDanhGia` int NOT NULL,
+  `NguoiDuyet` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Tên tài khoản người duyệt (VD: admin)',
+  `HanhDong` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Nội dung hành động',
+  `ThoiGian` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MaLog`),
+  KEY `fk_lichsu_duyet_danhgia` (`MaDanhGia`),
+  CONSTRAINT `fk_lichsu_duyet_danhgia` FOREIGN KEY (`MaDanhGia`) REFERENCES `danhgia_renluyen` (`MaDanhGia`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `lichsu_duyet`
+--
+
+LOCK TABLES `lichsu_duyet` WRITE;
+/*!40000 ALTER TABLE `lichsu_duyet` DISABLE KEYS */;
+/*!40000 ALTER TABLE `lichsu_duyet` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -288,7 +345,6 @@ CREATE TABLE `lophoc` (
 
 LOCK TABLES `lophoc` WRITE;
 /*!40000 ALTER TABLE `lophoc` DISABLE KEYS */;
-INSERT INTO `lophoc` VALUES ('23CNTT1','DTHA 1','CNTT','2023-2027'),('23CNTT2','DTHA 2','CNTT','2023-2027'),('23CTS1','Cách Triển Khai Lãnh Địa','CTS','2023-2027'),('25CNTT1','CNTT','CNTT','2025-2029'),('25CNTT2','CNTT1','CNTT','2025-2029'),('26DL1','KT 1','DL','2026-2030'),('26DL2','KT 2','DL','2026-2030');
 /*!40000 ALTER TABLE `lophoc` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -321,7 +377,6 @@ CREATE TABLE `lophocphan` (
 
 LOCK TABLES `lophocphan` WRITE;
 /*!40000 ALTER TABLE `lophocphan` DISABLE KEYS */;
-INSERT INTO `lophocphan` VALUES ('DLKS002.HK22627.HP01','DLKS002','25CNTT1','GVDLKS001','HK2_2026_2027','2026-2027',40),('DLKS002.HK22627.HP02','DLKS002','25CNTT2','GVDLKS001','HK2_2026_2027','2026-2027',40);
 /*!40000 ALTER TABLE `lophocphan` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -349,7 +404,6 @@ CREATE TABLE `monhoc` (
 
 LOCK TABLES `monhoc` WRITE;
 /*!40000 ALTER TABLE `monhoc` DISABLE KEYS */;
-INSERT INTO `monhoc` VALUES ('CNTT002','Mạng Máy Tính',3,NULL),('CNTT003','Di động',3,NULL),('CNTT004','Công Nghệ Phần Mềm',3,NULL),('CTS001','Domain Expansion',5,'CTS'),('DLKS001','Quản Trị Du Lịch',3,NULL),('DLKS002','bjhbhjbhbjhv vgvjbhbhguyh hbjh',9,'DLKS'),('L001','Luật Kinh Tế',3,NULL),('MT001','guhbuyhuyvgtvvvvvvvvvvvvvvvvv',5,'MT');
 /*!40000 ALTER TABLE `monhoc` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -441,6 +495,30 @@ INSERT INTO `phanquyen` VALUES (1,'Admin'),(2,'GiangVien'),(3,'SinhVien');
 UNLOCK TABLES;
 
 --
+-- Table structure for table `phonghoc`
+--
+
+DROP TABLE IF EXISTS `phonghoc`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phonghoc` (
+  `MaPhong` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `TrangThai` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT 'Hoạt động',
+  PRIMARY KEY (`MaPhong`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phonghoc`
+--
+
+LOCK TABLES `phonghoc` WRITE;
+/*!40000 ALTER TABLE `phonghoc` DISABLE KEYS */;
+INSERT INTO `phonghoc` VALUES ('A-0101','Hoạt động'),('A-0102','Hoạt động'),('A-0201','Hoạt động'),('A-0202','Hoạt động'),('B-0101','Hoạt động'),('B-0102','Hoạt động'),('B-0201','Hoạt động'),('B-0202','Hoạt động'),('C-0101','Hoạt động'),('C-0102','Hoạt động'),('C-0201','Hoạt động'),('C-0202','Hoạt động'),('E-0101','Hoạt động'),('E-0102','Hoạt động'),('E-0201','Hoạt động'),('E-0202','Hoạt động'),('E-0301','Hoạt động'),('E-0302','Hoạt động');
+/*!40000 ALTER TABLE `phonghoc` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `sinhvien`
 --
 
@@ -469,7 +547,6 @@ CREATE TABLE `sinhvien` (
 
 LOCK TABLES `sinhvien` WRITE;
 /*!40000 ALTER TABLE `sinhvien` DISABLE KEYS */;
-INSERT INTO `sinhvien` VALUES ('23010001','lò thị tôn ','2006-06-15','Nam','nguyenthitraidung@gmail.com','0932672705','23CNTT2','Đang học'),('23010002','VỤBJH            B','1970-12-05','Nam','nguyenthitraidug@gmail.com','0932672707','23CNTT2','Đang học'),('25010001','Đặng Nguyễn Quốc Hùng','2008-07-15','Nam','maxx270508@gmail.com','0932762774','25CNTT1','Đang học'),('26050001','Ινχ Πεμνγκουγιεν Τραν Μινχ Πεμνγκουγιεν Τραν Μινχ Πεμνγκουγιεν Τραν Μινχ Πεμkmn','2010-11-14','Nam','batxinhgai@gmail.com','0808808008','26DL1','Đang học');
 /*!40000 ALTER TABLE `sinhvien` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -534,6 +611,31 @@ LOCK TABLES `thongbao` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `tiethoc`
+--
+
+DROP TABLE IF EXISTS `tiethoc`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tiethoc` (
+  `Tiet` int NOT NULL,
+  `GioBatDau` time DEFAULT NULL,
+  `GioKetThuc` time DEFAULT NULL,
+  PRIMARY KEY (`Tiet`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `tiethoc`
+--
+
+LOCK TABLES `tiethoc` WRITE;
+/*!40000 ALTER TABLE `tiethoc` DISABLE KEYS */;
+INSERT INTO `tiethoc` VALUES (1,'07:00:00','07:50:00'),(2,'07:50:00','08:40:00'),(3,'08:40:00','09:30:00'),(4,'09:30:00','10:20:00'),(5,'10:20:00','11:10:00'),(6,'11:10:00','12:00:00'),(7,'12:30:00','13:10:00'),(8,'13:10:00','13:50:00'),(9,'13:50:00','14:30:00'),(10,'14:30:00','15:10:00'),(11,'15:10:00','15:50:00'),(12,'15:50:00','16:30:00');
+/*!40000 ALTER TABLE `tiethoc` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `users`
 --
 
@@ -557,7 +659,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES ('23010001','$2b$10$iPCZvJnmQ0/g0k9yw7ltvuAmjJqR7i9SBzB4.kamxvAykxnuCYiPC',3,'2026-06-15 06:02:59'),('23010002','$2b$10$kpDGMuupcSHrTDjzEfuROOn6Hnsj1hmwfToxTtpvCPXHt6Xuw4JtO',3,'2026-06-15 06:47:26'),('25010001','$2b$10$KusKe2C6LPWQJqv7nztu5O1RJfVnnvcxIwuPU/DRx3XFGVPsIR5G2',3,'2026-06-15 09:34:02'),('26050001','$2b$10$I/QhESkB5xl5bFChzmDo2uy8QE2rfkIT8983uog388Ag4igTOyQIa',3,'2026-06-15 09:21:05'),('admin','admin@123',1,'2026-06-15 05:54:23'),('GVCNTT001','$2b$10$uhCIc6iR134cQojJeXA0wectutyx/zOXwIzNl/RTfVn.ENava2O0q',2,'2026-06-15 07:54:20'),('GVDL003','$2b$10$nTQdTgpcIdG8Xds0RMvKuO07nqu7/yb55Emw569XpBkH7D9ER5L32',2,'2026-06-15 08:37:41'),('GVDLKS001','$2b$10$UCagh3l5n8RJtU/5zIKf3ejNATtDp47pYD5yTYpphZdZ5vm0ZPg7u',2,'2026-06-15 07:52:32'),('GVDLKS002','$2b$10$o5HtRwQ/3RVQ9/BIN3x.lu/xMe5DYDq1I.k/E9HAir4G9QamIev6S',2,'2026-06-15 07:52:33'),('GVL001','$2b$10$1JDQ5VqmT.3oIMwGGdtF9.5lGOfWgDDFp31JyPguoIEbEqrNhm88u',2,'2026-06-15 08:18:13'),('GVL002','$2b$10$oF.GGnMzztAPLlm5xVln8OFyVG1Mn30rAY7JYS7ymCvu5AYsEwYaS',2,'2026-06-15 08:18:15'),('GVNNT001','$2b$10$S29ENdk6M.IPye7r0NKv9.Y2kMXAhZ.jvFc7MnrOb87o2dn8KSsbW',2,'2026-06-15 08:15:30'),('GVQTKD001','$2b$10$P4XQP9O.EtQAJo4ZzpMfWuzrgPrfXbwihS.hCuMxud32PZ63ZjIp2',2,'2026-06-15 08:37:19');
+INSERT INTO `users` VALUES ('admin','admin@123',1,'2026-06-19 04:04:01');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -602,4 +704,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-15 21:25:24
+-- Dump completed on 2026-06-19 14:17:10
