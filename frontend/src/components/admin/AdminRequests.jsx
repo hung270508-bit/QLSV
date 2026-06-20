@@ -11,11 +11,11 @@ import ModalPortal, { ConfirmDialog, Toast } from '../common/ModalPortal';
 import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 
 const statusConfig = {
-  'Hoàn thành':   { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
-  'Đã phản hồi':  { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
-  'Chờ xử lý':    { bg: 'bg-red-50',     text: 'text-red-600',     border: 'border-red-200',     Icon: AlertCircle },
-  'Đang xử lý':   { bg: 'bg-amber-50',   text: 'text-amber-600',   border: 'border-amber-200',   Icon: Clock },
-  'Từ chối':      { bg: 'bg-gray-100',   text: 'text-gray-600',    border: 'border-gray-200',    Icon: X },
+  'Hoàn thành': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
+  'Đã phản hồi': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
+  'Chờ xử lý': { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', Icon: AlertCircle },
+  'Đang xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
+  'Từ chối': { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200', Icon: X },
 };
 
 function StatusBadge({ status }) {
@@ -132,7 +132,7 @@ function AdminRequests() {
     if (filterRole !== 'All' && req.VaiTro !== filterRole) return false;
     if (filterStatus !== 'All' && req.TrangThai !== filterStatus) return false;
     if (search && !req.TenNguoiGui?.toLowerCase().includes(search.toLowerCase()) &&
-        !req.TieuDe?.toLowerCase().includes(search.toLowerCase())) return false;
+      !req.TieuDe?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -300,10 +300,10 @@ function AdminRequests() {
             </tbody>
           </table>
         </div>
-        
+
         {totalPages > 1 && (
           <div className="mt-4 pb-4">
-            <Pagination 
+            <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}

@@ -1379,7 +1379,7 @@ app.get('/api/admin/support-requests', (req, res) => {
 
 app.put('/api/admin/support-requests/:id', (req, res) => {
     const { TrangThai, PhanHoi } = req.body;
-    executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ? WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
+    executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ?, NgayPhanHoi = NOW() WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
 });
 
 app.delete('/api/admin/support-requests/:id', (req, res) => {

@@ -87,7 +87,7 @@ function StudentDashboard({ user, onLogout }) {
       case 'thongbao':
         return <StudentAnnouncements user={user} />;
       case 'hotro':
-        return <StudentSupport user={user} />;
+        return <StudentSupport user={user} profile={profile} />;
       default:
         return <StudentOverview user={user} setActiveMenu={setActiveMenu} />;
     }
