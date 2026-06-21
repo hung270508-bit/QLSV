@@ -44,8 +44,25 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
 });
 
-// Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
-app.use(express.json());
+// Middleware CORS cho Express API
+app.use(cors({
+    origin: [
+        'https://hung270508-bit.github.io',
+        'https://qlsv-huq1.onrender.com',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:3000',
+        'https://qlsv-kappa.vercel.app'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true
+}));
+
+// Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh Base64)
+app.use(express.json({ limit: '10mb' }));
 
 // Cấu hình kết nối đến MySQL sử dụng Pool (Tối ưu từ server mới)
 const db = mysql.createPool({
