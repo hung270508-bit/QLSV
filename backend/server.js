@@ -44,6 +44,9 @@ if (!isVercel) {
     });
 }
 
+// BIẾN TRẠNG THÁI RFID TOÀN CỤC 
+const http = require('http').createServer(app);
+
 // BIẾN TRẠNG THÁI RFID TOÀN CỤC (CẤU HÌNH DÙNG CHO CƠ CHẾ POLLING)
 global.currentRfidState = {
     mode: "ATTENDANCE",   // Gồm các trạng thái: "ATTENDANCE", "REGISTER", hoặc "REGISTER_DONE"
@@ -134,7 +137,10 @@ const verifyToken = (req, res, next) => {
 // ==================== HELPER FUNCTIONS ====================
 const executeQuery = (query, params, res, errorMessage) => {
     db.query(query, params, (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        if (err) {
+            console.error(`[DB Error in executeQuery] ${errorMessage}:`, err);
+            return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        }
         res.json(results);
     });
 };
@@ -150,7 +156,10 @@ const validateAssignment = (req, res, next) => {
 
 const executeMutation = (query, params, res, successMessage, errorMessage) => {
     db.query(query, params, (err) => {
-        if (err) return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        if (err) {
+            console.error(`[DB Error in executeMutation] ${errorMessage}:`, err);
+            return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        }
         res.json({ success: true, message: successMessage });
     });
 };
@@ -253,51 +262,56 @@ app.post('/api/login', (req, res) => {
     `;
 
     db.query(query, [username], async (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
-        if (results.length > 0 && results[0].TaiKhoan === username) {
-            const user = results[0];
-            let passwordMatch = false;
+        try {
+            if (err) { console.error("LOGIN DB ERROR:", err); return res.status(500).json({ success: false, message: 'Lỗi server!', error: String(err) }); }
+            if (results.length > 0 && results[0].TaiKhoan === username) {
+                const user = results[0];
+                let passwordMatch = false;
 
-            if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
-                passwordMatch = await bcrypt.compare(password, user.password);
-            } else {
-                passwordMatch = (password === user.password);
-            }
-
-            if (passwordMatch) {
-                // Reset login attempts on success
-                if (loginAttempts[username]) {
-                    loginAttempts[username].attempts = 0;
-                    loginAttempts[username].lockoutUntil = null;
+                if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+                    passwordMatch = await bcrypt.compare(password, user.password);
+                } else {
+                    passwordMatch = (password === user.password);
                 }
 
-                let roleString = user.MaQuyen === 1 ? 'admin' : (user.MaQuyen === 2 ? 'teacher' : 'student');
-                const userResponse = { id: user.TaiKhoan, username: user.TaiKhoan, role: roleString, tenQuyen: user.TenQuyen };
+                if (passwordMatch) {
+                    // Reset login attempts on success
+                    if (loginAttempts[username]) {
+                        loginAttempts[username].attempts = 0;
+                        loginAttempts[username].lockoutUntil = null;
+                    }
 
-                if (user.MaQuyen === 3) {
-                    Object.assign(userResponse, { hoTen: user.TenSinhVien, ngaySinh: user.NgaySinh, gioiTinh: user.GioiTinh, email: user.EmailSV, soDienThoai: user.SDTSV, maLop: user.MaLop, tenLop: user.TenLop });
-                } else if (user.MaQuyen === 2) {
-                    Object.assign(userResponse, { hoTen: user.TenGiangVien, email: user.EmailGV, soDienThoai: user.SDTGV, maKhoa: user.MaKhoa, tenKhoa: user.TenKhoa });
+                    let roleString = user.MaQuyen === 1 ? 'admin' : (user.MaQuyen === 2 ? 'teacher' : 'student');
+                    const userResponse = { id: user.TaiKhoan, username: user.TaiKhoan, role: roleString, tenQuyen: user.TenQuyen };
+
+                    if (user.MaQuyen === 3) {
+                        Object.assign(userResponse, { hoTen: user.TenSinhVien, ngaySinh: user.NgaySinh, gioiTinh: user.GioiTinh, email: user.EmailSV, soDienThoai: user.SDTSV, maLop: user.MaLop, tenLop: user.TenLop });
+                    } else if (user.MaQuyen === 2) {
+                        Object.assign(userResponse, { hoTen: user.TenGiangVien, email: user.EmailGV, soDienThoai: user.SDTGV, maKhoa: user.MaKhoa, tenKhoa: user.TenKhoa });
+                    }
+
+                    // Generate JWT token
+                    const token = jwt.sign(
+                        {
+                            id: user.TaiKhoan,
+                            username: user.TaiKhoan,
+                            role: roleString,
+                            maQuyen: user.MaQuyen
+                        },
+                        JWT_SECRET,
+                        { expiresIn: JWT_EXPIRES_IN }
+                    );
+
+                    return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse, token });
+                } else {
+                    return handleFailedAttempt(username);
                 }
-
-                // Generate JWT token
-                const token = jwt.sign(
-                    {
-                        id: user.TaiKhoan,
-                        username: user.TaiKhoan,
-                        role: roleString,
-                        maQuyen: user.MaQuyen
-                    },
-                    JWT_SECRET,
-                    { expiresIn: JWT_EXPIRES_IN }
-                );
-
-                return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse, token });
             } else {
-                return handleFailedAttempt(username);
+                return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại!' });
             }
-        } else {
-            return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại!' });
+        } catch (error) {
+            console.error("LOGIN CATCH ERROR:", error);
+            return res.status(500).json({ success: false, message: 'Lỗi server!', error: error.message });
         }
     });
 });
@@ -480,7 +494,10 @@ app.get('/api/dashboard/stats', (req, res) => {
         db.query(q, (err, results) => err ? reject(err) : resolve(results[0].total));
     }))).then(([students, subjects, classes, teachers]) => {
         res.json({ totalStudents: students, totalSubjects: subjects, totalClasses: classes, totalTeachers: teachers });
-    }).catch(err => res.status(500).json({ success: false, message: 'Lỗi lấy thống kê!' }));
+    }).catch(err => {
+        console.error("[DB Error] Lỗi lấy thống kê dashboard:", err);
+        res.status(500).json({ success: false, message: 'Lỗi lấy thống kê!' });
+    });
 });
 
 app.get('/api/dashboard/stats-by-faculty', (req, res) => {
@@ -1746,18 +1763,22 @@ app.put('/api/admin/training-points/bulk-approve', (req, res) => {
     const query = `
         UPDATE danhgia_renluyen 
         SET TrangThai = 'Đã xác nhận',
-            TongDiem = DiemTuDanhGia + DiemKhoaDanhGia,
+            TongDiem = DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0),
             XepLoai = CASE 
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 90 THEN 'Xuất sắc'
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 80 THEN 'Tốt'
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 65 THEN 'Khá'
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 50 THEN 'Trung bình'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 90 THEN 'Xuất sắc'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 80 THEN 'Tốt'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 65 THEN 'Khá'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 50 THEN 'Trung bình'
                 ELSE 'Yếu'
             END
         WHERE MaDanhGia IN (?)
     `;
     db.query(query, [ids], (err) => {
+<<<<<<< HEAD
         if (err) return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message });
+=======
+        if (err) { console.error("BULK APPROVE DB ERROR:", err); return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message }); }
+>>>>>>> da85e5171cb4ea523f587818c6a42a956a43a6dd
 
         const nguoiDuyet = NguoiDuyet || 'admin';
         const logValues = ids.map(id => [id, nguoiDuyet, 'Phê duyệt hàng loạt (Chốt sổ)']);
