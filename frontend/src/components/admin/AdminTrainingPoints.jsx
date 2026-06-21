@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator,
   UserCheck, AlertCircle, CalendarDays, PlusCircle, Power, PlayCircle,
-  StopCircle, Search, Users, TrendingUp, AlertTriangle, BookOpen, Loader2
+  StopCircle, Search, Users, TrendingUp, AlertTriangle, BookOpen, Loader2, FileImage
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -458,7 +458,11 @@ function AdminTrainingPoints() {
   // Tạo map chi tiết tiêu chí sinh viên tự đánh giá để hiển thị breakdown
   const detailsMap = {};
   recordDetails.forEach(d => {
-    detailsMap[d.MaTieuChi] = { diem: d.DiemChon, index: d.ChiSoOption };
+    detailsMap[d.MaTieuChi] = { 
+      diem: d.DiemChon, 
+      index: d.ChiSoOption,
+      Files: d.MinhChung ? JSON.parse(d.MinhChung) : []
+    };
   });
 
   if (loading) return <TrainingPointsSkeleton />;
@@ -1045,7 +1049,7 @@ function AdminTrainingPoints() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]"
+              className="bg-white w-full max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]"
             >
               {/* Header Modal */}
               <div className="bg-blue-600 p-5 flex justify-between items-center text-white shrink-0">
@@ -1159,16 +1163,50 @@ function AdminTrainingPoints() {
                                         Không tích chọn mục này
                                       </p>
                                     )}
-                                    {sel !== undefined && sel.diem > 0 && sel.MinhChung && (
-                                      <div className="mt-2 pl-1">
-                                        <a
-                                          href={sel.MinhChung}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline bg-orange-50/50 border border-orange-100 px-2 py-0.5 rounded-md"
-                                        >
-                                          🔗 Xem minh chứng đã nộp
-                                        </a>
+                                    {sel !== undefined && sel.diem > 0 && (sel.Files && sel.Files.length > 0) && (
+                                      <div className="mt-2 pl-1 space-y-2">
+                                        {sel.Files && sel.Files.length > 0 && (
+                                          <div className="space-y-2">
+                                            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                                              Tệp đính kèm ({sel.Files.length}/3)
+                                            </p>
+                                            {sel.Files.map((file, fileIndex) => (
+                                              <div key={fileIndex} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                                                  <FileImage className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="text-[11px] font-bold text-blue-800 truncate">{file.name}</p>
+                                                  <p className="text-[10px] text-blue-600">{(file.data.length * 3 / 4 / 1024).toFixed(1)} KB</p>
+                                                </div>
+                                                {file.type.startsWith('image/') && (
+                                                  <button
+                                                    onClick={() => window.open(file.data, '_blank')}
+                                                    className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-md hover:bg-blue-700 transition-colors shrink-0"
+                                                  >
+                                                    Xem ảnh
+                                                  </button>
+                                                )}
+                                              </div>
+                                            ))}
+                                            {/* Image previews */}
+                                            {sel.Files.filter(f => f.type.startsWith('image/')).length > 0 && (
+                                              <div className="flex flex-wrap gap-2 mt-2">
+                                                {sel.Files
+                                                  .filter(f => f.type.startsWith('image/'))
+                                                  .map((file, fileIndex) => (
+                                                    <img
+                                                      key={fileIndex}
+                                                      src={file.data}
+                                                      alt={`Minh chứng ${fileIndex + 1}`}
+                                                      className="w-16 h-16 object-cover rounded-lg border border-blue-100 cursor-pointer hover:opacity-90 transition-opacity"
+                                                      onClick={() => window.open(file.data, '_blank')}
+                                                    />
+                                                  ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </div>
