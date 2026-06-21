@@ -24,8 +24,24 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
-// Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
-app.use(express.json());
+// Middleware CORS - phải đặt trước express.json() để tránh lỗi CORS khi payload lớn
+app.use(cors({
+    origin: [
+        'https://hung270508-bit.github.io', // Khi chạy online trên GitHub Pages
+        'https://qlsv-huq1.onrender.com',
+        'http://localhost:5173',            // Khi chạy local bằng Vite (Mặc định)
+        'http://localhost:5174',            // Khi chạy local bằng Vite (Cổng thay thế)
+        'http://localhost:3000',            // Dự phòng nếu local chạy cổng 3000
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:3000'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
+
+// Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn
+app.use(express.json({ limit: '10mb' }));
 
 // Cấu hình kết nối đến MySQL sử dụng Pool (Tối ưu từ server mới)
 const db = mysql.createPool({
@@ -68,21 +84,6 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: false
     }
 });
-
-app.use(cors({
-    origin: [
-        'https://hung270508-bit.github.io', // Khi chạy online trên GitHub Pages
-        'https://qlsv-huq1.onrender.com',
-        'http://localhost:5173',            // Khi chạy local bằng Vite (Mặc định)
-        'http://localhost:5174',            // Khi chạy local bằng Vite (Cổng thay thế)
-        'http://localhost:3000',            // Dự phòng nếu local chạy cổng 3000
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:5174',
-        'http://127.0.0.1:3000'
-    ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-}));
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
@@ -1626,6 +1627,7 @@ app.put('/api/admin/support-requests/:id', (req, res) => {
 
 // Lấy chi tiết tiêu chí đã tích của 1 phiếu đánh giá (dùng chung cho SV xem lại / Admin xem breakdown)
 app.get('/api/training-points/:id/details', (req, res) => {
+    console.log('GET /api/training-points/:id/details - MaDanhGia:', req.params.id);
     executeQuery('SELECT * FROM chitiet_danhgia WHERE MaDanhGia = ? ORDER BY MaTieuChi', [req.params.id], res, 'Lỗi lấy chi tiết đánh giá!');
 });
 
@@ -1643,6 +1645,9 @@ app.get('/api/training-points/student/:mssv', (req, res) => {
 
 app.post('/api/training-points', (req, res) => {
     const { MSSV, HocKy, DiemTuDanhGia, ChiTiet, MaDotDanhGia } = req.body;
+    console.log('POST /api/training-points - Received data:', { MSSV, HocKy, DiemTuDanhGia, ChiTiet: ChiTiet ? ChiTiet.length : 0, MaDotDanhGia });
+    console.log('ChiTiet data:', JSON.stringify(ChiTiet, null, 2));
+    
     let xepLoai = 'Yếu';
     if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
     else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
@@ -1654,18 +1659,22 @@ app.post('/api/training-points', (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi nộp đánh giá!', error: err.message });
 
         const maDanhGia = result.insertId;
+        console.log('Created MaDanhGia:', maDanhGia);
 
         if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
-            const values = ChiTiet.map(ct => [maDanhGia, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.MinhChung || null]);
+            const values = ChiTiet.map(ct => [maDanhGia, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.Files ? JSON.stringify(ct.Files) : null]);
+            console.log('Inserting details values:', values);
             const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
             db.query(detailQuery, [values], (detailErr) => {
                 if (detailErr) {
                     console.error('Lỗi lưu chi tiết đánh giá:', detailErr);
                     return res.json({ success: true, message: 'Nộp đánh giá thành công (không lưu được chi tiết)!' });
                 }
+                console.log('Details saved successfully for MaDanhGia:', maDanhGia);
                 res.json({ success: true, message: 'Nộp đánh giá thành công!' });
             });
         } else {
+            console.log('No ChiTiet data to save');
             res.json({ success: true, message: 'Nộp đánh giá thành công!' });
         }
     });
@@ -1687,7 +1696,7 @@ app.put('/api/training-points/:id', (req, res) => {
             db.query('DELETE FROM chitiet_danhgia WHERE MaDanhGia = ?', [req.params.id], (delErr) => {
                 if (delErr) return res.json({ success: true, message: 'Cập nhật điểm thành công (không cập nhật được chi tiết)!' });
 
-                const values = ChiTiet.map(ct => [req.params.id, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.MinhChung || null]);
+                const values = ChiTiet.map(ct => [req.params.id, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.Files ? JSON.stringify(ct.Files) : null]);
                 const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
                 db.query(detailQuery, [values], (insertErr) => {
                     if (insertErr) console.error('Lỗi lưu chi tiết đánh giá:', insertErr);
