@@ -1734,18 +1734,18 @@ app.put('/api/admin/training-points/bulk-approve', (req, res) => {
     const query = `
         UPDATE danhgia_renluyen 
         SET TrangThai = 'Đã xác nhận',
-            TongDiem = DiemTuDanhGia + DiemKhoaDanhGia,
+            TongDiem = DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0),
             XepLoai = CASE 
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 90 THEN 'Xuất sắc'
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 80 THEN 'Tốt'
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 65 THEN 'Khá'
-                WHEN (DiemTuDanhGia + DiemKhoaDanhGia) >= 50 THEN 'Trung bình'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 90 THEN 'Xuất sắc'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 80 THEN 'Tốt'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 65 THEN 'Khá'
+                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 50 THEN 'Trung bình'
                 ELSE 'Yếu'
             END
         WHERE MaDanhGia IN (?)
     `;
     db.query(query, [ids], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message });
+        if (err) { console.error("BULK APPROVE DB ERROR:", err); return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message }); }
 
         const nguoiDuyet = NguoiDuyet || 'admin';
         const logValues = ids.map(id => [id, nguoiDuyet, 'Phê duyệt hàng loạt (Chốt sổ)']);
