@@ -18,10 +18,12 @@ function StudentSupport({ user, profile }) {
   // State cho Form gửi câu hỏi
   const [formData, setFormData] = useState({ chuDe: '', noiDung: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState({ chuDe: '', noiDung: '' });
 
   // State cho Form đăng ký biểu mẫu
-  const [requestForm, setRequestForm] = useState({ show: false, chude: '', ngaySinh: '', khoa: '', dienThoai: '' });
+  const [requestForm, setRequestForm] = useState({ show: false, chude: '', ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
   const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [submittedData, setSubmittedData] = useState(null);
 
   // States quản lý Popup thay cho alert()
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
@@ -83,16 +85,28 @@ function StudentSupport({ user, profile }) {
   // 3. HÀM XỬ LÝ: SUBMIT FORM ĐĂNG KÝ BIỂU MẪU
   const handleSubmitRequestForm = async (e) => {
     e.preventDefault();
+    if (!requestForm.noiDung.trim()) {
+      return setErrorDialog({ show: true, message: 'Vui lòng nhập nội dung yêu cầu!' });
+    }
     try {
       setRequestSubmitting(true);
-      await axios.post(`${API_URL}/api/support`, {
+      const response = await axios.post(`${API_URL}/api/support`, {
         MSSV: user.username,
         LoaiYeuCau: 'Hành chính',
         ChuDe: requestForm.chude,
-        NoiDung: `Sinh viên yêu cầu cấp: ${requestForm.chude}`
+        NoiDung: requestForm.noiDung
+      });
+      // Lưu thông tin đã gửi để hiển thị
+      setSubmittedData({
+        MSSV: user.username,
+        LoaiYeuCau: 'Hành chính',
+        ChuDe: requestForm.chude,
+        NoiDung: requestForm.noiDung,
+        NgayGui: new Date().toISOString(),
+        TrangThai: 'Đang xử lý'
       });
       setToast({ show: true, message: 'Đã gửi yêu cầu thành công! Vui lòng theo dõi trạng thái.', type: 'success' });
-      setRequestForm({ show: false, chude: '' });
+      setRequestForm({ show: false, chude: '', ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
       fetchSupportData(); // Tải lại danh sách
     } catch (error) {
       setErrorDialog({ show: true, message: 'Lỗi khi gửi yêu cầu! Vui lòng thử lại.' });
@@ -299,7 +313,8 @@ function StudentSupport({ user, profile }) {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">Nội dung chi tiết <span className="text-red-500">*</span></label>
-                    <textarea required value={formData.noiDung} onChange={(e) => setFormData({ ...formData, noiDung: e.target.value })} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className="w-full p-3 bg-white border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none text-gray-800 text-sm transition-all"></textarea>
+                    <textarea required value={formData.noiDung} onChange={(e) => { setFormData({ ...formData, noiDung: e.target.value }); if (formErrors.noiDung) setFormErrors({ ...formErrors, noiDung: '' }); }} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className={`w-full p-3 bg-white border rounded-lg focus:outline-none focus:ring-2 resize-none text-gray-800 text-sm transition-all ${formErrors.noiDung ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20' : 'border-orange-200 focus:border-orange-500 focus:ring-orange-500/20'}`}></textarea>
+                    {formErrors.noiDung && <p className="text-red-500 text-xs mt-1">{formErrors.noiDung}</p>}
                   </div>
                   <div className="text-right pt-1">
                     <button type="submit" disabled={submitting} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-all flex items-center gap-2 ml-auto shadow-md shadow-orange-200 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed transform hover:-translate-y-0.5 text-sm">
@@ -347,6 +362,75 @@ function StudentSupport({ user, profile }) {
 
       {/* CÁC COMPONENT POPUP */}
       <AnimatePresence>
+        {/* Modal hiển thị thông tin đã gửi */}
+        {submittedData && (
+          <ModalPortal>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden"
+              >
+                <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 text-white flex justify-between items-center shadow-sm">
+                  <h3 className="text-base font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-white/90" /> THÔNG TIN BIỂU MẪU ĐÃ GỬI
+                  </h3>
+                  <button onClick={() => setSubmittedData(null)} className="text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-1.5 rounded-full">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 bg-white space-y-4">
+                  <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                    <h4 className="text-sm font-bold text-green-800 mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" /> Đã gửi thành công!
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Mã SV:</span>
+                        <span className="font-semibold text-gray-800">{submittedData.MSSV}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Loại yêu cầu:</span>
+                        <span className="font-semibold text-gray-800">{submittedData.LoaiYeuCau}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Chủ đề:</span>
+                        <span className="font-semibold text-gray-800">{submittedData.ChuDe}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ngày gửi:</span>
+                        <span className="font-semibold text-gray-800">{new Date(submittedData.NgayGui).toLocaleString('vi-VN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Trạng thái:</span>
+                        <span className="font-semibold text-orange-600">{submittedData.TrangThai}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h4 className="text-sm font-bold text-gray-700 mb-2">Nội dung yêu cầu:</h4>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-gray-200">{submittedData.NoiDung}</p>
+                  </div>
+
+                  <div className="flex justify-center pt-2">
+                    <button onClick={() => setSubmittedData(null)} className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors shadow-md shadow-green-200 text-sm">
+                      ĐÓNG
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </ModalPortal>
+        )}
+
         {requestForm.show && (
           <ModalPortal>
             <motion.div
@@ -409,6 +493,19 @@ function StudentSupport({ user, profile }) {
                       <label className="w-28 text-xs font-bold text-gray-700 shrink-0">Điện thoại:</label>
                       <input disabled type="text" value={profile?.SoDienThoai || 'Chưa cập nhật'} className="w-full p-2.5 bg-white/60 border border-gray-100 rounded-lg text-gray-800 font-semibold cursor-default focus:outline-none shadow-sm text-sm" />
                     </div>
+                  </div>
+
+                  {/* Phần nội dung yêu cầu */}
+                  <div className="mb-6">
+                    <label className="block text-xs font-bold text-gray-700 mb-2">Nội dung yêu cầu <span className="text-red-500">*</span></label>
+                    <textarea
+                      required
+                      value={requestForm.noiDung}
+                      onChange={(e) => setRequestForm({ ...requestForm, noiDung: e.target.value })}
+                      rows="4"
+                      placeholder="Vui lòng nhập lý do hoặc nội dung chi tiết cho yêu cầu này..."
+                      className="w-full p-3 bg-white border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none text-gray-800 text-sm transition-all"
+                    />
                   </div>
 
                   {/* Buttons */}

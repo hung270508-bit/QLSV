@@ -327,9 +327,9 @@ function AdminRequests() {
               transition={{ duration: 0.2, ease: 'easeOut' }}
               className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 flex justify-between items-center text-white shrink-0">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-5 flex justify-between items-center text-white shrink-0">
                 <h3 className="text-lg font-bold flex items-center gap-2">
-                  <Reply className="w-5 h-5" /> Xử lý yêu cầu #{selectedReq.MaYeuCau}
+                  <Reply className="w-5 h-5" /> Chi tiết yêu cầu #{selectedReq.MaYeuCau}
                 </h3>
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 90 }}
@@ -354,10 +354,20 @@ function AdminRequests() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-700 text-sm mb-2">Nội dung yêu cầu:</h4>
-                  <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
-                    <p className="font-semibold text-blue-900 text-sm mb-1">{selectedReq.TieuDe}</p>
-                    <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{selectedReq.NoiDung}</p>
+                  <h4 className="font-semibold text-gray-700 text-sm mb-2">Thông tin yêu cầu:</h4>
+                  <div className="bg-orange-50/60 p-4 rounded-xl border border-orange-100 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-semibold text-gray-600">Loại yêu cầu:</span>
+                      <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded">{selectedReq.LoaiYeuCau}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-semibold text-gray-600">Chủ đề:</span>
+                      <span className="text-xs font-semibold text-gray-800">{selectedReq.ChuDe || selectedReq.TieuDe}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-gray-600 block mb-1">Nội dung chi tiết:</span>
+                      <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed bg-white p-3 rounded-lg border border-orange-200">{selectedReq.NoiDung}</p>
+                    </div>
                   </div>
                 </div>
 
