@@ -184,19 +184,28 @@ function StudentSupport({ user, profile }) {
             <motion.div key="requests" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-5">
 
               {/* Nút tạo yêu cầu mới */}
-              <div className="bg-orange-50 rounded-xl p-5 border border-orange-100">
-                <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-orange-500" /> Tạo yêu cầu mới
+              <div className="bg-white rounded-xl p-5 border border-gray-200">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-orange-500" /> Tạo yêu cầu mới
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <button onClick={() => handleQuickRequest('Giấy xác nhận hoãn Nghĩa vụ quân sự')} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-all shadow-sm shadow-orange-200 hover:shadow-md hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                    <ShieldAlert className="w-4 h-4" /> Tạm hoãn NVQS
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <button onClick={() => handleQuickRequest('Giấy xác nhận hoãn Nghĩa vụ quân sự')} className="group bg-white border-2 border-orange-200 hover:border-orange-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-orange-100 group-hover:bg-orange-500 flex items-center justify-center transition-colors">
+                      <ShieldAlert className="w-8 h-8 text-orange-500 group-hover:text-white transition-colors" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-orange-600 transition-colors text-center">Xin giấy tạm hoãn NVQS</span>
                   </button>
-                  <button onClick={() => handleQuickRequest('Giấy xác nhận sinh viên Khoa trực thuộc')} className="bg-white text-orange-600 border-2 border-orange-200 hover:border-orange-500 hover:bg-orange-50 font-semibold text-sm py-2.5 px-4 rounded-lg transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                    <GraduationCap className="w-4 h-4" /> Xác nhận SV
+                  <button onClick={() => handleQuickRequest('Giấy xác nhận sinh viên Khoa trực thuộc')} className="group bg-white border-2 border-blue-200 hover:border-blue-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-blue-100 group-hover:bg-blue-500 flex items-center justify-center transition-colors">
+                      <GraduationCap className="w-8 h-8 text-blue-500 group-hover:text-white transition-colors" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-600 transition-colors text-center">Xin giấy xác nhận SV</span>
                   </button>
-                  <button onClick={() => handleQuickRequest('Đơn xin tạm nghỉ học / Bảo lưu kết quả')} className="bg-orange-50 text-orange-700 border-2 border-transparent hover:border-orange-200 hover:bg-orange-100 font-semibold text-sm py-2.5 px-4 rounded-lg transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                    <AlertCircle className="w-4 h-4" /> Tạm nghỉ / Bảo lưu
+                  <button onClick={() => handleQuickRequest('Đơn xin tạm nghỉ học / Bảo lưu kết quả')} className="group bg-white border-2 border-red-200 hover:border-red-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-red-100 group-hover:bg-red-500 flex items-center justify-center transition-colors">
+                      <AlertCircle className="w-8 h-8 text-red-500 group-hover:text-white transition-colors" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-red-600 transition-colors text-center">Xin tạm nghỉ / Bảo lưu</span>
                   </button>
                 </div>
               </div>
