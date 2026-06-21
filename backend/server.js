@@ -24,25 +24,8 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
-// TÍCH HỢP SOCKET.IO VÀ BIẾN TRẠNG THÁI RFID TOÀN CỤC 
+// BIẾN TRẠNG THÁI RFID TOÀN CỤC 
 const http = require('http').createServer(app);
-
-// Chỉ khởi tạo Socket.io nếu KHÔNG chạy trên Vercel Serverless (vì Vercel không hỗ trợ WebSocket lâu dài và gây cạn kiệt DB Connection)
-let io;
-if (!isVercel) {
-    io = require('socket.io')(http, {
-        cors: {
-            origin: ["http://localhost:5173", "http://localhost:5174", "https://hung270508-bit.github.io"],
-            methods: ["GET", "POST"],
-            credentials: true
-        }
-    });
-
-    io.on('connection', (socket) => {
-        console.log('Có trình duyệt kết nối Real-time:', socket.id);
-        socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
-    });
-}
 
 global.currentRfidState = {
     mode: "ATTENDANCE", // "ATTENDANCE" hoặc "REGISTER"
@@ -130,7 +113,10 @@ const verifyToken = (req, res, next) => {
 // ==================== HELPER FUNCTIONS ====================
 const executeQuery = (query, params, res, errorMessage) => {
     db.query(query, params, (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        if (err) {
+            console.error(`[DB Error in executeQuery] ${errorMessage}:`, err);
+            return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        }
         res.json(results);
     });
 };
@@ -146,7 +132,10 @@ const validateAssignment = (req, res, next) => {
 
 const executeMutation = (query, params, res, successMessage, errorMessage) => {
     db.query(query, params, (err) => {
-        if (err) return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        if (err) {
+            console.error(`[DB Error in executeMutation] ${errorMessage}:`, err);
+            return res.status(500).json({ success: false, message: errorMessage, error: err.message });
+        }
         res.json({ success: true, message: successMessage });
     });
 };
@@ -476,7 +465,10 @@ app.get('/api/dashboard/stats', (req, res) => {
         db.query(q, (err, results) => err ? reject(err) : resolve(results[0].total));
     }))).then(([students, subjects, classes, teachers]) => {
         res.json({ totalStudents: students, totalSubjects: subjects, totalClasses: classes, totalTeachers: teachers });
-    }).catch(err => res.status(500).json({ success: false, message: 'Lỗi lấy thống kê!' }));
+    }).catch(err => {
+        console.error("[DB Error] Lỗi lấy thống kê dashboard:", err);
+        res.status(500).json({ success: false, message: 'Lỗi lấy thống kê!' });
+    });
 });
 
 app.get('/api/dashboard/stats-by-faculty', (req, res) => {
