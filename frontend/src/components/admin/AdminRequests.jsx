@@ -211,10 +211,8 @@ function AdminRequests() {
           className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
         >
           <option value="All">Tất cả trạng thái</option>
-          <option value="Chờ xử lý">Chờ xử lý</option>
           <option value="Đang xử lý">Đang xử lý</option>
           <option value="Đã phản hồi">Đã phản hồi</option>
-          <option value="Hoàn thành">Hoàn thành</option>
           <option value="Từ chối">Từ chối</option>
         </select>
         <span className="ml-auto text-sm text-gray-400">{filtered.length} kết quả</span>
