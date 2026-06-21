@@ -240,51 +240,56 @@ app.post('/api/login', (req, res) => {
     `;
 
     db.query(query, [username], async (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
-        if (results.length > 0 && results[0].TaiKhoan === username) {
-            const user = results[0];
-            let passwordMatch = false;
+        try {
+            if (err) { console.error("LOGIN DB ERROR:", err); return res.status(500).json({ success: false, message: 'Lỗi server!', error: String(err) }); }
+            if (results.length > 0 && results[0].TaiKhoan === username) {
+                const user = results[0];
+                let passwordMatch = false;
 
-            if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
-                passwordMatch = await bcrypt.compare(password, user.password);
-            } else {
-                passwordMatch = (password === user.password);
-            }
-
-            if (passwordMatch) {
-                // Reset login attempts on success
-                if (loginAttempts[username]) {
-                    loginAttempts[username].attempts = 0;
-                    loginAttempts[username].lockoutUntil = null;
+                if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+                    passwordMatch = await bcrypt.compare(password, user.password);
+                } else {
+                    passwordMatch = (password === user.password);
                 }
 
-                let roleString = user.MaQuyen === 1 ? 'admin' : (user.MaQuyen === 2 ? 'teacher' : 'student');
-                const userResponse = { id: user.TaiKhoan, username: user.TaiKhoan, role: roleString, tenQuyen: user.TenQuyen };
+                if (passwordMatch) {
+                    // Reset login attempts on success
+                    if (loginAttempts[username]) {
+                        loginAttempts[username].attempts = 0;
+                        loginAttempts[username].lockoutUntil = null;
+                    }
 
-                if (user.MaQuyen === 3) {
-                    Object.assign(userResponse, { hoTen: user.TenSinhVien, ngaySinh: user.NgaySinh, gioiTinh: user.GioiTinh, email: user.EmailSV, soDienThoai: user.SDTSV, maLop: user.MaLop, tenLop: user.TenLop });
-                } else if (user.MaQuyen === 2) {
-                    Object.assign(userResponse, { hoTen: user.TenGiangVien, email: user.EmailGV, soDienThoai: user.SDTGV, maKhoa: user.MaKhoa, tenKhoa: user.TenKhoa });
+                    let roleString = user.MaQuyen === 1 ? 'admin' : (user.MaQuyen === 2 ? 'teacher' : 'student');
+                    const userResponse = { id: user.TaiKhoan, username: user.TaiKhoan, role: roleString, tenQuyen: user.TenQuyen };
+
+                    if (user.MaQuyen === 3) {
+                        Object.assign(userResponse, { hoTen: user.TenSinhVien, ngaySinh: user.NgaySinh, gioiTinh: user.GioiTinh, email: user.EmailSV, soDienThoai: user.SDTSV, maLop: user.MaLop, tenLop: user.TenLop });
+                    } else if (user.MaQuyen === 2) {
+                        Object.assign(userResponse, { hoTen: user.TenGiangVien, email: user.EmailGV, soDienThoai: user.SDTGV, maKhoa: user.MaKhoa, tenKhoa: user.TenKhoa });
+                    }
+
+                    // Generate JWT token
+                    const token = jwt.sign(
+                        {
+                            id: user.TaiKhoan,
+                            username: user.TaiKhoan,
+                            role: roleString,
+                            maQuyen: user.MaQuyen
+                        },
+                        JWT_SECRET,
+                        { expiresIn: JWT_EXPIRES_IN }
+                    );
+
+                    return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse, token });
+                } else {
+                    return handleFailedAttempt(username);
                 }
-
-                // Generate JWT token
-                const token = jwt.sign(
-                    {
-                        id: user.TaiKhoan,
-                        username: user.TaiKhoan,
-                        role: roleString,
-                        maQuyen: user.MaQuyen
-                    },
-                    JWT_SECRET,
-                    { expiresIn: JWT_EXPIRES_IN }
-                );
-
-                return res.json({ success: true, message: 'Đăng nhập thành công!', user: userResponse, token });
             } else {
-                return handleFailedAttempt(username);
+                return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại!' });
             }
-        } else {
-            return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại!' });
+        } catch (error) {
+            console.error("LOGIN CATCH ERROR:", error);
+            return res.status(500).json({ success: false, message: 'Lỗi server!', error: error.message });
         }
     });
 });
