@@ -27,11 +27,17 @@ const app = express();
 // BIẾN TRẠNG THÁI RFID TOÀN CỤC 
 const http = require('http').createServer(app);
 
+// BIẾN TRẠNG THÁI RFID TOÀN CỤC (CẤU HÌNH DÙNG CHO CƠ CHẾ POLLING)
 global.currentRfidState = {
-    mode: "ATTENDANCE", // "ATTENDANCE" hoặc "REGISTER"
-    targetMSSV: null
+    mode: "ATTENDANCE",   // Gồm các trạng thái: "ATTENDANCE", "REGISTER", hoặc "REGISTER_DONE"
+    targetMSSV: null,
+    capturedUid: null     // Lưu UID tạm thời khi quẹt ở chế độ đăng ký để Frontend lên kéo về
 };
 
+<<<<<<< HEAD
+// Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
+app.use(express.json());
+=======
 // Middleware CORS cho Express API
 app.use(cors({
     origin: [
@@ -51,6 +57,7 @@ app.use(cors({
 
 // Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh Base64)
 app.use(express.json({ limit: '10mb' }));
+>>>>>>> 0b2435e50c61a600f6b44a093ce29eb2ce85eead
 
 // Cấu hình kết nối đến MySQL sử dụng Pool (Tối ưu từ server mới)
 const db = mysql.createPool({
@@ -567,10 +574,12 @@ app.get('/api/students', (req, res) =>
       l.MaKhoa,    -- Lấy đích danh MaKhoa từ bảng lophoc
       l.TenLop,
       l.NienKhoa,
-      k.TenKhoa 
+      k.TenKhoa,
+      the.uid AS UID
     FROM sinhvien s
     LEFT JOIN lophoc l ON s.MaLop = l.MaLop
-    LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa`,
+    LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa
+    LEFT JOIN the_sv the ON s.MSSV COLLATE utf8mb4_unicode_ci = the.MSSV COLLATE utf8mb4_unicode_ci`,
         [],
         res,
         'Lỗi lấy danh sách sinh viên!'
@@ -824,6 +833,21 @@ app.put('/api/students/:mssv', async (req, res) => {
                 }
             );
         });
+
+        // Cập nhật thẻ UID nếu có truyền lên
+        if (data.UID !== undefined) {
+            await new Promise((resolve, reject) => {
+                if (data.UID.trim() === '') {
+                    db.query('DELETE FROM the_sv WHERE MSSV = ?', [req.params.mssv], (err) => {
+                        if (err) reject(err); else resolve();
+                    });
+                } else {
+                    db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE uid = VALUES(uid)', [data.UID, req.params.mssv], (err) => {
+                        if (err) reject(err); else resolve();
+                    });
+                }
+            });
+        }
 
         res.json({
             success: true,
@@ -1470,36 +1494,90 @@ app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
     });
 });
 
-// API chuyển đổi chế độ sang Đăng ký thẻ 
-app.post('/api/rfid/activate-register', (req, res) => {
-    const { mssv } = req.body;
-    if (!mssv) return res.status(400).json({ success: false, message: "Thiếu MSSV cần cấp thẻ" });
-
-    currentRfidState.mode = "REGISTER";
-    currentRfidState.targetMSSV = mssv;
-
-    console.log(`[Hệ thống] Đã chuyển sang chế độ ĐĂNG KÝ THẺ cho MSSV: ${mssv}`);
-    return res.json({ success: true, message: `Đã sẵn sàng chờ quét thẻ cho sinh viên ${mssv}` });
+// CỤM API QUẢN LÝ RFID THEO CƠ CHẾ POLLING (ĐÃ ĐỒNG BỘ BẢNG the_sv)
+// API kiểm tra trạng thái hệ thống (Cả ESP32 và Web Admin gọi check định kỳ)
+app.get('/api/rfid/status', (req, res) => {
+    return res.json(global.currentRfidState);
 });
-// RFID UID -> MSSV 
-// Accepts { uid, MaLopHocPhan, TrangThai?, NgayDiemDanh? }
+
+// API kích hoạt chế độ đăng ký thẻ từ Web Admin
+app.post('/api/rfid/activate-register', (req, res) => {
+    const { mssv } = req.body || {};
+    if (!mssv) return res.status(400).json({ success: false, message: "Thiếu MSSV" });
+
+    global.currentRfidState.mode = "REGISTER";
+    global.currentRfidState.targetMSSV = mssv;
+    global.currentRfidState.capturedUid = null; 
+
+    console.log(`[Hệ thống] Bật chế độ đăng ký thẻ cho SV: ${mssv}`);
+    return res.json({ success: true, message: "Đã chuyển sang chế độ đăng ký" });
+});
+
+// API reset trạng thái về điểm danh (Frontend gọi sau khi đã lấy xong UID)
+app.post('/api/rfid/reset-status', (req, res) => {
+
+    global.currentRfidState.mode = "ATTENDANCE";
+    global.currentRfidState.targetMSSV = null;
+    global.currentRfidState.capturedUid = null;
+
+    console.log("[Hệ thống] Đã hủy chế độ đăng ký, trở về chế độ điểm danh mặc định.");
+    return res.json({ success: true });
+});
+
+// API nhận dữ liệu từ ESP32 bắn lên
 app.post('/api/attendance/uid', (req, res) => {
     const { uid, MaLopHocPhan, TrangThai, NgayDiemDanh } = req.body;
-    if (!uid || !MaLopHocPhan) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MaLopHocPhan' });
+    if (!uid) return res.status(400).json({ success: false, message: 'Thiếu UID' });
 
-    db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
-        if (!results || results.length === 0) return res.status(404).json({ success: false, message: 'UID chưa được mapping tới MSSV' });
+    // TRƯỜNG HỢP A: ĐANG Ở CHẾ ĐỘ ĐĂNG KÝ THÊ MỚI -> LƯU VÀO BẢNG the_sv
+    if (global.currentRfidState.mode === "REGISTER") {
+        const mssvDangKy = global.currentRfidState.targetMSSV;
 
-        const MSSV = results[0].MSSV;
-        const ngay = NgayDiemDanh || new Date().toISOString().slice(0,10);
-        const trangthai = TrangThai || 'Có mặt';
+        db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', 
+        [uid, mssvDangKy], (errReg) => {
+            if (errReg) return res.status(500).json({ success: false, message: 'Lỗi ghi DB', error: errReg.message });
 
-        db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
-            if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
-            return res.json({ success: true, message: 'Đã ghi điểm danh', MSSV });
+            console.log(`[Thành công] Thẻ ${uid} đã gán cho SV ${mssvDangKy}`);
+            
+            global.currentRfidState.mode = "REGISTER_DONE";
+            global.currentRfidState.capturedUid = uid;
+
+            return res.json({ success: true, action: "REGISTER_OK" });
         });
-    });
+    }
+
+    // TRƯỜNG HỢP B: CHẾ ĐỘ ĐIỂM DANH MẶC ĐỊNH -> QUÉT TRONG BẢNG the_sv
+    else {
+        if (!MaLopHocPhan) return res.status(400).json({ success: false, message: 'Thiếu MaLopHocPhan' });
+
+        db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+            
+            // Thẻ lạ chưa đăng ký
+            if (!results || results.length === 0) {
+                return res.status(404).json({ success: false, action: "UNREGISTERED", message: 'Thẻ lạ, Chưa đăng ký' });
+            }
+
+            // Thẻ hợp lệ -> Ghi nhận điểm danh
+            const MSSV = results[0].MSSV;
+            const ngay = NgayDiemDanh || new Date().toISOString().slice(0,10);
+            const trangthai = TrangThai || 'Có mặt';
+
+            db.query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [MaLopHocPhan, MSSV, ngay], (errCheck, checkResults) => {
+                if (errCheck) return res.status(500).json({ success: false, message: 'Lỗi DB khi kiểm tra trùng', error: errCheck.message });
+
+                if (checkResults && checkResults.length > 0) {
+                    return res.json({ success: true, action: "ATTENDANCE_OK", message: "Đã điểm danh từ trước", MSSV });
+                }
+
+                db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', 
+                [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
+                    if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
+                    return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
+                });
+            });
+        });
+    }
 });
 
 // Management endpoints for rfid_tags
