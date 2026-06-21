@@ -26,23 +26,28 @@ const app = express();
 
 // TÍCH HỢP SOCKET.IO VÀ BIẾN TRẠNG THÁI RFID TOÀN CỤC 
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, {
-    cors: {
-        origin: ["http://localhost:5173", "http://localhost:5174", "https://hung270508-bit.github.io"],
-        methods: ["GET", "POST"],
-        credentials: true
-    }
-});
+
+// Chỉ khởi tạo Socket.io nếu KHÔNG chạy trên Vercel Serverless (vì Vercel không hỗ trợ WebSocket lâu dài và gây cạn kiệt DB Connection)
+let io;
+if (!isVercel) {
+    io = require('socket.io')(http, {
+        cors: {
+            origin: ["http://localhost:5173", "http://localhost:5174", "https://hung270508-bit.github.io"],
+            methods: ["GET", "POST"],
+            credentials: true
+        }
+    });
+
+    io.on('connection', (socket) => {
+        console.log('Có trình duyệt kết nối Real-time:', socket.id);
+        socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
+    });
+}
 
 global.currentRfidState = {
     mode: "ATTENDANCE", // "ATTENDANCE" hoặc "REGISTER"
     targetMSSV: null
 };
-
-io.on('connection', (socket) => {
-    console.log('Có trình duyệt kết nối Real-time:', socket.id);
-    socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
-});
 
 // Middleware CORS cho Express API
 app.use(cors({
@@ -72,7 +77,8 @@ const db = mysql.createPool({
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
     waitForConnections: true,
-    connectionLimit: 10,
+    // Tránh lỗi "Too many connections" trên Vercel Serverless bằng cách giới hạn pool rất nhỏ
+    connectionLimit: isVercel ? 2 : 10,
     queueLimit: 0,
     ssl: {
         rejectUnauthorized: false
