@@ -24,8 +24,6 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
-<<<<<<< HEAD
-=======
 // TÍCH HỢP SOCKET.IO VÀ BIẾN TRẠNG THÁI RFID TOÀN CỤC 
 const http = require('http').createServer(app);
 
@@ -45,7 +43,6 @@ if (!isVercel) {
         socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
     });
 }
->>>>>>> 0b2435e50c61a600f6b44a093ce29eb2ce85eead
 
 // BIẾN TRẠNG THÁI RFID TOÀN CỤC (CẤU HÌNH DÙNG CHO CƠ CHẾ POLLING)
 global.currentRfidState = {
@@ -54,10 +51,8 @@ global.currentRfidState = {
     capturedUid: null     // Lưu UID tạm thời khi quẹt ở chế độ đăng ký để Frontend lên kéo về
 };
 
-<<<<<<< HEAD
 // Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
 app.use(express.json());
-=======
 // Middleware CORS cho Express API
 app.use(cors({
     origin: [
@@ -77,7 +72,6 @@ app.use(cors({
 
 // Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh Base64)
 app.use(express.json({ limit: '10mb' }));
->>>>>>> 0b2435e50c61a600f6b44a093ce29eb2ce85eead
 
 // Cấu hình kết nối đến MySQL sử dụng Pool (Tối ưu từ server mới)
 const db = mysql.createPool({
@@ -883,6 +877,13 @@ app.delete('/api/students/:mssv', (req, res) => {
     });
 });
 
+app.put('/api/students/:mssv/clear-uid', (req, res) => {
+    db.query('DELETE FROM the_sv WHERE MSSV = ?', [req.params.mssv], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi xóa mã thẻ!', error: err.message });
+        res.json({ success: true, message: 'Xóa mã thẻ thành công!' });
+    });
+});
+
 app.get('/api/students/next-code/:maLop', (req, res) => {
     const { maLop } = req.params;
     const queryLop = `SELECT l.NienKhoa, k.ID as KhoaID FROM lophoc l JOIN khoa k ON l.MaKhoa = k.MaKhoa WHERE l.MaLop = ?`;
@@ -1255,7 +1256,7 @@ app.get('/api/schedule-configs', async (req, res) => {
         // Lấy danh sách tiết học và giờ
         const promisePeriods = new Promise((resolve, reject) => {
             db.query('SELECT Tiet, DATE_FORMAT(GioBatDau, "%H:%i") as start, DATE_FORMAT(GioKetThuc, "%H:%i") as end FROM tiethoc ORDER BY Tiet', (err, results) => {
-                if (err) reject(err); 
+                if (err) reject(err);
                 else {
                     const periods = {};
                     results.forEach(r => {
@@ -1306,10 +1307,10 @@ app.get('/api/schedules', (req, res) => {
 app.get('/api/schedule/student/:mssv', (req, res) => executeQuery('SELECT lh.*, mh.TenMonHoc FROM diem d JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan JOIN lichhoc lh ON lh.MaLopHocPhan = lhp.MaLopHocPhan JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE d.MSSV = ?', [req.params.mssv], res, 'Lỗi!'));
 app.post('/api/schedules', async (req, res) => {
     const { MaLopHocPhan, NgayHoc, TietBatDau, SoTiet, PhongHoc } = req.body;
-    
+
     const soTietHoc = parseInt(SoTiet);
     const tietBD = parseInt(TietBatDau);
-    
+
     if (!soTietHoc || soTietHoc < 2 || soTietHoc > 5) {
         return res.status(400).json({ success: false, message: 'Số tiết học của buổi phải từ 2 đến 5 tiết!' });
     }
@@ -1322,8 +1323,8 @@ app.post('/api/schedules', async (req, res) => {
         if (tietKetThuc > 12) {
             return res.status(400).json({ success: false, message: 'Tiết kết thúc không được vượt quá 12!' });
         }
-        const caHocStr = `${tietBD}-${tietKetThuc}`; 
-        
+        const caHocStr = `${tietBD}-${tietKetThuc}`;
+
         const promiseLHP = new Promise((resolve, reject) => {
             db.query('SELECT mh.SoTinChi FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ?', [MaLopHocPhan], (err, results) => {
                 if (err) reject(err); else resolve(results[0]);
@@ -1338,7 +1339,7 @@ app.post('/api/schedules', async (req, res) => {
         const [lhpInfo, tietDaXep] = await Promise.all([promiseLHP, promiseDaXep]);
         if (!lhpInfo) return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin môn học!' });
 
-        const tongTietMonHoc = lhpInfo.SoTinChi * 9; 
+        const tongTietMonHoc = lhpInfo.SoTinChi * 9;
         const tietConLai = tongTietMonHoc - tietDaXep;
 
         if (tietConLai <= 0) {
@@ -1518,7 +1519,7 @@ app.post('/api/rfid/activate-register', (req, res) => {
 
     global.currentRfidState.mode = "REGISTER";
     global.currentRfidState.targetMSSV = mssv;
-    global.currentRfidState.capturedUid = null; 
+    global.currentRfidState.capturedUid = null;
 
     console.log(`[Hệ thống] Bật chế độ đăng ký thẻ cho SV: ${mssv}`);
     return res.json({ success: true, message: "Đã chuyển sang chế độ đăng ký" });
@@ -1544,17 +1545,17 @@ app.post('/api/attendance/uid', (req, res) => {
     if (global.currentRfidState.mode === "REGISTER") {
         const mssvDangKy = global.currentRfidState.targetMSSV;
 
-        db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', 
-        [uid, mssvDangKy], (errReg) => {
-            if (errReg) return res.status(500).json({ success: false, message: 'Lỗi ghi DB', error: errReg.message });
+        db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)',
+            [uid, mssvDangKy], (errReg) => {
+                if (errReg) return res.status(500).json({ success: false, message: 'Lỗi ghi DB', error: errReg.message });
 
-            console.log(`[Thành công] Thẻ ${uid} đã gán cho SV ${mssvDangKy}`);
-            
-            global.currentRfidState.mode = "REGISTER_DONE";
-            global.currentRfidState.capturedUid = uid;
+                console.log(`[Thành công] Thẻ ${uid} đã gán cho SV ${mssvDangKy}`);
 
-            return res.json({ success: true, action: "REGISTER_OK" });
-        });
+                global.currentRfidState.mode = "REGISTER_DONE";
+                global.currentRfidState.capturedUid = uid;
+
+                return res.json({ success: true, action: "REGISTER_OK" });
+            });
     }
 
     // TRƯỜNG HỢP B: CHẾ ĐỘ ĐIỂM DANH MẶC ĐỊNH -> QUÉT TRONG BẢNG the_sv
@@ -1563,7 +1564,7 @@ app.post('/api/attendance/uid', (req, res) => {
 
         db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
-            
+
             // Thẻ lạ chưa đăng ký
             if (!results || results.length === 0) {
                 return res.status(404).json({ success: false, action: "UNREGISTERED", message: 'Thẻ lạ, Chưa đăng ký' });
@@ -1571,7 +1572,7 @@ app.post('/api/attendance/uid', (req, res) => {
 
             // Thẻ hợp lệ -> Ghi nhận điểm danh
             const MSSV = results[0].MSSV;
-            const ngay = NgayDiemDanh || new Date().toISOString().slice(0,10);
+            const ngay = NgayDiemDanh || new Date().toISOString().slice(0, 10);
             const trangthai = TrangThai || 'Có mặt';
 
             db.query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [MaLopHocPhan, MSSV, ngay], (errCheck, checkResults) => {
@@ -1581,11 +1582,11 @@ app.post('/api/attendance/uid', (req, res) => {
                     return res.json({ success: true, action: "ATTENDANCE_OK", message: "Đã điểm danh từ trước", MSSV });
                 }
 
-                db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', 
-                [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
-                    if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
-                    return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
-                });
+                db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())',
+                    [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
+                        if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
+                        return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
+                    });
             });
         });
     }
@@ -1711,7 +1712,7 @@ app.put('/api/admin/training-points/:id', (req, res) => {
     const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ? WHERE MaDanhGia = ?';
     db.query(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, req.params.id], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
-        
+
         const nguoiDuyet = NguoiDuyet || 'admin';
         const logMsg = `Đã chốt điểm: Cộng thêm ${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
         db.query('INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES (?, ?, ?)', [req.params.id, nguoiDuyet, logMsg], (logErr) => {
@@ -1741,7 +1742,7 @@ app.put('/api/admin/training-points/bulk-approve', (req, res) => {
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ success: false, message: 'Danh sách ID không hợp lệ!' });
     }
-    
+
     const query = `
         UPDATE danhgia_renluyen 
         SET TrangThai = 'Đã xác nhận',
@@ -1757,7 +1758,7 @@ app.put('/api/admin/training-points/bulk-approve', (req, res) => {
     `;
     db.query(query, [ids], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message });
-        
+
         const nguoiDuyet = NguoiDuyet || 'admin';
         const logValues = ids.map(id => [id, nguoiDuyet, 'Phê duyệt hàng loạt (Chốt sổ)']);
         const logBulkQuery = 'INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES ?';
@@ -1808,7 +1809,7 @@ app.post('/api/training-points', (req, res) => {
     const { MSSV, HocKy, DiemTuDanhGia, ChiTiet, MaDotDanhGia } = req.body;
     console.log('POST /api/training-points - Received data:', { MSSV, HocKy, DiemTuDanhGia, ChiTiet: ChiTiet ? ChiTiet.length : 0, MaDotDanhGia });
     console.log('ChiTiet data:', JSON.stringify(ChiTiet, null, 2));
-    
+
     let xepLoai = 'Yếu';
     if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
     else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';

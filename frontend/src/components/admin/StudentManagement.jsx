@@ -819,6 +819,23 @@ function StudentManagement() {
     setErrors({});
 };
 
+  const handleClearUID = async () => {
+    if (!formData.UID) return;
+    if (editingStudent && formData.MSSV) {
+      try {
+        await axios.put(`${API_BASE}/students/${formData.MSSV}/clear-uid`);
+        setFormData({ ...formData, UID: '' });
+        setToast({ show: true, message: 'Xóa mã thẻ thành công!', type: 'success' });
+        fetchData();
+      } catch (error) {
+        console.error('Error clearing UID:', error);
+        setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi xóa mã thẻ!' });
+      }
+    } else {
+      setFormData({ ...formData, UID: '' });
+    }
+  };
+
 
 
 
@@ -1975,6 +1992,16 @@ function StudentManagement() {
                       value={formData.UID || ''}
                       className="flex-1 px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-700 focus:outline-none"
                     />
+                    {formData.UID && (
+                      <button
+                        type="button"
+                        onClick={handleClearUID}
+                        className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl shadow-md transition-colors"
+                        title="Xóa mã"
+                      >
+                        Xóa mã
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleGetUidFromServer(formData.MSSV)}
