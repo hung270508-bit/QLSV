@@ -24,24 +24,28 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
-// Middleware CORS - phải đặt trước express.json() để tránh lỗi CORS khi payload lớn
-app.use(cors({
-    origin: [
-        'https://hung270508-bit.github.io', // Khi chạy online trên GitHub Pages
-        'https://qlsv-huq1.onrender.com',
-        'http://localhost:5173',            // Khi chạy local bằng Vite (Mặc định)
-        'http://localhost:5174',            // Khi chạy local bằng Vite (Cổng thay thế)
-        'http://localhost:3000',            // Dự phòng nếu local chạy cổng 3000
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:5174',
-        'http://127.0.0.1:3000'
-    ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-}));
+// TÍCH HỢP SOCKET.IO VÀ BIẾN TRẠNG THÁI RFID TOÀN CỤC 
+const http = require('http').createServer(app);
+const io = require('socket.io')(http, {
+    cors: {
+        origin: ["http://localhost:5173", "http://localhost:5174", "https://hung270508-bit.github.io"],
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
 
-// Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn
-app.use(express.json({ limit: '10mb' }));
+global.currentRfidState = {
+    mode: "ATTENDANCE", // "ATTENDANCE" hoặc "REGISTER"
+    targetMSSV: null
+};
+
+io.on('connection', (socket) => {
+    console.log('Có trình duyệt kết nối Real-time:', socket.id);
+    socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
+});
+
+// Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
+app.use(express.json());
 
 // Cấu hình kết nối đến MySQL sử dụng Pool (Tối ưu từ server mới)
 const db = mysql.createPool({
@@ -1250,7 +1254,6 @@ app.get('/api/schedules', (req, res) => {
     executeQuery(query, [], res, 'Lỗi lấy lịch học!');
 });
 app.get('/api/schedule/student/:mssv', (req, res) => executeQuery('SELECT lh.*, mh.TenMonHoc FROM diem d JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan JOIN lichhoc lh ON lh.MaLopHocPhan = lhp.MaLopHocPhan JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE d.MSSV = ?', [req.params.mssv], res, 'Lỗi!'));
-app.post('/api/schedules', (req, res) => executeInsert('INSERT INTO lichhoc (MaLopHocPhan, NgayHoc, CaHoc, PhongHoc) VALUES (?, ?, ?, ?)', [req.body.MaLopHocPhan, req.body.NgayHoc, req.body.CaHoc, req.body.PhongHoc], res, 'Thêm lịch thành công', 'Lỗi thêm lịch'));
 app.post('/api/schedules', async (req, res) => {
     const { MaLopHocPhan, NgayHoc, TietBatDau, SoTiet, PhongHoc } = req.body;
     
@@ -1451,6 +1454,56 @@ app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
         });
     });
 });
+
+// API chuyển đổi chế độ sang Đăng ký thẻ 
+app.post('/api/rfid/activate-register', (req, res) => {
+    const { mssv } = req.body;
+    if (!mssv) return res.status(400).json({ success: false, message: "Thiếu MSSV cần cấp thẻ" });
+
+    currentRfidState.mode = "REGISTER";
+    currentRfidState.targetMSSV = mssv;
+
+    console.log(`[Hệ thống] Đã chuyển sang chế độ ĐĂNG KÝ THẺ cho MSSV: ${mssv}`);
+    return res.json({ success: true, message: `Đã sẵn sàng chờ quét thẻ cho sinh viên ${mssv}` });
+});
+// RFID UID -> MSSV 
+// Accepts { uid, MaLopHocPhan, TrangThai?, NgayDiemDanh? }
+app.post('/api/attendance/uid', (req, res) => {
+    const { uid, MaLopHocPhan, TrangThai, NgayDiemDanh } = req.body;
+    if (!uid || !MaLopHocPhan) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MaLopHocPhan' });
+
+    db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+        if (!results || results.length === 0) return res.status(404).json({ success: false, message: 'UID chưa được mapping tới MSSV' });
+
+        const MSSV = results[0].MSSV;
+        const ngay = NgayDiemDanh || new Date().toISOString().slice(0,10);
+        const trangthai = TrangThai || 'Có mặt';
+
+        db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
+            if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
+            return res.json({ success: true, message: 'Đã ghi điểm danh', MSSV });
+        });
+    });
+});
+
+// Management endpoints for rfid_tags
+app.get('/api/rfid/:uid', (req, res) => {
+    db.query('SELECT * FROM rfid_tags WHERE uid = ? LIMIT 1', [req.params.uid], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+        if (!results || results.length === 0) return res.status(404).json({ success: false });
+        res.json({ success: true, mapping: results[0] });
+    });
+});
+
+app.post('/api/rfid', (req, res) => {
+    const { uid, MSSV } = req.body;
+    if (!uid || !MSSV) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MSSV' });
+    db.query('INSERT INTO rfid_tags (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', [uid, MSSV], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+        res.json({ success: true, message: 'Đã lưu mapping' });
+    });
+});
 app.get('/api/attendance/student/:mssv', (req, res) => executeQuery(`SELECT dd.*, dd.NgayDiemDanh as NgayHoc, (SELECT mh.TenMonHoc FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as TenMonHoc, (SELECT PhongHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as PhongHoc, (SELECT CaHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as CaHoc FROM diemdanh dd WHERE dd.MSSV = ? ORDER BY dd.NgayDiemDanh DESC`, [req.params.mssv], res, 'Lỗi!'));
 app.get('/api/attendance/percentage/:mssv', (req, res) => {
     db.query('SELECT TrangThai FROM diemdanh WHERE MSSV = ?', [req.params.mssv], (err, results) => {
@@ -1622,7 +1675,11 @@ app.get('/api/admin/support-requests', (req, res) => {
 
 app.put('/api/admin/support-requests/:id', (req, res) => {
     const { TrangThai, PhanHoi } = req.body;
-    executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ? WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
+    executeUpdate('UPDATE yeucau_hotro SET TrangThai = ?, PhanHoi = ?, NgayPhanHoi = NOW() WHERE MaYeuCau = ?', [TrangThai, PhanHoi, req.params.id], res, 'Phản hồi thành công!', 'Lỗi phản hồi!');
+});
+
+app.delete('/api/admin/support-requests/:id', (req, res) => {
+    executeDelete('DELETE FROM yeucau_hotro WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
 });
 
 // Lấy chi tiết tiêu chí đã tích của 1 phiếu đánh giá (dùng chung cho SV xem lại / Admin xem breakdown)
@@ -1730,5 +1787,5 @@ if (!process.env.VERCEL) {
         console.log(`Server Backend đang chạy tại cổng: http://localhost:${PORT}`);
     });
 }
-
+//
 module.exports = app;
