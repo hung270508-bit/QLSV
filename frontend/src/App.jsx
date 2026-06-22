@@ -273,6 +273,7 @@ function App() {
               setShowAccountList={setShowAccountList}
               loading={loading}
               message={message}
+              setMessage={setMessage}
               showForgotPassword={showForgotPassword}
               setShowForgotPassword={setShowForgotPassword}
               forgotEmail={forgotEmail}

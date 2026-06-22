@@ -1,3 +1,4 @@
+import { StudentAttendanceSkeleton } from '../common/StudentSkeleton';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -105,12 +106,7 @@ function StudentAttendance({ user }) {
   });
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-orange-500 bg-white rounded-2xl shadow-sm border border-gray-200">
-        <Loader2 className="w-10 h-10 animate-spin mb-4" />
-        <p className="font-medium text-gray-500">Đang tổng hợp dữ liệu điểm danh...</p>
-      </div>
-    );
+    return <StudentAttendanceSkeleton />;
   }
 
   return (

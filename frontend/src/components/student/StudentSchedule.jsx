@@ -1,3 +1,4 @@
+import { StudentScheduleSkeleton } from '../common/StudentSkeleton';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen, X, MapPin, Clock, Info } from 'lucide-react';
@@ -150,12 +151,7 @@ function StudentSchedule({ user }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-blue-500 bg-white rounded-2xl shadow-sm border border-gray-200">
-        <Loader2 className="w-10 h-10 animate-spin mb-4" />
-        <p className="font-medium">Đang đồng bộ thời khóa biểu...</p>
-      </div>
-    );
+    return <StudentScheduleSkeleton />;
   }
 
   return (

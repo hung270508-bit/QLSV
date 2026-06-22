@@ -1,3 +1,4 @@
+import { StudentProfileSkeleton } from '../common/StudentSkeleton';
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -7,12 +8,7 @@ import {
 
 function StudentProfile({ profile, loading }) {
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[70vh] text-orange-500">
-        <Loader2 className="w-12 h-12 animate-spin mb-4" />
-        <p className="font-medium text-lg">Đang tải hồ sơ sinh viên...</p>
-      </div>
-    );
+    return <StudentProfileSkeleton />;
   }
 
   if (!profile) {

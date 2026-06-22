@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-
 import { 
   Award, PlusCircle, CheckCircle2, Clock, Loader2, X, FileSignature, 
   Edit, Lock, AlertTriangle, AlertCircle, HelpCircle, Eye, MessageSquare, Send,
@@ -9,8 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API_URL from '../../api';
-import Toast from '../common/Toast';
-import ConfirmDialog from '../common/ConfirmDialog';
+import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 
 const DEFAULT_CRITERIA = [
   {
@@ -667,10 +664,10 @@ function StudentTrainingPoints({ user }) {
       </div>
 
       {/* MODAL PHIẾU ĐÁNH GIÁ (FORM) */}
-      {createPortal(
+      <ModalPortal>
         <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
               
               {/* Header Form */}
@@ -902,15 +899,14 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-        </AnimatePresence>,
-        document.body
-      )}
+        </AnimatePresence>
+      </ModalPortal>
 
       {/* MODAL KHIẾU NẠI (APPEAL) */}
-      {createPortal(
+      <ModalPortal>
         <AnimatePresence>
         {isAppealModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
               <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
@@ -949,15 +945,14 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-        </AnimatePresence>,
-        document.body
-      )}
+        </AnimatePresence>
+      </ModalPortal>
 
       {/* DIALOG XEM PHẢN HỒI KHIẾU NẠI */}
-      {createPortal(
+      <ModalPortal>
         <AnimatePresence>
         {viewFeedback && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
               <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
@@ -989,12 +984,11 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-        </AnimatePresence>,
-        document.body
-      )}
+        </AnimatePresence>
+      </ModalPortal>
 
       {/* Image Preview Modal */}
-      {createPortal(
+      <ModalPortal>
         <AnimatePresence>
         {previewImage && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
@@ -1020,9 +1014,8 @@ function StudentTrainingPoints({ user }) {
               </motion.div>
             </div>
           )}
-        </AnimatePresence>,
-        document.body
-      )}
+        </AnimatePresence>
+      </ModalPortal>
 
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }

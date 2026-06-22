@@ -1,3 +1,4 @@
+import { StudentAnnouncementsSkeleton } from '../common/StudentSkeleton';
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { motion } from 'framer-motion';
@@ -34,12 +35,7 @@ function StudentAnnouncements({ user }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[70vh] text-orange-500">
-        <Loader2 className="w-12 h-12 animate-spin mb-4" />
-        <p className="font-medium text-lg">Đang tải thông báo...</p>
-      </div>
-    );
+    return <StudentAnnouncementsSkeleton />;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { StudentSupportSkeleton } from '../common/StudentSkeleton';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,7 +7,7 @@ import {
   AlertCircle, ChevronDown, Loader2, X, Info
 } from 'lucide-react';
 import axios from 'axios';
-import ModalPortal, { SuccessDialog, ErrorDialog, Toast, ConfirmDialog } from '../common/ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
 
 const API_BASE = `${API_URL}/api`;
@@ -26,9 +27,7 @@ function StudentSupport({ user, profile }) {
   const [submittedData, setSubmittedData] = useState(null);
 
   // States quản lý Popup thay cho alert()
-  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
-  const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
-  const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, title: '' });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   // 1. TẢI DỮ LIỆU TỪ DATABASE
@@ -71,9 +70,10 @@ function StudentSupport({ user, profile }) {
 
     // Nếu vượt quá giới hạn -> Chặn lại và báo lỗi
     if (requestCount >= maxLimit) {
-      setErrorDialog({
+      setToast({
         show: true,
-        message: `Bạn đã yêu cầu cấp "${chude}" ${requestCount} lần trong năm nay. (Giới hạn quy định: ${maxLimit} lần/năm). Nếu cần hỗ trợ khẩn cấp, vui lòng liên hệ trực tiếp Phòng Công tác Sinh viên!`
+        type: 'error',
+        message: `Bạn đã yêu cầu cấp "${chude}" ${requestCount} lần trong năm nay (Giới hạn: ${maxLimit} lần/năm).`
       });
       return;
     }
@@ -83,60 +83,74 @@ function StudentSupport({ user, profile }) {
   };
 
   // 3. HÀM XỬ LÝ: SUBMIT FORM ĐĂNG KÝ BIỂU MẪU
-  const handleSubmitRequestForm = async (e) => {
+  const handleSubmitRequestForm = (e) => {
     e.preventDefault();
     if (!requestForm.noiDung.trim()) {
-      return setErrorDialog({ show: true, message: 'Vui lòng nhập nội dung yêu cầu!' });
+      return setToast({ show: true, type: 'error', message: 'Vui lòng nhập nội dung yêu cầu!' });
     }
-    try {
-      setRequestSubmitting(true);
-      const response = await axios.post(`${API_URL}/api/support`, {
-        MSSV: user.username,
-        LoaiYeuCau: 'Hành chính',
-        ChuDe: requestForm.chude,
-        NoiDung: requestForm.noiDung
-      });
-      // Lưu thông tin đã gửi để hiển thị
-      setSubmittedData({
-        MSSV: user.username,
-        LoaiYeuCau: 'Hành chính',
-        ChuDe: requestForm.chude,
-        NoiDung: requestForm.noiDung,
-        NgayGui: new Date().toISOString(),
-        TrangThai: 'Đang xử lý'
-      });
-      setToast({ show: true, message: 'Đã gửi yêu cầu thành công! Vui lòng theo dõi trạng thái.', type: 'success' });
-      setRequestForm({ show: false, chude: '', ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
-      fetchSupportData(); // Tải lại danh sách
-    } catch (error) {
-      setErrorDialog({ show: true, message: 'Lỗi khi gửi yêu cầu! Vui lòng thử lại.' });
-    } finally {
-      setRequestSubmitting(false);
-    }
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận đăng ký biểu mẫu',
+      message: `Bạn có chắc chắn muốn gửi yêu cầu đăng ký biểu mẫu "${requestForm.chude}" không?`,
+      onConfirm: async () => {
+        try {
+          setRequestSubmitting(true);
+          await axios.post(`${API_URL}/api/support`, {
+            MSSV: user.username,
+            LoaiYeuCau: 'Hành chính',
+            ChuDe: requestForm.chude,
+            NoiDung: requestForm.noiDung
+          });
+          // Lưu thông tin đã gửi để hiển thị
+          setSubmittedData({
+            MSSV: user.username,
+            LoaiYeuCau: 'Hành chính',
+            ChuDe: requestForm.chude,
+            NoiDung: requestForm.noiDung,
+            NgayGui: new Date().toISOString(),
+            TrangThai: 'Đang xử lý'
+          });
+          setToast({ show: true, message: 'Đã gửi yêu cầu thành công! Vui lòng theo dõi trạng thái.', type: 'success' });
+          setRequestForm({ show: false, chude: '', ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
+          fetchSupportData(); // Tải lại danh sách
+        } catch (error) {
+          setToast({ show: true, type: 'error', message: 'Lỗi khi gửi yêu cầu! Vui lòng thử lại.' });
+        } finally {
+          setRequestSubmitting(false);
+        }
+      }
+    });
   };
 
   // 4. HÀM XỬ LÝ: ĐIỀN FORM HỎI ĐÁP
-  const handleSubmitQuestion = async (e) => {
+  const handleSubmitQuestion = (e) => {
     e.preventDefault();
     if (!formData.chuDe || !formData.noiDung) {
-      return setErrorDialog({ show: true, message: 'Vui lòng chọn Chủ đề và nhập Nội dung chi tiết!' });
+      return setToast({ show: true, type: 'error', message: 'Vui lòng chọn Chủ đề và nhập Nội dung chi tiết!' });
     }
-    try {
-      setSubmitting(true);
-      await axios.post(`${API_URL}/api/support`, {
-        MSSV: user.username,
-        LoaiYeuCau: 'Hỏi đáp',
-        ChuDe: formData.chuDe,
-        NoiDung: formData.noiDung
-      });
-      setSuccessDialog({ show: true, message: 'Đã gửi câu hỏi thành công!' });
-      setFormData({ chuDe: '', noiDung: '' }); // Xóa trắng form
-      fetchSupportData(); // Tải lại danh sách
-    } catch (error) {
-      setErrorDialog({ show: true, message: 'Lỗi khi gửi câu hỏi! Vui lòng thử lại.' });
-    } finally {
-      setSubmitting(false);
-    }
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận gửi câu hỏi',
+      message: `Bạn có chắc chắn muốn gửi câu hỏi về chủ đề "${formData.chuDe}" không?`,
+      onConfirm: async () => {
+        try {
+          setSubmitting(true);
+          await axios.post(`${API_URL}/api/support`, {
+            MSSV: user.username,
+            LoaiYeuCau: 'Hỏi đáp',
+            ChuDe: formData.chuDe,
+            NoiDung: formData.noiDung
+          });
+          setToast({ show: true, type: 'success', message: 'Đã gửi câu hỏi thành công!' });
+          setFormData({ chuDe: '', noiDung: '' }); // Xóa trắng form
+          fetchSupportData(); // Tải lại danh sách
+        } catch (error) {
+          setToast({ show: true, type: 'error', message: 'Lỗi khi gửi câu hỏi! Vui lòng thử lại.' });
+        } finally {
+          setSubmitting(false);
+        }
+      }
+    });
   };
 
   // Lọc dữ liệu ra 2 tab riêng biệt
@@ -163,7 +177,7 @@ function StudentSupport({ user, profile }) {
     }
   };
 
-  if (loading) return <div className="flex justify-center p-16 text-orange-500"><Loader2 className="w-12 h-12 animate-spin" /></div>;
+  if (loading) return <StudentSupportSkeleton />;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -529,21 +543,12 @@ function StudentSupport({ user, profile }) {
         message={confirmDialog.message}
         onConfirm={() => {
           if (confirmDialog.onConfirm) confirmDialog.onConfirm();
-          setConfirmDialog({ show: false, message: '', onConfirm: null });
+          setConfirmDialog({ show: false, message: '', onConfirm: null, title: '' });
         }}
-        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
-        title="Xác nhận gửi yêu cầu"
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, title: '' })}
+        title={confirmDialog.title || "Xác nhận"}
       />
-      <SuccessDialog
-        show={successDialog.show}
-        message={successDialog.message}
-        onClose={() => setSuccessDialog({ show: false, message: '' })}
-      />
-      <ErrorDialog
-        show={errorDialog.show}
-        message={errorDialog.message}
-        onClose={() => setErrorDialog({ show: false, message: '' })}
-      />
+
       <Toast
         show={toast.show}
         message={toast.message}

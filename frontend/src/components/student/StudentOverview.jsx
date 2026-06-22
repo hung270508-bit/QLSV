@@ -1,3 +1,4 @@
+import { StudentOverviewSkeleton } from '../common/StudentSkeleton';
 // npm install recharts lệnh cài thư viện vẽ biểu đồ, lưu ý không xóa nó 
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
@@ -25,6 +26,26 @@ import {
   Legend,
 } from 'recharts';
 
+// Custom Tooltip cho Biểu đồ
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
+        <p className="font-bold text-gray-800 mb-2">{label}</p>
+        <div className="space-y-1">
+          <p className="text-sm font-medium" style={{ color: payload[0].color }}>
+            Điểm TB học kỳ: {payload[0].value.toFixed(2)}
+          </p>
+          <p className="text-sm font-medium" style={{ color: payload[1].color }}>
+            Điểm TB tích lũy: {payload[1].value.toFixed(2)}
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 function StudentOverview({ user, setActiveMenu }) {
   const [loading, setLoading] = useState(true);
   
@@ -43,7 +64,7 @@ function StudentOverview({ user, setActiveMenu }) {
     fetchDashboardData();
   }, [user]);
 
-  const fetchDashboardData = async () => {
+  async function fetchDashboardData() {
     try {
       setLoading(true);
       const [gradesRes, scheduleRes] = await Promise.all([
@@ -150,33 +171,8 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
     }
   };
 
-  // Custom Tooltip cho Biểu đồ
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-          <p className="font-bold text-gray-800 mb-2">{label}</p>
-          <div className="space-y-1">
-            <p className="text-sm font-medium" style={{ color: payload[0].color }}>
-              Điểm TB học kỳ: {payload[0].value.toFixed(2)}
-            </p>
-            <p className="text-sm font-medium" style={{ color: payload[1].color }}>
-              Điểm TB tích lũy: {payload[1].value.toFixed(2)}
-            </p>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[70vh] text-orange-500">
-       <RefreshCw className="w-12 h-12 animate-spin mb-4 text-orange-500" />
-        <p className="font-medium text-lg">Đang tổng hợp dữ liệu học tập...</p>
-      </div>
-    );
+    return <StudentOverviewSkeleton />;
   }
 
   return (

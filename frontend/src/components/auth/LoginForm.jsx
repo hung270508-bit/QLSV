@@ -16,6 +16,7 @@ const LoginForm = ({
   setShowAccountList,
   loading,
   message,
+  setMessage,
   showForgotPassword,
   setShowForgotPassword,
   forgotEmail,
@@ -193,7 +194,10 @@ const LoginForm = ({
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      if (message?.text) setMessage({ type: '', text: '' });
+                    }}
                     onBlur={() => setUsername(username.trim())}
                     onFocus={() => savedAccounts.length > 0 && setShowAccountList(true)}
                     className={`w-full pl-12 pr-10 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
@@ -272,7 +276,10 @@ const LoginForm = ({
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (message?.text) setMessage({ type: '', text: '' });
+                    }}
                     onBlur={() => setPassword(password.trim())}
                     className={`w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       errors.password
@@ -378,7 +385,10 @@ const LoginForm = ({
                   <input
                     type="email"
                     value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
+                    onChange={(e) => {
+                      setForgotEmail(e.target.value);
+                      if (message?.text) setMessage({ type: '', text: '' });
+                    }}
                     onBlur={() => setForgotEmail(forgotEmail.trim())}
                     className={`w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       forgotEmailError

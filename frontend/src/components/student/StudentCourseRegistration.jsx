@@ -3,6 +3,8 @@ import { BookPlus, Plus, Trash2, Loader2, Clock, CheckCircle2, XCircle, MapPin, 
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API_URL from '../../api';
+import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
+import { StudentCourseRegistrationSkeleton } from '../common/StudentSkeleton';
 
 function StudentCourseRegistration({ user }) {
   const [availableCourses, setAvailableCourses] = useState([]);
@@ -92,46 +94,27 @@ function StudentCourseRegistration({ user }) {
     return <span className="text-orange-500 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><Clock className="w-3.5 h-3.5"/> Chờ duyệt</span>;
   };
 
-  if (loading) return <div className="flex justify-center p-16 text-orange-500"><Loader2 className="w-12 h-12 animate-spin" /></div>;
+  if (loading) return <StudentCourseRegistrationSkeleton />;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 relative pb-10">
       
       {/* === TOAST NOTIFICATION === */}
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className={`fixed top-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 ${toast.type === 'success' ? 'bg-white border-green-500' : 'bg-white border-red-500'}`}
-          >
-            {toast.type === 'success' ? <div className="bg-green-100 p-2 rounded-full"><CheckCircle2 className="w-6 h-6 text-green-600" /></div> : <div className="bg-red-100 p-2 rounded-full"><AlertCircle className="w-6 h-6 text-red-600" /></div>}
-            <div>
-              <p className="font-bold text-sm text-slate-800">{toast.type === 'success' ? 'Thành công' : 'Thất bại'}</p>
-              <p className="text-slate-600 font-medium text-sm">{toast.message}</p>
-            </div>
-            <button onClick={() => setToast({ show: false })} className="ml-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+      />
 
       {/* === CUSTOM CONFIRM DIALOG === */}
-      <AnimatePresence>
-        {confirmDialog.show && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
-              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <HelpCircle className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
-              <p className="text-slate-500 text-sm mb-6 leading-relaxed">{confirmDialog.message}</p>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmDialog({ show: false })} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">Hủy bỏ</button>
-                <button onClick={confirmDialog.action} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all">Xác nhận</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.action}
+        onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+      />
 
       {/* HEADER TỔNG */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden">

@@ -1,3 +1,4 @@
+import { StudentGradesSkeleton } from '../common/StudentSkeleton';
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { motion } from 'framer-motion';
@@ -94,12 +95,7 @@ function StudentGrades({ user }) {
   const { totalAccumulatedCredits, cumulativeGPA } = calculateCumulativeStats();
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-        <Loader2 className="w-10 h-10 animate-spin mb-4" />
-        <p>Đang tải dữ liệu điểm...</p>
-      </div>
-    );
+    return <StudentGradesSkeleton />;
   }
 
   return (
