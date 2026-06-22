@@ -1285,7 +1285,7 @@ app.get('/api/schedule-configs', async (req, res) => {
     try {
         // Lấy danh sách phòng đang hoạt động
         const promiseRooms = new Promise((resolve, reject) => {
-            db.query('SELECT MaPhong FROM phonghoc WHERE TrangThai = "Hoạt động"', (err, results) => {
+            db.query("SELECT MaPhong FROM phonghoc WHERE TrangThai = 'Hoạt động'", (err, results) => {
                 if (err) reject(err); else resolve(results.map(r => r.MaPhong));
             });
         });
