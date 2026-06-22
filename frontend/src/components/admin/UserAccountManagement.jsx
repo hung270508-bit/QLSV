@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock } from 'lucide-react';
+import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock, Filter, XCircle } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
@@ -42,10 +42,29 @@ function UserAccountManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const [roleFilter, setRoleFilter] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    roleFilter: '',
+    sortBy: 'default'
+  });
+  const [displayFilters, setDisplayFilters] = useState({
+    roleFilter: '',
+    sortBy: 'default'
+  });
+
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
   const [showPassword, setShowPassword] = useState(false);
+  const [viewingUser, setViewingUser] = useState(null);
 
   // Custom Notification & Confirm Dialog
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
@@ -92,6 +111,8 @@ function UserAccountManagement() {
   }, [notification.show]);
 
   const validateForm = () => {
+    if (editingUser?.TaiKhoan?.toLowerCase() === 'admin') return true;
+
     const errors = {};
     if (!formData.password) {
       errors.password = 'Vui lòng nhập mật khẩu';
@@ -166,32 +187,49 @@ function UserAccountManagement() {
   };
 
   const filteredUsers = users.filter(user => {
+    const searchLower = debouncedSearchTerm.toLowerCase();
     const matchesSearch =
-      user.TaiKhoan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.TenQuyen?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = !roleFilter || user.MaQuyen === parseInt(roleFilter);
+      user.TaiKhoan?.toLowerCase().includes(searchLower) ||
+      user.TenQuyen?.toLowerCase().includes(searchLower);
+    const matchesRole = !filters.roleFilter || user.MaQuyen === parseInt(filters.roleFilter);
     return matchesSearch && matchesRole;
   }).sort((a, b) => {
-    if (sortBy === 'asc') return a.TaiKhoan.localeCompare(b.TaiKhoan);
-    if (sortBy === 'desc') return b.TaiKhoan.localeCompare(a.TaiKhoan);
+    const isAdminA = a.TaiKhoan?.toLowerCase() === 'admin';
+    const isAdminB = b.TaiKhoan?.toLowerCase() === 'admin';
+
+    if (isAdminA && !isAdminB) return -1;
+    if (!isAdminA && isAdminB) return 1;
+
+    if (filters.sortBy === 'asc') return a.TaiKhoan.localeCompare(b.TaiKhoan);
+    if (filters.sortBy === 'desc') return b.TaiKhoan.localeCompare(a.TaiKhoan);
     return 0;
   });
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, roleFilter, sortBy]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-  const handleSearch = () => {
-    setSearchTerm(displaySearchTerm);
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setCurrentPage(1);
   };
+
+  const handleApplyFilters = () => {
+    setFilters({ ...displayFilters });
+    setShowFilters(false);
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({ roleFilter: '', sortBy: 'default' });
+    setDisplayFilters({ roleFilter: '', sortBy: 'default' });
+    setSearchTerm('');
+    setCurrentPage(1);
+  };
+
+  const activeFilterCount = (filters.roleFilter ? 1 : 0) + (filters.sortBy !== 'default' ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = filters.roleFilter || filters.sortBy !== 'default' || searchTerm;
 
   const getRoleColor = (maQuyen) => {
     switch (maQuyen) {
@@ -239,53 +277,117 @@ function UserAccountManagement() {
           </div>
         </div>
 
-        {/* Search và Filter */}
-        <div className="bg-white rounded-2xl shadow-lg border border-orange-100 p-6">
+        {/* Search and Filters */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-grow max-w-sm">
+            <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Tìm kiếm..."
-                value={displaySearchTerm}
-                onChange={(e) => setDisplaySearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all text-sm font-medium"
+                placeholder="Tìm kiếm tài khoản..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
+                className="w-full pl-11 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all text-gray-700 placeholder:font-semibold"
               />
+              {searchTerm && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
-
-            <select
-              className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 cursor-pointer font-medium text-sm text-gray-700"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="default">Sắp xếp...</option>
-              <option value="asc">Tài khoản: A-Z</option>
-              <option value="desc">Tài khoản: Z-A</option>
-            </select>
-
-            <select
-              className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 cursor-pointer font-medium text-sm text-gray-700"
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-            >
-              <option value="">Tất cả quyền</option>
-              {roles.map((role) => (
-                <option key={role.MaQuyen} value={role.MaQuyen}>
-                  {role.TenQuyen}
-                </option>
-              ))}
-            </select>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleSearch}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-orange-200 transition-all text-sm"
-            >
-              <Search className="w-4 h-4" />
-              Tìm kiếm
-            </motion.button>
+            <div className="flex gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowFilters(!showFilters)}
+                className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
+                  hasActiveFilters 
+                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
+                    : 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                Bộ lọc
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </motion.button>
+              {hasActiveFilters && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={clearFilters}
+                  className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-100"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Xóa lọc
+                </motion.button>
+              )}
+            </div>
           </div>
+
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sắp xếp</label>
+                  <select
+                    value={displayFilters.sortBy}
+                    onChange={(e) => setDisplayFilters({ ...displayFilters, sortBy: e.target.value })}
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  >
+                    <option value="default">Mặc định...</option>
+                    <option value="asc">Tài khoản: A-Z</option>
+                    <option value="desc">Tài khoản: Z-A</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo quyền</label>
+                  <select
+                    value={displayFilters.roleFilter}
+                    onChange={(e) => setDisplayFilters({ ...displayFilters, roleFilter: e.target.value })}
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  >
+                    <option value="">Tất cả quyền</option>
+                    {roles.map((role) => (
+                      <option key={role.MaQuyen} value={role.MaQuyen}>
+                        {role.TenQuyen}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={handleApplyFilters}
+                  className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
+                >
+                  Áp dụng bộ lọc
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => setDisplayFilters({ roleFilter: '', sortBy: 'default' })}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Đặt lại
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Table (Loại bỏ nút Xóa, nút Thao tác giữ cố định) */}
@@ -308,7 +410,8 @@ function UserAccountManagement() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all"
+                      onClick={() => setViewingUser(user)}
+                      className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
                     >
                       <td className="py-5 px-6">
                         <span className="font-bold text-gray-800 text-sm">{user.TaiKhoan}</span>
@@ -326,9 +429,9 @@ function UserAccountManagement() {
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEdit(user)}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(user); }}
                             className="p-2.5 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-colors shadow-sm"
-                            title="Đặt lại mật khẩu"
+                            title="Cập nhật tài khoản"
                           >
                             <Edit className="w-4 h-4" />
                           </motion.button>
@@ -350,7 +453,7 @@ function UserAccountManagement() {
 
         {totalPages > 1 && (
           <div className="mt-4 pb-4">
-            <Pagination 
+            <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
@@ -390,62 +493,80 @@ function UserAccountManagement() {
                     <span className="font-mono font-black text-orange-700 text-lg">{editingUser.TaiKhoan}</span>
                   </div>
 
-                  {/* Password Input */}
+                  {/* Current Password Readonly */}
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Mật khẩu mới <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData({ ...formData, password: val });
-                          if (val.length > 20) {
-                            setFormErrors({ ...formErrors, password: 'Mật khẩu chỉ được tối đa 20 ký tự' });
-                          } else {
-                            setFormErrors({ ...formErrors, password: '' });
-                          }
-                        }}
-                        className={`w-full px-4 py-3.5 pr-12 bg-gray-50 border-2 rounded-xl focus:border-orange-500 outline-none transition-colors font-medium text-sm ${formErrors.password ? 'border-red-500 focus:bg-red-50' : 'border-gray-200 focus:bg-white'
-                          }`}
-                        placeholder="Mật khẩu từ 5 - 20 ký tự: chữ hoa, thường, số, ký tự đặc biệt"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5 text-gray-500" /> : <Eye className="w-5 h-5 text-gray-500" />}
-                      </button>
-                    </div>
-                    {formData.password && (
-                      <div className="mt-2.5 space-y-1.5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-gray-500 font-medium">Độ mạnh mật khẩu:</span>
-                          <span className={`font-bold transition-colors duration-300 ${getPasswordStrength(formData.password).textClass}`}>
-                            {getPasswordStrength(formData.password).label}
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex gap-1">
-                          {[1, 2, 3, 4].map((index) => (
-                            <div
-                              key={index}
-                              className={`h-full flex-1 transition-all duration-300 ${index <= getPasswordStrength(formData.password).score
-                                  ? getPasswordStrength(formData.password).color
-                                  : 'bg-gray-200'
-                                }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {formErrors.password && (
-                      <p className="text-red-500 text-xs mt-1.5 font-semibold flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        {formErrors.password}
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={editingUser.password || 'Không xác định'}
+                      className="w-full px-4 py-3.5 bg-gray-100 border-2 border-gray-200 rounded-xl outline-none text-gray-500 font-bold cursor-not-allowed text-sm truncate"
+                    />
+                    {editingUser.TaiKhoan?.toLowerCase() !== 'admin' && (
+                      <p className="text-xs text-orange-600 mt-2 font-medium">
+                        *Mật khẩu đã được mã hóa không thể xem được mật khẩu hiện tại.*
                       </p>
                     )}
                   </div>
+
+                  {/* Password Input (Hidden for admin) */}
+                  {editingUser.TaiKhoan?.toLowerCase() !== 'admin' && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Mật khẩu mới <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={formData.password}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData({ ...formData, password: val });
+                            if (val.length > 20) {
+                              setFormErrors({ ...formErrors, password: 'Mật khẩu chỉ được tối đa 20 ký tự' });
+                            } else {
+                              setFormErrors({ ...formErrors, password: '' });
+                            }
+                          }}
+                          className={`w-full px-4 py-3.5 pr-12 bg-gray-50 border-2 rounded-xl focus:border-orange-500 outline-none transition-colors font-medium text-sm ${formErrors.password ? 'border-red-500 focus:bg-red-50' : 'border-gray-200 focus:bg-white'
+                            }`}
+                          placeholder="Mật khẩu từ 5 - 20 ký tự: chữ hoa, thường, số, ký tự đặc biệt"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5 text-gray-500" /> : <Eye className="w-5 h-5 text-gray-500" />}
+                        </button>
+                      </div>
+                      {formData.password && (
+                        <div className="mt-2.5 space-y-1.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500 font-medium">Độ mạnh mật khẩu:</span>
+                            <span className={`font-bold transition-colors duration-300 ${getPasswordStrength(formData.password).textClass}`}>
+                              {getPasswordStrength(formData.password).label}
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex gap-1">
+                            {[1, 2, 3, 4].map((index) => (
+                              <div
+                                key={index}
+                                className={`h-full flex-1 transition-all duration-300 ${index <= getPasswordStrength(formData.password).score
+                                  ? getPasswordStrength(formData.password).color
+                                  : 'bg-gray-200'
+                                  }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {formErrors.password && (
+                        <p className="text-red-500 text-xs mt-1.5 font-semibold flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          {formErrors.password}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Role Select - LOCKED */}
                   <div>
@@ -470,19 +591,31 @@ function UserAccountManagement() {
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={handleCloseForm}
-                      className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg transition-all"
-                    >
-                      Lưu thay đổi
-                    </button>
+                    {editingUser.TaiKhoan?.toLowerCase() === 'admin' ? (
+                      <button
+                        type="button"
+                        onClick={handleCloseForm}
+                        className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        Đóng
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleCloseForm}
+                          className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg transition-all"
+                        >
+                          Lưu thay đổi
+                        </button>
+                      </>
+                    )}
                   </div>
                 </form>
               </motion.div>
@@ -519,6 +652,118 @@ function UserAccountManagement() {
                     className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm"
                   >
                     Đồng ý
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Xem chi tiết người dùng */}
+      <AnimatePresence>
+        {viewingUser && (
+          <ModalPortal>
+            <div className="fixed inset-0 flex items-center justify-center z-[120] p-4 bg-black/40 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
+              >
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+                  <div className="text-white">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      Chi tiết tài khoản
+                    </h3>
+                  </div>
+                  <button onClick={() => setViewingUser(null)} className="p-2 hover:bg-white/20 rounded-lg text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                    <div className="col-span-1 text-sm font-bold text-gray-500">Tài khoản:</div>
+                    <div className="col-span-2 text-sm font-bold text-gray-800">{viewingUser.TaiKhoan}</div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                    <div className="col-span-1 text-sm font-bold text-gray-500">Quyền:</div>
+                    <div className="col-span-2 text-sm font-bold">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${getRoleColor(viewingUser.MaQuyen)}`}>
+                        {viewingUser.TenQuyen || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                    <div className="col-span-1 text-sm font-bold text-gray-500">Ngày tạo:</div>
+                    <div className="col-span-2 text-sm font-medium text-gray-800">
+                      {viewingUser.NgayTao ? new Date(viewingUser.NgayTao).toLocaleDateString('vi-VN') : 'N/A'}
+                    </div>
+                  </div>
+
+                  {viewingUser.MaQuyen === 3 && (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Họ tên SV:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenSinhVien || 'Chưa cập nhật'}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Lớp:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenLop || 'Chưa cập nhật'}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Giới tính:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.GioiTinhSV || 'Chưa cập nhật'}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Ngày sinh:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">
+                          {viewingUser.NgaySinhSV ? new Date(viewingUser.NgaySinhSV).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Email:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.EmailSV || 'Chưa cập nhật'}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Số điện thoại:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.SDTSV || 'Chưa cập nhật'}</div>
+                      </div>
+                    </>
+                  )}
+
+                  {viewingUser.MaQuyen === 2 && (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Họ tên GV:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenGiangVien || 'Chưa cập nhật'}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Khoa:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenKhoa || 'Chưa cập nhật'}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Email:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.EmailGV || 'Chưa cập nhật'}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-1 text-sm font-bold text-gray-500">Số điện thoại:</div>
+                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.SDTGV || 'Chưa cập nhật'}</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                  <button
+                    onClick={() => setViewingUser(null)}
+                    className="px-6 py-2.5 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    Đóng
                   </button>
                 </div>
               </motion.div>
