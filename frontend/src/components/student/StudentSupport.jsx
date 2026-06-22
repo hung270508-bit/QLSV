@@ -407,7 +407,7 @@ function StudentSupport({ user, profile }) {
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 className="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden"
               >
-                <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 text-white flex justify-between items-center shadow-sm">
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-4 text-white flex justify-between items-center shadow-sm">
                   <h3 className="text-base font-bold flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-white/90" /> THÔNG TIN BIỂU MẪU ĐÃ GỬI
                   </h3>
@@ -417,8 +417,8 @@ function StudentSupport({ user, profile }) {
                 </div>
 
                 <div className="p-6 bg-white space-y-4">
-                  <div className="bg-green-50 p-4 rounded-xl border border-green-100">
-                    <h4 className="text-sm font-bold text-green-800 mb-3 flex items-center gap-2">
+                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                    <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4" /> Đã gửi thành công!
                     </h4>
                     <div className="space-y-2 text-sm">
@@ -451,7 +451,7 @@ function StudentSupport({ user, profile }) {
                   </div>
 
                   <div className="flex justify-center pt-2">
-                    <button onClick={() => setSubmittedData(null)} className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors shadow-md shadow-green-200 text-sm">
+                    <button onClick={() => setSubmittedData(null)} className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors shadow-md shadow-orange-200 text-sm">
                       ĐÓNG
                     </button>
                   </div>
@@ -568,7 +568,7 @@ function StudentSupport({ user, profile }) {
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 className="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden"
               >
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white flex justify-between items-center shadow-sm">
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-4 text-white flex justify-between items-center shadow-sm">
                   <h3 className="text-base font-bold flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-white/90" /> PHẢN HỒI TỪ ADMIN
                   </h3>
@@ -578,8 +578,8 @@ function StudentSupport({ user, profile }) {
                 </div>
 
                 <div className="p-6 bg-white space-y-4">
-                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                    <h4 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                    <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
                       <Info className="w-4 h-4" /> Thông tin yêu cầu
                     </h4>
                     <div className="space-y-2 text-sm">
@@ -603,16 +603,16 @@ function StudentSupport({ user, profile }) {
                     <p className="text-sm text-gray-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-gray-200">{viewResponse.NoiDung}</p>
                   </div>
 
-                  <div className="bg-green-50 p-4 rounded-xl border border-green-100">
-                    <h4 className="text-sm font-bold text-green-800 mb-2 flex items-center gap-2">
+                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                    <h4 className="text-sm font-bold text-orange-800 mb-2 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4" /> Phản hồi từ Admin
                     </h4>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-green-200">{viewResponse.PhanHoi}</p>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-orange-200">{viewResponse.PhanHoi}</p>
                     <p className="text-xs text-gray-500 mt-2">Ngày phản hồi: {viewResponse.NgayPhanHoi ? new Date(viewResponse.NgayPhanHoi).toLocaleString('vi-VN') : 'N/A'}</p>
                   </div>
 
                   <div className="flex justify-center pt-2">
-                    <button onClick={() => setViewResponse(null)} className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-md shadow-blue-200 text-sm">
+                    <button onClick={() => setViewResponse(null)} className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors shadow-md shadow-orange-200 text-sm">
                       ĐÓNG
                     </button>
                   </div>

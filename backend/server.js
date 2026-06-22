@@ -1285,14 +1285,14 @@ app.get('/api/schedule-configs', async (req, res) => {
     try {
         // Lấy danh sách phòng đang hoạt động
         const promiseRooms = new Promise((resolve, reject) => {
-            db.query('SELECT MaPhong FROM phonghoc WHERE TrangThai = "Hoạt động"', (err, results) => {
+            db.query("SELECT MaPhong FROM phonghoc WHERE TrangThai = 'Hoạt động'", (err, results) => {
                 if (err) reject(err); else resolve(results.map(r => r.MaPhong));
             });
         });
 
         // Lấy danh sách tiết học và giờ
         const promisePeriods = new Promise((resolve, reject) => {
-            db.query('SELECT Tiet, DATE_FORMAT(GioBatDau, "%H:%i") as start, DATE_FORMAT(GioKetThuc, "%H:%i") as end FROM tiethoc ORDER BY Tiet', (err, results) => {
+            db.query("SELECT Tiet, DATE_FORMAT(GioBatDau, '%H:%i') as start, DATE_FORMAT(GioKetThuc, '%H:%i') as end FROM tiethoc ORDER BY Tiet", (err, results) => {
                 if (err) reject(err);
                 else {
                     const periods = {};
@@ -1321,7 +1321,8 @@ app.get('/api/schedule-configs', async (req, res) => {
             ]
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Lỗi tải cấu hình lịch học từ DB!' });
+        console.error("Error in /api/schedule-configs:", error);
+        res.status(500).json({ success: false, message: 'Lỗi tải cấu hình lịch học từ DB!', error: error.message || error });
     }
 });
 app.get('/api/schedules', (req, res) => {
