@@ -237,11 +237,16 @@ function FacultyManagement() {
 
   const filteredAndSortedFaculties = [...faculties]
     .filter(f => {
-      const searchLower = debouncedSearchTerm.toLowerCase();
+      const searchLower = debouncedSearchTerm.toLowerCase().trim();
       const searchNoTones = removeVietnameseTones(searchLower);
       const nameLower = f.TenKhoa.toLowerCase();
       const nameNoTones = removeVietnameseTones(nameLower);
       const codeLower = f.MaKhoa.toLowerCase();
+
+      // If search term is completely empty (not just spaces), show all results
+      if (debouncedSearchTerm === '') return true;
+      // If search term is only spaces, show no results
+      if (!searchLower) return false;
 
       return nameLower.includes(searchLower) ||
         nameNoTones.includes(searchNoTones) ||
