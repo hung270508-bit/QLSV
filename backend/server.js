@@ -24,29 +24,6 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
-// TÍCH HỢP SOCKET.IO VÀ BIẾN TRẠNG THÁI RFID TOÀN CỤC 
-const http = require('http').createServer(app);
-
-// Chỉ khởi tạo Socket.io nếu KHÔNG chạy trên Vercel Serverless (vì Vercel không hỗ trợ WebSocket lâu dài và gây cạn kiệt DB Connection)
-let io;
-if (!isVercel) {
-    io = require('socket.io')(http, {
-        cors: {
-            origin: ["http://localhost:5173", "http://localhost:5174", "https://hung270508-bit.github.io"],
-            methods: ["GET", "POST"],
-            credentials: true
-        }
-    });
-
-    io.on('connection', (socket) => {
-        console.log('Có trình duyệt kết nối Real-time:', socket.id);
-        socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
-    });
-}
-
-// BIẾN TRẠNG THÁI RFID TOÀN CỤC 
-const http = require('http').createServer(app);
-
 // BIẾN TRẠNG THÁI RFID TOÀN CỤC (CẤU HÌNH DÙNG CHO CƠ CHẾ POLLING)
 global.currentRfidState = {
     mode: "ATTENDANCE",   // Gồm các trạng thái: "ATTENDANCE", "REGISTER", hoặc "REGISTER_DONE"
@@ -1774,11 +1751,7 @@ app.put('/api/admin/training-points/bulk-approve', (req, res) => {
         WHERE MaDanhGia IN (?)
     `;
     db.query(query, [ids], (err) => {
-<<<<<<< HEAD
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message });
-=======
         if (err) { console.error("BULK APPROVE DB ERROR:", err); return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message }); }
->>>>>>> da85e5171cb4ea523f587818c6a42a956a43a6dd
 
         const nguoiDuyet = NguoiDuyet || 'admin';
         const logValues = ids.map(id => [id, nguoiDuyet, 'Phê duyệt hàng loạt (Chốt sổ)']);
