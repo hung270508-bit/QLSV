@@ -60,7 +60,7 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
           initial={{ opacity: 0, y: -50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.9 }}
-          className={`fixed top-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 ${
+          className={`fixed top-8 right-8 z-[100000] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 ${
             isSuccess 
               ? 'bg-white border-green-500 text-gray-800' 
               : 'bg-white border-red-500 text-gray-800'
@@ -118,7 +118,7 @@ export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xá
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -178,7 +178,7 @@ export const SuccessDialog = ({ show, message, onClose, title = 'Thông báo' })
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -221,7 +221,7 @@ export const ErrorDialog = ({ show, message, onClose, title = 'Lỗi' }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -264,7 +264,7 @@ export const InfoDialog = ({ show, message, onClose, title = 'Thông tin' }) => 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}

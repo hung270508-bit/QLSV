@@ -86,6 +86,23 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
     }
   };
 
+  // TÍCH HỢP MỚI CƠ CHẾ HTTP SHORT POLLING ĐỂ TỰ ĐỘNG CẬP NHẬT REAL-TIME
+  useEffect(() => {
+    // Nếu chưa chọn lớp (chưa mở modal) thì không chạy loop hỏi server
+    if (!selectedSchedule) return;
+
+    const todayDate = new Date().toISOString().split('T')[0];
+
+    // Cứ mỗi 2 giây (2000ms), tự động gọi API lấy dữ liệu quẹt thẻ mới từ Backend về
+    const intervalId = setInterval(() => {
+      fetchScheduleAttendance(selectedSchedule.MaLopHocPhan, todayDate);
+    }, 2000);
+
+    // Hủy bộ đếm thời gian (clear interval) khi đóng modal để bảo vệ RAM và CPU máy tính
+    return () => clearInterval(intervalId);
+  }, [selectedSchedule]);
+  // =========================================================================
+
   const handleStatusChange = (mssv, value) => {
     setAttendanceStatus(prev => ({ ...prev, [mssv]: value }));
   };

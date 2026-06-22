@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -73,27 +73,17 @@ function StudentManagement() {
   const [detailTab, setDetailTab] = useState('info');
 
   const [formData, setFormData] = useState({
-
     MSSV: '',
-
     HoTen: '',
-
     NgaySinh: '',
-
     GioiTinh: '',
-
     Email: '',
-
     SoDienThoai: '',
-
     MaLop: '',
-
     TrangThai: 'Đang học',
-
     startYear: '',
-
-    endYear: ''
-
+    endYear: '',
+    UID: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -107,6 +97,69 @@ function StudentManagement() {
   const [errorDialog, setErrorDialog] = useState({ show: false, message: '' });
 
 
+
+  const [isPollingUid, setIsPollingUid] = useState(false);
+  const pollRef = useRef(null);
+  const timeoutRef = useRef(null);
+
+  const handleGetUidFromServer = async (studentMssv) => {
+    if (!studentMssv) {
+        setToast({ show: true, message: 'Vui lòng chọn lớp để tạo MSSV trước khi lấy mã thẻ!', type: 'error' });
+        return;
+    }
+    try {
+        setIsPollingUid(true);
+
+        // Xóa bớt bộ đếm cũ nếu có trước khi chạy bộ đếm mới
+        if (pollRef.current) clearInterval(pollRef.current);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+        // --- ĐÃ SỬA: Truyền kèm dữ liệu mssv lên Backend ---
+        await axios.post(`${API_BASE}/rfid/activate-register`, { mssv: studentMssv });
+
+        let isDone = false;
+        
+        // Gán vòng lặp polling vào pollRef
+        pollRef.current = setInterval(async () => {
+            try {
+                const res = await axios.get(`${API_BASE}/rfid/status`);
+                const data = res.data;
+
+                if (data.mode === 'REGISTER_DONE') {
+                    if (!data.targetMSSV || data.targetMSSV === studentMssv) {
+                        isDone = true;
+                        setFormData(prev => ({ ...prev, UID: data.capturedUid }));
+                        
+                        // Dọn dẹp khi thành công
+                        clearInterval(pollRef.current);
+                        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                        setIsPollingUid(false);
+                        
+                        await axios.post(`${API_BASE}/rfid/reset-status`);
+                        setToast({ show: true, message: 'Đã lấy mã thẻ thành công!', type: 'success' });
+                    }
+                }
+            } catch (error) {
+                console.error("Lỗi poll:", error);
+            }
+        }, 1500);
+
+        // Gán bộ đếm thời gian 60s vào timeoutRef
+        timeoutRef.current = setTimeout(async () => {
+            if (!isDone) {
+                clearInterval(pollRef.current);
+                setIsPollingUid(false);
+                await axios.post(`${API_BASE}/rfid/reset-status`).catch(() => {});
+                setToast({ show: true, message: 'Hết thời gian chờ quẹt thẻ.', type: 'error' });
+            }
+        }, 60000);
+
+    } catch (error) {
+        console.error('Lỗi khi gọi activate-register:', error);
+        setToast({ show: true, message: 'Không thể đăng ký thẻ!', type: 'error' });
+        setIsPollingUid(false);
+    }
+};
 
   // Vietnamese diacritic removal for search
 
@@ -717,27 +770,17 @@ function StudentManagement() {
     const years = student.NienKhoa ? student.NienKhoa.split('-') : ['', ''];
 
     setFormData({
-
       MSSV: student.MSSV,
-
       HoTen: student.HoTen,
-
       NgaySinh: student.NgaySinh ? student.NgaySinh.split('T')[0] : '',
-
       GioiTinh: student.GioiTinh || 'Nam',
-
       Email: student.Email || '',
-
       SoDienThoai: student.SoDienThoai || '',
-
       MaLop: student.MaLop || '',
-
       TrangThai: student.TrangThai || 'Đang học',
-
       startYear: years[0] || '',
-
-      endYear: years[1] || ''
-
+      endYear: years[1] || '',
+      UID: student.UID || ''
     });
 
     setSelectedFaculty(student.MaKhoa || '');
@@ -751,39 +794,46 @@ function StudentManagement() {
 
 
   const handleCloseModal = () => {
-
+    // DỌN DẸP BỘ ĐẾM VÀ RESET MẠCH KHI BẤM HỦY/ĐÓNG 
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsPollingUid(false);
+    axios.post(`${API_BASE}/rfid/reset-status`).catch(err => console.log("Lỗi reset status:", err));
+ 
     setShowModal(false);
-
     setEditingStudent(null);
-
     setFormData({
-
-      MSSV: '',
-
-      HoTen: '',
-
-      NgaySinh: '',
-
-      GioiTinh: '',
-
-      Email: '',
-
-      SoDienThoai: '',
-
-      MaLop: '',
-
-      TrangThai: 'Đang học',
-
-      startYear: '',
-
-      endYear: ''
-
+        MSSV: '',
+        HoTen: '',
+        NgaySinh: '',
+        GioiTinh: '',
+        Email: '',
+        SoDienThoai: '',
+        MaLop: '',
+        TrangThai: 'Đang học',
+        startYear: '',
+        endYear: '',
+        UID: ''
     });
-
     setSelectedFaculty('');
-
     setErrors({});
+};
 
+  const handleClearUID = async () => {
+    if (!formData.UID) return;
+    if (editingStudent && formData.MSSV) {
+      try {
+        await axios.put(`${API_BASE}/students/${formData.MSSV}/clear-uid`);
+        setFormData({ ...formData, UID: '' });
+        setToast({ show: true, message: 'Xóa mã thẻ thành công!', type: 'success' });
+        fetchData();
+      } catch (error) {
+        console.error('Error clearing UID:', error);
+        setErrorDialog({ show: true, message: error.response?.data?.message || 'Lỗi khi xóa mã thẻ!' });
+      }
+    } else {
+      setFormData({ ...formData, UID: '' });
+    }
   };
 
 
@@ -1932,7 +1982,40 @@ function StudentManagement() {
 
                 </div>
 
-
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mã thẻ UID</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="Chưa có mã thẻ"
+                      value={formData.UID || ''}
+                      className="flex-1 px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-700 focus:outline-none"
+                    />
+                    {formData.UID && (
+                      <button
+                        type="button"
+                        onClick={handleClearUID}
+                        className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl shadow-md transition-colors"
+                        title="Xóa mã"
+                      >
+                        Xóa mã
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleGetUidFromServer(formData.MSSV)}
+                      disabled={isPollingUid}
+                      className={`px-6 py-3 font-semibold rounded-xl text-white transition-colors ${
+                        isPollingUid 
+                          ? 'bg-gray-400 cursor-not-allowed' 
+                          : 'bg-blue-500 hover:bg-blue-600 shadow-md'
+                      }`}
+                    >
+                      {isPollingUid ? 'Đang chờ quẹt thẻ...' : 'Lấy mã UID'}
+                    </button>
+                  </div>
+                </div>
 
                 <div className="flex gap-3 pt-2">
 

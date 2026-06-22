@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
 import { 
   Award, PlusCircle, CheckCircle2, Clock, Loader2, X, FileSignature, 
-  Edit, Lock, AlertTriangle, AlertCircle, HelpCircle, Eye, MessageSquare, Send
+  Edit, Lock, AlertTriangle, AlertCircle, HelpCircle, Eye, MessageSquare, Send,
+  Upload, FileImage, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -132,6 +135,9 @@ function StudentTrainingPoints({ user }) {
   // State xem phản hồi khiếu nại
   const [viewFeedback, setViewFeedback] = useState(null);
 
+  // State xem ảnh popup
+  const [previewImage, setPreviewImage] = useState(null);
+
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
   };
@@ -186,19 +192,68 @@ function StudentTrainingPoints({ user }) {
         [itemId]: { 
           point, 
           optionIndex, 
-          MinhChung: current.MinhChung || '' 
+          Files: current.Files || []
         } 
       };
     });
   };
 
-  const handleProofChange = (itemId, value) => {
+  const handleFileUpload = (itemId, file) => {
     if (viewOnly) return;
     setFormScores(prev => {
       const current = prev[itemId] || { point: 0, optionIndex: 0 };
+      const currentFiles = current.Files || [];
+      
+      // Check for duplicate file by name
+      if (currentFiles.some(f => f.name === file.name)) {
+        showToast('Tệp này đã được tải lên!', 'error');
+        return prev;
+      }
+      
+      // Validate max 3 files
+      if (currentFiles.length >= 3) {
+        showToast('Mỗi tiêu chí chỉ được tải lên tối đa 3 tệp!', 'error');
+        return prev;
+      }
+      
+      // Mark as uploading to prevent duplicates
+      const updatedFiles = [...currentFiles, { name: file.name, type: file.type, data: null, uploading: true }];
       return {
         ...prev,
-        [itemId]: { ...current, MinhChung: value }
+        [itemId]: { 
+          ...current, 
+          Files: updatedFiles
+        }
+      };
+    });
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormScores(prev => {
+        const updatedCurrent = prev[itemId] || { point: 0, optionIndex: 0 };
+        const updatedFiles = (updatedCurrent.Files || []).map(f => 
+          f.name === file.name ? { name: file.name, type: file.type, data: reader.result } : f
+        );
+        return {
+          ...prev,
+          [itemId]: { 
+            ...updatedCurrent, 
+            Files: updatedFiles
+          }
+        };
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = (itemId, fileIndex) => {
+    if (viewOnly) return;
+    setFormScores(prev => {
+      const current = prev[itemId] || { point: 0, optionIndex: 0 };
+      const updatedFiles = (current.Files || []).filter((_, index) => index !== fileIndex);
+      return {
+        ...prev,
+        [itemId]: { ...current, Files: updatedFiles }
       };
     });
   };
@@ -224,7 +279,7 @@ function StudentTrainingPoints({ user }) {
           restored[ct.MaTieuChi] = { 
             point: ct.DiemChon, 
             optionIndex: ct.ChiSoOption, 
-            MinhChung: ct.MinhChung || '' 
+            Files: ct.MinhChung ? JSON.parse(ct.MinhChung) : []
           };
         });
         setFormScores(restored);
@@ -248,7 +303,7 @@ function StudentTrainingPoints({ user }) {
           restored[ct.MaTieuChi] = { 
             point: ct.DiemChon, 
             optionIndex: ct.ChiSoOption, 
-            MinhChung: ct.MinhChung || '' 
+            Files: ct.MinhChung ? JSON.parse(ct.MinhChung) : []
           };
         });
         setFormScores(restored);
@@ -264,7 +319,7 @@ function StudentTrainingPoints({ user }) {
       MaTieuChi: maTieuChi,
       DiemChon: data.point,
       ChiSoOption: data.optionIndex,
-      MinhChung: data.MinhChung || null
+      Files: data.Files || null
     }));
   };
 
@@ -612,10 +667,11 @@ function StudentTrainingPoints({ user }) {
       </div>
 
       {/* MODAL PHIẾU ĐÁNH GIÁ (FORM) */}
-      <AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-5xl h-[90vh] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
               
               {/* Header Form */}
               <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center shrink-0">
@@ -697,31 +753,119 @@ function StudentTrainingPoints({ user }) {
                             
                             {/* Minh chứng hoạt động */}
                             {formScores[item.id] !== undefined && formScores[item.id].point > 0 && (
-                              <div className="mt-4 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1.5">
+                              <div className="mt-4 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-2">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                                   🔗 Minh chứng hoạt động
                                 </label>
                                 {viewOnly ? (
-                                  formScores[item.id]?.MinhChung ? (
-                                    <a 
-                                      href={formScores[item.id].MinhChung} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      className="text-xs font-bold text-blue-600 hover:underline inline-flex items-center gap-1 mt-1 pl-1"
-                                    >
-                                      Xem link minh chứng đã nộp ↗
-                                    </a>
-                                  ) : (
-                                    <span className="text-xs font-medium text-slate-400 italic pl-1 mt-1">Không nộp kèm minh chứng</span>
-                                  )
+                                  <div className="space-y-2">
+                                    {(formScores[item.id]?.Files || []).length > 0 && (
+                                      <div className="space-y-2">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                          Tệp đính kèm ({formScores[item.id].Files.length}/3)
+                                        </p>
+                                        {formScores[item.id].Files.map((file, fileIndex) => (
+                                          <div key={fileIndex} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
+                                            <FileImage className="w-4 h-4 text-blue-500 shrink-0" />
+                                            <span className="text-xs font-medium text-slate-700 truncate flex-1">
+                                              {file.name}
+                                            </span>
+                                            {file.type.startsWith('image/') && (
+                                              <button 
+                                                onClick={() => setPreviewImage(file.data)}
+                                                className="text-xs font-bold text-blue-600 hover:underline shrink-0"
+                                              >
+                                                Xem ảnh
+                                              </button>
+                                            )}
+                                          </div>
+                                        ))}
+                                        {/* Image previews */}
+                                        {formScores[item.id].Files.filter(f => f.type.startsWith('image/')).length > 0 && (
+                                          <div className="flex flex-wrap gap-2 mt-2">
+                                            {formScores[item.id].Files
+                                              .filter(f => f.type.startsWith('image/'))
+                                              .map((file, fileIndex) => (
+                                                <img 
+                                                  key={fileIndex}
+                                                  src={file.data} 
+                                                  alt={`Minh chứng ${fileIndex + 1}`}
+                                                  className="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                  onClick={() => setPreviewImage(file.data)}
+                                                />
+                                              ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {(!formScores[item.id]?.Files || formScores[item.id].Files.length === 0) && (
+                                      <span className="text-xs font-medium text-slate-400 italic">Không nộp kèm minh chứng</span>
+                                    )}
+                                  </div>
                                 ) : (
-                                  <input
-                                    type="text"
-                                    placeholder="Nhập đường dẫn Google Drive hoặc link ảnh chứng nhận..."
-                                    value={formScores[item.id]?.MinhChung || ''}
-                                    onChange={e => handleProofChange(item.id, e.target.value)}
-                                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-400 transition-colors font-medium text-slate-700"
-                                  />
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <label className={`flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white border rounded-xl text-xs cursor-pointer transition-colors ${(formScores[item.id]?.Files || []).length >= 3 ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-200 hover:bg-slate-50'}`}>
+                                        <Upload className="w-4 h-4 text-slate-500" />
+                                        <span className="font-medium text-slate-600">
+                                          {(formScores[item.id]?.Files || []).length >= 3 
+                                            ? `Đã tải tối đa (3/3)` 
+                                            : `Tải lên tệp/hình ảnh (${(formScores[item.id]?.Files || []).length}/3)`
+                                          }
+                                        </span>
+                                        <input
+                                          type="file"
+                                          accept="image/*,.pdf,.doc,.docx"
+                                          disabled={(formScores[item.id]?.Files || []).length >= 3}
+                                          onChange={e => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                              handleFileUpload(item.id, file);
+                                              e.target.value = ''; // Reset file input
+                                            }
+                                          }}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                    </div>
+                                    {/* Display uploaded files with individual delete buttons */}
+                                    {(formScores[item.id]?.Files || []).length > 0 && (
+                                      <div className="space-y-2 mt-2">
+                                        {formScores[item.id].Files.map((file, fileIndex) => (
+                                          <div key={fileIndex} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
+                                            <FileImage className="w-4 h-4 text-blue-500 shrink-0" />
+                                            <span className="text-xs font-medium text-slate-700 truncate flex-1">
+                                              {file.name}
+                                            </span>
+                                            <button
+                                              onClick={() => handleRemoveFile(item.id, fileIndex)}
+                                              className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shrink-0"
+                                              title="Xóa tệp này"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {/* Display image previews */}
+                                    {(formScores[item.id]?.Files || []).filter(f => f.type.startsWith('image/')).length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        {formScores[item.id].Files
+                                          .filter(f => f.type.startsWith('image/'))
+                                          .map((file, fileIndex) => (
+                                            <div key={fileIndex} className="relative">
+                                              <img 
+                                                src={file.data} 
+                                                alt={`Minh chứng ${fileIndex + 1}`}
+                                                className="w-20 h-20 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                onClick={() => setPreviewImage(file.data)}
+                                              />
+                                            </div>
+                                          ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -758,17 +902,20 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* MODAL KHIẾU NẠI (APPEAL) */}
-      <AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
         {isAppealModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
-            <motion.div 
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
             >
               <div className="bg-red-600 p-5 flex justify-between items-center text-white">
                 <h3 className="text-lg font-bold flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> Khiếu nại kết quả rèn luyện</h3>
@@ -802,17 +949,20 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* DIALOG XEM PHẢN HỒI KHIẾU NẠI */}
-      <AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
         {viewFeedback && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
-            <motion.div 
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
             >
               <div className="bg-blue-600 p-5 flex justify-between items-center text-white">
                 <h3 className="text-lg font-bold flex items-center gap-2"><MessageSquare className="w-5 h-5"/> Kết quả phản hồi khiếu nại</h3>
@@ -839,7 +989,40 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Image Preview Modal */}
+      {createPortal(
+        <AnimatePresence>
+        {previewImage && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="absolute -top-12 right-0 md:-right-12 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <img
+                  src={previewImage}
+                  alt="Bản xem trước minh chứng"
+                  className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                />
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }

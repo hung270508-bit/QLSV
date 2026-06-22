@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator,
   UserCheck, AlertCircle, CalendarDays, PlusCircle, Power, PlayCircle,
-  StopCircle, Search, Users, TrendingUp, AlertTriangle, BookOpen, Loader2
+  StopCircle, Search, Users, TrendingUp, AlertTriangle, BookOpen, Loader2, FileImage
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -111,7 +111,7 @@ function AdminTrainingPoints() {
   // === STATES: ĐỢT ĐÁNH GIÁ ===
   const [periods, setPeriods] = useState([]);
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
-  const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
+  const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: new Date().toISOString().split('T')[0], NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
   const [periodFormErrors, setPeriodFormErrors] = useState({});
   const [periodModalTab, setPeriodModalTab] = useState('info'); // 'info' or 'builder'
   // State cho Modal xác nhận chuyển trạng thái đợt
@@ -134,9 +134,10 @@ function AdminTrainingPoints() {
   const [recordLogs, setRecordLogs] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // State cho duyệt hàng loạt (Bulk approve)
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkConfirm, setBulkConfirm] = useState(false);
+  // State cho xem ảnh popup
+  const [previewImage, setPreviewImage] = useState(null);
+
+
 
   // States cho nhật ký duyệt toàn bộ
   const [isAllLogsModalOpen, setIsAllLogsModalOpen] = useState(false);
@@ -212,15 +213,23 @@ function AdminTrainingPoints() {
   };
 
   const nienKhoaRange = parseNienKhoa(periodForm.NamHoc);
-  const minNgay = nienKhoaRange ? `${nienKhoaRange.start}-01-01` : '';
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const minNgay = todayDateStr; // Không cho phép chọn quá khứ
   const maxNgay = nienKhoaRange ? `${nienKhoaRange.end}-12-31` : '';
 
   const handleNgayChange = (field, value) => {
     setPeriodFormErrors(prev => ({ ...prev, [field]: '' }));
-    if (nienKhoaRange && value && (value < minNgay || value > maxNgay)) {
+    if (value && value < minNgay) {
       setPeriodFormErrors(prev => ({
         ...prev,
-        [field]: `Phải nằm trong niên khóa ${nienKhoaRange.start}-${nienKhoaRange.end}`
+        [field]: `Không được chọn ngày trong quá khứ!`
+      }));
+      return;
+    }
+    if (nienKhoaRange && value && value > maxNgay) {
+      setPeriodFormErrors(prev => ({
+        ...prev,
+        [field]: `Phải nằm trong niên khóa (tối đa ${maxNgay})`
       }));
       return;
     }
@@ -230,8 +239,11 @@ function AdminTrainingPoints() {
   const handleCreatePeriod = async () => {
     if (!nienKhoaRange) return showToast('Vui lòng nhập Năm học đúng định dạng VD: 2025-2026!', 'error');
     if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc) return showToast('Vui lòng chọn đầy đủ Ngày bắt đầu và kết thúc!', 'error');
-    if (periodForm.NgayBatDau < minNgay || periodForm.NgayBatDau > maxNgay || periodForm.NgayKetThuc < minNgay || periodForm.NgayKetThuc > maxNgay) {
-      return showToast(`Ngày bắt đầu/kết thúc phải nằm trong niên khóa ${nienKhoaRange.start}-${nienKhoaRange.end}!`, 'error');
+    if (periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
+      return showToast('Không được chọn ngày trong quá khứ!', 'error');
+    }
+    if (periodForm.NgayBatDau > maxNgay || periodForm.NgayKetThuc > maxNgay) {
+      return showToast(`Ngày không được vượt quá niên khóa (tối đa ${maxNgay})!`, 'error');
     }
     if (new Date(periodForm.NgayBatDau) > new Date(periodForm.NgayKetThuc)) return showToast('Ngày kết thúc phải sau Ngày bắt đầu!', 'error');
 
@@ -251,7 +263,7 @@ function AdminTrainingPoints() {
       });
 
       setIsPeriodModalOpen(false);
-      setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
+      setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: new Date().toISOString().split('T')[0], NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
       setPeriodModalTab('info');
       setPeriodFormErrors({});
       fetchData();
@@ -313,9 +325,7 @@ function AdminTrainingPoints() {
     setCurrentPageReviews(1);
   }, [filterHocKy, filterTrangThai, filterKhoa, filterLop, searchTerm]);
 
-  useEffect(() => {
-    setSelectedIds([]);
-  }, [filterHocKy, filterTrangThai, filterKhoa, filterLop, searchTerm, activeTab]);
+
 
   const indexOfLastPeriod = currentPagePeriods * itemsPerPage;
   const indexOfFirstPeriod = indexOfLastPeriod - itemsPerPage;
@@ -337,35 +347,6 @@ function AdminTrainingPoints() {
     ? Math.round(filteredData.reduce((sum, item) => sum + (item.TongDiem || item.DiemTuDanhGia || 0), 0) / totalSubmitted)
     : 0;
 
-  // === XỬ LÝ CHỌN ROW / DUYỆT HÀNG LOẠT ===
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(currentReviews.map(item => item.MaDanhGia));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectRow = (id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const handleBulkApprove = async () => {
-    setBulkConfirm(false);
-    try {
-      const res = await axios.put(`${API_URL}/api/admin/training-points/bulk-approve`, {
-        ids: selectedIds,
-        NguoiDuyet: 'admin'
-      });
-      showToast(res.data.message, 'success');
-      setSelectedIds([]);
-      fetchData();
-    } catch {
-      showToast('Có lỗi xảy ra khi phê duyệt hàng loạt!', 'error');
-    }
-  };
 
   // === XÉT DUYỆT CHI TIẾT ===
   const handleOpenReviewModal = async (record) => {
@@ -458,7 +439,11 @@ function AdminTrainingPoints() {
   // Tạo map chi tiết tiêu chí sinh viên tự đánh giá để hiển thị breakdown
   const detailsMap = {};
   recordDetails.forEach(d => {
-    detailsMap[d.MaTieuChi] = { diem: d.DiemChon, index: d.ChiSoOption };
+    detailsMap[d.MaTieuChi] = { 
+      diem: d.DiemChon, 
+      index: d.ChiSoOption,
+      Files: d.MinhChung ? JSON.parse(d.MinhChung) : []
+    };
   });
 
   if (loading) return <TrainingPointsSkeleton />;
@@ -484,14 +469,7 @@ function AdminTrainingPoints() {
         type={confirmModal.newStatus === 'Đã đóng đợt' ? 'danger' : 'confirm'}
       />
 
-      {/* ConfirmDialog duyệt hàng loạt */}
-      <ConfirmDialog
-        show={bulkConfirm}
-        title="Duyệt hàng loạt phiếu điểm"
-        message={`Bạn có chắc muốn phê duyệt chốt sổ cho ${selectedIds.length} sinh viên đã chọn? Tổng điểm của sinh viên sẽ bằng [Điểm tự đánh giá] + [Điểm Admin cộng thêm hiện tại].`}
-        onConfirm={handleBulkApprove}
-        onCancel={() => setBulkConfirm(false)}
-      />
+
 
       {/* Header */}
       <motion.div
@@ -705,14 +683,7 @@ function AdminTrainingPoints() {
 
               {/* Nút hành động */}
               <div className="flex items-center gap-2 shrink-0">
-                {selectedIds.length > 0 && (
-                  <button
-                    onClick={() => setBulkConfirm(true)}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-emerald-100 flex items-center gap-2 animate-pulse"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Duyệt nhanh ({selectedIds.length} mục)
-                  </button>
-                )}
+
                 <button
                   onClick={handleOpenAllLogs}
                   className="px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2"
@@ -728,14 +699,7 @@ function AdminTrainingPoints() {
                 <table className="w-full text-left min-w-[950px]">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
-                      <th className="p-4 font-semibold w-12 text-center">
-                        <input
-                          type="checkbox"
-                          onChange={handleSelectAll}
-                          checked={currentReviews.length > 0 && selectedIds.length === currentReviews.length}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </th>
+
                       <th className="p-4 font-semibold w-1/4">Sinh viên</th>
                       <th className="p-4 font-semibold">Học kỳ</th>
                       <th className="p-4 font-semibold text-center">SV Tự ĐG</th>
@@ -748,17 +712,8 @@ function AdminTrainingPoints() {
                   </thead>
                   <tbody>
                     {currentReviews.map((item) => {
-                      const isChecked = selectedIds.includes(item.MaDanhGia);
                       return (
-                        <tr key={item.MaDanhGia} className={`border-b border-gray-50 transition-colors ${isChecked ? 'bg-blue-50/20' : 'hover:bg-blue-50/10'}`}>
-                          <td className="p-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleSelectRow(item.MaDanhGia)}
-                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                          </td>
+                        <tr key={item.MaDanhGia} className="border-b border-gray-50 transition-colors hover:bg-blue-50/10">
                           <td className="p-4">
                             <p className="font-bold text-gray-800 leading-tight">{item.HoTen}</p>
                             <p className="text-xs text-gray-500 font-medium mt-1">{item.MSSV} · Lớp: {item.MaLop}</p>
@@ -859,6 +814,7 @@ function AdminTrainingPoints() {
                           <option value="HK2">Học kỳ 2</option>
                           <option value="HK3">Học kỳ 3</option>
                         </select>
+                        <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Chọn học kỳ áp dụng cho đợt đánh giá này.</p>
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Năm học (Niên khóa)</label>
@@ -868,23 +824,32 @@ function AdminTrainingPoints() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu</label>
-                        <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} min={minNgay || undefined} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
-                        {periodFormErrors.NgayBatDau && <p className="text-red-500 text-xs mt-1.5 font-medium">{periodFormErrors.NgayBatDau}</p>}
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu <span className="text-red-500">*</span></label>
+                        <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} min={minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
+                        {periodFormErrors.NgayBatDau ? (
+                          <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayBatDau}</p>
+                        ) : (
+                          <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Mặc định là ngày hôm nay, không thể chọn quá khứ.</p>
+                        )}
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc</label>
-                        <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} min={minNgay || undefined} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
-                        {periodFormErrors.NgayKetThuc && <p className="text-red-500 text-xs mt-1.5 font-medium">{periodFormErrors.NgayKetThuc}</p>}
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc <span className="text-red-500">*</span></label>
+                        <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} min={periodForm.NgayBatDau || minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
+                        {periodFormErrors.NgayKetThuc ? (
+                          <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayKetThuc}</p>
+                        ) : (
+                          <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Phải sau hoặc bằng Ngày bắt đầu.</p>
+                        )}
                       </div>
                     </div>
-                    {nienKhoaRange && <p className="text-[11px] text-gray-400 -mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Chỉ được chọn ngày trong khoảng {nienKhoaRange.start}-01-01 đến {nienKhoaRange.end}-12-31</p>}
+                    {nienKhoaRange && <p className="text-[11px] text-gray-400 -mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Khoảng thời gian hợp lệ đến tối đa {nienKhoaRange.end}-12-31</p>}
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Trạng thái khởi tạo</label>
                       <select value={periodForm.TrangThai} onChange={e => setPeriodForm({ ...periodForm, TrangThai: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none text-sm font-bold text-green-600">
                         <option value="Đang tự đánh giá">Mở cho phép Sinh viên làm bài ngay</option>
                         <option value="Đã đóng đợt">Đóng (Lưu nháp)</option>
                       </select>
+                      <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Trạng thái ban đầu sau khi tạo xong đợt này.</p>
                     </div>
                   </div>
                 )}
@@ -1026,9 +991,21 @@ function AdminTrainingPoints() {
 
               <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
                 <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); setPeriodFormErrors({}); }} className="px-5 py-2.5 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Hủy</button>
-                <button onClick={handleCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" /> Xác nhận tạo đợt
-                </button>
+                {periodModalTab === 'info' ? (
+                  <button onClick={() => {
+                    if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc || periodForm.NgayBatDau > periodForm.NgayKetThuc || periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
+                      showToast('Vui lòng kiểm tra lại ngày hợp lệ trước khi tiếp tục!', 'error');
+                      return;
+                    }
+                    setPeriodModalTab('builder');
+                  }} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2">
+                    Tiếp theo (Thiết kế tiêu chí)
+                  </button>
+                ) : (
+                  <button onClick={handleCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" /> Xác nhận tạo đợt
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -1045,7 +1022,7 @@ function AdminTrainingPoints() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]"
+              className="bg-white w-full max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]"
             >
               {/* Header Modal */}
               <div className="bg-blue-600 p-5 flex justify-between items-center text-white shrink-0">
@@ -1159,16 +1136,50 @@ function AdminTrainingPoints() {
                                         Không tích chọn mục này
                                       </p>
                                     )}
-                                    {sel !== undefined && sel.diem > 0 && sel.MinhChung && (
-                                      <div className="mt-2 pl-1">
-                                        <a
-                                          href={sel.MinhChung}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline bg-orange-50/50 border border-orange-100 px-2 py-0.5 rounded-md"
-                                        >
-                                          🔗 Xem minh chứng đã nộp
-                                        </a>
+                                    {sel !== undefined && sel.diem > 0 && (sel.Files && sel.Files.length > 0) && (
+                                      <div className="mt-2 pl-1 space-y-2">
+                                        {sel.Files && sel.Files.length > 0 && (
+                                          <div className="space-y-2">
+                                            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                                              Tệp đính kèm ({sel.Files.length}/3)
+                                            </p>
+                                            {sel.Files.map((file, fileIndex) => (
+                                              <div key={fileIndex} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                                                  <FileImage className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="text-[11px] font-bold text-blue-800 truncate">{file.name}</p>
+                                                  <p className="text-[10px] text-blue-600">{(file.data.length * 3 / 4 / 1024).toFixed(1)} KB</p>
+                                                </div>
+                                                {file.type.startsWith('image/') && (
+                                                  <button
+                                                    onClick={() => setPreviewImage(file.data)}
+                                                    className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-md hover:bg-blue-700 transition-colors shrink-0"
+                                                  >
+                                                    Xem ảnh
+                                                  </button>
+                                                )}
+                                              </div>
+                                            ))}
+                                            {/* Image previews */}
+                                            {sel.Files.filter(f => f.type.startsWith('image/')).length > 0 && (
+                                              <div className="flex flex-wrap gap-2 mt-2">
+                                                {sel.Files
+                                                  .filter(f => f.type.startsWith('image/'))
+                                                  .map((file, fileIndex) => (
+                                                    <img
+                                                      key={fileIndex}
+                                                      src={file.data}
+                                                      alt={`Minh chứng ${fileIndex + 1}`}
+                                                      className="w-16 h-16 object-cover rounded-lg border border-blue-100 cursor-pointer hover:opacity-90 transition-opacity"
+                                                      onClick={() => setPreviewImage(file.data)}
+                                                    />
+                                                  ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -1276,6 +1287,34 @@ function AdminTrainingPoints() {
               <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end shrink-0">
                 <button onClick={() => { setIsAllLogsModalOpen(false); setAllLogsSearch(''); }} className="px-6 py-2.5 font-bold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Đóng</button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {previewImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute -top-12 right-0 md:-right-12 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <img
+                src={previewImage}
+                alt="Bản xem trước minh chứng"
+                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              />
             </motion.div>
           </div>
         )}

@@ -1,8 +1,8 @@
 -- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: quanlysv
+-- Host: mysql-d508c3a-hung270508-ae5d.h.aivencloud.com    Database: defaultdb
 -- ------------------------------------------------------
--- Server version	9.7.0
+-- Server version	8.4.8
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -22,8 +22,7 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 --
 
 SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '4585fac6-63de-11f1-981c-06b3c0baae58:1-111,
-d5f339bb-590b-11f1-b192-e4a8dfba5018:1-988,
-e51c4a2a-63f7-11f1-9ad9-ee12a9ba2a33:1-891';
+e51c4a2a-63f7-11f1-9ad9-ee12a9ba2a33:1-1472';
 
 --
 -- Table structure for table `chitiet_danhgia`
@@ -35,10 +34,10 @@ DROP TABLE IF EXISTS `chitiet_danhgia`;
 CREATE TABLE `chitiet_danhgia` (
   `MaChiTiet` int NOT NULL AUTO_INCREMENT,
   `MaDanhGia` int NOT NULL,
-  `MaTieuChi` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'VD: 1.1, 1.2, 2.1, 3.1...',
+  `MaTieuChi` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'VD: 1.1, 1.2, 2.1, 3.1...',
   `DiemChon` int NOT NULL DEFAULT '0' COMMENT 'Điểm SV đã chọn cho tiêu chí này',
   `ChiSoOption` int NOT NULL DEFAULT '0' COMMENT 'Index option đã chọn (0-based)',
-  `MinhChung` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Link minh chung',
+  `MinhChung` longtext COLLATE utf8mb4_unicode_ci COMMENT 'JSON array of uploaded files (max 3)',
   PRIMARY KEY (`MaChiTiet`),
   UNIQUE KEY `uk_danhgia_tieuchi` (`MaDanhGia`,`MaTieuChi`),
   CONSTRAINT `fk_chitiet_danhgia` FOREIGN KEY (`MaDanhGia`) REFERENCES `danhgia_renluyen` (`MaDanhGia`) ON DELETE CASCADE
@@ -102,6 +101,7 @@ CREATE TABLE `danhgia_renluyen` (
   `TongDiem` int DEFAULT '0',
   `XepLoai` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `TrangThai` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Chờ lớp duyệt',
+  `MaDotDanhGia` int DEFAULT NULL,
   PRIMARY KEY (`MaDanhGia`),
   KEY `MSSV` (`MSSV`),
   CONSTRAINT `danhgia_renluyen_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE
@@ -194,6 +194,7 @@ CREATE TABLE `dot_danhgia` (
   `NgayBatDau` date DEFAULT NULL,
   `NgayKetThuc` date DEFAULT NULL,
   `TrangThai` varchar(50) DEFAULT 'Đang tự đánh giá',
+  `CauTrucTieuChi` json DEFAULT NULL,
   PRIMARY KEY (`MaDotDanhGia`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -222,7 +223,7 @@ CREATE TABLE `giangvien` (
   `MaKhoa` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `TrangThai` enum('Đang dạy','Tạm nghỉ','Nghỉ việc') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang dạy',
   `NgaySinh` date DEFAULT NULL,
-  `GioiTinh` enum('Nam','Nữ') COLLATE utf8mb4_unicode_ci DEFAULT 'Nam',
+  `GioiTinh` enum('Nam','Nữ') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Nam',
   PRIMARY KEY (`MaGiangVien`),
   KEY `MaKhoa` (`MaKhoa`),
   CONSTRAINT `giangvien_ibfk_1` FOREIGN KEY (`MaGiangVien`) REFERENCES `users` (`TaiKhoan`) ON DELETE CASCADE,
@@ -236,6 +237,7 @@ CREATE TABLE `giangvien` (
 
 LOCK TABLES `giangvien` WRITE;
 /*!40000 ALTER TABLE `giangvien` DISABLE KEYS */;
+INSERT INTO `giangvien` VALUES ('GVCNTT001','Nguyễn Thị C','toanpham22005pr@gmail.com','0898765443','CNTT','Đang dạy','2000-02-22','Nữ');
 /*!40000 ALTER TABLE `giangvien` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -252,7 +254,7 @@ CREATE TABLE `khoa` (
   `TenKhoa` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`MaKhoa`),
   UNIQUE KEY `ID` (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -261,6 +263,7 @@ CREATE TABLE `khoa` (
 
 LOCK TABLES `khoa` WRITE;
 /*!40000 ALTER TABLE `khoa` DISABLE KEYS */;
+INSERT INTO `khoa` VALUES (1,'CNTT','Công Nghệ Thông Tin');
 /*!40000 ALTER TABLE `khoa` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -345,6 +348,7 @@ CREATE TABLE `lophoc` (
 
 LOCK TABLES `lophoc` WRITE;
 /*!40000 ALTER TABLE `lophoc` DISABLE KEYS */;
+INSERT INTO `lophoc` VALUES ('23CNTT1','Kỹ Thuật Phần Mềm','CNTT','2023-2027');
 /*!40000 ALTER TABLE `lophoc` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -404,6 +408,7 @@ CREATE TABLE `monhoc` (
 
 LOCK TABLES `monhoc` WRITE;
 /*!40000 ALTER TABLE `monhoc` DISABLE KEYS */;
+INSERT INTO `monhoc` VALUES ('CNTT001','Lập Trình Máy',8,'CNTT');
 /*!40000 ALTER TABLE `monhoc` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -547,6 +552,7 @@ CREATE TABLE `sinhvien` (
 
 LOCK TABLES `sinhvien` WRITE;
 /*!40000 ALTER TABLE `sinhvien` DISABLE KEYS */;
+INSERT INTO `sinhvien` VALUES ('23010001','Đặng Nguyễn Quốc Hùng','2008-05-27','Nam','hung270508@gmail.com','0932672705','23CNTT1','Đang học'),('23010002','Lương Hoàng Nam','2008-10-17','Nam','namluonghoang1710@gmail.com','0784573894','23CNTT1','Đang học'),('23010003','Phạm Nguyễn Bảo Toàn','2005-05-16','Nam','toanpham2005pr@gmail.com','0987654321','23CNTT1','Đang học');
 /*!40000 ALTER TABLE `sinhvien` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -577,6 +583,31 @@ CREATE TABLE `tailieu_baitap` (
 LOCK TABLES `tailieu_baitap` WRITE;
 /*!40000 ALTER TABLE `tailieu_baitap` DISABLE KEYS */;
 /*!40000 ALTER TABLE `tailieu_baitap` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `the_sv`
+--
+
+DROP TABLE IF EXISTS `the_sv`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `the_sv` (
+  `uid` varchar(20) NOT NULL,
+  `MSSV` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`uid`),
+  KEY `fk_the_sv_sinhvien` (`MSSV`),
+  CONSTRAINT `fk_the_sv_sinhvien` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `the_sv`
+--
+
+LOCK TABLES `the_sv` WRITE;
+/*!40000 ALTER TABLE `the_sv` DISABLE KEYS */;
+/*!40000 ALTER TABLE `the_sv` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -659,7 +690,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES ('admin','admin@123',1,'2026-06-19 04:04:01');
+INSERT INTO `users` VALUES ('23010001','$2b$10$oaIsbIY.0MNraT8OwKoWHOSlRukuQCFZhbCTwb1nvSQCqj6b607wW',3,'2026-06-19 08:24:19'),('23010002','$2b$10$lCexIccT0W8/vM6EezAF.e.ePP4ToHp3cVv8/.UuBC/VBhlQeCWc.',3,'2026-06-20 13:33:19'),('23010003','$2b$10$lDtWw645nWpSZEMcUApBre.D/NMiZAPYgAzRNX/37C2tf26GKMhSK',3,'2026-06-20 16:45:22'),('admin','admin@123',1,'2026-06-19 04:04:01'),('GVCNTT001','$2b$10$VUFsRE23S1jMnpn1Ye/9hOLnnLUFpDT1NB.y2oybN7eOtZtjpDGai',2,'2026-06-21 13:06:21');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -679,10 +710,11 @@ CREATE TABLE `yeucau_hotro` (
   `NgayGui` datetime DEFAULT NULL,
   `TrangThai` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Đang xử lý',
   `PhanHoi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `NgayPhanHoi` datetime DEFAULT NULL,
   PRIMARY KEY (`MaYeuCau`),
   KEY `MSSV` (`MSSV`),
   CONSTRAINT `yeucau_hotro_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -691,6 +723,7 @@ CREATE TABLE `yeucau_hotro` (
 
 LOCK TABLES `yeucau_hotro` WRITE;
 /*!40000 ALTER TABLE `yeucau_hotro` DISABLE KEYS */;
+INSERT INTO `yeucau_hotro` VALUES (3,'23010003','Hành chính','Đơn xin tạm nghỉ học / Bảo lưu kết quả','Sinh viên yêu cầu cấp: Đơn xin tạm nghỉ học / Bảo lưu kết quả','2026-06-20 16:48:01','Đang xử lý',NULL,NULL),(4,'23010003','Hành chính','Giấy xác nhận sinh viên Khoa trực thuộc','Sinh viên yêu cầu cấp: Giấy xác nhận sinh viên Khoa trực thuộc','2026-06-20 16:48:10','Đang xử lý',NULL,NULL),(6,'23010002','Hành chính','Giấy xác nhận hoãn Nghĩa vụ quân sự','Sinh viên yêu cầu cấp: Giấy xác nhận hoãn Nghĩa vụ quân sự','2026-06-21 06:52:07','Đã phản hồi','lkllllllll','2026-06-21 06:52:37'),(7,'23010002','Hành chính','Giấy xác nhận sinh viên Khoa trực thuộc','Sinh viên yêu cầu cấp: Giấy xác nhận sinh viên Khoa trực thuộc','2026-06-21 06:54:37','Đang xử lý',NULL,NULL);
 /*!40000 ALTER TABLE `yeucau_hotro` ENABLE KEYS */;
 UNLOCK TABLES;
 SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
@@ -704,4 +737,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-19 14:17:10
+-- Dump completed on 2026-06-21 21:00:09
