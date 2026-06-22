@@ -1321,7 +1321,8 @@ app.get('/api/schedule-configs', async (req, res) => {
             ]
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Lỗi tải cấu hình lịch học từ DB!' });
+        console.error("Error in /api/schedule-configs:", error);
+        res.status(500).json({ success: false, message: 'Lỗi tải cấu hình lịch học từ DB!', error: error.message || error });
     }
 });
 app.get('/api/schedules', (req, res) => {
