@@ -24,6 +24,7 @@ function StudentSupport({ user, profile }) {
   const [requestForm, setRequestForm] = useState({ show: false, chude: '', ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
+  const [viewResponse, setViewResponse] = useState(null);
 
   // States quản lý Popup thay cho alert()
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
@@ -239,6 +240,7 @@ function StudentSupport({ user, profile }) {
                         <th className="px-3 py-3 font-semibold w-36">Ngày gửi</th>
                         <th className="px-3 py-3 font-semibold w-36">Ngày xác nhận</th>
                         <th className="px-3 py-3 font-semibold text-center w-32">Trạng thái</th>
+                        <th className="px-3 py-3 font-semibold text-center w-24">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -267,10 +269,24 @@ function StudentSupport({ user, profile }) {
                               </span>
                             )}
                           </td>
+                          <td className="px-3 py-3 text-center">
+                            {req.PhanHoi ? (
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setViewResponse(req)}
+                                className="px-3 py-1.5 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
+                              >
+                                Xem phản hồi
+                              </motion.button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
                         </tr>
                       )) : (
                         <tr>
-                          <td colSpan="5" className="text-center py-10 text-gray-400 italic">
+                          <td colSpan="6" className="text-center py-10 text-gray-400 italic">
                             <FileText className="w-10 h-10 mx-auto mb-2 text-gray-200" />
                             Bạn chưa tạo yêu cầu hành chính nào.
                           </td>
@@ -518,6 +534,75 @@ function StudentSupport({ user, profile }) {
                     </button>
                   </div>
                 </form>
+              </motion.div>
+            </motion.div>
+          </ModalPortal>
+        )}
+
+        {/* Modal hiển thị phản hồi từ admin */}
+        {viewResponse && (
+          <ModalPortal>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden"
+              >
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white flex justify-between items-center shadow-sm">
+                  <h3 className="text-base font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-white/90" /> PHẢN HỒI TỪ ADMIN
+                  </h3>
+                  <button onClick={() => setViewResponse(null)} className="text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-1.5 rounded-full">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 bg-white space-y-4">
+                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <h4 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                      <Info className="w-4 h-4" /> Thông tin yêu cầu
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Loại biểu mẫu:</span>
+                        <span className="font-semibold text-gray-800">{viewResponse.ChuDe}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ngày gửi:</span>
+                        <span className="font-semibold text-gray-800">{new Date(viewResponse.NgayGui).toLocaleString('vi-VN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Trạng thái:</span>
+                        <span className="font-semibold text-green-600">{viewResponse.TrangThai}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h4 className="text-sm font-bold text-gray-700 mb-2">Nội dung yêu cầu của bạn:</h4>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-gray-200">{viewResponse.NoiDung}</p>
+                  </div>
+
+                  <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                    <h4 className="text-sm font-bold text-green-800 mb-2 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" /> Phản hồi từ Admin
+                    </h4>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap bg-white p-3 rounded-lg border border-green-200">{viewResponse.PhanHoi}</p>
+                    <p className="text-xs text-gray-500 mt-2">Ngày phản hồi: {viewResponse.NgayPhanHoi ? new Date(viewResponse.NgayPhanHoi).toLocaleString('vi-VN') : 'N/A'}</p>
+                  </div>
+
+                  <div className="flex justify-center pt-2">
+                    <button onClick={() => setViewResponse(null)} className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-md shadow-blue-200 text-sm">
+                      ĐÓNG
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             </motion.div>
           </ModalPortal>
