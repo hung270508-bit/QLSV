@@ -278,6 +278,7 @@ function AdminRequests() {
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Người gửi</th>
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Loại / Chủ đề</th>
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Ngày gửi</th>
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Ngày phản hồi</th>
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Trạng thái</th>
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide text-center">Thao tác</th>
               </tr>
@@ -323,6 +324,9 @@ function AdminRequests() {
                     <p className="font-semibold text-gray-800 text-sm line-clamp-1 max-w-xs">{req.TieuDe}</p>
                   </td>
                   <td className="p-4 text-sm text-gray-500">{new Date(req.NgayGui).toLocaleDateString('vi-VN')}</td>
+                  <td className="p-4 text-sm text-gray-500">
+                    {req.PhanHoi ? (req.NgayPhanHoi ? new Date(req.NgayPhanHoi).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN')) : '-'}
+                  </td>
                   <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
                   <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
