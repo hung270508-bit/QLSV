@@ -89,42 +89,33 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Xác nhận', con
 // ================================================================
 // ScoreInput — giữ nguyên giá trị đang gõ, chỉ báo lỗi, không clear
 // ================================================================
-function ScoreInput({ value, onChange, placeholder = 'Để trống nếu chưa có', error }) {
-  // localVal = chuỗi người dùng đang gõ (có thể chứa giá trị tạm thời chưa hợp lệ)
+function ScoreInput({ value, onChange, onError, placeholder = 'Để trống nếu chưa có', error }) {
   const [localVal, setLocalVal] = useState(value ?? '');
   const [localError, setLocalError] = useState('');
 
-  // Đồng bộ khi parent reset value về '' (ví dụ khi đóng modal)
+  // Đồng bộ khi parent reset value (đóng modal / clear form)
   React.useEffect(() => {
     if ((value === '' || value == null) && localVal !== '') {
       setLocalVal('');
       setLocalError('');
+      onError && onError(false);
     }
   }, [value]); // eslint-disable-line
+
+  const setErr = (msg) => {
+    setLocalError(msg);
+    onError && onError(!!msg);
+  };
 
   const handleChange = (e) => {
     const raw = e.target.value;
     setLocalVal(raw);
-    if (raw === '') {
-      setLocalError('');
-      onChange('');
-      return;
-    }
+    if (raw === '') { setErr(''); onChange(''); return; }
     const num = parseFloat(raw);
-    if (isNaN(num)) {
-      setLocalError('Giá trị không hợp lệ');
-      // Không gọi onChange — không đẩy giá trị lỗi lên parent
-      return;
-    }
-    if (num < 0) {
-      setLocalError('Điểm không được âm');
-      return;
-    }
-    if (num > 10) {
-      setLocalError('Điểm không được vượt quá 10');
-      return;
-    }
-    setLocalError('');
+    if (isNaN(num)) { setErr('Giá trị không hợp lệ'); return; }
+    if (num < 0)    { setErr('Điểm không được âm'); return; }
+    if (num > 10)   { setErr('Điểm không được vượt quá 10'); return; }
+    setErr('');
     onChange(raw);
   };
 
@@ -137,43 +128,58 @@ function ScoreInput({ value, onChange, placeholder = 'Để trống nếu chưa 
         value={localVal}
         onChange={handleChange}
         onWheel={e => e.target.blur()}
+        // Tắt tooltip validation mặc định của browser
+        onInvalid={e => e.preventDefault()}
         className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
           ${displayError ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
       />
       {displayError && (
-        <p className="text-red-500 text-xs mt-1">{displayError}</p>
+        <p className="text-red-500 text-xs mt-1 font-medium">{displayError}</p>
       )}
     </div>
   );
 }
 
 // ================================================================
-// BulkScoreInput — compact, dùng trong bảng hàng loạt
+// BulkScoreInput — giữ localVal khi lỗi, không clear ô, thông báo rõ
 // ================================================================
-function BulkScoreInput({ value, onChange }) {
+function BulkScoreInput({ value, onChange, onError }) {
+  const [localVal, setLocalVal] = useState(value ?? '');
   const [err, setErr] = useState('');
+
+  React.useEffect(() => {
+    if ((value === '' || value == null) && localVal !== '') {
+      setLocalVal(''); setErr(''); onError && onError(false);
+    }
+  }, [value]); // eslint-disable-line
+
+  const setE = (msg) => { setErr(msg); onError && onError(!!msg); };
+
   const handle = (e) => {
     const raw = e.target.value;
-    if (raw === '') { setErr(''); onChange(''); return; }
+    setLocalVal(raw);
+    if (raw === '') { setE(''); onChange(''); return; }
     const n = parseFloat(raw);
-    if (isNaN(n) || n < 0) { setErr('Âm'); onChange(''); return; }
-    if (n > 10) { setErr('>10'); onChange(''); return; }
-    setErr('');
-    onChange(raw);
+    if (isNaN(n))  { setE('Giá trị không hợp lệ'); return; }
+    if (n < 0)     { setE('Điểm không được âm'); return; }
+    if (n > 10)    { setE('Không được vượt quá 10'); return; }
+    setE(''); onChange(raw);
   };
+
   return (
-    <div className="relative pb-4">
+    <div className="flex flex-col items-center gap-0.5">
       <input
         type="number" step="0.1"
         placeholder="—"
-        value={value}
+        value={localVal}
         onChange={handle}
         onWheel={e => e.target.blur()}
-        className={`w-16 text-center px-2 py-2 border rounded-lg focus:outline-none text-sm transition-colors
+        onInvalid={e => e.preventDefault()}
+        className={`w-20 text-center px-2 py-2 border-2 rounded-lg focus:outline-none text-sm transition-colors
           ${err ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500 bg-white'}`}
       />
       {err && (
-        <span className="absolute bottom-0 left-0 text-red-500 text-[10px] underline whitespace-nowrap">{err}</span>
+        <span className="text-red-500 text-[10px] font-medium text-center leading-tight whitespace-nowrap">{err}</span>
       )}
     </div>
   );
@@ -188,6 +194,8 @@ function GradeManagement() {
   const [courseSections, setCourseSections] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
+  // Cache: map MaLopHocPhan -> Set<MSSV> — xây từ grades lần đầu fetch, không bị ảnh hưởng khi xóa điểm
+  const [enrolledCache, setEnrolledCache] = useState({});
   const [loading, setLoading] = useState(true);
 
   // Toast
@@ -213,6 +221,10 @@ function GradeManagement() {
     DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
   });
   const [formErrors, setFormErrors] = useState({});
+  // Track lỗi đang tồn tại trong các ô ScoreInput (giá trị đang gõ chưa hợp lệ)
+  const [scoreInputErrors, setScoreInputErrors] = useState({});
+  const setScoreError = (field, hasErr) =>
+    setScoreInputErrors(prev => ({ ...prev, [field]: hasErr }));
 
   // Bulk modal
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -253,6 +265,24 @@ function GradeManagement() {
       setCourseSections(sectionsRes.data);
       setFaculties(facultiesRes.data);
       setEnrollments(enrollmentsRes.data);
+      // Xây cache enrolledCache từ grades lần đầu load — không bị mất khi xóa điểm
+      // Map: { MaLopHocPhan: Set<MSSV> }
+      if (enrollmentsRes.data.length === 0) {
+        const cache = {};
+        gradesRes.data.forEach(g => {
+          if (!cache[g.MaLopHocPhan]) cache[g.MaLopHocPhan] = new Set();
+          cache[g.MaLopHocPhan].add(g.MSSV);
+        });
+        setEnrolledCache(prev => {
+          // Merge: giữ lại SV cũ, thêm SV mới — không xóa SV đã bị remove khỏi grades
+          const merged = { ...prev };
+          Object.entries(cache).forEach(([lhp, mssSet]) => {
+            if (!merged[lhp]) merged[lhp] = new Set();
+            mssSet.forEach(m => merged[lhp].add(m));
+          });
+          return merged;
+        });
+      }
     } catch (err) {
       console.error('fetchData error:', err);
     } finally {
@@ -352,14 +382,22 @@ function GradeManagement() {
     return courseSections.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === targetKhoa);
   };
 
-  // SV đã đăng ký LHP cụ thể (từ enrollments/diem)
+  // SV đã đăng ký LHP cụ thể (từ enrollments API hoặc cache)
   const getEnrolledStudents = (maLopHocPhan) => {
     if (!maLopHocPhan) return [];
-    if (enrollments.length === 0) {
-      // Fallback: lấy SV từ bảng diem nếu chưa có API enrollments
-      const mssvsFromGrades = [...new Set(grades.filter(g => g.MaLopHocPhan === maLopHocPhan).map(g => g.MSSV))];
-      return students.filter(s => mssvsFromGrades.includes(s.MSSV));
+    if (enrollments.length > 0) {
+      // Có API enrollments → dùng trực tiếp (chính xác nhất)
+      const mssv = enrollments
+        .filter(e => e.MaLopHocPhan === maLopHocPhan && e.TrangThai !== 'Từ chối')
+        .map(e => e.MSSV);
+      return students.filter(s => mssv.includes(s.MSSV));
     }
+    // Không có API enrollments → dùng enrolledCache (được xây từ grades lúc đầu, không mất khi xóa điểm)
+    const cachedSet = enrolledCache[maLopHocPhan];
+    if (cachedSet && cachedSet.size > 0) {
+      return students.filter(s => cachedSet.has(s.MSSV));
+    }
+    // Lần đầu chưa có cache (LHP chưa có ai trong grades) → lấy từ grades hiện tại
     const mssv = enrollments
       .filter(e => e.MaLopHocPhan === maLopHocPhan && e.TrangThai !== 'Từ chối')
       .map(e => e.MSSV);
@@ -398,6 +436,14 @@ function GradeManagement() {
   // ================================================================
   const validateForm = () => {
     const errors = {};
+
+    // Chặn ngay nếu đang có ô điểm nhập sai (âm / >10)
+    if (Object.values(scoreInputErrors).some(Boolean)) {
+      // Lỗi đã hiển thị tại ô — không cần thêm lỗi form, chỉ block
+      setFormErrors({});
+      return false;
+    }
+
     if (!formData.MSSV) errors.MSSV = 'Vui lòng chọn sinh viên';
     if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
 
@@ -423,10 +469,12 @@ function GradeManagement() {
       }
     }
 
-    // Điểm số hợp lệ
+    // Điểm số hợp lệ — kiểm tra giá trị đã được đẩy lên formData
     SCORE_FIELDS.forEach(f => {
-      if (!isScoreValid(formData[f])) {
-        const n = parseFloat(formData[f]);
+      const v = formData[f];
+      if (v === '' || v == null) return; // trống = hợp lệ
+      const n = parseFloat(v);
+      if (isNaN(n) || n < 0 || n > 10) {
         errors[f] = n < 0 ? 'Điểm không được âm' : 'Điểm không được vượt quá 10';
       }
     });
@@ -519,6 +567,7 @@ function GradeManagement() {
     setEditingGrade(null);
     setFormData({ selectedKhoa: '', MSSV: '', MaLopHocPhan: '', HocKy: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' });
     setFormErrors({});
+    setScoreInputErrors({});
   };
 
   // Chọn LHP → auto-fill HocKy, reset SV
@@ -563,14 +612,13 @@ function GradeManagement() {
     }));
   };
 
-  const handleBulkFieldChange = (index, field, val) => {
+  const handleBulkFieldChange = (index, field, val, hasErr) => {
     setBulkGrades(prev => {
       const next = [...prev];
+      // val là giá trị hợp lệ đã pass qua BulkScoreInput (hoặc '')
+      // hasErr = true nghĩa là ô đang hiển thị lỗi, chưa push giá trị hợp lệ
       next[index] = { ...next[index], [field]: val };
-      const n = parseFloat(val);
-      const err = val !== '' && (isNaN(n) || n < 0 || n > 10)
-        ? (n < 0 ? 'Âm' : '>10') : '';
-      next[index].rowErrors = { ...next[index].rowErrors, [field]: err };
+      next[index].rowErrors = { ...next[index].rowErrors, [field]: !!hasErr };
       return next;
     });
   };
@@ -578,7 +626,7 @@ function GradeManagement() {
   const handleBulkSubmit = () => {
     if (!bulkSection) { setBulkError('Vui lòng chọn lớp học phần'); return; }
     const hasErr = bulkGrades.some(g => Object.values(g.rowErrors || {}).some(Boolean));
-    if (hasErr) { setBulkError('Có điểm không hợp lệ — kiểm tra lại các ô đỏ'); return; }
+    if (hasErr) { setBulkError('⚠ Có ô điểm không hợp lệ (âm hoặc > 10) — vui lòng sửa trước khi lưu'); return; }
     setConfirm({
       open: true,
       title: 'Xác nhận lưu điểm hàng loạt',
@@ -998,7 +1046,6 @@ function GradeManagement() {
                     onChange={e => handleSectionChange(e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
                       ${formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
-                    required
                   >
                     <option value="">Chọn lớp học phần</option>
                     {getSectionsByKhoa(formData.selectedKhoa).map(cs => (
@@ -1042,7 +1089,6 @@ function GradeManagement() {
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
                       ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed' : ''}
                       ${formErrors.MSSV ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
-                    required
                   >
                     <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên trong lớp' : 'Chọn lớp học phần trước'}</option>
                     {getEnrolledStudents(formData.MaLopHocPhan).map(s => {
@@ -1102,6 +1148,7 @@ function GradeManagement() {
                                 setFormData(prev => ({ ...prev, [field]: val }));
                                 if (formErrors[field]) setFormErrors(p => ({ ...p, [field]: '' }));
                               }}
+                              onError={hasErr => setScoreError(field, hasErr)}
                               error={formErrors[field]}
                             />
                           </div>
@@ -1242,10 +1289,11 @@ function GradeManagement() {
                               </td>
                               <td className="py-3 px-4 text-sm text-gray-600">{grade.HoTen}</td>
                               {SCORE_FIELDS.map(field => (
-                                <td key={field} className="py-4 px-3 text-center">
+                                <td key={field} className="py-2 px-3 text-center align-middle">
                                   <BulkScoreInput
                                     value={grade[field]}
-                                    onChange={val => handleBulkFieldChange(idx, field, val)}
+                                    onChange={val => handleBulkFieldChange(idx, field, val, false)}
+                                    onError={hasErr => handleBulkFieldChange(idx, field, grade[field], hasErr)}
                                   />
                                 </td>
                               ))}
