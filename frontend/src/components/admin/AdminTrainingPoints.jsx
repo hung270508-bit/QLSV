@@ -134,9 +134,7 @@ function AdminTrainingPoints() {
   const [recordLogs, setRecordLogs] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // State cho duyệt hàng loạt (Bulk approve)
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkConfirm, setBulkConfirm] = useState(false);
+
 
   // States cho nhật ký duyệt toàn bộ
   const [isAllLogsModalOpen, setIsAllLogsModalOpen] = useState(false);
@@ -324,9 +322,7 @@ function AdminTrainingPoints() {
     setCurrentPageReviews(1);
   }, [filterHocKy, filterTrangThai, filterKhoa, filterLop, searchTerm]);
 
-  useEffect(() => {
-    setSelectedIds([]);
-  }, [filterHocKy, filterTrangThai, filterKhoa, filterLop, searchTerm, activeTab]);
+
 
   const indexOfLastPeriod = currentPagePeriods * itemsPerPage;
   const indexOfFirstPeriod = indexOfLastPeriod - itemsPerPage;
@@ -348,35 +344,6 @@ function AdminTrainingPoints() {
     ? Math.round(filteredData.reduce((sum, item) => sum + (item.TongDiem || item.DiemTuDanhGia || 0), 0) / totalSubmitted)
     : 0;
 
-  // === XỬ LÝ CHỌN ROW / DUYỆT HÀNG LOẠT ===
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(currentReviews.map(item => item.MaDanhGia));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectRow = (id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const handleBulkApprove = async () => {
-    setBulkConfirm(false);
-    try {
-      const res = await axios.put(`${API_URL}/api/admin/training-points/bulk-approve`, {
-        ids: selectedIds,
-        NguoiDuyet: 'admin'
-      });
-      showToast(res.data.message, 'success');
-      setSelectedIds([]);
-      fetchData();
-    } catch {
-      showToast('Có lỗi xảy ra khi phê duyệt hàng loạt!', 'error');
-    }
-  };
 
   // === XÉT DUYỆT CHI TIẾT ===
   const handleOpenReviewModal = async (record) => {
@@ -499,14 +466,7 @@ function AdminTrainingPoints() {
         type={confirmModal.newStatus === 'Đã đóng đợt' ? 'danger' : 'confirm'}
       />
 
-      {/* ConfirmDialog duyệt hàng loạt */}
-      <ConfirmDialog
-        show={bulkConfirm}
-        title="Duyệt hàng loạt phiếu điểm"
-        message={`Bạn có chắc muốn phê duyệt chốt sổ cho ${selectedIds.length} sinh viên đã chọn? Tổng điểm của sinh viên sẽ bằng [Điểm tự đánh giá] + [Điểm Admin cộng thêm hiện tại].`}
-        onConfirm={handleBulkApprove}
-        onCancel={() => setBulkConfirm(false)}
-      />
+
 
       {/* Header */}
       <motion.div
@@ -720,26 +680,7 @@ function AdminTrainingPoints() {
 
               {/* Nút hành động */}
               <div className="flex items-center gap-2 shrink-0">
-                {selectedIds.length > 0 && (
-                  <button
-                    onClick={() => {
-                      const unapproved = selectedIds.filter(id => {
-                        const record = pointsData.find(item => item.MaDanhGia === id);
-                        return record && record.TrangThai !== 'Đã xác nhận';
-                      });
-                      if (unapproved.length === 0) {
-                        showToast('Tất cả các phiếu được chọn đều đã được duyệt từ trước!', 'error');
-                        setSelectedIds([]);
-                      } else {
-                        setSelectedIds(unapproved);
-                        setBulkConfirm(true);
-                      }
-                    }}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-emerald-100 flex items-center gap-2 animate-pulse"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Duyệt nhanh ({selectedIds.length} mục)
-                  </button>
-                )}
+
                 <button
                   onClick={handleOpenAllLogs}
                   className="px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2"
@@ -755,14 +696,7 @@ function AdminTrainingPoints() {
                 <table className="w-full text-left min-w-[950px]">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
-                      <th className="p-4 font-semibold w-12 text-center">
-                        <input
-                          type="checkbox"
-                          onChange={handleSelectAll}
-                          checked={currentReviews.length > 0 && selectedIds.length === currentReviews.length}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </th>
+
                       <th className="p-4 font-semibold w-1/4">Sinh viên</th>
                       <th className="p-4 font-semibold">Học kỳ</th>
                       <th className="p-4 font-semibold text-center">SV Tự ĐG</th>
@@ -775,17 +709,8 @@ function AdminTrainingPoints() {
                   </thead>
                   <tbody>
                     {currentReviews.map((item) => {
-                      const isChecked = selectedIds.includes(item.MaDanhGia);
                       return (
-                        <tr key={item.MaDanhGia} className={`border-b border-gray-50 transition-colors ${isChecked ? 'bg-blue-50/20' : 'hover:bg-blue-50/10'}`}>
-                          <td className="p-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleSelectRow(item.MaDanhGia)}
-                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                          </td>
+                        <tr key={item.MaDanhGia} className="border-b border-gray-50 transition-colors hover:bg-blue-50/10">
                           <td className="p-4">
                             <p className="font-bold text-gray-800 leading-tight">{item.HoTen}</p>
                             <p className="text-xs text-gray-500 font-medium mt-1">{item.MSSV} · Lớp: {item.MaLop}</p>

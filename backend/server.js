@@ -1731,37 +1731,7 @@ app.get('/api/admin/training-points/:id/logs', (req, res) => {
     executeQuery('SELECT * FROM lichsu_duyet WHERE MaDanhGia = ? ORDER BY ThoiGian DESC', [req.params.id], res, 'Lỗi lấy lịch sử duyệt!');
 });
 
-app.put('/api/admin/training-points/bulk-approve', (req, res) => {
-    const { ids, NguoiDuyet } = req.body;
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        return res.status(400).json({ success: false, message: 'Danh sách ID không hợp lệ!' });
-    }
 
-    const query = `
-        UPDATE danhgia_renluyen 
-        SET TrangThai = 'Đã xác nhận',
-            TongDiem = DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0),
-            XepLoai = CASE 
-                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 90 THEN 'Xuất sắc'
-                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 80 THEN 'Tốt'
-                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 65 THEN 'Khá'
-                WHEN (DiemTuDanhGia + COALESCE(DiemKhoaDanhGia, 0)) >= 50 THEN 'Trung bình'
-                ELSE 'Yếu'
-            END
-        WHERE MaDanhGia IN (?)
-    `;
-    db.query(query, [ids], (err) => {
-        if (err) { console.error("BULK APPROVE DB ERROR:", err); return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message }); }
-
-        const nguoiDuyet = NguoiDuyet || 'admin';
-        const logValues = ids.map(id => [id, nguoiDuyet, 'Phê duyệt hàng loạt (Chốt sổ)']);
-        const logBulkQuery = 'INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES ?';
-        db.query(logBulkQuery, [logValues], (logErr) => {
-            if (logErr) console.error('Lỗi lưu log duyệt hàng loạt:', logErr);
-            res.json({ success: true, message: 'Phê duyệt hàng loạt thành công!' });
-        });
-    });
-});
 
 app.get('/api/admin/support-requests', (req, res) => {
     const query = `
