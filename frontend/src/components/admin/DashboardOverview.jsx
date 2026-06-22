@@ -158,9 +158,22 @@ function DashboardOverview({ onNavigate }) {
   const top5ChartData = useMemo(() =>
     facultyStats
       .map(f => ({ name: f.TenKhoa, sinhVien: f.studentCount || 0, giangVien: f.teacherCount || 0, lopHoc: f.classCount || 0 }))
+      .filter(f => f.sinhVien > 0 || f.giangVien > 0 || f.lopHoc > 0)
       .sort((a, b) => b.sinhVien - a.sinhVien)
       .slice(0, 5),
     [facultyStats]);
+
+  // Check which data series have data
+  const hasSinhVien = top5ChartData.some(d => d.sinhVien > 0);
+  const hasGiangVien = top5ChartData.some(d => d.giangVien > 0);
+  const hasLopHoc = top5ChartData.some(d => d.lopHoc > 0);
+
+  // Build legend items dynamically based on available data
+  const legendItems = [
+    { label: 'Sinh viên', color: 'bg-blue-500', show: hasSinhVien },
+    { label: 'Giảng viên', color: 'bg-green-500', show: hasGiangVien },
+    { label: 'Lớp học', color: 'bg-yellow-400', show: hasLopHoc },
+  ].filter(item => item.show);
 
   if (loading) return <Skeleton />;
 
@@ -211,11 +224,7 @@ function DashboardOverview({ onNavigate }) {
               </div>
             </div>
             <div className="flex gap-1.5 text-[11px]">
-              {[
-                { label: 'Sinh viên', color: 'bg-blue-500' },
-                { label: 'Giảng viên', color: 'bg-green-500' },
-                { label: 'Lớp học', color: 'bg-yellow-400' },
-              ].map(l => (
+              {legendItems.map(l => (
                 <span key={l.label} className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-full border border-gray-100">
                   <span className={`w-2 h-2 rounded-full ${l.color}`} />
                   <span className="text-gray-500 font-medium">{l.label}</span>
@@ -226,7 +235,7 @@ function DashboardOverview({ onNavigate }) {
 
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%" debounce={200}>
-              <BarChart data={top5ChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="30%">
+              <BarChart data={top5ChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="30%" maxBarSize={50}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                 <XAxis
                   dataKey="name"
@@ -238,9 +247,9 @@ function DashboardOverview({ onNavigate }) {
                 />
                 <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(249,115,22,0.04)', radius: 8 }} />
-                <Bar dataKey="lopHoc"    stackId="a" fill="#facc15" name="Lớp học"    radius={[0,0,0,0]} isAnimationActive={true} animationDuration={600} />
-                <Bar dataKey="giangVien" stackId="a" fill="#4ade80" name="Giảng viên" radius={[0,0,0,0]} isAnimationActive={true} animationDuration={700} />
-                <Bar dataKey="sinhVien"  stackId="a" fill="#60a5fa" name="Sinh viên"  radius={[6,6,0,0]} isAnimationActive={true} animationDuration={800} />
+                {hasLopHoc && <Bar dataKey="lopHoc"    stackId="a" fill="#facc15" name="Lớp học"    radius={[0,0,0,0]} isAnimationActive={true} animationDuration={600} />}
+                {hasGiangVien && <Bar dataKey="giangVien" stackId="a" fill="#4ade80" name="Giảng viên" radius={[0,0,0,0]} isAnimationActive={true} animationDuration={700} />}
+                {hasSinhVien && <Bar dataKey="sinhVien"  stackId="a" fill="#60a5fa" name="Sinh viên"  radius={[6,6,0,0]} isAnimationActive={true} animationDuration={800} />}
               </BarChart>
             </ResponsiveContainer>
           </div>

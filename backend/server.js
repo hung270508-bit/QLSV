@@ -522,7 +522,21 @@ app.get('/api/dashboard/lecturer-workload', (req, res) => {
 app.get('/api/sinhvien/:mssv/tong-quan', (req, res) => res.json({ gpa: 3.2, tongTinChi: 85, monDangHoc: 5, lichHocHomNay: [] }));
 
 // ==================== USERS & ROLES ====================
-app.get('/api/users', (req, res) => executeQuery(`SELECT u.TaiKhoan, u.password, u.NgayTao, u.MaQuyen, COALESCE(p.TenQuyen, 'Unknown') as TenQuyen FROM users u LEFT JOIN phanquyen p ON u.MaQuyen = p.MaQuyen`, [], res, 'Lỗi lấy tài khoản!'));
+app.get('/api/users', (req, res) => {
+    const query = `
+        SELECT u.TaiKhoan, u.password, u.NgayTao, u.MaQuyen, COALESCE(p.TenQuyen, 'Unknown') as TenQuyen,
+               s.HoTen as TenSinhVien, s.NgaySinh as NgaySinhSV, s.GioiTinh as GioiTinhSV, s.Email as EmailSV, s.SoDienThoai as SDTSV, s.MaLop,
+               g.HoTen as TenGiangVien, g.Email as EmailGV, g.SoDienThoai as SDTGV, g.MaKhoa,
+               l.TenLop, k.TenKhoa
+        FROM users u
+        LEFT JOIN phanquyen p ON u.MaQuyen = p.MaQuyen
+        LEFT JOIN sinhvien s ON u.TaiKhoan = s.MSSV
+        LEFT JOIN giangvien g ON u.TaiKhoan = g.MaGiangVien
+        LEFT JOIN lophoc l ON s.MaLop = l.MaLop
+        LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy tài khoản!');
+});
 app.get('/api/roles', (req, res) => executeQuery('SELECT * FROM phanquyen', [], res, 'Lỗi lấy quyền!'));
 app.post('/api/users', async (req, res) => {
     try {
@@ -1271,14 +1285,14 @@ app.get('/api/schedule-configs', async (req, res) => {
     try {
         // Lấy danh sách phòng đang hoạt động
         const promiseRooms = new Promise((resolve, reject) => {
-            db.query('SELECT MaPhong FROM phonghoc WHERE TrangThai = "Hoạt động"', (err, results) => {
+            db.query("SELECT MaPhong FROM phonghoc WHERE TrangThai = 'Hoạt động'", (err, results) => {
                 if (err) reject(err); else resolve(results.map(r => r.MaPhong));
             });
         });
 
         // Lấy danh sách tiết học và giờ
         const promisePeriods = new Promise((resolve, reject) => {
-            db.query('SELECT Tiet, DATE_FORMAT(GioBatDau, "%H:%i") as start, DATE_FORMAT(GioKetThuc, "%H:%i") as end FROM tiethoc ORDER BY Tiet', (err, results) => {
+            db.query("SELECT Tiet, DATE_FORMAT(GioBatDau, '%H:%i') as start, DATE_FORMAT(GioKetThuc, '%H:%i') as end FROM tiethoc ORDER BY Tiet", (err, results) => {
                 if (err) reject(err);
                 else {
                     const periods = {};
@@ -1307,7 +1321,8 @@ app.get('/api/schedule-configs', async (req, res) => {
             ]
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Lỗi tải cấu hình lịch học từ DB!' });
+        console.error("Error in /api/schedule-configs:", error);
+        res.status(500).json({ success: false, message: 'Lỗi tải cấu hình lịch học từ DB!', error: error.message || error });
     }
 });
 app.get('/api/schedules', (req, res) => {

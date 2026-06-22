@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Navigation, CalendarRange, Loader2, BookOpen, MapPin, Clock, Users, Award } from 'lucide-react';
 import axios from 'axios';
 
 function ScheduleSection({ user }) {
@@ -158,6 +158,22 @@ function ScheduleSection({ user }) {
     );
   }
 
+  const getSafeTooltipPos = () => {
+    if (!tooltipPos) return { x: 0, y: 0 };
+    const tooltipWidth = 260;
+    const tooltipHeight = 180;
+    let x = tooltipPos.x + 15;
+    let y = tooltipPos.y + 15;
+    if (x + tooltipWidth > window.innerWidth) {
+      x = tooltipPos.x - tooltipWidth - 15;
+    }
+    if (y + tooltipHeight > window.innerHeight) {
+      y = tooltipPos.y - tooltipHeight - 15;
+    }
+    return { x, y };
+  };
+  const safePos = getSafeTooltipPos();
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative">
       
@@ -169,15 +185,49 @@ function ScheduleSection({ user }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
-            className="fixed z-50 bg-[#333333] text-white text-sm p-3.5 rounded-lg shadow-xl pointer-events-none min-w-[200px]"
-            style={{ top: tooltipPos.y + 15, left: tooltipPos.x + 15 }}
+            className="fixed z-50 bg-white/95 backdrop-blur-md text-slate-800 text-sm p-4 rounded-2xl shadow-2xl border border-orange-200/80 pointer-events-none w-[260px]"
+            style={{ top: safePos.y, left: safePos.x }}
           >
-            <div className="space-y-1.5">
-              <p><span className="font-bold text-gray-300">Tên học phần:</span> {tooltipData.tenMon}</p>
-              <p><span className="font-bold text-gray-300">Lớp học:</span> <span className="text-orange-400 font-bold">{tooltipData.tenLop}</span></p>
-              <p><span className="font-bold text-gray-300">Phòng học:</span> {tooltipData.phong}</p>
-              <p><span className="font-bold text-gray-300">Tiết bắt đầu:</span> {tooltipData.tietBatDau}</p>
-              <p><span className="font-bold text-gray-300">Số tiết:</span> {tooltipData.soTiet}</p>
+            <div className="flex flex-col gap-3">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-orange-600 tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                  Lịch giảng dạy
+                </span>
+                <span className="text-[10px] font-mono bg-orange-50 px-2 py-0.5 rounded text-orange-600 border border-orange-100/50">
+                  {tooltipData.maHP}
+                </span>
+              </div>
+              
+              {/* Title */}
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 leading-tight">
+                  {tooltipData.tenMon}
+                </h4>
+              </div>
+
+              {/* Grid Details */}
+              <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 pt-1">
+                <div className="flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>Lớp: <strong className="text-slate-800 font-semibold">{tooltipData.tenLop}</strong> (Nhóm {tooltipData.nhom})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>Phòng: <strong className="text-slate-800 font-semibold">{tooltipData.phong}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>
+                    Tiết {tooltipData.tietBatDau} - {tooltipData.tietBatDau + tooltipData.soTiet - 1} ({tooltipData.soTiet} tiết)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Award className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>Số tín chỉ: <strong className="text-slate-800 font-semibold">{tooltipData.stc}</strong></span>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}

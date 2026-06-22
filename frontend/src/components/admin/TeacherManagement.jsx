@@ -795,9 +795,10 @@ function TeacherManagement() {
                       handleKhoaChange(e);
                       if (errors.MaKhoa) setErrors({ ...errors, MaKhoa: '' });
                     }}
+                    disabled={editingTeacher !== null}
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${
                       errors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
-                    }`}
+                    } ${editingTeacher ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   >
                     <option value="">Chọn khoa</option>
                     {uniqueFaculties.map((faculty) => (

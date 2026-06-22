@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
@@ -109,7 +109,7 @@ function ResetPassword() {
         setMessage({ type: 'success', text: response.data.message });
         setSuccess(true);
         setTimeout(() => {
-          navigate('/');
+          navigate('/', { replace: true });
         }, 3000);
       }
     } catch (error) {
@@ -132,7 +132,7 @@ function ResetPassword() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Token Không Hợp Lệ</h2>
           <p className="text-gray-600 mb-6">Không tìm thấy token đặt lại mật khẩu.</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/', { replace: true })}
             className="px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors"
           >
             Quay lại trang đăng nhập
@@ -352,7 +352,7 @@ function ResetPassword() {
           className="mt-6 text-center"
         >
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/', { replace: true })}
             className="text-sm font-semibold text-gray-600 hover:text-orange-500 transition-colors flex items-center justify-center gap-2 mx-auto"
           >
             <ArrowLeft className="w-4 h-4" />

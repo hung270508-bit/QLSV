@@ -84,7 +84,7 @@ const AutoUpdate = () => {
               repeat: Infinity,
               ease: "linear" 
             }}
-            className="absolute h-96 w-96 rounded-full bg-blue-300/40 blur-3xl"
+            className="absolute h-96 w-96 rounded-full bg-orange-300/30 blur-3xl"
           />
           <motion.div 
             animate={{ 
@@ -96,7 +96,7 @@ const AutoUpdate = () => {
               repeat: Infinity,
               ease: "linear" 
             }}
-            className="absolute mt-32 ml-32 h-64 w-64 rounded-full bg-indigo-300/40 blur-3xl"
+            className="absolute mt-32 ml-32 h-64 w-64 rounded-full bg-amber-300/25 blur-3xl"
           />
 
           {/* Main Content Box */}
@@ -104,21 +104,21 @@ const AutoUpdate = () => {
             initial={{ y: 50, opacity: 0, scale: 0.9 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2, type: "spring", bounce: 0.4 }}
-            className="relative z-10 flex w-[90%] max-w-sm flex-col items-center rounded-3xl border border-white/50 bg-white/60 p-10 text-center shadow-2xl backdrop-blur-xl"
+            className="relative z-10 flex w-[90%] max-w-sm flex-col items-center rounded-3xl border border-white/60 bg-white/70 p-10 text-center shadow-2xl shadow-orange-100/50 backdrop-blur-xl"
           >
             {/* Pulsing Icon */}
             <div className="relative mb-8 flex items-center justify-center">
               <motion.div 
                 animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute h-24 w-24 rounded-full bg-blue-200/50"
+                className="absolute h-24 w-24 rounded-full bg-orange-100/60"
               />
               <motion.div 
                 animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-                className="absolute h-20 w-20 rounded-full bg-cyan-200/50"
+                className="absolute h-20 w-20 rounded-full bg-amber-100/60"
               />
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 shadow-[0_0_30px_rgba(249,115,22,0.4)]">
                 <svg className="h-8 w-8 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -131,7 +131,7 @@ const AutoUpdate = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="mb-3 bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-2xl font-bold tracking-tight text-transparent"
+              className="mb-3 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent"
             >
               Phát hiện phiên bản mới
             </motion.h2>
@@ -150,7 +150,7 @@ const AutoUpdate = () => {
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
                 transition={{ duration: 2.5, ease: "linear" }}
-                className="h-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                className="h-full bg-gradient-to-r from-orange-500 to-amber-400"
               />
             </div>
           </motion.div>
