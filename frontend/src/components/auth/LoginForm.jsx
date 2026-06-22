@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, School, Loader2, Eye, EyeOff, Mail, ChevronDown, X } from 'lucide-react';
+import { User, Lock, School, Loader2, Eye, EyeOff, Mail, ChevronDown, X, Info } from 'lucide-react';
 
 const LoginForm = ({
   username,
@@ -30,25 +30,10 @@ const LoginForm = ({
   const [errors, setErrors] = React.useState({ username: '', password: '' });
   const [forgotEmailError, setForgotEmailError] = React.useState('');
 
-  React.useEffect(() => {
-    if (username.trim()) {
-      setErrors(prev => ({ ...prev, username: '' }));
-    }
-  }, [username]);
-
-  React.useEffect(() => {
-    if (password.length > 20) {
-      setErrors(prev => ({ ...prev, password: 'Mật khẩu chỉ được tối đa 20 ký tự!' }));
-    } else {
-      setErrors(prev => ({ ...prev, password: '' }));
-    }
-  }, [password]);
-
-  React.useEffect(() => {
-    if (forgotEmail.trim()) {
-      setForgotEmailError('');
-    }
-  }, [forgotEmail]);
+  const handleSelectAccountLocal = (acc) => {
+    handleSelectAccount(acc);
+    setErrors({ username: '', password: '' });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -184,7 +169,22 @@ const LoginForm = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Mã số tài khoản</label>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <label className="text-sm font-semibold text-gray-700">Mã số tài khoản</label>
+                  <div className="relative group/tooltip">
+                    <Info className="w-4 h-4 text-gray-400 hover:text-orange-500 cursor-help transition-colors" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-white/95 backdrop-blur-sm text-slate-800 text-[11px] rounded-xl shadow-xl border border-orange-100 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-30 pointer-events-none text-left font-normal leading-relaxed">
+                      <p className="font-semibold text-orange-600 mb-1">Quy định mã số:</p>
+                      <ul className="list-disc pl-3.5 space-y-0.5 text-slate-600">
+                        <li>MSSV (ví dụ: <code className="text-orange-600 bg-orange-50 px-1 py-0.5 rounded font-mono border border-orange-100/50">20012345</code>)</li>
+                        <li>Mã GV (ví dụ: <code className="text-orange-600 bg-orange-50 px-1 py-0.5 rounded font-mono border border-orange-100/50">GV012</code>)</li>
+                        <li>Chỉ chứa chữ cái không dấu và số</li>
+                        <li>Độ dài từ 3 đến 20 ký tự</li>
+                      </ul>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-white" />
+                    </div>
+                  </div>
+                </div>
                 <div className="relative group">
                   <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
                     errors.username ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
@@ -195,7 +195,14 @@ const LoginForm = ({
                     type="text"
                     value={username}
                     onChange={(e) => {
-                      setUsername(e.target.value);
+                      const rawVal = e.target.value;
+                      if (rawVal.length > 20) {
+                        setUsername(rawVal.slice(0, 20));
+                        setErrors(prev => ({ ...prev, username: 'Mã số tài khoản không được vượt quá 20 ký tự!' }));
+                      } else {
+                        setUsername(rawVal);
+                        setErrors(prev => ({ ...prev, username: '' }));
+                      }
                       if (message?.text) setMessage({ type: '', text: '' });
                     }}
                     onBlur={() => setUsername(username.trim())}
@@ -226,7 +233,7 @@ const LoginForm = ({
                       {savedAccounts.map((acc) => (
                         <div
                           key={acc.username}
-                          onClick={() => handleSelectAccount(acc)}
+                          onClick={() => handleSelectAccountLocal(acc)}
                           className="flex items-center justify-between gap-2 px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
                         >
                           <div className="flex items-center gap-3 overflow-hidden">
@@ -266,7 +273,20 @@ const LoginForm = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Mật khẩu</label>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <label className="text-sm font-semibold text-gray-700">Mật khẩu</label>
+                  <div className="relative group/tooltip">
+                    <Info className="w-4 h-4 text-gray-400 hover:text-orange-500 cursor-help transition-colors" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-white/95 backdrop-blur-sm text-slate-800 text-[11px] rounded-xl shadow-xl border border-orange-100 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-30 pointer-events-none text-left font-normal leading-relaxed">
+                      <p className="font-semibold text-orange-600 mb-1">Quy định mật khẩu:</p>
+                      <ul className="list-disc pl-3.5 space-y-0.5 text-slate-600">
+                        <li>Độ dài tối đa 20 ký tự</li>
+                        <li>Không chứa khoảng trắng đầu/cuối</li>
+                      </ul>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-white" />
+                    </div>
+                  </div>
+                </div>
                 <div className="relative group">
                   <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
                     errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
@@ -277,7 +297,14 @@ const LoginForm = ({
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => {
-                      setPassword(e.target.value);
+                      const rawVal = e.target.value;
+                      if (rawVal.length > 20) {
+                        setPassword(rawVal.slice(0, 20));
+                        setErrors(prev => ({ ...prev, password: 'Mật khẩu chỉ được tối đa 20 ký tự!' }));
+                      } else {
+                        setPassword(rawVal);
+                        setErrors(prev => ({ ...prev, password: '' }));
+                      }
                       if (message?.text) setMessage({ type: '', text: '' });
                     }}
                     onBlur={() => setPassword(password.trim())}
@@ -293,9 +320,13 @@ const LoginForm = ({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors group/eye"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    <span className="absolute bottom-full right-0 mb-2 whitespace-nowrap bg-white/95 backdrop-blur-sm text-slate-800 text-[10px] py-1 px-2.5 rounded-lg shadow-xl border border-orange-100 opacity-0 invisible group-hover/eye:opacity-100 group-hover/eye:visible transition-all duration-200 pointer-events-none font-semibold z-30">
+                      {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                      <span className="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-white" />
+                    </span>
                   </motion.button>
                 </div>
                 {errors.password && (
@@ -315,14 +346,18 @@ const LoginForm = ({
                 transition={{ delay: 0.3 }}
                 className="flex items-center justify-between"
               >
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none relative group/checkbox-tooltip">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400 cursor-pointer"
                   />
-                  Lưu thông tin đăng nhập
+                  <span>Lưu thông tin đăng nhập</span>
+                  <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-white/95 backdrop-blur-sm text-slate-700 text-[10px] rounded-lg shadow-xl border border-orange-100 opacity-0 invisible group-hover/checkbox-tooltip:opacity-100 group-hover/checkbox-tooltip:visible transition-all duration-200 z-30 pointer-events-none font-normal leading-normal">
+                    Lưu tên đăng nhập và mật khẩu trên thiết bị này để tự động điền vào lần sau.
+                    <div className="absolute top-full left-6 -mt-1 border-4 border-transparent border-t-white" />
+                  </div>
                 </label>
                 <motion.button
                   type="button"
@@ -387,6 +422,7 @@ const LoginForm = ({
                     value={forgotEmail}
                     onChange={(e) => {
                       setForgotEmail(e.target.value);
+                      setForgotEmailError('');
                       if (message?.text) setMessage({ type: '', text: '' });
                     }}
                     onBlur={() => setForgotEmail(forgotEmail.trim())}
