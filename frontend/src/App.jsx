@@ -203,6 +203,11 @@ function App() {
     setToken(null);
     setLoggedInUser(null);
 
+    // Clear URL hash to avoid back button issues with leftover hashes
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+
     const remembered = localStorage.getItem('rememberedUsername') || '';
     const rememberedPwd = localStorage.getItem('rememberedPassword') || '';
     let decodedPwd = '';

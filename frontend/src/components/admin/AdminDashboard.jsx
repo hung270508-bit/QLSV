@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Building2, GraduationCap, BookOpen, Users, UserCheck,
   LogOut, ChevronRight, Calendar, FileText, Bell, ClipboardCheck,
@@ -52,65 +52,18 @@ const pageComponents = {
 };
 
 function AdminDashboard({ user, onLogout }) {
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [activeMenu, setActiveMenu] = useState(() => {
+    return localStorage.getItem('adminActiveMenu') || 'dashboard';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // =========================================================================
-  // BỘ CORE ĐIỀU HƯỚNG TỐI ƯU HÓA (CHỐNG LỖI VÒNG LẶP NÚT BACK)
-  // =========================================================================
-useEffect(() => {
-  // Strip both '#' and leading '/' to get the clean menu ID (e.g., '#/sinhvien' -> 'sinhvien')
-  const currentHash = window.location.hash.replace('#', '').replace(/^\//, '');
-
-  if (!currentHash || currentHash === 'login') {
-    // Mới login: đặt #login làm "neo" để Back về đây → trigger logout
-    // Stack: [#login, #dashboard]
-    window.history.replaceState(null, '', '#login');
-    window.history.pushState(null, '', '#dashboard');
-    setActiveMenu('dashboard');
-  } else if (currentHash !== 'dashboard') {
-    // F5 ở chức năng khác: tái tạo stack [#login → #dashboard → #chucnang]
-    window.history.replaceState(null, '', '#login');
-    window.history.pushState(null, '', '#dashboard');
-    window.history.pushState(null, '', '#' + currentHash);
-    setActiveMenu(currentHash);
-  } else {
-    // Đang ở #dashboard
-    setActiveMenu('dashboard');
-  }
-
-  const handlePopState = () => {
-    const hash = window.location.hash.replace('#', '').replace(/^\//, '');
-    if (!hash || hash === 'login') {
-      // Back về #login hoặc mất hash → Đăng xuất
-      onLogout();
-    } else {
-      setActiveMenu(hash);
-    }
-  };
-
-  window.addEventListener('popstate', handlePopState);
-  return () => window.removeEventListener('popstate', handlePopState);
-}, [onLogout]);
+  useEffect(() => {
+    localStorage.setItem('adminActiveMenu', activeMenu);
+  }, [activeMenu]);
 
   const handleNavigate = (id) => {
-    if (id === activeMenu) return;
-
-    if (id === 'dashboard') {
-      // Đang ở ô Chức năng bấm về "Tổng quan" -> Ấn lệnh LÙI LỊCH SỬ để rác không bị dồn
-      window.history.back();
-    } else {
-      if (activeMenu === 'dashboard') {
-        // Từ Tổng quan bấm vào Chức năng -> PUSH (Thêm 1 mốc lịch sử)
-        window.history.pushState(null, '', '#' + id);
-      } else {
-        // Từ Chức năng này bấm sang Chức năng khác -> REPLACE (Ghi đè, không làm dài lịch sử)
-        window.history.replaceState(null, '', '#' + id);
-      }
-      setActiveMenu(id);
-    }
+    setActiveMenu(id);
   };
-  // =========================================================================
 
   const ActiveComponent = pageComponents[activeMenu] || DashboardOverview;
 
