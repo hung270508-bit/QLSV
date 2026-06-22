@@ -24,12 +24,7 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
-// BIẾN TRẠNG THÁI RFID TOÀN CỤC (CẤU HÌNH DÙNG CHO CƠ CHẾ POLLING)
-global.currentRfidState = {
-    mode: "ATTENDANCE",   // Gồm các trạng thái: "ATTENDANCE", "REGISTER", hoặc "REGISTER_DONE"
-    targetMSSV: null,
-    capturedUid: null     // Lưu UID tạm thời khi quẹt ở chế độ đăng ký để Frontend lên kéo về
-};
+// Đã xóa global.currentRfidState, chuyển sang dùng bảng rfid_state trong MySQL
 
 // Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
 app.use(express.json());
@@ -76,6 +71,22 @@ db.getConnection((err, connection) => {
         return;
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
+    
+    // Tự động tạo bảng lưu trạng thái RFID nếu chưa có
+    const createRfidTable = `
+        CREATE TABLE IF NOT EXISTS rfid_state (
+            id INT PRIMARY KEY DEFAULT 1,
+            mode VARCHAR(50) DEFAULT 'ATTENDANCE',
+            targetMSSV VARCHAR(20) DEFAULT NULL,
+            capturedUid VARCHAR(50) DEFAULT NULL
+        )
+    `;
+    connection.query(createRfidTable, (errTbl) => {
+        if (!errTbl) {
+            connection.query('INSERT IGNORE INTO rfid_state (id, mode) VALUES (1, "ATTENDANCE")');
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
@@ -1546,58 +1557,67 @@ app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
 
 // CỤM API QUẢN LÝ RFID THEO CƠ CHẾ POLLING (ĐÃ ĐỒNG BỘ BẢNG the_sv)
 // API kiểm tra trạng thái hệ thống (Cả ESP32 và Web Admin gọi check định kỳ)
-app.get('/api/rfid/status', (req, res) => {
-    return res.json(global.currentRfidState);
+app.get('/api/rfid/status', async (req, res) => {
+    try {
+        const [rows] = await db.promise().query('SELECT mode, targetMSSV, capturedUid FROM rfid_state WHERE id = 1');
+        return res.json(rows[0] || { mode: "ATTENDANCE", targetMSSV: null, capturedUid: null });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Lỗi DB' });
+    }
 });
 
 // API kích hoạt chế độ đăng ký thẻ từ Web Admin
-app.post('/api/rfid/activate-register', (req, res) => {
+app.post('/api/rfid/activate-register', async (req, res) => {
     const { mssv } = req.body || {};
     if (!mssv) return res.status(400).json({ success: false, message: "Thiếu MSSV" });
 
-    global.currentRfidState.mode = "REGISTER";
-    global.currentRfidState.targetMSSV = mssv;
-    global.currentRfidState.capturedUid = null;
-
-    console.log(`[Hệ thống] Bật chế độ đăng ký thẻ cho SV: ${mssv}`);
-    return res.json({ success: true, message: "Đã chuyển sang chế độ đăng ký" });
+    try {
+        await db.promise().query('UPDATE rfid_state SET mode = ?, targetMSSV = ?, capturedUid = ? WHERE id = 1', ["REGISTER", mssv, null]);
+        console.log(`[Hệ thống] Bật chế độ đăng ký thẻ cho SV: ${mssv}`);
+        return res.json({ success: true, message: "Đã chuyển sang chế độ đăng ký" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Lỗi DB' });
+    }
 });
 
 // API reset trạng thái về điểm danh (Frontend gọi sau khi đã lấy xong UID)
-app.post('/api/rfid/reset-status', (req, res) => {
-
-    global.currentRfidState.mode = "ATTENDANCE";
-    global.currentRfidState.targetMSSV = null;
-    global.currentRfidState.capturedUid = null;
-
-    console.log("[Hệ thống] Đã hủy chế độ đăng ký, trở về chế độ điểm danh mặc định.");
-    return res.json({ success: true });
+app.post('/api/rfid/reset-status', async (req, res) => {
+    try {
+        await db.promise().query('UPDATE rfid_state SET mode = ?, targetMSSV = ?, capturedUid = ? WHERE id = 1', ["ATTENDANCE", null, null]);
+        console.log("[Hệ thống] Đã hủy chế độ đăng ký, trở về chế độ điểm danh mặc định.");
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Lỗi DB' });
+    }
 });
 
 // API nhận dữ liệu từ ESP32 bắn lên
-app.post('/api/attendance/uid', (req, res) => {
+app.post('/api/attendance/uid', async (req, res) => {
     const { uid, MaLopHocPhan, TrangThai, NgayDiemDanh } = req.body;
     if (!uid) return res.status(400).json({ success: false, message: 'Thiếu UID' });
 
-    // TRƯỜNG HỢP A: ĐANG Ở CHẾ ĐỘ ĐĂNG KÝ THÊ MỚI -> LƯU VÀO BẢNG the_sv
-    if (global.currentRfidState.mode === "REGISTER") {
-        const mssvDangKy = global.currentRfidState.targetMSSV;
+    try {
+        const [stateRows] = await db.promise().query('SELECT mode, targetMSSV FROM rfid_state WHERE id = 1');
+        const rfidState = stateRows[0] || { mode: "ATTENDANCE" };
 
-        db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)',
-            [uid, mssvDangKy], (errReg) => {
-                if (errReg) return res.status(500).json({ success: false, message: 'Lỗi ghi DB', error: errReg.message });
+        // TRƯỜNG HỢP A: ĐANG Ở CHẾ ĐỘ ĐĂNG KÝ THÊ MỚI -> LƯU VÀO BẢNG the_sv
+        if (rfidState.mode === "REGISTER") {
+            const mssvDangKy = rfidState.targetMSSV;
 
-                console.log(`[Thành công] Thẻ ${uid} đã gán cho SV ${mssvDangKy}`);
+            db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)',
+                [uid, mssvDangKy], async (errReg) => {
+                    if (errReg) return res.status(500).json({ success: false, message: 'Lỗi ghi DB', error: errReg.message });
 
-                global.currentRfidState.mode = "REGISTER_DONE";
-                global.currentRfidState.capturedUid = uid;
+                    console.log(`[Thành công] Thẻ ${uid} đã gán cho SV ${mssvDangKy}`);
 
-                return res.json({ success: true, action: "REGISTER_OK" });
-            });
-    }
+                    await db.promise().query('UPDATE rfid_state SET mode = ?, capturedUid = ? WHERE id = 1', ["REGISTER_DONE", uid]);
 
-    // TRƯỜNG HỢP B: CHẾ ĐỘ ĐIỂM DANH MẶC ĐỊNH -> QUÉT TRONG BẢNG the_sv
-    else {
+                    return res.json({ success: true, action: "REGISTER_OK" });
+                });
+        }
+
+        // TRƯỜNG HỢP B: CHẾ ĐỘ ĐIỂM DANH MẶC ĐỊNH -> QUÉT TRONG BẢNG the_sv
+        else {
         if (!MaLopHocPhan) return res.status(400).json({ success: false, message: 'Thiếu MaLopHocPhan' });
 
         db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
@@ -1628,11 +1648,14 @@ app.post('/api/attendance/uid', (req, res) => {
             });
         });
     }
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Lỗi DB' });
+    }
 });
 
 // Management endpoints for rfid_tags
 app.get('/api/rfid/:uid', (req, res) => {
-    db.query('SELECT * FROM rfid_tags WHERE uid = ? LIMIT 1', [req.params.uid], (err, results) => {
+    db.query('SELECT * FROM the_sv WHERE uid = ? LIMIT 1', [req.params.uid], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
         if (!results || results.length === 0) return res.status(404).json({ success: false });
         res.json({ success: true, mapping: results[0] });
@@ -1642,7 +1665,7 @@ app.get('/api/rfid/:uid', (req, res) => {
 app.post('/api/rfid', (req, res) => {
     const { uid, MSSV } = req.body;
     if (!uid || !MSSV) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MSSV' });
-    db.query('INSERT INTO rfid_tags (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', [uid, MSSV], (err) => {
+    db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', [uid, MSSV], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
         res.json({ success: true, message: 'Đã lưu mapping' });
     });
@@ -1657,9 +1680,9 @@ app.get('/api/attendance/percentage/:mssv', (req, res) => {
 });
 
 // ==================== TÀI LIỆU, NỘP BÀI, THÔNG BÁO ====================
-app.get('/api/materials', (req, res) => executeQuery(`SELECT tl.*, pc.MaGiangVien, pc.MaMonHoc, pc.HocKy, gv.HoTen as TenGiangVien, mh.TenMonHoc FROM tailieu_baitap tl LEFT JOIN phanconggiangday pc ON tl.MaPhanCong = pc.MaPhanCong LEFT JOIN giangvien gv ON pc.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON pc.MaMonHoc = mh.MaMonHoc`, [], res, 'Lỗi!'));
-app.post('/api/materials', (req, res) => executeInsert('INSERT INTO tailieu_baitap (MaPhanCong, TieuDe, Loai, FileUrl, HanNop) VALUES (?, ?, ?, ?, ?)', [req.body.MaPhanCong || req.body.MaLopHocPhan, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop], res, 'Thêm thành công', 'Lỗi'));
-app.put('/api/materials/:id', (req, res) => executeUpdate('UPDATE tailieu_baitap SET MaPhanCong=?, TieuDe=?, Loai=?, FileUrl=?, HanNop=? WHERE MaTaiLieu=?', [req.body.MaPhanCong || req.body.MaLopHocPhan, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop, req.params.id], res, 'Cập nhật thành công', 'Lỗi'));
+app.get('/api/materials', (req, res) => executeQuery(`SELECT tl.*, lhp.MaGiangVien, lhp.MaMonHoc, lhp.HocKy, gv.HoTen as TenGiangVien, mh.TenMonHoc FROM tailieu_baitap tl LEFT JOIN lophocphan lhp ON tl.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc`, [], res, 'Lỗi!'));
+app.post('/api/materials', (req, res) => executeInsert('INSERT INTO tailieu_baitap (MaLopHocPhan, TieuDe, Loai, FileUrl, HanNop) VALUES (?, ?, ?, ?, ?)', [req.body.MaLopHocPhan || req.body.MaPhanCong, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop], res, 'Thêm thành công', 'Lỗi'));
+app.put('/api/materials/:id', (req, res) => executeUpdate('UPDATE tailieu_baitap SET MaLopHocPhan=?, TieuDe=?, Loai=?, FileUrl=?, HanNop=? WHERE MaTaiLieu=?', [req.body.MaLopHocPhan || req.body.MaPhanCong, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop, req.params.id], res, 'Cập nhật thành công', 'Lỗi'));
 app.delete('/api/materials/:id', (req, res) => executeDelete('DELETE FROM tailieu_baitap WHERE MaTaiLieu=?', [req.params.id], res, 'Xóa thành công', 'Lỗi'));
 
 app.get('/api/submissions', (req, res) => executeQuery(`SELECT nb.*, s.HoTen as TenSinhVien, tl.TieuDe, tl.Loai FROM nopbai nb LEFT JOIN sinhvien s ON nb.MSSV = s.MSSV LEFT JOIN tailieu_baitap tl ON nb.MaTaiLieu = tl.MaTaiLieu`, [], res, 'Lỗi!'));
