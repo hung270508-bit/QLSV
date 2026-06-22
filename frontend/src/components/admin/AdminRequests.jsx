@@ -80,6 +80,8 @@ function AdminRequests() {
       errors.replyText = 'Nội dung phản hồi phải có ít nhất 10 ký tự';
     } else if (replyText.trim().length > 1000) {
       errors.replyText = 'Nội dung phản hồi tối đa 1000 ký tự';
+    } else if (replyText.trim() && /[^a-zA-ZÀ-ỹà-ỹ\s]/.test(replyText.trim())) {
+      errors.replyText = 'Nội dung phản hồi không được chứa ký tự đặc biệt hoặc số';
     }
     setReplyErrors(errors);
     return Object.keys(errors).length === 0;
@@ -488,7 +490,7 @@ function AdminRequests() {
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   onClick={handleUpdate}
-                  className="px-6 py-2 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2 text-sm transition-colors"
+                  className="px-6 py-2 font-bold text-white bg-orange-500 rounded-xl hover:bg-orange-600 shadow-md shadow-orange-200 flex items-center gap-2 text-sm transition-colors"
                 >
                   <Send className="w-4 h-4" /> Gửi phản hồi
                 </motion.button>
