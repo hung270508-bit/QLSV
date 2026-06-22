@@ -291,7 +291,7 @@ function StudentSupport({ user, profile }) {
                                 onClick={() => setViewResponse(req)}
                                 className="px-3 py-1.5 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
                               >
-                                Xem phản hồi
+                                Xem
                               </motion.button>
                             ) : (
                               <span className="text-gray-400 text-xs">-</span>
