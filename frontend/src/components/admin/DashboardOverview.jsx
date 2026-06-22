@@ -235,7 +235,7 @@ function DashboardOverview({ onNavigate }) {
 
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%" debounce={200}>
-              <BarChart data={top5ChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="30%">
+              <BarChart data={top5ChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="30%" maxBarSize={50}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                 <XAxis
                   dataKey="name"
