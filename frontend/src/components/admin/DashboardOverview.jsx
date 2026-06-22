@@ -158,6 +158,7 @@ function DashboardOverview({ onNavigate }) {
   const top5ChartData = useMemo(() =>
     facultyStats
       .map(f => ({ name: f.TenKhoa, sinhVien: f.studentCount || 0, giangVien: f.teacherCount || 0, lopHoc: f.classCount || 0 }))
+      .filter(f => f.sinhVien > 0 || f.giangVien > 0 || f.lopHoc > 0)
       .sort((a, b) => b.sinhVien - a.sinhVien)
       .slice(0, 5),
     [facultyStats]);
