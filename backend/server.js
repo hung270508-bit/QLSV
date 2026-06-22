@@ -24,6 +24,26 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
+// TÍCH HỢP SOCKET.IO VÀ BIẾN TRẠNG THÁI RFID TOÀN CỤC 
+const http = require('http').createServer(app);
+
+// Chỉ khởi tạo Socket.io nếu KHÔNG chạy trên Vercel Serverless (vì Vercel không hỗ trợ WebSocket lâu dài và gây cạn kiệt DB Connection)
+let io;
+if (!isVercel) {
+    io = require('socket.io')(http, {
+        cors: {
+            origin: ["http://localhost:5173", "http://localhost:5174", "https://hung270508-bit.github.io"],
+            methods: ["GET", "POST"],
+            credentials: true
+        }
+    });
+
+    io.on('connection', (socket) => {
+        console.log('Có trình duyệt kết nối Real-time:', socket.id);
+        socket.on('disconnect', () => console.log('Trình duyệt ngắt kết nối:', socket.id));
+    });
+}
+
 // BIẾN TRẠNG THÁI RFID TOÀN CỤC 
 const http = require('http').createServer(app);
 
@@ -34,6 +54,8 @@ global.currentRfidState = {
     capturedUid: null     // Lưu UID tạm thời khi quẹt ở chế độ đăng ký để Frontend lên kéo về
 };
 
+// Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
+app.use(express.json());
 // Middleware CORS cho Express API
 app.use(cors({
     origin: [
@@ -869,6 +891,13 @@ app.delete('/api/students/:mssv', (req, res) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi xóa bảng users' });
             res.json({ success: true, message: 'Xóa thành công!' });
         });
+    });
+});
+
+app.put('/api/students/:mssv/clear-uid', (req, res) => {
+    db.query('DELETE FROM the_sv WHERE MSSV = ?', [req.params.mssv], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi khi xóa mã thẻ!', error: err.message });
+        res.json({ success: true, message: 'Xóa mã thẻ thành công!' });
     });
 });
 
@@ -1745,7 +1774,11 @@ app.put('/api/admin/training-points/bulk-approve', (req, res) => {
         WHERE MaDanhGia IN (?)
     `;
     db.query(query, [ids], (err) => {
+<<<<<<< HEAD
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message });
+=======
         if (err) { console.error("BULK APPROVE DB ERROR:", err); return res.status(500).json({ success: false, message: 'Lỗi duyệt hàng loạt!', error: err.message }); }
+>>>>>>> da85e5171cb4ea523f587818c6a42a956a43a6dd
 
         const nguoiDuyet = NguoiDuyet || 'admin';
         const logValues = ids.map(id => [id, nguoiDuyet, 'Phê duyệt hàng loạt (Chốt sổ)']);
