@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -47,6 +47,12 @@ function Toast({ toasts, onRemove }) {
 // ConfirmDialog — xác nhận 2 bước
 // ================================================================
 function ConfirmDialog({ open, title, message, confirmLabel = 'Xác nhận', confirmClass = 'bg-red-500 hover:bg-red-600', onConfirm, onCancel }) {
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === 'Enter') { e.preventDefault(); onConfirm && onConfirm(); } };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onConfirm]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -81,18 +87,43 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Xác nhận', con
 }
 
 // ================================================================
-// ScoreInput — validate 0-10 realtime, KHÔNG dùng min/max của browser
+// ScoreInput — giữ nguyên giá trị đang gõ, chỉ báo lỗi, không clear
 // ================================================================
 function ScoreInput({ value, onChange, placeholder = 'Để trống nếu chưa có', error }) {
+  // localVal = chuỗi người dùng đang gõ (có thể chứa giá trị tạm thời chưa hợp lệ)
+  const [localVal, setLocalVal] = useState(value ?? '');
   const [localError, setLocalError] = useState('');
+
+  // Đồng bộ khi parent reset value về '' (ví dụ khi đóng modal)
+  React.useEffect(() => {
+    if ((value === '' || value == null) && localVal !== '') {
+      setLocalVal('');
+      setLocalError('');
+    }
+  }, [value]); // eslint-disable-line
 
   const handleChange = (e) => {
     const raw = e.target.value;
-    if (raw === '') { setLocalError(''); onChange(''); return; }
+    setLocalVal(raw);
+    if (raw === '') {
+      setLocalError('');
+      onChange('');
+      return;
+    }
     const num = parseFloat(raw);
-    if (isNaN(num)) { setLocalError('Giá trị không hợp lệ'); return; }
-    if (num < 0) { setLocalError('Điểm không được âm — vui lòng nhập lại'); onChange(''); return; }
-    if (num > 10) { setLocalError('Điểm không được vượt quá 10 — vui lòng nhập lại'); onChange(''); return; }
+    if (isNaN(num)) {
+      setLocalError('Giá trị không hợp lệ');
+      // Không gọi onChange — không đẩy giá trị lỗi lên parent
+      return;
+    }
+    if (num < 0) {
+      setLocalError('Điểm không được âm');
+      return;
+    }
+    if (num > 10) {
+      setLocalError('Điểm không được vượt quá 10');
+      return;
+    }
     setLocalError('');
     onChange(raw);
   };
@@ -103,17 +134,14 @@ function ScoreInput({ value, onChange, placeholder = 'Để trống nếu chưa 
       <input
         type="number" step="0.1"
         placeholder={placeholder}
-        value={value}
+        value={localVal}
         onChange={handleChange}
         onWheel={e => e.target.blur()}
         className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
-          ${displayError ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
+          ${displayError ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
       />
       {displayError && (
-        <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded-lg border border-red-100">
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-          <span className="underline decoration-red-400 decoration-dotted">{displayError}</span>
-        </p>
+        <p className="text-red-500 text-xs mt-1">{displayError}</p>
       )}
     </div>
   );
@@ -204,10 +232,7 @@ function GradeManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Stats — khai báo riêng, không lẫn với confirm
-  const [gradeStats, setGradeStats] = useState(
-    { a: 0, bPlus: 0, b: 0, cPlus: 0, c: 0, dPlus: 0, d: 0, fPlus: 0, f: 0 }
-  );
+  // Stats — được tính bằng useMemo bên dưới (không dùng useState)
 
   const SCORE_FIELDS = ['DiemChuyenCan', 'DiemBaiTap', 'DiemGiuaKy', 'DiemCuoiKy'];
 
@@ -250,9 +275,44 @@ function GradeManagement() {
     return !isNaN(n) && n >= 0 && n <= 10;
   };
 
+  // Tính trọng số động theo thành phần điểm có mặt
+  // Quy tắc: CK luôn = 50%, phần quá trình = 50%
+  // CC < BT và CC < GK; tỷ lệ mặc định: CC=10%, BT=20%, GK=20% (tổng QT=50%)
+  // Nếu thiếu BT: CC=15%, GK=35% (CC < GK, tổng QT=50%)
+  // Nếu thiếu GK: CC=15%, BT=35% (CC < BT, tổng QT=50%)
+  // Nếu chỉ còn CC: CC=50% (tổng QT=50%)
+  const getDynamicWeights = (cc, bt, gk) => {
+    const hasCC = cc !== '' && cc != null;
+    const hasBT = bt !== '' && bt != null;
+    const hasGK = gk !== '' && gk != null;
+
+    if (hasCC && hasBT && hasGK) return { wCC: 0.10, wBT: 0.20, wGK: 0.20 };
+    if (hasCC && hasBT && !hasGK) return { wCC: 0.15, wBT: 0.35, wGK: 0 };
+    if (hasCC && !hasBT && hasGK) return { wCC: 0.15, wBT: 0, wGK: 0.35 };
+    if (!hasCC && hasBT && hasGK) return { wCC: 0, wBT: 0.25, wGK: 0.25 };
+    if (hasCC && !hasBT && !hasGK) return { wCC: 0.50, wBT: 0, wGK: 0 };
+    if (!hasCC && hasBT && !hasGK) return { wCC: 0, wBT: 0.50, wGK: 0 };
+    if (!hasCC && !hasBT && hasGK) return { wCC: 0, wBT: 0, wGK: 0.50 };
+    return { wCC: 0, wBT: 0, wGK: 0 };
+  };
+
+  const getWeightLabels = (cc, bt, gk) => {
+    const { wCC, wBT, wGK } = getDynamicWeights(cc, bt, gk);
+    return {
+      cc: wCC > 0 ? `${Math.round(wCC * 100)}%` : '—',
+      bt: wBT > 0 ? `${Math.round(wBT * 100)}%` : '—',
+      gk: wGK > 0 ? `${Math.round(wGK * 100)}%` : '—',
+      ck: '50%',
+    };
+  };
+
   const calculateTotal10 = (cc, bt, gk, ck) => {
-    const d = [cc, bt, gk, ck].map(v => parseFloat(v) || 0);
-    return ((d[0] * 0.1) + (d[1] * 0.15) + (d[2] * 0.25) + (d[3] * 0.5)).toFixed(2);
+    const { wCC, wBT, wGK } = getDynamicWeights(cc, bt, gk);
+    const vCC = parseFloat(cc) || 0;
+    const vBT = parseFloat(bt) || 0;
+    const vGK = parseFloat(gk) || 0;
+    const vCK = parseFloat(ck) || 0;
+    return ((vCC * wCC) + (vBT * wBT) + (vGK * wGK) + (vCK * 0.5)).toFixed(2);
   };
 
   const convertToGPA = (total10) => {
@@ -312,6 +372,7 @@ function GradeManagement() {
   const buildPayload = (data) => {
     const { DiemChuyenCan: cc, DiemBaiTap: bt, DiemGiuaKy: gk, DiemCuoiKy: ck } = data;
     const scored = hasAnyScore(cc, bt, gk, ck);
+    const { wCC, wBT, wGK } = getDynamicWeights(cc, bt, gk);
     const base = {
       MSSV: data.MSSV,
       MaLopHocPhan: data.MaLopHocPhan,
@@ -320,6 +381,9 @@ function GradeManagement() {
       DiemBaiTap: (bt !== '' && bt != null) ? bt : null,
       DiemGiuaKy: (gk !== '' && gk != null) ? gk : null,
       DiemCuoiKy: (ck !== '' && ck != null) ? ck : null,
+      TrongSoCC: wCC > 0 ? wCC : null,
+      TrongSoBT: wBT > 0 ? wBT : null,
+      TrongSoGK: wGK > 0 ? wGK : null,
     };
     if (scored) {
       const t10 = calculateTotal10(cc, bt, gk, ck);
@@ -338,9 +402,15 @@ function GradeManagement() {
     if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
 
     if (formData.MSSV && formData.MaLopHocPhan && !editingGrade) {
-      // Kiểm tra đã có điểm chưa
-      const dup = grades.some(g => g.MSSV === formData.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
-      if (dup) {
+      // Kiểm tra đã có điểm thực sự (không phải chỉ có bản ghi trống —)
+      const existingRecord = grades.find(g => g.MSSV === formData.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
+      const hasRealScore = existingRecord && (
+        (existingRecord.DiemChuyenCan !== null && existingRecord.DiemChuyenCan !== undefined && existingRecord.DiemChuyenCan !== '') ||
+        (existingRecord.DiemBaiTap !== null && existingRecord.DiemBaiTap !== undefined && existingRecord.DiemBaiTap !== '') ||
+        (existingRecord.DiemGiuaKy !== null && existingRecord.DiemGiuaKy !== undefined && existingRecord.DiemGiuaKy !== '') ||
+        (existingRecord.DiemCuoiKy !== null && existingRecord.DiemCuoiKy !== undefined && existingRecord.DiemCuoiKy !== '')
+      );
+      if (hasRealScore) {
         errors.MaLopHocPhan = 'Sinh viên này đã có điểm môn học phần này rồi';
       } else if (enrollments.length > 0) {
         // Kiểm tra đăng ký
@@ -386,8 +456,18 @@ function GradeManagement() {
             await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
             addToast('Cập nhật điểm thành công!', 'success');
           } else {
-            await axios.post(`${API_URL}/api/grades`, payload);
-            addToast('Thêm điểm thành công!', 'success');
+            // Kiểm tra xem SV đã có bản ghi trong DB chưa (dù trống —)
+            // Nếu có → PUT để cập nhật, không POST tạo trùng
+            const existingRecord = grades.find(
+              g => g.MSSV === formData.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan
+            );
+            if (existingRecord?.MaDiem) {
+              await axios.put(`${API_URL}/api/grades/${existingRecord.MaDiem}`, payload);
+              addToast('Cập nhật điểm thành công!', 'success');
+            } else {
+              await axios.post(`${API_URL}/api/grades`, payload);
+              addToast('Thêm điểm thành công!', 'success');
+            }
           }
           fetchData();
           handleCloseModal();
@@ -444,7 +524,11 @@ function GradeManagement() {
   // Chọn LHP → auto-fill HocKy, reset SV
   const handleSectionChange = (maLopHocPhan) => {
     const sec = courseSections.find(cs => cs.MaLopHocPhan === maLopHocPhan);
-    const hocKy = sec ? `HK${sec.HocKy || ''} ${sec.NamBatDau || ''}`.trim() : '';
+    // Tránh prefix "HK" kép nếu HocKy đã chứa sẵn (vd: "HK1_2026_2027")
+    const rawHK = sec?.HocKy || '';
+    const hocKy = sec
+      ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim())
+      : '';
     setFormData(prev => ({ ...prev, MaLopHocPhan: maLopHocPhan, HocKy: hocKy, MSSV: '' }));
     if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
   };
@@ -504,7 +588,11 @@ function GradeManagement() {
       onConfirm: async () => {
         closeConfirm();
         const sec = courseSections.find(cs => cs.MaLopHocPhan === bulkSection);
-        const hocKy = sec ? `HK${sec.HocKy || ''} ${sec.NamBatDau || ''}`.trim() : '';
+        // Tránh prefix "HK" kép nếu HocKy đã chứa sẵn (vd: "HK1_2026_2027")
+    const rawHK = sec?.HocKy || '';
+    const hocKy = sec
+      ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim())
+      : '';
         try {
           await Promise.all(bulkGrades.map(g => {
             const payload = buildPayload({ ...g, HocKy: hocKy });
@@ -560,9 +648,9 @@ function GradeManagement() {
   };
 
   // ================================================================
-  // Stats — chỉ đếm bản ghi đã có điểm
+  // Stats — tính trực tiếp bằng useMemo, không dùng useEffect tránh vòng lặp
   // ================================================================
-  useEffect(() => {
+  const gradeStats = useMemo(() => {
     const stats = { a: 0, bPlus: 0, b: 0, cPlus: 0, c: 0, dPlus: 0, d: 0, fPlus: 0, f: 0 };
     filteredGrades.forEach(g => {
       if (!hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy)) return;
@@ -577,8 +665,9 @@ function GradeManagement() {
       else if (t >= 3.0) stats.fPlus++;
       else stats.f++;
     });
-    setGradeStats(stats);
-  }, [filteredGrades]);
+    return stats;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grades, searchTerm, filters]);
 
   // ================================================================
   // Export CSV
@@ -591,7 +680,7 @@ function GradeManagement() {
 
   const handleExport = () => {
     const rows = [
-      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC(10%)', 'BT(15%)', 'GK(25%)', 'CK(50%)', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
+      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC(10%)', 'BT(20%)', 'GK(20%)', 'CK(50%)', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
       ...filteredGrades.map(g => {
         const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
         if (!scored) return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '', '-', '-', '-', '-', 'Chưa có điểm', '', '', ''];
@@ -787,8 +876,8 @@ function GradeManagement() {
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Môn học</th>
                 <th className="text-left py-4 px-3 text-sm font-semibold text-gray-500">Học kỳ</th>
                 <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CC<br /><span className="text-xs font-normal text-gray-400">(10%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(15%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(25%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
+                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
                 <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CK<br /><span className="text-xs font-normal text-gray-400">(50%)</span></th>
                 <th className="text-center py-4 px-3 text-sm font-bold text-gray-800">TB</th>
                 <th className="text-center py-4 px-3 text-sm font-bold text-orange-600">GPA</th>
@@ -944,22 +1033,29 @@ function GradeManagement() {
                     )}
                   </label>
                   <select value={formData.MSSV}
-                    disabled={!formData.MaLopHocPhan}
+                    disabled={!formData.MaLopHocPhan || !!editingGrade}
                     onChange={e => {
+                      if (editingGrade) return;
                       setFormData(prev => ({ ...prev, MSSV: e.target.value }));
                       if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' }));
                     }}
                     className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
-                      ${!formData.MaLopHocPhan ? 'opacity-50 cursor-not-allowed' : ''}
+                      ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed' : ''}
                       ${formErrors.MSSV ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
                     required
                   >
                     <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên trong lớp' : 'Chọn lớp học phần trước'}</option>
                     {getEnrolledStudents(formData.MaLopHocPhan).map(s => {
-                      const alreadyGraded = !editingGrade && grades.some(g => g.MSSV === s.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
+                      const gradeRecord = !editingGrade && grades.find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
+                      const hasRealScore = gradeRecord && (
+                        (gradeRecord.DiemChuyenCan !== null && gradeRecord.DiemChuyenCan !== undefined && gradeRecord.DiemChuyenCan !== '') ||
+                        (gradeRecord.DiemBaiTap !== null && gradeRecord.DiemBaiTap !== undefined && gradeRecord.DiemBaiTap !== '') ||
+                        (gradeRecord.DiemGiuaKy !== null && gradeRecord.DiemGiuaKy !== undefined && gradeRecord.DiemGiuaKy !== '') ||
+                        (gradeRecord.DiemCuoiKy !== null && gradeRecord.DiemCuoiKy !== undefined && gradeRecord.DiemCuoiKy !== '')
+                      );
                       return (
-                        <option key={s.MSSV} value={s.MSSV} disabled={alreadyGraded}>
-                          {s.MSSV} — {s.HoTen}{alreadyGraded ? ' ✓ đã có điểm' : ''}
+                        <option key={s.MSSV} value={s.MSSV} disabled={!!hasRealScore}>
+                          {s.MSSV} — {s.HoTen}{hasRealScore ? ' ✓ đã có điểm' : ''}
                         </option>
                       );
                     })}
@@ -973,28 +1069,47 @@ function GradeManagement() {
                 </div>
 
                 {/* 4. Điểm thành phần */}
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { field: 'DiemChuyenCan', label: 'Chuyên cần', pct: '10%' },
-                    { field: 'DiemBaiTap', label: 'Bài tập', pct: '15%' },
-                    { field: 'DiemGiuaKy', label: 'Giữa kỳ', pct: '25%' },
-                    { field: 'DiemCuoiKy', label: 'Cuối kỳ', pct: '50%' },
-                  ].map(({ field, label, pct }) => (
-                    <div key={field}>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        {label} <span className="text-gray-400 font-normal">({pct})</span>
-                      </label>
-                      <ScoreInput
-                        value={formData[field]}
-                        onChange={val => {
-                          setFormData(prev => ({ ...prev, [field]: val }));
-                          if (formErrors[field]) setFormErrors(p => ({ ...p, [field]: '' }));
-                        }}
-                        error={formErrors[field]}
-                      />
+                {(() => {
+                  const wLabels = getWeightLabels(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy);
+                  return (
+                    <div className="space-y-3">
+                      {/* Thông báo trọng số đang áp dụng */}
+                      <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
+                        <span className="font-semibold">Trọng số tự động:</span>
+                        <span>CC {wLabels.cc}</span>
+                        <span>·</span>
+                        <span>BT {wLabels.bt}</span>
+                        <span>·</span>
+                        <span>GK {wLabels.gk}</span>
+                        <span>·</span>
+                        <span>CK {wLabels.ck}</span>
+                        <span className="ml-auto text-orange-500 font-semibold">Quá trình 50% + CK 50%</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          { field: 'DiemChuyenCan', label: 'Chuyên cần', pct: wLabels.cc },
+                          { field: 'DiemBaiTap', label: 'Bài tập', pct: wLabels.bt },
+                          { field: 'DiemGiuaKy', label: 'Giữa kỳ', pct: wLabels.gk },
+                          { field: 'DiemCuoiKy', label: 'Cuối kỳ', pct: wLabels.ck },
+                        ].map(({ field, label, pct }) => (
+                          <div key={field}>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              {label} <span className="text-gray-400 font-normal">({pct})</span>
+                            </label>
+                            <ScoreInput
+                              value={formData[field]}
+                              onChange={val => {
+                                setFormData(prev => ({ ...prev, [field]: val }));
+                                if (formErrors[field]) setFormErrors(p => ({ ...p, [field]: '' }));
+                              }}
+                              error={formErrors[field]}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 {/* Preview */}
                 <div className={`p-4 rounded-xl border flex items-center justify-between
@@ -1106,8 +1221,8 @@ function GradeManagement() {
                           <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
                           <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CC<br /><span className="text-xs font-normal text-gray-400">(10%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(15%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(25%)</span></th>
+                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
+                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
                           <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CK<br /><span className="text-xs font-normal text-gray-400">(50%)</span></th>
                           <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">TB</th>
                           <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">Xếp loại</th>
