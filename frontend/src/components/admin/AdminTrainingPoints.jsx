@@ -134,6 +134,9 @@ function AdminTrainingPoints() {
   const [recordLogs, setRecordLogs] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  // State cho xem ảnh popup
+  const [previewImage, setPreviewImage] = useState(null);
+
 
 
   // States cho nhật ký duyệt toàn bộ
@@ -1151,7 +1154,7 @@ function AdminTrainingPoints() {
                                                 </div>
                                                 {file.type.startsWith('image/') && (
                                                   <button
-                                                    onClick={() => window.open(file.data, '_blank')}
+                                                    onClick={() => setPreviewImage(file.data)}
                                                     className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-md hover:bg-blue-700 transition-colors shrink-0"
                                                   >
                                                     Xem ảnh
@@ -1170,7 +1173,7 @@ function AdminTrainingPoints() {
                                                       src={file.data}
                                                       alt={`Minh chứng ${fileIndex + 1}`}
                                                       className="w-16 h-16 object-cover rounded-lg border border-blue-100 cursor-pointer hover:opacity-90 transition-opacity"
-                                                      onClick={() => window.open(file.data, '_blank')}
+                                                      onClick={() => setPreviewImage(file.data)}
                                                     />
                                                   ))}
                                               </div>
@@ -1284,6 +1287,34 @@ function AdminTrainingPoints() {
               <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end shrink-0">
                 <button onClick={() => { setIsAllLogsModalOpen(false); setAllLogsSearch(''); }} className="px-6 py-2.5 font-bold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Đóng</button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {previewImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute -top-12 right-0 md:-right-12 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <img
+                src={previewImage}
+                alt="Bản xem trước minh chứng"
+                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              />
             </motion.div>
           </div>
         )}

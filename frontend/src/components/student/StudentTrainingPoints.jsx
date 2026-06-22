@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+
 import { 
   Award, PlusCircle, CheckCircle2, Clock, Loader2, X, FileSignature, 
   Edit, Lock, AlertTriangle, AlertCircle, HelpCircle, Eye, MessageSquare, Send,
@@ -133,6 +134,9 @@ function StudentTrainingPoints({ user }) {
   
   // State xem phản hồi khiếu nại
   const [viewFeedback, setViewFeedback] = useState(null);
+
+  // State xem ảnh popup
+  const [previewImage, setPreviewImage] = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -665,8 +669,8 @@ function StudentTrainingPoints({ user }) {
       {/* MODAL PHIẾU ĐÁNH GIÁ (FORM) */}
       {createPortal(
         <AnimatePresence>
-          {isModalOpen && (
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
               
               {/* Header Form */}
@@ -767,14 +771,12 @@ function StudentTrainingPoints({ user }) {
                                               {file.name}
                                             </span>
                                             {file.type.startsWith('image/') && (
-                                              <a 
-                                                href={file.data} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
+                                              <button 
+                                                onClick={() => setPreviewImage(file.data)}
                                                 className="text-xs font-bold text-blue-600 hover:underline shrink-0"
                                               >
                                                 Xem ảnh
-                                              </a>
+                                              </button>
                                             )}
                                           </div>
                                         ))}
@@ -789,7 +791,7 @@ function StudentTrainingPoints({ user }) {
                                                   src={file.data} 
                                                   alt={`Minh chứng ${fileIndex + 1}`}
                                                   className="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                                  onClick={() => window.open(file.data, '_blank')}
+                                                  onClick={() => setPreviewImage(file.data)}
                                                 />
                                               ))}
                                           </div>
@@ -857,7 +859,7 @@ function StudentTrainingPoints({ user }) {
                                                 src={file.data} 
                                                 alt={`Minh chứng ${fileIndex + 1}`}
                                                 className="w-20 h-20 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                                onClick={() => window.open(file.data, '_blank')}
+                                                onClick={() => setPreviewImage(file.data)}
                                               />
                                             </div>
                                           ))}
@@ -900,15 +902,15 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>,
+        </AnimatePresence>,
         document.body
       )}
 
       {/* MODAL KHIẾU NẠI (APPEAL) */}
       {createPortal(
         <AnimatePresence>
-          {isAppealModalOpen && (
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        {isAppealModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
               <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
@@ -947,15 +949,15 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>,
+        </AnimatePresence>,
         document.body
       )}
 
       {/* DIALOG XEM PHẢN HỒI KHIẾU NẠI */}
       {createPortal(
         <AnimatePresence>
-          {viewFeedback && (
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        {viewFeedback && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
               <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
@@ -987,7 +989,38 @@ function StudentTrainingPoints({ user }) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>,
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Image Preview Modal */}
+      {createPortal(
+        <AnimatePresence>
+        {previewImage && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="absolute -top-12 right-0 md:-right-12 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <img
+                  src={previewImage}
+                  alt="Bản xem trước minh chứng"
+                  className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                />
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
 
