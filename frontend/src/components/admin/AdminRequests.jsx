@@ -4,7 +4,7 @@ import { RequestsSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search, Trash2
+  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search, Trash2, Check
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { ConfirmDialog, Toast } from '../common/ModalPortal';
@@ -40,6 +40,7 @@ function AdminRequests() {
   const [updateStatus, setUpdateStatus] = useState('');
   const [replyErrors, setReplyErrors] = useState({});
   const [deleteDialog, setDeleteDialog] = useState({ show: false, requestId: null });
+  const [selectedRequests, setSelectedRequests] = useState(new Set());
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -108,16 +109,31 @@ function AdminRequests() {
   const confirmDelete = async () => {
     if (!deleteDialog.requestId) return;
     const requestIdToDelete = deleteDialog.requestId;
+    const isBulkDelete = requestIdToDelete === 'bulk';
     setDeleteDialog({ show: false, requestId: null });
     setConfirmDialog({
       show: true,
-      message: 'Bạn có chắc chắn muốn xóa yêu cầu này không?',
+      message: isBulkDelete
+        ? `Bạn có chắc chắn muốn xóa ${selectedRequests.size} yêu cầu đã chọn không?`
+        : 'Bạn có chắc chắn muốn xóa yêu cầu này không?',
       onConfirm: async () => {
         try {
-          console.log('Deleting request:', requestIdToDelete);
-          await axios.delete(`${API_URL}/api/admin/support-requests/${requestIdToDelete}`);
-          console.log('Delete successful');
-          setToast({ show: true, message: 'Xóa yêu cầu thành công!', type: 'success' });
+          if (isBulkDelete) {
+            console.log('Bulk deleting requests:', Array.from(selectedRequests));
+            await Promise.all(
+              Array.from(selectedRequests).map(id =>
+                axios.delete(`${API_URL}/api/admin/support-requests/${id}`)
+              )
+            );
+            console.log('Bulk delete successful');
+            setToast({ show: true, message: `Đã xóa ${selectedRequests.size} yêu cầu thành công!`, type: 'success' });
+            setSelectedRequests(new Set());
+          } else {
+            console.log('Deleting request:', requestIdToDelete);
+            await axios.delete(`${API_URL}/api/admin/support-requests/${requestIdToDelete}`);
+            console.log('Delete successful');
+            setToast({ show: true, message: 'Xóa yêu cầu thành công!', type: 'success' });
+          }
           fetchRequests();
           setConfirmDialog({ show: false, message: '', onConfirm: null });
         } catch (error) {
@@ -215,6 +231,17 @@ function AdminRequests() {
           <option value="Đã phản hồi">Đã phản hồi</option>
           <option value="Từ chối">Từ chối</option>
         </select>
+        {selectedRequests.size > 0 && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            onClick={() => setDeleteDialog({ show: true, requestId: 'bulk' })}
+            className="px-4 py-2 bg-red-50 border border-red-200 text-red-600 hover:bg-red-600 hover:text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm flex items-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" /> Xóa {selectedRequests.size} mục
+          </motion.button>
+        )}
         <span className="ml-auto text-sm text-gray-400">{filtered.length} kết quả</span>
       </motion.div>
 
@@ -229,6 +256,20 @@ function AdminRequests() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-100">
+                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide w-12 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && selectedRequests.size === filtered.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRequests(new Set(filtered.map(req => req.MaYeuCau)));
+                      } else {
+                        setSelectedRequests(new Set());
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide w-14 text-center">ID</th>
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Người gửi</th>
                 <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Loại / Chủ đề</th>
@@ -245,8 +286,24 @@ function AdminRequests() {
                   variants={rowVariants}
                   initial="hidden"
                   animate="visible"
-                  className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors duration-150"
+                  className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors duration-150 ${selectedRequests.has(req.MaYeuCau) ? 'bg-blue-50/50' : ''}`}
                 >
+                  <td className="p-4 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedRequests.has(req.MaYeuCau)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedRequests);
+                        if (e.target.checked) {
+                          newSelected.add(req.MaYeuCau);
+                        } else {
+                          newSelected.delete(req.MaYeuCau);
+                        }
+                        setSelectedRequests(newSelected);
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </td>
                   <td className="p-4 text-center">
                     <span className="text-xs font-mono font-bold text-gray-400">#{req.MaYeuCau}</span>
                   </td>

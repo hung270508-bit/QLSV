@@ -129,7 +129,8 @@ function FacultyManagement() {
     let value = e.target.value.replace(/\s+/g, ' ');
     setFormData({
       ...formData,
-      TenKhoa: value
+      TenKhoa: value,
+      MaKhoa: generateMaKhoa(value)
     });
     setErrors({ TenKhoa: '' });
   };
@@ -557,6 +558,18 @@ function FacultyManagement() {
                       {errors.TenKhoa}
                     </p>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Mã khoa (Tự động tạo)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.MaKhoa}
+                    readOnly
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-500 focus:outline-none transition-colors"
+                  />
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button

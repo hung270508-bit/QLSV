@@ -950,7 +950,36 @@ app.get('/api/teachers/:maGV/teaching-load', (req, res) => executeQuery(`SELECT 
 // ==================== FACULTIES ====================
 app.get('/api/faculties', (req, res) => executeQuery('SELECT MaKhoa, TenKhoa FROM khoa ORDER BY TenKhoa', [], res, 'Loi lay khoa!'));
 app.post('/api/faculties', (req, res) => executeInsert('INSERT INTO khoa (MaKhoa, TenKhoa) VALUES (?, ?)', [req.body.MaKhoa, req.body.TenKhoa], res, 'Thêm khoa thành công!', 'Lỗi thêm!'));
-app.put('/api/faculties/:maKhoa', (req, res) => executeUpdate('UPDATE khoa SET TenKhoa=? WHERE MaKhoa=?', [req.body.TenKhoa, req.params.maKhoa], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
+app.put('/api/faculties/:maKhoa', (req, res) => {
+    const maKhoaMoi = req.body.MaKhoa;
+    const maKhoaCu = req.params.maKhoa;
+    const tenKhoa = req.body.TenKhoa;
+
+    if (maKhoaMoi && maKhoaMoi !== maKhoaCu) {
+        db.getConnection((err, connection) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi kết nối DB!' });
+            connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
+                if (err) { connection.release(); return res.status(500).json({ success: false, message: 'Lỗi DB!' }); }
+                connection.query('UPDATE khoa SET TenKhoa=?, MaKhoa=? WHERE MaKhoa=?', [tenKhoa, maKhoaMoi, maKhoaCu], (err) => {
+                    if (err) { connection.query('SET FOREIGN_KEY_CHECKS = 1;'); connection.release(); return res.status(500).json({ success: false, message: 'Lỗi cập nhật khoa!' }); }
+                    connection.query('UPDATE lophoc SET MaKhoa=? WHERE MaKhoa=?', [maKhoaMoi, maKhoaCu], () => {
+                        connection.query('UPDATE giangvien SET MaKhoa=? WHERE MaKhoa=?', [maKhoaMoi, maKhoaCu], () => {
+                            connection.query('UPDATE monhoc SET MaKhoa=? WHERE MaKhoa=?', [maKhoaMoi, maKhoaCu], () => {
+                                connection.query('SET FOREIGN_KEY_CHECKS = 1;', () => {
+                                    connection.release();
+                                    res.json({ success: true, message: 'Cập nhật thành công!' });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    } else {
+        executeUpdate('UPDATE khoa SET TenKhoa=? WHERE MaKhoa=?', [tenKhoa, maKhoaCu], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
+    }
+});
+
 app.delete('/api/faculties/:maKhoa', (req, res) => executeDelete('DELETE FROM khoa WHERE MaKhoa=?', [req.params.maKhoa], res, 'Xóa thành công!', 'Lỗi xóa!'));
 app.get('/api/faculties/:maKhoa/teachers', (req, res) => executeQuery('SELECT * FROM giangvien WHERE MaKhoa = ?', [req.params.maKhoa], res, 'Lỗi lấy danh sách GV!'));
 app.get('/api/faculties/:maKhoa/students', (req, res) => executeQuery('SELECT sv.*, l.TenLop FROM sinhvien sv LEFT JOIN lophoc l ON sv.MaLop = l.MaLop WHERE l.MaKhoa = ?', [req.params.maKhoa], res, 'Lỗi lấy danh sách SV!'));
