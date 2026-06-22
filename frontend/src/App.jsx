@@ -52,7 +52,7 @@ function App() {
     if (val) {
       navigate('/forgot-password');
     } else {
-      navigate('/');
+      navigate(-1);
     }
   };
   const [forgotEmail, setForgotEmail] = useState('');

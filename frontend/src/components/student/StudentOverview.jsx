@@ -1,6 +1,6 @@
 import { StudentOverviewSkeleton } from '../common/StudentSkeleton';
 // npm install recharts lệnh cài thư viện vẽ biểu đồ, lưu ý không xóa nó 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { motion } from 'framer-motion';
 import { 
@@ -30,15 +30,18 @@ import {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-        <p className="font-bold text-gray-800 mb-2">{label}</p>
-        <div className="space-y-1">
-          <p className="text-sm font-medium" style={{ color: payload[0].color }}>
-            Điểm TB học kỳ: {payload[0].value.toFixed(2)}
-          </p>
-          <p className="text-sm font-medium" style={{ color: payload[1].color }}>
-            Điểm TB tích lũy: {payload[1].value.toFixed(2)}
-          </p>
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-blue-100 shadow-2xl p-4 min-w-[200px]">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+        <div className="space-y-2">
+          {payload.map((p, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color || p.stroke }} />
+              <span className="text-xs text-gray-600">{p.name}</span>
+              <span className="ml-auto text-xs font-bold text-gray-800">
+                {typeof p.value === 'number' ? p.value.toFixed(2) : p.value}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     );
