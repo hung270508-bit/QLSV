@@ -69,15 +69,18 @@ function App() {
   useEffect(() => {
     if (!loggedInUser) {
       const path = location.pathname;
+      const hash = location.hash;
       const isResetPassword = path.startsWith('/reset-password/');
       const isForgotPassword = path === '/forgot-password';
       const isRoot = path === '/' || path === '';
 
       if (!isRoot && !isResetPassword && !isForgotPassword) {
         navigate('/', { replace: true });
+      } else if (hash && !isResetPassword && !isForgotPassword) {
+        window.history.replaceState(null, '', '/');
       }
     }
-  }, [loggedInUser, location.pathname, navigate]);
+  }, [loggedInUser, location.pathname, location.hash, navigate]);
 
   const handleSelectAccount = (acc) => {
     setUsername(acc.username);

@@ -53,16 +53,57 @@ const pageComponents = {
 
 function AdminDashboard({ user, onLogout }) {
   const [activeMenu, setActiveMenu] = useState(() => {
-    return localStorage.getItem('adminActiveMenu') || 'dashboard';
+    const hash = window.location.hash.replace('#', '').replace(/^\//, '');
+    return hash || 'dashboard';
   });
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem('adminActiveMenu', activeMenu);
-  }, [activeMenu]);
+    sessionStorage.removeItem('logoutPending');
+
+    if (!window.location.hash) {
+      window.history.replaceState({ adminIndex: 0 }, '', '#dashboard');
+    } else if (!window.history.state || window.history.state.adminIndex === undefined) {
+      window.history.replaceState({ adminIndex: 0 }, '', window.location.hash);
+    }
+
+    const handleHashChange = () => {
+      const isPending = sessionStorage.getItem('logoutPending') === 'true';
+      const hash = window.location.hash.replace('#', '').replace(/^\//, '');
+
+      if (!hash || hash === 'login') {
+        sessionStorage.removeItem('logoutPending');
+        onLogout();
+      } else if (isPending && (hash === 'dashboard' || (window.history.state && window.history.state.adminIndex === 0))) {
+        sessionStorage.removeItem('logoutPending');
+        onLogout();
+      } else {
+        setActiveMenu(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [onLogout]);
 
   const handleNavigate = (id) => {
+    if (id === activeMenu) return;
+
+    const currentIndex = (window.history.state && window.history.state.adminIndex) || 0;
+    const nextIndex = currentIndex + 1;
+
+    window.history.pushState({ adminIndex: nextIndex }, '', '#' + id);
     setActiveMenu(id);
+  };
+
+  const handleLogoutWithHistory = () => {
+    const currentIndex = (window.history.state && window.history.state.adminIndex) || 0;
+    if (currentIndex > 0) {
+      sessionStorage.setItem('logoutPending', 'true');
+      window.history.go(-currentIndex);
+    } else {
+      onLogout();
+    }
   };
 
   const ActiveComponent = pageComponents[activeMenu] || DashboardOverview;
@@ -156,7 +197,7 @@ function AdminDashboard({ user, onLogout }) {
                 </div>
               </motion.div>
               <motion.button
-                onClick={onLogout}
+                onClick={handleLogoutWithHistory}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="p-2 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all duration-200 flex-shrink-0"
