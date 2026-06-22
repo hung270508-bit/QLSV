@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Award, PlusCircle, CheckCircle2, Clock, Loader2, X, FileSignature, 
   Edit, Lock, AlertTriangle, AlertCircle, HelpCircle, Eye, MessageSquare, Send,
@@ -118,8 +118,6 @@ function StudentTrainingPoints({ user }) {
   const [selectedSemester, setSelectedSemester] = useState('');
   const [editingRecord, setEditingRecord] = useState(null); 
   const [formScores, setFormScores] = useState({});
-  const [formMessage, setFormMessage] = useState({ text: '', type: '' });
-  const formScrollRef = useRef(null);
 
   // Toast & Confirm states using common components
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -199,26 +197,22 @@ function StudentTrainingPoints({ user }) {
 
   const handleFileUpload = (itemId, file) => {
     if (viewOnly) return;
-    const current = formScores[itemId] || { point: 0, optionIndex: 0 };
-    const currentFiles = current.Files || [];
-    
-    // Check for duplicate file by name
-    if (currentFiles.some(f => f.name === file.name)) {
-      setFormMessage({ text: 'Tệp này đã được tải lên!', type: 'error' });
-      if (formScrollRef.current) formScrollRef.current.scrollTop = 0;
-      return;
-    }
-    
-    // Validate max 3 files
-    if (currentFiles.length >= 3) {
-      setFormMessage({ text: 'Mỗi tiêu chí chỉ được tải lên tối đa 3 tệp!', type: 'error' });
-      if (formScrollRef.current) formScrollRef.current.scrollTop = 0;
-      return;
-    }
-    
     setFormScores(prev => {
       const current = prev[itemId] || { point: 0, optionIndex: 0 };
       const currentFiles = current.Files || [];
+      
+      // Check for duplicate file by name
+      if (currentFiles.some(f => f.name === file.name)) {
+        showToast('Tệp này đã được tải lên!', 'error');
+        return prev;
+      }
+      
+      // Validate max 3 files
+      if (currentFiles.length >= 3) {
+        showToast('Mỗi tiêu chí chỉ được tải lên tối đa 3 tệp!', 'error');
+        return prev;
+      }
+      
       // Mark as uploading to prevent duplicates
       const updatedFiles = [...currentFiles, { name: file.name, type: file.type, data: null, uploading: true }];
       return {
@@ -266,7 +260,6 @@ function StudentTrainingPoints({ user }) {
     setEditingRecord(null);
     setFormScores({});
     setViewOnly(false);
-    setFormMessage({ text: '', type: '' });
     setIsModalOpen(true);
   };
 
@@ -275,7 +268,6 @@ function StudentTrainingPoints({ user }) {
     setSelectedSemester(record.HocKy);
     setFormScores({});
     setViewOnly(false);
-    setFormMessage({ text: '', type: '' });
     try {
       const res = await axios.get(`${API_URL}/api/training-points/${record.MaDanhGia}/details`);
       if (res.data && res.data.length > 0) {
@@ -300,7 +292,6 @@ function StudentTrainingPoints({ user }) {
     setSelectedSemester(record.HocKy);
     setFormScores({});
     setViewOnly(true);
-    setFormMessage({ text: '', type: '' });
     try {
       const res = await axios.get(`${API_URL}/api/training-points/${record.MaDanhGia}/details`);
       if (res.data && res.data.length > 0) {
@@ -331,11 +322,7 @@ function StudentTrainingPoints({ user }) {
 
   const handlePreSubmit = () => {
     if (completedCount < totalItems) {
-      setFormMessage({ text: "Vui lòng đánh giá đầy đủ tất cả các tiêu chí!", type: "error" });
-      if (formScrollRef.current) {
-        formScrollRef.current.scrollTop = 0;
-      }
-      return;
+      return showToast("Vui lòng đánh giá đầy đủ tất cả các tiêu chí!", "error");
     }
     setConfirmDialog({
       show: true,
@@ -346,7 +333,7 @@ function StudentTrainingPoints({ user }) {
           const chiTiet = buildChiTiet();
           if (editingRecord) {
             await axios.put(`${API_URL}/api/training-points/${editingRecord.MaDanhGia}`, { DiemTuDanhGia: currentTotalScore, ChiTiet: chiTiet });
-            setFormMessage({ text: "Cập nhật thành công!", type: "success" });
+            showToast("Cập nhật thành công!", "success");
           } else {
             const activeP = activePeriods.find(p => p.HocKy === selectedSemester);
             await axios.post(`${API_URL}/api/training-points`, { 
@@ -356,21 +343,13 @@ function StudentTrainingPoints({ user }) {
               ChiTiet: chiTiet,
               MaDotDanhGia: activeP ? activeP.MaDotDanhGia : null
             });
-            setFormMessage({ text: "Nộp phiếu thành công!", type: "success" });
+            showToast("Nộp phiếu thành công!", "success");
           }
-          if (formScrollRef.current) {
-            formScrollRef.current.scrollTop = 0;
-          }
+          setIsModalOpen(false); 
           setConfirmDialog({ show: false, title: '', message: '', action: null });
-          fetchData();
-          setTimeout(() => {
-            setIsModalOpen(false);
-          }, 2500);
+          fetchData(); 
         } catch (error) { 
-          setFormMessage({ text: "Lỗi hệ thống hoặc hết hạn!", type: "error" });
-          if (formScrollRef.current) {
-            formScrollRef.current.scrollTop = 0;
-          }
+          showToast("Lỗi hệ thống hoặc hết hạn!", "error");
           setConfirmDialog({ show: false, title: '', message: '', action: null });
         }
       }
@@ -730,33 +709,7 @@ function StudentTrainingPoints({ user }) {
               )}
 
               {/* Form Content */}
-              <div ref={formScrollRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-8 custom-scrollbar">
-                {formMessage.text && (
-                  <div className={`p-4 rounded-2xl flex items-start gap-3 border shrink-0 ${
-                    formMessage.type === 'success' 
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                      : 'bg-rose-50 border-rose-200 text-rose-800'
-                  }`}>
-                    {formMessage.type === 'success' ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <p className="text-sm font-bold">{formMessage.text}</p>
-                    </div>
-                    <button 
-                      onClick={() => setFormMessage({ text: '', type: '' })}
-                      className={`p-1 rounded-lg transition-colors ${
-                        formMessage.type === 'success'
-                          ? 'hover:bg-emerald-100 text-emerald-600'
-                          : 'hover:bg-rose-100 text-rose-600'
-                      }`}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+              <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 custom-scrollbar">
                 {currentCriteria.map((section) => (
                   <div key={section.id} className="border border-slate-200 rounded-3xl overflow-hidden bg-white shadow-sm">
                     <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
