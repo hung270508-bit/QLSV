@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import API_URL from './api';
 import axios from 'axios';
@@ -65,6 +65,19 @@ function App() {
     return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
   });
   const [sessionTimeout, setSessionTimeout] = useState(null);
+
+  useEffect(() => {
+    if (!loggedInUser) {
+      const path = location.pathname;
+      const isResetPassword = path.startsWith('/reset-password/');
+      const isForgotPassword = path === '/forgot-password';
+      const isRoot = path === '/' || path === '';
+
+      if (!isRoot && !isResetPassword && !isForgotPassword) {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [loggedInUser, location.pathname, navigate]);
 
   const handleSelectAccount = (acc) => {
     setUsername(acc.username);
