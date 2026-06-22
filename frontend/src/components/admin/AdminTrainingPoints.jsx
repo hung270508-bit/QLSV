@@ -722,7 +722,19 @@ function AdminTrainingPoints() {
               <div className="flex items-center gap-2 shrink-0">
                 {selectedIds.length > 0 && (
                   <button
-                    onClick={() => setBulkConfirm(true)}
+                    onClick={() => {
+                      const unapproved = selectedIds.filter(id => {
+                        const record = pointsData.find(item => item.MaDanhGia === id);
+                        return record && record.TrangThai !== 'Đã xác nhận';
+                      });
+                      if (unapproved.length === 0) {
+                        showToast('Tất cả các phiếu được chọn đều đã được duyệt từ trước!', 'error');
+                        setSelectedIds([]);
+                      } else {
+                        setSelectedIds(unapproved);
+                        setBulkConfirm(true);
+                      }
+                    }}
                     className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-emerald-100 flex items-center gap-2 animate-pulse"
                   >
                     <CheckCircle2 className="w-4 h-4" /> Duyệt nhanh ({selectedIds.length} mục)
