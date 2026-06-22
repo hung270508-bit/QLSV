@@ -1292,7 +1292,7 @@ app.get('/api/schedule-configs', async (req, res) => {
 
         // Lấy danh sách tiết học và giờ
         const promisePeriods = new Promise((resolve, reject) => {
-            db.query('SELECT Tiet, DATE_FORMAT(GioBatDau, "%H:%i") as start, DATE_FORMAT(GioKetThuc, "%H:%i") as end FROM tiethoc ORDER BY Tiet', (err, results) => {
+            db.query("SELECT Tiet, DATE_FORMAT(GioBatDau, '%H:%i') as start, DATE_FORMAT(GioKetThuc, '%H:%i') as end FROM tiethoc ORDER BY Tiet", (err, results) => {
                 if (err) reject(err);
                 else {
                     const periods = {};
