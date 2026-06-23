@@ -1675,7 +1675,7 @@ app.post('/api/attendance', (req, res) => executeInsert('INSERT INTO diemdanh (M
 app.put('/api/attendance/:id', (req, res) => executeUpdate('UPDATE diemdanh SET MaLichHoc=?, MSSV=?, NgayDiemDanh=?, TrangThai=? WHERE MaDiemDanh=?', [req.body.MaLichHoc, req.body.MSSV, req.body.NgayDiemDanh, req.body.TrangThai, req.params.id], res, 'Thành công', 'Lỗi'));
 app.delete('/api/attendance/:id', (req, res) => executeDelete('DELETE FROM diemdanh WHERE MaDiemDanh=?', [req.params.id], res, 'Thành công', 'Lỗi'));
 app.get('/api/attendance/course/:maLhp/date/:ngay', (req, res) => executeQuery('SELECT * FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ?', [req.params.maLhp, req.params.ngay], res, 'Lỗi!'));
-app.get('/api/attendance/course/:maLhp/history-dates', (req, res) => executeQuery('SELECT DISTINCT DATE_FORMAT(NgayDiemDanh, '%Y-%m-%d') as Ngay FROM diemdanh WHERE MaLopHocPhan = ? ORDER BY Ngay DESC', [req.params.maLhp], res, 'Lỗi lấy lịch sử!'));
+app.get('/api/attendance/course/:maLhp/history-dates', (req, res) => executeQuery("SELECT DISTINCT DATE_FORMAT(NgayDiemDanh, '%Y-%m-%d') as Ngay FROM diemdanh WHERE MaLopHocPhan = ? ORDER BY Ngay DESC", [req.params.maLhp], res, 'Lỗi lấy lịch sử!'));
 app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
     const { maLhp, ngay } = req.params; const attendanceList = req.body.attendance;
     if (!Array.isArray(attendanceList) || attendanceList.length === 0) return res.status(400).json({ success: false });
