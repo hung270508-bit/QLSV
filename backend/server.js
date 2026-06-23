@@ -1590,6 +1590,79 @@ app.post('/api/rfid/reset-status', async (req, res) => {
         return res.status(500).json({ success: false, message: 'Lỗi DB' });
     }
 });
+// Lấy trạng thái điểm danh hiện tại của 1 lớp
+app.get('/api/attendance/course/:id/session/:date', async (req, res) => {
+    try {
+        const { id, date } = req.params;
+        const [rows] = await db.promise().query(
+            'SELECT TrangThaiDiemDanh, ThoiGianMoDiemDanh FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
+            [id, date]
+        );
+        if (rows.length === 0) return res.json({ status: 'PENDING', timeOpened: null });
+        res.json({ status: rows[0].TrangThaiDiemDanh || 'PENDING', timeOpened: rows[0].ThoiGianMoDiemDanh });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
+// Mở điểm danh 15 phút
+app.post('/api/attendance/course/:id/open/:date', async (req, res) => {
+    try {
+        const { id, date } = req.params;
+        await db.promise().query(
+            "UPDATE lichhoc SET TrangThaiDiemDanh = 'OPEN', ThoiGianMoDiemDanh = NOW() WHERE MaLopHocPhan = ? AND NgayHoc = ?",
+            [id, date]
+        );
+        res.json({ success: true, message: 'Đã mở điểm danh' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
+// Đóng điểm danh sớm
+app.post('/api/attendance/course/:id/close/:date', async (req, res) => {
+    try {
+        const { id, date } = req.params;
+        await db.promise().query(
+            "UPDATE lichhoc SET TrangThaiDiemDanh = 'CLOSED' WHERE MaLopHocPhan = ? AND NgayHoc = ?",
+            [id, date]
+        );
+        
+        // Tự động đánh vắng những sinh viên chưa điểm danh
+        const [students] = await db.promise().query(
+            "SELECT the_sv.MSSV FROM the_sv JOIN lophocphan lhp ON the_sv.MSSV IN (SELECT MSSV FROM the_sv) WHERE lhp.MaLopHocPhan = ?"
+        );
+        
+        // Lấy ds sv của lớp
+        const [enrolled] = await db.promise().query(
+            "SELECT sv.MSSV FROM sinhvien sv JOIN lophoc lh ON sv.MaLop = lh.MaLop JOIN lophocphan lhp ON lh.MaLop = lhp.MaLop WHERE lhp.MaLopHocPhan = ?",
+            [id]
+        );
+        
+        if (enrolled.length > 0) {
+            const mssvList = enrolled.map(s => s.MSSV);
+            // Tìm những sv đã có mặt
+            const [attended] = await db.promise().query(
+                "SELECT MSSV FROM diemdanh WHERE MaLopHocPhan = ? AND NgayDiemDanh = ?",
+                [id, date]
+            );
+            const attendedSet = new Set(attended.map(a => a.MSSV));
+            
+            for (let mssv of mssvList) {
+                if (!attendedSet.has(mssv)) {
+                    await db.promise().query(
+                        "INSERT IGNORE INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, 'Vắng mặt', NOW())",
+                        [id, mssv, date]
+                    );
+                }
+            }
+        }
+
+        res.json({ success: true, message: 'Đã chốt sổ' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
 
 // API nhận dữ liệu từ ESP32 bắn lên
 app.post('/api/attendance/uid', async (req, res) => {
@@ -1618,36 +1691,95 @@ app.post('/api/attendance/uid', async (req, res) => {
 
         // TRƯỜNG HỢP B: CHẾ ĐỘ ĐIỂM DANH MẶC ĐỊNH -> QUÉT TRONG BẢNG the_sv
         else {
-        if (!MaLopHocPhan) return res.status(400).json({ success: false, message: 'Thiếu MaLopHocPhan' });
+            let targetLHP = MaLopHocPhan;
+            const { PhongHoc } = req.body;
+            let targetTrangThai = 'PENDING';
+            let phutDaQua = 0;
 
-        db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+            const now = new Date();
+            const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+            const todayStr = vnTime.toISOString().split('T')[0];
+            const currentTime = vnTime.toISOString().split('T')[1].substring(0, 8); // "HH:MM:SS"
 
-            // Thẻ lạ chưa đăng ký
-            if (!results || results.length === 0) {
-                return res.status(404).json({ success: false, action: "UNREGISTERED", message: 'Thẻ lạ, Chưa đăng ký' });
+            if (PhongHoc && !targetLHP) {
+                const [lichhocRows] = await db.promise().query(
+                    'SELECT MaLopHocPhan, CaHoc, TrangThaiDiemDanh, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE NgayHoc = ? AND PhongHoc = ?',
+                    [todayStr, PhongHoc]
+                );
+
+                if (lichhocRows.length > 0) {
+                    const [tiethocRows] = await db.promise().query('SELECT Tiet, GioBatDau, GioKetThuc FROM tiethoc');
+                    for (let lh of lichhocRows) {
+                        if (!lh.CaHoc) continue;
+                        const parts = lh.CaHoc.split('-');
+                        if (parts.length === 2) {
+                            const startTiet = parseInt(parts[0]);
+                            const endTiet = parseInt(parts[1]);
+
+                            const startInfo = tiethocRows.find(t => t.Tiet === startTiet);
+                            const endInfo = tiethocRows.find(t => t.Tiet === endTiet);
+
+                            if (startInfo && endInfo) {
+                                if (currentTime >= startInfo.GioBatDau && currentTime <= endInfo.GioKetThuc) {
+                                    targetLHP = lh.MaLopHocPhan;
+                                    targetTrangThai = lh.TrangThaiDiemDanh;
+                                    phutDaQua = lh.PhutDaQua;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (targetLHP) {
+                const [lhRows] = await db.promise().query(
+                    'SELECT TrangThaiDiemDanh, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
+                    [targetLHP, todayStr]
+                );
+                if (lhRows.length > 0) {
+                    targetTrangThai = lhRows[0].TrangThaiDiemDanh;
+                    phutDaQua = lhRows[0].PhutDaQua;
+                }
             }
 
-            // Thẻ hợp lệ -> Ghi nhận điểm danh
-            const MSSV = results[0].MSSV;
-            const ngay = NgayDiemDanh || new Date().toISOString().slice(0, 10);
-            const trangthai = TrangThai || 'Có mặt';
+            if (!targetLHP) {
+                return res.status(404).json({ success: false, action: "NO_CLASS", message: 'Không có tiết học nào đang diễn ra tại phòng này' });
+            }
 
-            db.query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [MaLopHocPhan, MSSV, ngay], (errCheck, checkResults) => {
-                if (errCheck) return res.status(500).json({ success: false, message: 'Lỗi DB khi kiểm tra trùng', error: errCheck.message });
+            // KIỂM TRA LUỒNG 15 PHÚT
+            if (targetTrangThai === 'OPEN' && phutDaQua !== null && phutDaQua >= 15) {
+                // Tự động đóng nếu quá 15 phút
+                await db.promise().query("UPDATE lichhoc SET TrangThaiDiemDanh = 'CLOSED' WHERE MaLopHocPhan = ? AND NgayHoc = ?", [targetLHP, todayStr]);
+                targetTrangThai = 'CLOSED';
+            }
 
+            if (targetTrangThai !== 'OPEN') {
+                return res.status(403).json({ success: false, action: "CLOSED", message: 'Hiện không trong thời gian điểm danh' });
+            }
+
+            try {
+                const [results] = await db.promise().query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid]);
+                
+                if (!results || results.length === 0) {
+                    return res.status(404).json({ success: false, action: "UNREGISTERED", message: 'Thẻ lạ, Chưa đăng ký' });
+                }
+
+                const MSSV = results[0].MSSV;
+                const ngay = NgayDiemDanh || todayStr;
+                const trangthai = TrangThai || 'Có mặt';
+
+                const [checkResults] = await db.promise().query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [targetLHP, MSSV, ngay]);
+                
                 if (checkResults && checkResults.length > 0) {
                     return res.json({ success: true, action: "ATTENDANCE_OK", message: "Đã điểm danh từ trước", MSSV });
                 }
 
-                db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())',
-                    [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
-                        if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
-                        return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
-                    });
-            });
-        });
-    }
+                await db.promise().query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [targetLHP, MSSV, ngay, trangthai]);
+                
+                return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
+            } catch (err) {
+                return res.status(500).json({ success: false, message: 'Lỗi DB xử lý điểm danh', error: err.message });
+            }
+        }
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Lỗi DB' });
     }
