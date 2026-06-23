@@ -356,6 +356,13 @@ function AdminTrainingPoints() {
 
   // === XÉT DUYỆT CHI TIẾT ===
   const handleOpenReviewModal = async (record) => {
+    // Kiểm tra xem đợt đánh giá đã đóng chưa
+    const period = periods.find(p => p.HocKy === record.HocKy);
+    if (!period || period.TrangThai !== 'Đã đóng đợt') {
+      showToast('Phải đóng đợt đánh giá trước thì mới được duyệt điểm!', 'error');
+      return;
+    }
+
     setSelectedRecord(record);
     setDiemKhoa(record.DiemKhoaDanhGia || 0);
     setTrangThaiDuyet(record.TrangThai === 'Chờ lớp duyệt' ? 'Đã xác nhận' : record.TrangThai);

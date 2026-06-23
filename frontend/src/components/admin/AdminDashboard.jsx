@@ -97,13 +97,7 @@ function AdminDashboard({ user, onLogout }) {
   };
 
   const handleLogoutWithHistory = () => {
-    const currentIndex = (window.history.state && window.history.state.adminIndex) || 0;
-    if (currentIndex > 0) {
-      sessionStorage.setItem('logoutPending', 'true');
-      window.history.go(-currentIndex);
-    } else {
-      onLogout();
-    }
+    onLogout();
   };
 
   const ActiveComponent = pageComponents[activeMenu] || DashboardOverview;

@@ -388,6 +388,27 @@ app.post('/api/forgot-password', (req, res) => {
     });
 });
 
+// Global middleware to check if account is locked out across all API requests
+app.use((req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const username = decoded.username;
+            const now = new Date();
+            if (loginAttempts[username] && loginAttempts[username].lockoutUntil && loginAttempts[username].lockoutUntil > now) {
+                const remainingMs = loginAttempts[username].lockoutUntil - now;
+                const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+                return res.status(403).json({
+                    success: false,
+                    isLocked: true,
+                    message: `Tài khoản của bạn đã bị khóa tạm thời do nhập sai quá nhiều lần. Các thiết bị khác cũng bị buộc đăng xuất. Vui lòng thử lại sau ${remainingMinutes} phút.`
+                });
+            }
+        } catch (error) {}
+    }
+    next();
+});
 
 // Verify token endpoint
 app.get('/api/verify-token', verifyToken, (req, res) => {

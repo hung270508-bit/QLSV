@@ -47,6 +47,12 @@ const removePendingRequest = (key) => {
 
 axios.interceptors.request.use(
   (config) => {
+    // Tự động đính kèm token vào header cho mọi request
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     const method = (config.method || 'get').toLowerCase();
     // Chỉ chặn các request thay đổi dữ liệu (POST, PUT, PATCH, DELETE)
     if (['post', 'put', 'patch', 'delete'].includes(method)) {
@@ -85,6 +91,18 @@ axios.interceptors.response.use(
     if (config && config.__requestKey) {
       removePendingRequest(config.__requestKey);
     }
+
+    // Xử lý buộc đăng xuất khi tài khoản bị khóa
+    if (error.response && error.response.status === 403 && error.response.data?.isLocked) {
+      // Kích hoạt Event để hiển thị Modal giao diện hiện đại ở App.jsx
+      // (Không clear token ở đây nữa để đợi người dùng bấm xác nhận)
+      window.dispatchEvent(new CustomEvent('forceLogout', { 
+        detail: { message: error.response.data.message } 
+      }));
+      
+      return new Promise(() => {}); // Chặn không cho báo lỗi ra giao diện nữa
+    }
+
     return Promise.reject(error);
   }
 );
