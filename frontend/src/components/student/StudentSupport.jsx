@@ -81,7 +81,8 @@ function StudentSupport({ user, profile }) {
     }
 
     // ---- BƯỚC 2: NẾU HỢP LỆ THÌ MỚI HIỆN POPUP FORM ----
-    setRequestForm({ show: true, chude: chude });
+    setRequestForm({ show: true, chude: chude, ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
+    setRequestFormErrors({ noiDung: '' });
   };
 
   // 3. HÀM XỬ LÝ: SUBMIT FORM ĐĂNG KÝ BIỂU MẪU
@@ -395,7 +396,7 @@ function StudentSupport({ user, profile }) {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">Nội dung chi tiết <span className="text-red-500">*</span></label>
-                    <textarea required value={formData.noiDung} onChange={(e) => { setFormData({ ...formData, noiDung: e.target.value }); if (formErrors.noiDung) setFormErrors({ ...formErrors, noiDung: '' }); }} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className={`w-full p-3 bg-white border rounded-lg focus:outline-none focus:ring-2 resize-none text-gray-800 text-sm transition-all ${formErrors.noiDung ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20' : 'border-orange-200 focus:border-orange-500 focus:ring-orange-500/20'}`}></textarea>
+                    <textarea value={formData.noiDung} onChange={(e) => { setFormData({ ...formData, noiDung: e.target.value }); if (formErrors.noiDung) setFormErrors({ ...formErrors, noiDung: '' }); }} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className={`w-full p-3 bg-white border rounded-lg focus:outline-none focus:ring-2 resize-none text-gray-800 text-sm transition-all ${formErrors.noiDung ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20' : 'border-orange-200 focus:border-orange-500 focus:ring-orange-500/20'}`}></textarea>
                     <div className="flex items-center justify-between mt-1">
                       {formErrors.noiDung
                         ? <p className="text-red-500 text-xs">{formErrors.noiDung}</p>
@@ -586,7 +587,6 @@ function StudentSupport({ user, profile }) {
                   <div className="mb-6">
                     <label className="block text-xs font-bold text-gray-700 mb-2">Nội dung yêu cầu <span className="text-red-500">*</span></label>
                     <textarea
-                      required
                       value={requestForm.noiDung}
                       onChange={(e) => {
                         setRequestForm({ ...requestForm, noiDung: e.target.value });
