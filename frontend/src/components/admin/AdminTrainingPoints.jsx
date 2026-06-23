@@ -116,6 +116,7 @@ function AdminTrainingPoints() {
   const [periodModalTab, setPeriodModalTab] = useState('info'); // 'info' or 'builder'
   // State cho Modal xác nhận chuyển trạng thái đợt
   const [confirmModal, setConfirmModal] = useState({ show: false, id: null, newStatus: '' });
+  const [isConfirmCreateOpen, setIsConfirmCreateOpen] = useState(false);
 
   // === STATES: XÉT DUYỆT ĐIỂM ===
   const [pointsData, setPointsData] = useState([]);
@@ -236,7 +237,7 @@ function AdminTrainingPoints() {
     setPeriodForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleCreatePeriod = async () => {
+  const triggerCreatePeriod = () => {
     if (!nienKhoaRange) return showToast('Vui lòng nhập Năm học đúng định dạng VD: 2025-2026!', 'error');
     if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc) return showToast('Vui lòng chọn đầy đủ Ngày bắt đầu và kết thúc!', 'error');
     if (periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
@@ -250,6 +251,11 @@ function AdminTrainingPoints() {
     const totalPoints = calculateTotalPoints(periodForm.CauTrucTieuChi);
     if (totalPoints !== 100) return showToast(`Tổng điểm tối đa của bộ tiêu chí phải bằng 100 (hiện tại là ${totalPoints})!`, 'error');
 
+    setIsConfirmCreateOpen(true);
+  };
+
+  const handleCreatePeriod = async () => {
+    setIsConfirmCreateOpen(false);
     try {
       const formattedHocKy = `${periodForm.HocKy}_${periodForm.NamHoc.replace('-', '_')}`;
 
@@ -467,6 +473,16 @@ function AdminTrainingPoints() {
         onConfirm={confirmTogglePeriodStatus}
         onCancel={() => setConfirmModal({ show: false, id: null, newStatus: '' })}
         type={confirmModal.newStatus === 'Đã đóng đợt' ? 'danger' : 'confirm'}
+      />
+
+      {/* ConfirmDialog xác nhận tạo đợt mới */}
+      <ConfirmDialog
+        show={isConfirmCreateOpen}
+        title="Xác nhận tạo đợt đánh giá mới"
+        message={`Bạn có chắc muốn tạo đợt đánh giá mới cho ${periodForm.HocKy.replace('HK', 'Học kỳ ')} năm học ${periodForm.NamHoc}?`}
+        onConfirm={handleCreatePeriod}
+        onCancel={() => setIsConfirmCreateOpen(false)}
+        type="confirm"
       />
 
 
@@ -1002,7 +1018,7 @@ function AdminTrainingPoints() {
                     Tiếp theo (Thiết kế tiêu chí)
                   </button>
                 ) : (
-                  <button onClick={handleCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-2">
+                  <button onClick={triggerCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5" /> Xác nhận tạo đợt
                   </button>
                 )}
