@@ -27,14 +27,25 @@ function ScheduleSection({ user }) {
         const response = await axios.get(`${API_URL}/api/teachers/${user?.username || user?.id}/teaching-schedule`);
         
         const formattedData = response.data.map(item => {
-          let tietBatDau = 1;
-          let soTiet = 3;
+        // Ưu tiên lấy trực tiếp số tiết từ API nếu có
+          let tietBatDau = item.TietBatDau ? parseInt(item.TietBatDau) : 1;
+          let soTiet = item.SoTiet ? parseInt(item.SoTiet) : 3;
           
-          const caStr = String(item.CaHoc).replace(/\D/g, ''); 
-          if (caStr === '1') { tietBatDau = 1; soTiet = 3; }
-          else if (caStr === '2') { tietBatDau = 4; soTiet = 3; }
-          else if (caStr === '3') { tietBatDau = 7; soTiet = 3; }
-          else if (caStr === '4') { tietBatDau = 10; soTiet = 3; }
+          // Nếu API trả về dạng chuỗi CaHoc (VD: "1-3", "4-6")
+          if (!item.TietBatDau && item.CaHoc) {
+            const match = String(item.CaHoc).trim().match(/(\d+)\s*-\s*(\d+)/);
+            if (match) {
+              tietBatDau = parseInt(match[1]);
+              soTiet = parseInt(match[2]) - parseInt(match[1]) + 1;
+            } else {
+              // Fallback cho trường hợp lưu là dạng số ca "1", "2", "3"
+              const caStr = String(item.CaHoc).replace(/\D/g, ''); 
+              if (caStr === '1') { tietBatDau = 1; soTiet = 3; }
+              else if (caStr === '2') { tietBatDau = 4; soTiet = 3; }
+              else if (caStr === '3') { tietBatDau = 7; soTiet = 3; }
+              else if (caStr === '4') { tietBatDau = 10; soTiet = 3; }
+            }
+          }
 
           const d = new Date(item.NgayHoc);
           const thu = d.getDay() === 0 ? 8 : d.getDay() + 1;

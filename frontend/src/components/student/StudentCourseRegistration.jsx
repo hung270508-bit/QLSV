@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookPlus, Plus, Trash2, Loader2, Clock, CheckCircle2, XCircle, MapPin, CalendarDays, X, AlertCircle, HelpCircle } from 'lucide-react';
+import { BookPlus, Plus, Trash2, Clock, CheckCircle2, MapPin, CalendarDays, AlertCircle, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API_URL from '../../api';
@@ -9,9 +9,9 @@ import { StudentCourseRegistrationSkeleton } from '../common/StudentSkeleton';
 function StudentCourseRegistration({ user }) {
   const [availableCourses, setAvailableCourses] = useState([]);
   const [myCourses, setMyCourses] = useState([]);
+  const [cart, setCart] = useState([]); // GIỎ HÀNG ẢO CHƯA LƯU
   const [loading, setLoading] = useState(true);
 
-  // === THÊM STATE CHO UI MỚI (TOAST & DIALOG) ===
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
 
@@ -30,236 +30,175 @@ function StudentCourseRegistration({ user }) {
       setAvailableCourses(availRes.data);
       setMyCourses(myRes.data);
     } catch (error) { 
-      console.error(error); 
-      showToast('Lỗi tải dữ liệu!', 'error');
-    } finally { 
-      setLoading(false); 
-    }
+      showToast('Lỗi tải dữ liệu. Vui lòng refresh lại trang!', 'error');
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { if (user?.username) fetchData(); }, [user]);
 
-  // NÂNG CẤP: Logic Đăng ký dùng Custom Dialog
-  const handleEnroll = async (course) => {
-    if(course.DaDangKy >= (course.SoLuongToiDa || 40)) {
-      return showToast("Lớp học phần này đã đủ Sĩ số!", "error");
+  // LOGIC 1: ĐƯA VÀO GIỎ HÀNG TẠM (Chưa ném lên Server)
+  const handleAddToCart = (course) => {
+    if (cart.find(c => c.MaLopHocPhan === course.MaLopHocPhan)) {
+      return showToast("Lớp học phần này đã có trong danh sách tạm chờ lưu!", "error");
     }
+    if (cart.find(c => c.MaMonHoc === course.MaMonHoc) || myCourses.find(c => c.MaMonHoc === course.MaMonHoc)) {
+      return showToast(`Bạn đã chọn đăng ký một lớp khác của môn ${course.TenMonHoc} rồi!`, "error");
+    }
+    setCart([...cart, course]);
+    showToast(`Đã chọn môn ${course.TenMonHoc} vào danh sách Tạm lưu!`, "success");
+  };
+
+  // LOGIC 2: XÓA KHỎI GIỎ HÀNG (Chỉ xóa local)
+  const handleRemoveFromCart = (maLHP) => {
+    setCart(cart.filter(c => c.MaLopHocPhan !== maLHP));
+  };
+
+  // LOGIC 3: LƯU TOÀN BỘ VÀO DATABASE
+  const handleFinalize = () => {
+    if (cart.length === 0) return showToast("Tiến trình đang trống!", "error");
     
     setConfirmDialog({
       show: true,
-      title: 'Xác nhận Đăng ký',
-      message: `Bạn có chắc chắn muốn đăng ký lớp học phần ${course.MaLopHocPhan} - môn ${course.TenMonHoc}?`,
+      title: 'Lưu thông tin đăng ký',
+      message: `Hệ thống sẽ tiến hành kiểm tra trùng lịch và chốt lưu chính thức ${cart.length} môn học này. Bạn có chắc chắn?`,
       action: async () => {
         try {
-          // Nhờ API mới bên server.js, trạng thái sẽ tự động duyệt và lên lịch ngay
-          const res = await axios.post(`${API_URL}/api/enrollment`, { MSSV: user.username, MaLopHocPhan: course.MaLopHocPhan, HocKy: course.HocKy });
-          showToast(res.data.message || "Đăng ký thành công!", "success");
+          const res = await axios.post(`${API_URL}/api/enrollment/batch`, { 
+            MSSV: user.username, 
+            cart: cart 
+          });
+          showToast(res.data.message || "Lưu thông tin đăng ký thành công!", "success");
+          setCart([]); // Xóa sạch giỏ hàng ảo sau khi lưu thành công
+          fetchData(); // Kéo lại dữ liệu đã duyệt từ DB
           setConfirmDialog({ show: false });
-          fetchData();
-        } catch (error) { 
-          showToast("Lỗi khi đăng ký môn!", "error");
+        } catch (error) {
+          showToast(error.response?.data?.message || "Có lỗi xảy ra khi kiểm tra môn học!", "error");
           setConfirmDialog({ show: false });
         }
       }
     });
   };
 
-  // NÂNG CẤP: Logic Hủy môn dùng Custom Dialog
-  const handleCancel = async (maLHP, trangThai) => {
-    if (trangThai !== 'Chờ duyệt') {
-      return showToast('Chỉ có thể tự hủy môn khi trạng thái "Chờ duyệt". Đã duyệt vui lòng liên hệ Giáo vụ!', 'error');
-    }
-    
-    setConfirmDialog({
-      show: true,
-      title: 'Hủy đăng ký',
-      message: `Hành động này không thể hoàn tác. Xác nhận hủy đăng ký lớp ${maLHP}?`,
-      action: async () => {
-        try {
-          await axios.delete(`${API_URL}/api/enrollment/${user.username}/${maLHP}`);
-          showToast("Hủy môn học thành công!", "success");
-          setConfirmDialog({ show: false });
-          fetchData();
-        } catch (error) { 
-          showToast("Lỗi khi hủy môn!", "error");
-          setConfirmDialog({ show: false });
-        }
-      }
-    });
-  };
-
-  const renderStatus = (status) => {
-    if (status === 'Đã duyệt') return <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><CheckCircle2 className="w-3.5 h-3.5"/> Đã duyệt</span>;
-    if (status === 'Từ chối') return <span className="text-red-500 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><XCircle className="w-3.5 h-3.5"/> Từ chối</span>;
-    return <span className="text-orange-500 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><Clock className="w-3.5 h-3.5"/> Chờ duyệt</span>;
-  };
+  // Lấy tổng hợp danh sách đang hiển thị ở Tiến trình (Mix giữa DB và Local)
+  const displayList = [
+    ...cart.map(c => ({ ...c, isLocal: true, TrangThai: 'Tạm lưu' })),
+    ...myCourses.map(c => ({ ...c, isLocal: false }))
+  ];
 
   if (loading) return <StudentCourseRegistrationSkeleton />;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 relative pb-10">
-      
-      {/* === TOAST NOTIFICATION === */}
-      <Toast
-        show={toast.show}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ show: false, message: '', type: 'success' })}
-      />
+      <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ show: false, message: '', type: 'success' })} />
+      <ConfirmDialog show={confirmDialog.show} title={confirmDialog.title} message={confirmDialog.message} onConfirm={confirmDialog.action} onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })} />
 
-      {/* === CUSTOM CONFIRM DIALOG === */}
-      <ConfirmDialog
-        show={confirmDialog.show}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        onConfirm={confirmDialog.action}
-        onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
-      />
-
-      {/* HEADER TỔNG */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden">
-        <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
         <div className="relative z-10 flex items-center gap-5">
-          <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl">
-            <BookPlus className="w-10 h-10" />
-          </div>
-          <div>
-            <h2 className="text-3xl font-black mb-1">Đăng ký môn học</h2>
-            <p className="text-orange-100 font-medium">Học kỳ hiện tại - Danh sách lớp học phần đang mở</p>
-          </div>
+          <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl"><BookPlus className="w-10 h-10" /></div>
+          <div><h2 className="text-3xl font-black mb-1">Đăng ký môn học</h2><p className="text-orange-100 font-medium">Học kỳ hiện tại - Danh sách lớp học phần đang mở</p></div>
         </div>
       </motion.div>
 
-      {/* Danh sách ĐÃ ĐĂNG KÝ */}
+      {/* TIẾN TRÌNH ĐĂNG KÝ VÀ NÚT CHỐT LƯU */}
       <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <h3 className="font-bold text-slate-800 text-lg mb-5 flex items-center gap-2 border-b border-slate-100 pb-4">
-          <Clock className="w-5 h-5 text-orange-500" /> Tiến trình đăng ký ({myCourses.length} môn)
-        </h3>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 border-b border-slate-100 pb-4">
+          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+            <Clock className="w-5 h-5 text-orange-500" /> Tiến trình đăng ký ({displayList.length} môn)
+          </h3>
+          {cart.length > 0 && (
+            <button onClick={handleFinalize} className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/30 flex items-center gap-2 transition-all hover:scale-105 animate-pulse">
+              <Save className="w-4 h-4"/> Lưu lại ngay
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse min-w-[700px]">
             <thead>
-              <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider">
-                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th>
-                <th className="p-4 font-bold">Tên môn học</th>
-                <th className="p-4 text-center font-bold">Tín chỉ</th>
-                <th className="p-4 font-bold">Trạng thái</th>
-                <th className="p-4 text-center font-bold rounded-tr-xl">Tác vụ</th>
+              <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold">Tên môn học</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Trạng thái</th><th className="p-4 text-center font-bold rounded-tr-xl">Tác vụ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {myCourses.map((c, i) => (
-                <tr key={i} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="p-4 font-bold text-blue-600 bg-blue-50/20">{c.MaLopHocPhan}</td>
+              {displayList.map((c, i) => (
+                <tr key={i} className={`hover:bg-slate-50/80 transition-colors ${c.isLocal ? 'bg-orange-50/30' : ''}`}>
+                  <td className="p-4 font-bold text-blue-600">{c.MaLopHocPhan}</td>
                   <td className="p-4 font-bold text-slate-700">{c.TenMonHoc}</td>
                   <td className="p-4 text-center font-bold text-slate-600">{c.SoTinChi}</td>
-                  <td className="p-4">{renderStatus(c.TrangThai)}</td>
+                  <td className="p-4">
+                    {c.isLocal 
+                      ? <span className="text-orange-500 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><AlertCircle className="w-3.5 h-3.5"/> Tạm lưu</span>
+                      : <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><CheckCircle2 className="w-3.5 h-3.5"/> Đã duyệt</span>
+                    }
+                  </td>
                   <td className="p-4 text-center">
                     <button 
-                      onClick={() => handleCancel(c.MaLopHocPhan, c.TrangThai)} 
-                      disabled={c.TrangThai !== 'Chờ duyệt'}
-                      className={`p-2.5 rounded-lg transition-all flex items-center justify-center mx-auto shadow-sm
-                        ${c.TrangThai === 'Chờ duyệt' ? 'bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-slate-50 text-slate-300 border border-slate-100 cursor-not-allowed'}`}
-                      title={c.TrangThai === 'Chờ duyệt' ? "Hủy đăng ký" : "Đã chốt, không thể hủy"}
+                      onClick={() => c.isLocal ? handleRemoveFromCart(c.MaLopHocPhan) : null} 
+                      disabled={!c.isLocal} 
+                      title={c.isLocal ? "Xóa khỏi danh sách tạm" : "Đã vào CSDL, không thể xóa"}
+                      className={`p-2.5 rounded-lg transition-all mx-auto shadow-sm flex items-center justify-center ${c.isLocal ? 'bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
                       <Trash2 className="w-4 h-4"/>
                     </button>
                   </td>
                 </tr>
               ))}
-              {myCourses.length === 0 && <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-medium">Bạn chưa đăng ký môn học nào.</td></tr>}
+              {displayList.length === 0 && <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-medium">Bạn chưa chọn môn học nào.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Danh sách LỚP ĐANG MỞ */}
       <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <h3 className="font-bold text-slate-800 text-lg mb-5 border-b border-slate-100 pb-4 flex items-center gap-2">
-          <BookPlus className="w-5 h-5 text-blue-500" /> Danh sách lớp học phần đang mở
-        </h3>
+        <h3 className="font-bold text-slate-800 text-lg mb-5 border-b border-slate-100 pb-4 flex items-center gap-2"><BookPlus className="w-5 h-5 text-blue-500" /> Danh sách lớp học phần đang mở</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse min-w-[900px]">
             <thead>
-              <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider">
-                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th>
-                <th className="p-4 font-bold w-1/3">Môn học</th>
-                <th className="p-4 font-bold">Lịch học chi tiết</th>
-                <th className="p-4 text-center font-bold">Tín chỉ</th>
-                <th className="p-4 font-bold">Giảng viên</th>
-                <th className="p-4 text-center font-bold">Sĩ số</th>
-                <th className="p-4 text-center font-bold rounded-tr-xl">Đăng ký</th>
+              <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold w-1/3">Môn học</th><th className="p-4 font-bold">Lịch học chi tiết</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Giảng viên</th><th className="p-4 text-center font-bold">Sĩ số</th><th className="p-4 text-center font-bold rounded-tr-xl">Đăng ký</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {availableCourses.map((c, i) => {
                 const isFull = c.DaDangKy >= (c.SoLuongToiDa || 40);
+                const isInCart = cart.some(cartItem => cartItem.MaLopHocPhan === c.MaLopHocPhan);
                 
                 let tietStr = "Chưa rõ";
                 if (c.CaHoc) {
-                  const caStr = String(c.CaHoc).replace(/\D/g, ''); 
-                  if (caStr === '1') tietStr = 'Tiết 1-3';
-                  else if (caStr === '2') tietStr = 'Tiết 4-6';
-                  else if (caStr === '3') tietStr = 'Tiết 7-9';
-                  else if (caStr === '4') tietStr = 'Tiết 10-12';
+                  const match = String(c.CaHoc).match(/(\d+)\s*-\s*(\d+)/);
+                  if (match) { tietStr = `Tiết ${match[1]}-${match[2]}`; } 
+                  else {
+                    const caStr = String(c.CaHoc).replace(/\D/g, ''); 
+                    if (caStr === '1') tietStr = 'Tiết 1-3'; else if (caStr === '2') tietStr = 'Tiết 4-6'; else if (caStr === '3') tietStr = 'Tiết 7-9'; else if (caStr === '4') tietStr = 'Tiết 10-12';
+                  }
                 }
-
                 const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '';
-
                 return (
-                  <tr key={i} className={`hover:bg-slate-50/50 transition-colors group ${isFull ? 'opacity-70 bg-slate-50' : ''}`}>
+                  <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${(isFull || isInCart) ? 'opacity-70 bg-slate-50' : ''}`}>
                     <td className="p-4 font-bold text-slate-700 bg-slate-50/30">{c.MaLopHocPhan}</td>
-                    
                     <td className="p-4">
                       <div className="font-bold text-slate-800 text-sm mb-1.5">{c.TenMonHoc}</div>
-                      {(c.DiemCu === null || c.DiemCu === undefined) ? (
-                        <span className="inline-block bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide">Học mới</span>
-                      ) : parseFloat(c.DiemCu) < 1.0 ? (
-                        <span className="inline-block bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide">Học lại (Điểm cũ: F)</span>
-                      ) : (
-                        <span className="inline-block bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide">Học cải thiện (Cũ: {parseFloat(c.DiemCu).toFixed(2)})</span>
-                      )}
+                      {(c.DiemCu === null || c.DiemCu === undefined) ? <span className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span> : parseFloat(c.DiemCu) < 1.0 ? <span className="bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại (F)</span> : <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học cải thiện ({parseFloat(c.DiemCu).toFixed(2)})</span>}
                     </td>
-
                     <td className="p-4">
                       {c.NgayBatDau ? (
                         <div className="space-y-2 text-xs text-slate-600 font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><CalendarDays className="w-3 h-3" /></div>
-                            {formatDate(c.NgayBatDau)} <span className="text-slate-400">→</span> {formatDate(c.NgayKetThuc)}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-orange-600"><MapPin className="w-3 h-3" /></div>
-                            Phòng: {c.PhongHoc} | {tietStr}
-                          </div>
+                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><CalendarDays className="w-3 h-3" /></div>{formatDate(c.NgayBatDau)} <span className="text-slate-400">→</span> {formatDate(c.NgayKetThuc)}</div>
+                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-orange-600"><MapPin className="w-3 h-3" /></div>Phòng: {c.PhongHoc} | {tietStr}</div>
                         </div>
-                      ) : (
-                        <span className="text-slate-400 italic text-xs font-medium">Đang cập nhật lịch...</span>
-                      )}
+                      ) : <span className="text-slate-400 italic text-xs">Đang cập nhật lịch...</span>}
                     </td>
-
                     <td className="p-4 text-center font-bold text-slate-700">{c.SoTinChi}</td>
                     <td className="p-4 font-semibold text-slate-700">{c.TenGiangVien || 'Chưa xếp'}</td>
-                    
+                    <td className="p-4 text-center"><span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isFull ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{c.DaDangKy} / {c.SoLuongToiDa || 40}</span></td>
                     <td className="p-4 text-center">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isFull ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
-                        {c.DaDangKy} / {c.SoLuongToiDa || 40}
-                      </span>
-                    </td>
-                    
-                    <td className="p-4 text-center">
-                      <button 
-                        onClick={() => handleEnroll(c)} 
-                        disabled={isFull}
-                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs mx-auto shadow-sm transition-all
-                          ${isFull ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 shadow-blue-500/30'}`}
-                      >
-                        {isFull ? 'Lớp đầy' : <><Plus className="w-4 h-4"/> Đăng ký</>}
+                      <button onClick={() => handleAddToCart(c)} disabled={isFull || isInCart} className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs mx-auto shadow-sm transition-all ${(isFull || isInCart) ? 'bg-slate-100 text-slate-400 cursor-not-allowed border' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:scale-105 shadow-blue-500/30'}`}>
+                        {isInCart ? 'Đã Chọn' : isFull ? 'Lớp đầy' : <><Plus className="w-4 h-4"/> Chọn</>}
                       </button>
                     </td>
                   </tr>
                 )
               })}
-              {availableCourses.length === 0 && <tr><td colSpan="7" className="p-12 text-center text-slate-400 font-medium text-base">Hiện không có lớp học phần nào khả dụng cho bạn lúc này.</td></tr>}
+              {availableCourses.length === 0 && <tr><td colSpan="7" className="p-12 text-center text-slate-400 font-medium">Hiện không có môn học nào khả dụng.</td></tr>}
             </tbody>
           </table>
         </div>
