@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock, Filter, XCircle } from 'lucide-react';
+import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock, Unlock, Filter, XCircle } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal from '../common/ModalPortal';
@@ -184,6 +184,32 @@ function UserAccountManagement() {
     setFormData({ TaiKhoan: '', password: '', MaQuyen: '' });
     setShowPassword(false);
     setFormErrors({});
+  };
+
+  const handleToggleStatus = (user) => {
+    const isLocked = user.TrangThai === 0 || user.TrangThai === false;
+    const newStatus = isLocked ? 1 : 0;
+    const actionText = isLocked ? 'mở khóa' : 'khóa';
+
+    setConfirmDialog({
+      show: true,
+      title: `Xác nhận ${actionText} tài khoản`,
+      message: `Bạn có chắc chắn muốn ${actionText} tài khoản ${user.TaiKhoan} không?`,
+      action: async () => {
+        setConfirmDialog({ show: false, title: '', message: '', action: null });
+        try {
+          await axios.put(`${API_URL}/api/users/${user.TaiKhoan}/status`, {
+            TrangThai: newStatus
+          });
+          showNotification('success', `${isLocked ? 'Mở khóa' : 'Khóa'} tài khoản thành công.`);
+          fetchData();
+        } catch (error) {
+          console.error('Error toggling status:', error);
+          const errorMsg = error.response?.data?.message || `Lỗi khi ${actionText} tài khoản!`;
+          showNotification('error', errorMsg);
+        }
+      }
+    });
   };
 
   const filteredUsers = users.filter(user => {
@@ -399,6 +425,7 @@ function UserAccountManagement() {
                   <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Tài khoản</th>
                   <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Quyền</th>
                   <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Ngày tạo</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
                   <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
@@ -424,6 +451,11 @@ function UserAccountManagement() {
                       <td className="py-5 px-6 text-sm font-medium text-gray-600">
                         {user.NgayTao ? new Date(user.NgayTao).toLocaleDateString('vi-VN') : 'N/A'}
                       </td>
+                      <td className="py-5 px-6 text-sm">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${user.TrangThai === 0 || user.TrangThai === false ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                          {user.TrangThai === 0 || user.TrangThai === false ? 'Đã khóa' : 'Hoạt động'}
+                        </span>
+                      </td>
                       <td className="py-4 px-6 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <motion.button
@@ -435,13 +467,24 @@ function UserAccountManagement() {
                           >
                             <Edit className="w-4 h-4" />
                           </motion.button>
+                          {user.TaiKhoan?.toLowerCase() !== 'admin' && (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}
+                              className={`p-2.5 rounded-xl transition-colors shadow-sm ${user.TrangThai === 0 || user.TrangThai === false ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+                              title={user.TrangThai === 0 || user.TrangThai === false ? "Mở khóa tài khoản" : "Khóa tài khoản"}
+                            >
+                              {user.TrangThai === 0 || user.TrangThai === false ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                            </motion.button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" className="py-16 text-center text-gray-500 font-semibold">
+                    <td colSpan="5" className="py-16 text-center text-gray-500 font-semibold">
                       Không tìm thấy tài khoản nào phù hợp
                     </td>
                   </tr>
@@ -491,22 +534,6 @@ function UserAccountManagement() {
                   <div className="bg-orange-50 border border-orange-100 rounded-xl px-5 py-4 text-sm flex justify-between items-center">
                     <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Tài khoản thao tác:</span>
                     <span className="font-mono font-black text-orange-700 text-lg">{editingUser.TaiKhoan}</span>
-                  </div>
-
-                  {/* Current Password Readonly */}
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Mật khẩu hiện tại</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={editingUser.password || 'Không xác định'}
-                      className="w-full px-4 py-3.5 bg-gray-100 border-2 border-gray-200 rounded-xl outline-none text-gray-500 font-bold cursor-not-allowed text-sm truncate"
-                    />
-                    {editingUser.TaiKhoan?.toLowerCase() !== 'admin' && (
-                      <p className="text-xs text-orange-600 mt-2 font-medium">
-                        *Mật khẩu đã được mã hóa không thể xem được mật khẩu hiện tại.*
-                      </p>
-                    )}
                   </div>
 
                   {/* Password Input (Hidden for admin) */}
@@ -702,6 +729,15 @@ function UserAccountManagement() {
                     <div className="col-span-1 text-sm font-bold text-gray-500">Ngày tạo:</div>
                     <div className="col-span-2 text-sm font-medium text-gray-800">
                       {viewingUser.NgayTao ? new Date(viewingUser.NgayTao).toLocaleDateString('vi-VN') : 'N/A'}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 border-b pb-4">
+                    <div className="col-span-1 text-sm font-bold text-gray-500">Trạng thái:</div>
+                    <div className="col-span-2 text-sm font-bold">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${viewingUser.TrangThai === 0 || viewingUser.TrangThai === false ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                        {viewingUser.TrangThai === 0 || viewingUser.TrangThai === false ? 'Đã khóa' : 'Hoạt động'}
+                      </span>
                     </div>
                   </div>
 
