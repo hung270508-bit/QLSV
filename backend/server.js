@@ -87,6 +87,13 @@ db.getConnection((err, connection) => {
         }
     });
 
+    // Thêm cột TrangThai vào bảng users nếu chưa có
+    connection.query("SHOW COLUMNS FROM users LIKE 'TrangThai'", (err, results) => {
+        if (!err && results.length === 0) {
+            connection.query("ALTER TABLE users ADD COLUMN TrangThai TINYINT DEFAULT 1");
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
@@ -236,7 +243,7 @@ app.post('/api/login', (req, res) => {
     };
 
     const query = `
-        SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen,
+        SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen, u.TrangThai as UserTrangThai,
                s.HoTen as TenSinhVien, s.NgaySinh, s.GioiTinh, s.Email as EmailSV, s.SoDienThoai as SDTSV, s.MaLop,
                g.HoTen as TenGiangVien, g.Email as EmailGV, g.SoDienThoai as SDTGV, g.MaKhoa,
                l.TenLop, k.TenKhoa
@@ -263,6 +270,11 @@ app.post('/api/login', (req, res) => {
                 }
 
                 if (passwordMatch) {
+                    // Check if account is locked
+                    if (user.UserTrangThai === 0) {
+                        return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa! Vui lòng liên hệ quản trị viên.' });
+                    }
+
                     // Reset login attempts on success
                     if (loginAttempts[username]) {
                         loginAttempts[username].attempts = 0;
@@ -556,7 +568,7 @@ app.get('/api/sinhvien/:mssv/tong-quan', (req, res) => res.json({ gpa: 3.2, tong
 // ==================== USERS & ROLES ====================
 app.get('/api/users', (req, res) => {
     const query = `
-        SELECT u.TaiKhoan, u.password, u.NgayTao, u.MaQuyen, COALESCE(p.TenQuyen, 'Unknown') as TenQuyen,
+        SELECT u.TaiKhoan, u.password, u.NgayTao, u.MaQuyen, u.TrangThai, COALESCE(p.TenQuyen, 'Unknown') as TenQuyen,
                s.HoTen as TenSinhVien, s.NgaySinh as NgaySinhSV, s.GioiTinh as GioiTinhSV, s.Email as EmailSV, s.SoDienThoai as SDTSV, s.MaLop,
                g.HoTen as TenGiangVien, g.Email as EmailGV, g.SoDienThoai as SDTGV, g.MaKhoa,
                l.TenLop, k.TenKhoa
@@ -602,6 +614,11 @@ app.put('/api/users/:taiKhoan/reset-password', async (req, res) => {
         const hashedPassword = await bcrypt.hash(passwordVal, saltRounds);
         executeUpdate('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, req.params.taiKhoan], res, 'Đặt lại MK thành công!', 'Lỗi đặt lại MK!');
     } catch (e) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
+});
+
+app.put('/api/users/:taiKhoan/status', (req, res) => {
+    const { TrangThai } = req.body;
+    executeUpdate('UPDATE users SET TrangThai = ? WHERE TaiKhoan = ?', [TrangThai, req.params.taiKhoan], res, 'Cập nhật trạng thái thành công!', 'Lỗi cập nhật trạng thái!');
 });
 
 // ==================== STUDENTS ====================
@@ -879,6 +896,17 @@ app.put('/api/students/:mssv', async (req, res) => {
             );
         });
 
+        // Tự động khóa/mở khóa tài khoản tương ứng nếu có thay đổi trạng thái
+        if (data.TrangThai) {
+            const userStatus = data.TrangThai === 'Nghỉ học' ? 0 : 1;
+            await new Promise((resolve) => {
+                db.query('UPDATE users SET TrangThai = ? WHERE TaiKhoan = ?', [userStatus, req.params.mssv], (err) => {
+                    if (err) console.error('Lỗi cập nhật trạng thái tài khoản:', err);
+                    resolve();
+                });
+            });
+        }
+
         // Cập nhật thẻ UID nếu có truyền lên
         if (data.UID !== undefined) {
             await new Promise((resolve, reject) => {
@@ -986,7 +1014,35 @@ app.post('/api/teachers', async (req, res) => {
         });
     } catch (err) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
-app.put('/api/teachers/:maGV', (req, res) => executeUpdate('UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=?, GioiTinh=?, NgaySinh=? WHERE MaGiangVien=?', [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.body.GioiTinh || null, req.body.NgaySinh || null, req.params.maGV], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
+app.put('/api/teachers/:maGV', async (req, res) => {
+    try {
+        await new Promise((resolve, reject) => {
+            db.query(
+                'UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=?, GioiTinh=?, NgaySinh=? WHERE MaGiangVien=?',
+                [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.body.GioiTinh || null, req.body.NgaySinh || null, req.params.maGV],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+
+        if (req.body.TrangThai) {
+            const userStatus = req.body.TrangThai === 'Nghỉ việc' ? 0 : 1;
+            await new Promise((resolve) => {
+                db.query('UPDATE users SET TrangThai = ? WHERE TaiKhoan = ?', [userStatus, req.params.maGV], (err) => {
+                    if (err) console.error('Lỗi cập nhật trạng thái tài khoản giảng viên:', err);
+                    resolve();
+                });
+            });
+        }
+
+        res.json({ success: true, message: 'Cập nhật thành công!' });
+    } catch (err) {
+        console.error('Lỗi cập nhật giảng viên:', err);
+        res.status(500).json({ success: false, message: 'Lỗi cập nhật!' });
+    }
+});
 app.delete('/api/teachers/:maGV', (req, res) => executeDelete('DELETE FROM users WHERE TaiKhoan = ?', [req.params.maGV], res, 'Xóa thành công!', 'Lỗi xóa!'));
 
 app.get('/api/teachers/:maGV/details', (req, res) => executeQuery('SELECT g.*, k.TenKhoa FROM giangvien g LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa WHERE g.MaGiangVien = ?', [req.params.maGV], res, 'Lỗi lấy chi tiết!'));
