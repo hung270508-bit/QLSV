@@ -72,10 +72,6 @@ const getLetterColor = (letter) => {
   return 'text-red-600';
 };
 
-const hasAnyScore = (cc, bt, gk, ck) =>
-  (cc !== '' && cc != null) || (bt !== '' && bt != null) ||
-  (gk !== '' && gk != null) || (ck !== '' && ck != null);
-
 // ================================================================
 // Component: ScoreInput
 // ================================================================
@@ -114,8 +110,12 @@ function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' })
     <div>
       <input
         type="number" step="0.1" min="0" max="10"
-        placeholder={placeholder} value={localVal} onChange={handle} onKeyDown={blockInvalidKeys}
-        disabled={disabled} onWheel={e => e.target.blur()}
+        placeholder={placeholder}
+        value={localVal}
+        onChange={handle}
+        onKeyDown={blockInvalidKeys}
+        disabled={disabled}
+        onWheel={e => e.target.blur()}
         className={`w-full px-3 py-2.5 border-2 rounded-xl focus:outline-none transition-colors text-sm font-semibold
           ${disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed border-gray-100 text-gray-500' :
             err ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-orange-500 text-gray-800'}`}
@@ -126,7 +126,7 @@ function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' })
 }
 
 // ================================================================
-// Component: ConfigPanel 
+// Component: ConfigPanel
 // ================================================================
 function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSaveRequest }) {
   const enabledCount = components.filter(c => c.enabled).length;
@@ -293,6 +293,13 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
     showNotification('success', 'Đã chốt cấu hình điểm vĩnh viễn!');
   };
 
+  const closeModal = () => {
+    setShowModal(false); 
+    setEditingGrade(null); 
+    setFormErrors({}); 
+    setScoreInputErrors({});
+  };
+
   const openAddModal = () => {
     setEditingGrade(null);
     setFormData({ MSSV: '', MaLopHocPhan: '', HocKy: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' });
@@ -326,13 +333,9 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
     setFormErrors({}); setScoreInputErrors({}); setShowModal(true);
   };
 
-  // HÀM ĐÓNG MODAL ĐÃ FIX TÊN ĐỂ CHỐNG TRẮNG TRANG
-  const closeModal = () => {
-    setShowModal(false); setEditingGrade(null); setFormErrors({}); setScoreInputErrors({});
-  };
-
   const handleSubmit = (e) => {
     e?.preventDefault();
+
     if (Object.values(scoreInputErrors).some(Boolean)) return;
     const errors = {};
     if (!formData.MSSV)          errors.MSSV = 'Vui lòng chọn sinh viên';
@@ -395,7 +398,6 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
       }
   };
 
-  // ĐÃ FIX HÀM CANCEL XÓA ĐIỂM
   const handleDeleteCancel = () => setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
   
   const handleDeleteConfirm = async () => {
@@ -428,6 +430,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
     return Array.from(map.values()).sort((a, b) => a.MSSV.localeCompare(b.MSSV));
   }, [teachingAssignments, students, grades]);
 
+  // ĐÃ FIX: Biến hasPreview đúng tên
   const activeCfgForm = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
   const previewTotal = calcTotal10(formData, activeCfgForm);
   const previewGPA   = convertToGPA(previewTotal);
@@ -435,20 +438,35 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
+      >
         <div>
           <h2 className="text-2xl font-bold text-white mb-1">Quản lý điểm sinh viên</h2>
           <p className="text-orange-100 text-sm font-medium">Cấu hình trọng số & nhập điểm theo từng lớp học phần</p>
         </div>
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={openAddModal} className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl shadow-lg font-bold">
+        <motion.button
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+          onClick={openAddModal}
+          className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl shadow-lg font-bold"
+        >
           <Plus className="w-5 h-5" /> Thêm điểm thủ công
         </motion.button>
       </motion.div>
 
       <div className="relative max-w-2xl">
         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input type="text" placeholder="Tìm sinh viên theo MSSV hoặc Họ tên..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-14 pr-10 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all shadow-sm font-medium text-sm" />
-        {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 bg-gray-100 rounded-full"><X className="w-4 h-4" /></button>}
+        <input
+          type="text" placeholder="Tìm sinh viên theo MSSV hoặc Họ tên..."
+          value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+          className="w-full pl-14 pr-10 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all shadow-sm font-medium text-sm"
+        />
+        {searchTerm && (
+          <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 bg-gray-100 rounded-full">
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {(teachingAssignments || []).length > 0 ? (
@@ -465,13 +483,18 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
             });
 
             const term = searchTerm.toLowerCase();
-            const filteredStudents = studentsWithGrades.filter(s => !term || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term));
+            const filteredStudents = studentsWithGrades.filter(s => 
+              !term || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+            );
 
             if (term && filteredStudents.length === 0) return null;
 
             return (
               <div key={ta.MaLopHocPhan} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <button onClick={() => setConfigOpen(prev => ({ ...prev, [ta.MaLopHocPhan]: !isOpen }))} className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-orange-50/50 transition-colors group">
+                <button
+                  onClick={() => setConfigOpen(prev => ({ ...prev, [ta.MaLopHocPhan]: !isOpen }))}
+                  className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-orange-50/50 transition-colors group"
+                >
                   <div className="flex items-center gap-4">
                     <div className="p-2.5 bg-orange-50 text-orange-500 rounded-xl group-hover:scale-110 transition-transform"><GraduationCap className="w-6 h-6" /></div>
                     <div className="text-left">
@@ -488,7 +511,9 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                   <div className="flex items-center gap-4">
                     {isLocked && <span className="text-[11px] text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
                     {!isLocked && <span className="text-[11px] text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
-                    <div className="p-2 rounded-full hover:bg-gray-100 transition-colors"><ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} /></div>
+                    <div className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </div>
                   </div>
                 </button>
                 
@@ -497,7 +522,14 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-100 bg-gray-50/30">
                       
                       <div className="p-6">
-                        <ConfigPanel maLopHocPhan={ta.MaLopHocPhan} tenLop={ta.TenMonHoc} components={cfg} locked={isLocked} onChange={(next) => handleConfigChange(ta.MaLopHocPhan, next)} onSaveRequest={() => handleRequestSaveConfig(ta.MaLopHocPhan)} />
+                        <ConfigPanel
+                          maLopHocPhan={ta.MaLopHocPhan}
+                          tenLop={ta.TenMonHoc}
+                          components={cfg}
+                          locked={isLocked}
+                          onChange={(next) => handleConfigChange(ta.MaLopHocPhan, next)}
+                          onSaveRequest={() => handleRequestSaveConfig(ta.MaLopHocPhan)}
+                        />
                       </div>
 
                       <div className="px-6 pb-6">
@@ -533,7 +565,11 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                                         const isZero = !c.enabled || Number(c.weight) === 0;
                                         const val = grade && grade[c.key];
                                         const displayVal = isZero ? '0' : (hasGrade && val != null && val !== '' ? val : '—');
-                                        return <td key={c.key} className="py-4 px-3 text-sm text-center text-gray-600 font-medium">{displayVal}</td>;
+                                        return (
+                                          <td key={c.key} className="py-4 px-3 text-sm text-center text-gray-600 font-medium">
+                                            {displayVal}
+                                          </td>
+                                        );
                                       })}
                                       <td className="py-4 px-3 text-sm text-center font-black text-gray-800 bg-gray-50/50 group-hover:bg-transparent">{t10}</td>
                                       <td className="py-4 px-3 text-sm text-center font-black text-orange-600 bg-orange-50/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
@@ -576,59 +612,114 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
         {showModal && (
           <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
-            <motion.div initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }} className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10">
+            <motion.div
+              initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10"
+            >
               <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-t-[2rem] px-8 py-6 flex items-center justify-between shrink-0">
                 <div>
                   <h3 className="text-2xl font-bold text-white mb-1">{editingGrade ? 'Cập nhật điểm' : 'Nhập điểm sinh viên'}</h3>
                   <p className="text-orange-100 text-sm font-medium">Hệ thống sẽ tự động tính toán theo cấu hình lớp</p>
                 </div>
-                <button onClick={closeModal} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5 text-white" /></button>
+                <button type="button" onClick={closeModal} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-white" />
+                </button>
               </div>
+
               <form onSubmit={handleSubmit} className="p-8 space-y-7">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
-                    <select value={formData.MaLopHocPhan} disabled={!!editingGrade || !!formData.MSSV} onChange={e => { setFormData(prev => ({ ...prev, MaLopHocPhan: e.target.value, MSSV: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' })); if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' })); }} className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' : formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}>
+                    <select
+                      value={formData.MaLopHocPhan} disabled={!!editingGrade || !!formData.MSSV}
+                      onChange={e => {
+                        setFormData(prev => ({ ...prev, MaLopHocPhan: e.target.value, MSSV: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' }));
+                        if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
+                      }}
+                      className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
+                        ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
+                          formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                    >
                       <option value="">Chọn lớp học phần</option>
                       {(teachingAssignments || []).map(ta => {
                         const isLocked = lockedConfigs[ta.MaLopHocPhan];
-                        return <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked}>{ta.TenMonHoc} — {ta.MaLopHocPhan} {!isLocked ? '(Chưa chốt)' : ''}</option>
+                        return (
+                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked}>
+                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!isLocked ? '(Chưa chốt cấu hình)' : ''}
+                          </option>
+                        )
                       })}
                     </select>
                     {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
                   </div>
+
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sinh viên <span className="text-red-500">*</span></label>
-                    <select value={formData.MSSV} disabled={!formData.MaLopHocPhan || !!editingGrade} onChange={e => { setFormData(prev => ({ ...prev, MSSV: e.target.value })); if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' })); }} className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' : formErrors.MSSV ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}>
-                      <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên' : 'Chưa chọn lớp'}</option>
+                    <select
+                      value={formData.MSSV} disabled={!formData.MaLopHocPhan || !!editingGrade}
+                      onChange={e => {
+                        setFormData(prev => ({ ...prev, MSSV: e.target.value }));
+                        if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' }));
+                      }}
+                      className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
+                        ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
+                          formErrors.MSSV ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                    >
+                      <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên' : 'Chưa chọn lớp học phần'}</option>
                       {getStudentsForLHP(formData.MaLopHocPhan).map(s => {
                         const existRecord = (grades || []).find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
                         const hasScore = existRecord && activeCfgForm.some(c => c.enabled && existRecord[c.key] != null && existRecord[c.key] !== '');
-                        return <option key={s.MSSV} value={s.MSSV} disabled={!!hasScore && !editingGrade}>{s.MSSV} — {s.HoTen}{hasScore ? ' ✓ đã có điểm' : ''}</option>
+                        return (
+                          <option key={s.MSSV} value={s.MSSV} disabled={!!hasScore && !editingGrade}>
+                            {s.MSSV} — {s.HoTen}{hasScore ? ' ✓ đã có điểm' : ''}
+                          </option>
+                        );
                       })}
                     </select>
                     {formErrors.MSSV && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MSSV}</p>}
                   </div>
                 </div>
+
                 <div className="bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                     {activeCfgForm.map(c => {
                       const isZero = !c.enabled || Number(c.weight) === 0;
                       return (
                         <div key={c.key}>
-                          <label className="block text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide">{c.label} {!isZero ? <span className="text-orange-500 text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-400 text-[11px] ml-0.5">(0%)</span>}</label>
-                          <ScoreInput value={isZero ? 0 : formData[c.key]} disabled={isZero} placeholder={!isZero ? '0.0' : '0'} onChange={val => setFormData(prev => ({ ...prev, [c.key]: val }))} onError={hasErr => setScoreInputErrors(prev => ({ ...prev, [c.key]: hasErr }))} />
+                          <label className="block text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide">
+                            {c.label} {!isZero ? <span className="text-orange-500 text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-400 text-[11px] ml-0.5">(0%)</span>}
+                          </label>
+                          <ScoreInput
+                            value={isZero ? 0 : formData[c.key]}
+                            disabled={isZero}
+                            placeholder={!isZero ? '0.0' : '0'}
+                            onChange={val => setFormData(prev => ({ ...prev, [c.key]: val }))}
+                            onError={hasErr => setScoreInputErrors(prev => ({ ...prev, [c.key]: hasErr }))}
+                          />
                         </div>
                       );
                     })}
                   </div>
                 </div>
+
                 {hasPreview && (
                   <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-100 rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
-                    <div><p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p><p className="text-[2.5rem] leading-none font-black text-gray-800">{previewTotal}</p></div>
-                    <div className="text-right flex flex-col items-end"><p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p><div className="flex items-baseline gap-2"><p className="text-[2rem] leading-none font-black text-orange-600">{previewGPA.gpa.toFixed(1)}</p><p className="text-2xl font-black text-blue-600">({previewGPA.letter})</p></div><p className="text-xs text-gray-500 font-bold mt-1.5 uppercase bg-white px-2 py-0.5 rounded-md border border-gray-200">{previewGPA.text}</p></div>
+                    <div>
+                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
+                      <p className="text-[2.5rem] leading-none font-black text-gray-800">{previewTotal}</p>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-[2rem] leading-none font-black text-orange-600">{previewGPA.gpa.toFixed(1)}</p>
+                        <p className="text-2xl font-black text-blue-600">({previewGPA.letter})</p>
+                      </div>
+                      <p className="text-xs text-gray-500 font-bold mt-1.5 uppercase bg-white px-2 py-0.5 rounded-md border border-gray-200">{previewGPA.text}</p>
+                    </div>
                   </div>
                 )}
+
                 <div className="flex gap-4 pt-2">
                   <button type="button" onClick={closeModal} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
                   <button type="submit" disabled={Object.values(scoreInputErrors).some(Boolean)} className={`flex-1 py-4 rounded-xl font-bold text-base shadow-md transition-all ${Object.values(scoreInputErrors).some(Boolean) ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-none' : 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 border border-orange-600'}`}>{editingGrade ? 'Lưu thay đổi' : 'Xác nhận Thêm điểm'}</button>
@@ -649,10 +740,14 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                  <Save className="w-10 h-10" />
                </div>
                <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Xác nhận lưu điểm</h3>
-               <p className="text-gray-600 text-sm font-medium mb-7 px-2 leading-relaxed">Bạn có chắc chắn muốn lưu điểm cho sinh viên này vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.</p>
+               <p className="text-gray-600 text-sm font-medium mb-7 px-2 leading-relaxed">
+                 Bạn có chắc chắn muốn lưu điểm cho sinh viên này vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.
+               </p>
                <div className="flex gap-3">
                  <button onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Kiểm tra lại</button>
-                 <button onClick={executeSubmitGrade} className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 hover:shadow-blue-500/25 transition-all">Đồng ý lưu</button>
+                 <button onClick={executeSubmitGrade} className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 hover:shadow-blue-500/25 transition-all">
+                   Đồng ý lưu
+                 </button>
                </div>
             </motion.div>
           </div>
@@ -665,16 +760,37 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} />
              <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
-                <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-red-100/50 shadow-inner"><Lock className="w-10 h-10" /></div>
+                <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-red-100/50 shadow-inner">
+                  <Lock className="w-10 h-10" />
+                </div>
                 <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Xác nhận chốt cấu hình</h3>
-                <p className="text-gray-600 text-sm font-medium mb-6 px-2 leading-relaxed">Trọng số điểm của môn học này sẽ được áp dụng cho toàn bộ sinh viên trong danh sách.</p>
+                <p className="text-gray-600 text-sm font-medium mb-6 px-2 leading-relaxed">
+                  Trọng số điểm của môn học này sẽ được áp dụng cho toàn bộ sinh viên trong danh sách.
+                </p>
+                
                 <label className="flex items-start gap-3 bg-red-50/50 hover:bg-red-50 p-4 rounded-xl border-2 border-red-100 text-left cursor-pointer mb-7 transition-colors group">
-                  <div className="pt-0.5"><input type="checkbox" className="w-5 h-5 accent-red-600 rounded cursor-pointer" checked={configConfirm.checked} onChange={e => setConfigConfirm(prev => ({ ...prev, checked: e.target.checked }))} /></div>
-                  <span className="text-sm font-bold text-red-800 leading-tight">Tôi hiểu rằng sau khi bấm chốt, cấu hình sẽ bị KHÓA VĨNH VIỄN và tuyệt đối KHÔNG THỂ thay đổi được nữa.</span>
+                  <div className="pt-0.5">
+                    <input 
+                      type="checkbox" 
+                      className="w-5 h-5 accent-red-600 rounded cursor-pointer"
+                      checked={configConfirm.checked}
+                      onChange={e => setConfigConfirm(prev => ({ ...prev, checked: e.target.checked }))}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-red-800 leading-tight">
+                    Tôi hiểu rằng sau khi bấm chốt, cấu hình sẽ bị KHÓA VĨNH VIỄN và tuyệt đối KHÔNG THỂ thay đổi được nữa.
+                  </span>
                 </label>
+
                 <div className="flex gap-3">
                   <button onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Quay lại</button>
-                  <button disabled={!configConfirm.checked} onClick={executeSaveConfig} className={`flex-1 py-3.5 rounded-xl font-bold shadow-md transition-all ${!configConfirm.checked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-red-500/25'}`}>Chốt vĩnh viễn</button>
+                  <button 
+                    disabled={!configConfirm.checked} 
+                    onClick={executeSaveConfig} 
+                    className={`flex-1 py-3.5 rounded-xl font-bold shadow-md transition-all ${!configConfirm.checked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-red-500/25'}`}
+                  >
+                    Chốt vĩnh viễn
+                  </button>
                 </div>
              </motion.div>
           </div>
@@ -686,8 +802,13 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
         {deleteModal.show && (
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDeleteCancel} />
-            <motion.div initial={{ scale: 0.85, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.85, y: 20, opacity: 0 }} className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10">
-              <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-orange-100/50"><AlertTriangle className="w-10 h-10" /></div>
+            <motion.div
+              initial={{ scale: 0.85, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.85, y: 20, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10"
+            >
+              <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-orange-100/50">
+                <AlertTriangle className="w-10 h-10" />
+              </div>
               <h3 className="text-2xl font-black text-gray-800 mb-2 tracking-tight">Xác nhận xóa điểm</h3>
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-7 space-y-1.5">
                 <p className="text-sm text-gray-500 font-medium">Xóa điểm của sinh viên:</p>
@@ -703,9 +824,14 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
         )}
       </AnimatePresence>
 
+      {/* TOAST NOTIFICATION */}
       <AnimatePresence>
         {notification.show && (
-          <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className={`fixed bottom-8 right-8 z-[11000] flex items-center gap-3.5 px-6 py-4 rounded-2xl shadow-2xl text-white font-bold tracking-wide ${notification.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-rose-600'}`}>
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className={`fixed bottom-8 right-8 z-[11000] flex items-center gap-3.5 px-6 py-4 rounded-2xl shadow-2xl text-white font-bold tracking-wide
+              ${notification.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-rose-600'}`}
+          >
             {notification.type === 'success' ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
             <span className="text-[15px]">{notification.message}</span>
           </motion.div>
