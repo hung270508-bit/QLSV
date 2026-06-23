@@ -18,6 +18,8 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
   const [attendanceStatus, setAttendanceStatus] = useState({});
   const [classStudents, setClassStudents] = useState([]); 
   const [isSaving, setIsSaving] = useState(false);
+  const [sessionState, setSessionState] = useState('PENDING');
+  const [timeRemaining, setTimeRemaining] = useState(0);
 
   const today = new Date();
 
@@ -54,9 +56,57 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
         });
         setAttendanceStatus(prev => ({ ...prev, ...restored }));
       }
+      
+      const sessionRes = await axios.get(`${API_URL}/api/attendance/course/${maLopHocPhan}/session/${dateString}`);
+      const { status, timeOpened } = sessionRes.data;
+      setSessionState(status);
+      
+      if (status === 'OPEN' && timeOpened) {
+        const elapsed = (new Date().getTime() - new Date(timeOpened).getTime()) / 1000;
+        const remaining = 900 - Math.floor(elapsed);
+        if (remaining <= 0) {
+          handleCloseSession(maLopHocPhan, dateString);
+        } else {
+          setTimeRemaining(remaining);
+        }
+      } else {
+        setTimeRemaining(0);
+      }
     } catch (err) {
       console.warn('Không có dữ liệu điểm danh cũ:', err);
     }
+  };
+
+  const handleOpenSession = async () => {
+    if (!selectedSchedule) return;
+    try {
+      const todayDate = new Date().toISOString().split('T')[0];
+      await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/open/${todayDate}`);
+      setSessionState('OPEN');
+      setTimeRemaining(900);
+    } catch (err) {
+      alert("Lỗi khi mở điểm danh");
+    }
+  };
+
+  const handleCloseSession = async (maLopHocPhan, dateString) => {
+    try {
+      const lhp = maLopHocPhan || selectedSchedule?.MaLopHocPhan;
+      const date = dateString || new Date().toISOString().split('T')[0];
+      if (!lhp) return;
+      await axios.post(`${API_URL}/api/attendance/course/${lhp}/close/${date}`);
+      setSessionState('CLOSED');
+      setTimeRemaining(0);
+      fetchScheduleAttendance(lhp, date);
+    } catch (err) {
+      console.error("Lỗi khi chốt sổ:", err);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   const handleSelectSchedule = async (schedule) => {
@@ -103,6 +153,24 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
   }, [selectedSchedule]);
   // =========================================================================
 
+  // Countdown timer local tick
+  useEffect(() => {
+    if (sessionState !== 'OPEN' || timeRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Tự động chốt sổ nếu bộ đếm cục bộ về 0
+          const todayDate = new Date().toISOString().split('T')[0];
+          handleCloseSession(selectedSchedule?.MaLopHocPhan, todayDate);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [sessionState, timeRemaining, selectedSchedule]);
+
   const handleStatusChange = (mssv, value) => {
     setAttendanceStatus(prev => ({ ...prev, [mssv]: value }));
   };
@@ -129,16 +197,13 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
           }))
         .filter(p => p.TrangThai !== 'Chưa điểm danh');
 
-      if (attendanceData.length === 0) {
-        setIsSaving(false);
-        return alert("Vui lòng điểm danh ít nhất 1 sinh viên trước khi lưu!");
+      if (attendanceData.length > 0) {
+        await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${todayDate}`, { 
+          attendance: attendanceData 
+        });
       }
 
-      await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${todayDate}`, { 
-        attendance: attendanceData 
-      });
-
-      alert('Lưu điểm danh thành công!');
+      await handleCloseSession(selectedSchedule.MaLopHocPhan, todayDate);
       handleBack(); 
 
     } catch (error) {
@@ -298,8 +363,36 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                     </div>
                   </div>
                   
+                  {/* CỤM ĐẾM NGƯỢC VÀ NÚT MỞ ĐIỂM DANH */}
+                  <div className="flex items-center gap-4">
+                    {sessionState === 'OPEN' ? (
+                      <div className="flex items-center gap-4 bg-orange-50 px-4 py-2 rounded-2xl border border-orange-200">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-orange-500 animate-pulse" />
+                          <span className="text-xl font-black text-orange-600 font-mono tracking-wider w-16 text-center">
+                            {formatTime(timeRemaining)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleCloseSession()}
+                          className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded-xl text-sm transition-colors"
+                        >
+                          Chốt sổ sớm
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleOpenSession}
+                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all flex items-center gap-2"
+                      >
+                        <Clock className="w-5 h-5" /> 
+                        Bắt đầu điểm danh (15p)
+                      </button>
+                    )}
+                  </div>
+
                   {/* Stats Mini Cards */}
-                  <div className="hidden md:flex items-center gap-3">
+                  <div className="hidden md:flex items-center gap-3 ml-4">
                     <div className="bg-blue-50 px-4 py-2 rounded-xl text-center border border-blue-100">
                       <p className="text-xs font-bold text-blue-600 uppercase">Tổng SV</p>
                       <p className="text-xl font-black text-blue-800">{classStudents.length}</p>

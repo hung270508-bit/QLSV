@@ -24,6 +24,7 @@ function StudentSupport({ user, profile }) {
   // State cho Form đăng ký biểu mẫu
   const [requestForm, setRequestForm] = useState({ show: false, chude: '', ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
   const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestFormErrors, setRequestFormErrors] = useState({ noiDung: '' });
   const [submittedData, setSubmittedData] = useState(null);
   const [viewResponse, setViewResponse] = useState(null);
 
@@ -80,15 +81,38 @@ function StudentSupport({ user, profile }) {
     }
 
     // ---- BƯỚC 2: NẾU HỢP LỆ THÌ MỚI HIỆN POPUP FORM ----
-    setRequestForm({ show: true, chude: chude });
+    setRequestForm({ show: true, chude: chude, ngaySinh: '', khoa: '', dienThoai: '', noiDung: '' });
+    setRequestFormErrors({ noiDung: '' });
   };
 
   // 3. HÀM XỬ LÝ: SUBMIT FORM ĐĂNG KÝ BIỂU MẪU
   const handleSubmitRequestForm = (e) => {
     e.preventDefault();
-    if (!requestForm.noiDung.trim()) {
-      return setToast({ show: true, type: 'error', message: 'Vui lòng nhập nội dung yêu cầu!' });
+    const noiDungTrim = requestForm.noiDung.trim();
+    const errors = { noiDung: '' };
+    
+    if (!noiDungTrim) {
+      errors.noiDung = 'Vui lòng nhập nội dung yêu cầu!';
+      setRequestFormErrors(errors);
+      return;
     }
+    if (noiDungTrim.length < 10) {
+      errors.noiDung = 'Nội dung phải có ít nhất 10 ký tự!';
+      setRequestFormErrors(errors);
+      return;
+    }
+    if (noiDungTrim.length > 1000) {
+      errors.noiDung = 'Nội dung không được vượt quá 1000 ký tự!';
+      setRequestFormErrors(errors);
+      return;
+    }
+    if (/[^a-zA-ZÀ-ỹà-ỹ0-9\s]/.test(noiDungTrim)) {
+      errors.noiDung = 'Nội dung không được chứa ký tự đặc biệt!';
+      setRequestFormErrors(errors);
+      return;
+    }
+    
+    setRequestFormErrors(errors);
     setConfirmDialog({
       show: true,
       title: 'Xác nhận đăng ký biểu mẫu',
@@ -126,9 +150,37 @@ function StudentSupport({ user, profile }) {
   // 4. HÀM XỬ LÝ: ĐIỀN FORM HỎI ĐÁP
   const handleSubmitQuestion = (e) => {
     e.preventDefault();
-    if (!formData.chuDe || !formData.noiDung) {
-      return setToast({ show: true, type: 'error', message: 'Vui lòng chọn Chủ đề và nhập Nội dung chi tiết!' });
+    const errors = { chuDe: '', noiDung: '' };
+    
+    if (!formData.chuDe) {
+      errors.chuDe = 'Vui lòng chọn chủ đề!';
+      setFormErrors(errors);
+      return;
     }
+    if (!formData.noiDung) {
+      errors.noiDung = 'Vui lòng nhập nội dung chi tiết!';
+      setFormErrors(errors);
+      return;
+    }
+    
+    const noiDungTrim = formData.noiDung.trim();
+    if (noiDungTrim.length < 10) {
+      errors.noiDung = 'Nội dung phải có ít nhất 10 ký tự!';
+      setFormErrors(errors);
+      return;
+    }
+    if (noiDungTrim.length > 1000) {
+      errors.noiDung = 'Nội dung không được vượt quá 1000 ký tự!';
+      setFormErrors(errors);
+      return;
+    }
+    if (/[^a-zA-ZÀ-ỹà-ỹ0-9\s]/.test(noiDungTrim)) {
+      errors.noiDung = 'Nội dung không được chứa ký tự đặc biệt!';
+      setFormErrors(errors);
+      return;
+    }
+    
+    setFormErrors(errors);
     setConfirmDialog({
       show: true,
       title: 'Xác nhận gửi câu hỏi',
@@ -326,7 +378,7 @@ function StudentSupport({ user, profile }) {
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">Chủ đề cần hỗ trợ <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        <select required value={formData.chuDe} onChange={(e) => setFormData({ ...formData, chuDe: e.target.value })} className="w-full p-2.5 bg-white border border-orange-200 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-medium text-gray-800 text-sm transition-all">
+                        <select required value={formData.chuDe} onChange={(e) => { setFormData({ ...formData, chuDe: e.target.value }); if (formErrors.chuDe) setFormErrors({ ...formErrors, chuDe: '' }); }} className={`w-full p-2.5 bg-white border rounded-lg appearance-none focus:outline-none focus:ring-2 font-medium text-gray-800 text-sm transition-all ${formErrors.chuDe ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20' : 'border-orange-200 focus:border-orange-500 focus:ring-orange-500/20'}`}>
                           <option value="">--- Chọn chủ đề ---</option>
                           <option value="Lỗi hệ thống Website / App">Lỗi hệ thống Website / App</option>
                           <option value="Thắc mắc Điểm thi / Điểm danh">Thắc mắc Điểm thi / Điểm danh</option>
@@ -335,6 +387,7 @@ function StudentSupport({ user, profile }) {
                         </select>
                         <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-orange-400 pointer-events-none" />
                       </div>
+                      {formErrors.chuDe && <p className="text-red-500 text-xs mt-1">{formErrors.chuDe}</p>}
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">Phòng ban tiếp nhận</label>
@@ -343,8 +396,13 @@ function StudentSupport({ user, profile }) {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">Nội dung chi tiết <span className="text-red-500">*</span></label>
-                    <textarea required value={formData.noiDung} onChange={(e) => { setFormData({ ...formData, noiDung: e.target.value }); if (formErrors.noiDung) setFormErrors({ ...formErrors, noiDung: '' }); }} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className={`w-full p-3 bg-white border rounded-lg focus:outline-none focus:ring-2 resize-none text-gray-800 text-sm transition-all ${formErrors.noiDung ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20' : 'border-orange-200 focus:border-orange-500 focus:ring-orange-500/20'}`}></textarea>
-                    {formErrors.noiDung && <p className="text-red-500 text-xs mt-1">{formErrors.noiDung}</p>}
+                    <textarea value={formData.noiDung} onChange={(e) => { setFormData({ ...formData, noiDung: e.target.value }); if (formErrors.noiDung) setFormErrors({ ...formErrors, noiDung: '' }); }} rows="4" placeholder="Vui lòng trình bày rõ vấn đề bạn đang gặp phải..." className={`w-full p-3 bg-white border rounded-lg focus:outline-none focus:ring-2 resize-none text-gray-800 text-sm transition-all ${formErrors.noiDung ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20' : 'border-orange-200 focus:border-orange-500 focus:ring-orange-500/20'}`}></textarea>
+                    <div className="flex items-center justify-between mt-1">
+                      {formErrors.noiDung
+                        ? <p className="text-red-500 text-xs">{formErrors.noiDung}</p>
+                        : <span />}
+                      <p className="text-xs text-gray-400">{formData.noiDung?.length || 0}/1000</p>
+                    </div>
                   </div>
                   <div className="text-right pt-1">
                     <button type="submit" disabled={submitting} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-all flex items-center gap-2 ml-auto shadow-md shadow-orange-200 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed transform hover:-translate-y-0.5 text-sm">
@@ -529,13 +587,21 @@ function StudentSupport({ user, profile }) {
                   <div className="mb-6">
                     <label className="block text-xs font-bold text-gray-700 mb-2">Nội dung yêu cầu <span className="text-red-500">*</span></label>
                     <textarea
-                      required
                       value={requestForm.noiDung}
-                      onChange={(e) => setRequestForm({ ...requestForm, noiDung: e.target.value })}
+                      onChange={(e) => {
+                        setRequestForm({ ...requestForm, noiDung: e.target.value });
+                        if (requestFormErrors.noiDung) setRequestFormErrors({ noiDung: '' });
+                      }}
                       rows="4"
                       placeholder="Vui lòng nhập lý do hoặc nội dung chi tiết cho yêu cầu này..."
-                      className="w-full p-3 bg-white border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none text-gray-800 text-sm transition-all"
+                      className={`w-full p-3 bg-white border rounded-lg focus:outline-none focus:ring-2 resize-none text-gray-800 text-sm transition-all ${requestFormErrors.noiDung ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-orange-200 focus:border-orange-500 focus:ring-orange-500/20'}`}
                     />
+                    <div className="flex items-center justify-between mt-1">
+                      {requestFormErrors.noiDung
+                        ? <p className="text-red-500 text-xs">{requestFormErrors.noiDung}</p>
+                        : <span />}
+                      <p className="text-xs text-gray-400">{requestForm.noiDung?.length || 0}/1000</p>
+                    </div>
                   </div>
 
                   {/* Buttons */}

@@ -3,9 +3,9 @@ import { StudentOverviewSkeleton } from '../common/StudentSkeleton';
 import { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { motion } from 'framer-motion';
-import { 
-  CalendarDays, 
-  BookOpen, 
+import {
+  CalendarDays,
+  BookOpen,
   ChevronRight,
   RefreshCw,
   Award,
@@ -51,7 +51,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 function StudentOverview({ user, setActiveMenu }) {
   const [loading, setLoading] = useState(true);
-  
+
   // States cho các chỉ số
   const [stats, setStats] = useState({
     tongHocKy: 0,
@@ -59,7 +59,7 @@ function StudentOverview({ user, setActiveMenu }) {
     maxGPA: '0.00',
     currentGPA: '0.00'
   });
-  
+
   const [chartData, setChartData] = useState([]);
   const [thisWeekClasses, setThisWeekClasses] = useState(0);
 
@@ -73,7 +73,7 @@ function StudentOverview({ user, setActiveMenu }) {
       const [gradesRes, scheduleRes] = await Promise.all([
         axios.get(`${API_URL}/api/grades/student/${user?.username}`),
         // Đã giữ nguyên API mới của bạn:
-        axios.get(`${API_URL}/api/students/${user.id}/schedule`) 
+        axios.get(`${API_URL}/api/students/${user.id}/schedule`)
       ]);
 
       const grades = gradesRes.data;
@@ -81,7 +81,7 @@ function StudentOverview({ user, setActiveMenu }) {
 
       // THUẬT TOÁN LỌC TRÙNG LẶP: Lọc bỏ các lịch học bị nhân bản do bấm Lưu nhiều lần
       // THUẬT TOÁN LỌC TRÙNG LẶP CHUẨN: Lọc theo Ngày Học và Ca Học
-const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHoc}_${item.CaHoc}`, item])).values());
+      const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHoc}_${item.CaHoc}`, item])).values());
 
       // 1. TÍNH TOÁN DỮ LIỆU ĐIỂM & BIỂU ĐỒ
       const isGraded = (diemChu) => diemChu && diemChu.trim() !== '' && diemChu !== '-';
@@ -99,7 +99,7 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
       let totalGradePointsAttempted = 0;
       let totalCreditsAttempted = 0;
       let highestSemGPA = 0;
-      
+
       const processedChartData = [];
 
       sortedSemesters.forEach(hk => {
@@ -117,7 +117,7 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
 
             totalCreditsAttempted += tinChi;
             totalGradePointsAttempted += gpa * tinChi;
-            
+
             if (grade.DiemChu !== 'F' && grade.DiemChu !== 'F+') {
               totalAccumulatedCredits += tinChi;
             }
@@ -151,13 +151,13 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
       // 2. TÍNH LỊCH HỌC TRONG TUẦN NÀY (Sử dụng uniqueSchedules đã được lọc sạch)
       const today = new Date();
       const currentDay = today.getDay();
-      const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1); 
+      const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
       const startOfWeek = new Date(today.setDate(diff));
-      startOfWeek.setHours(0,0,0,0);
-      
+      startOfWeek.setHours(0, 0, 0, 0);
+
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23,59,59,999);
+      endOfWeek.setHours(23, 59, 59, 999);
 
       // SỬ DỤNG uniqueSchedules ở đây
       const classesInWeek = uniqueSchedules.filter(item => {
@@ -180,7 +180,7 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      
+
       {/* Header Bar */}
       <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -192,10 +192,10 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        
+
         {/* CỘT TRÁI: THỐNG KÊ VÀ BIỂU ĐỒ (Chiếm 3 phần) */}
         <div className="xl:col-span-3 space-y-6">
-          
+
           {/* 4 Thẻ Thống Kê Nhanh */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-blue-500 text-white rounded-2xl p-5 shadow-lg shadow-blue-200 relative overflow-hidden">
@@ -238,45 +238,45 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#6B7280', fontSize: 12 }} 
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#6B7280', fontSize: 12 }}
                       dy={10}
                     />
-                    <YAxis 
-                      yAxisId="left" 
-                      domain={[0, 4]} 
+                    <YAxis
+                      yAxisId="left"
+                      domain={[0, 4]}
                       ticks={[0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]}
-                      axisLine={false} 
-                      tickLine={false} 
+                      axisLine={false}
+                      tickLine={false}
                       tick={{ fill: '#6B7280', fontSize: 12 }}
                       label={{ value: 'Điểm (Hệ 4)', angle: -90, position: 'insideLeft', fill: '#4B5563', fontWeight: 'bold' }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend 
-                      verticalAlign="top" 
+                    <Legend
+                      verticalAlign="top"
                       height={50}
                       iconType="circle"
                       formatter={(value) => <span className="text-gray-600 font-medium ml-1">{value}</span>}
                     />
-                    
-                    <Bar 
-                      yAxisId="left" 
-                      dataKey="semGPA" 
-                      name="Điểm TB học kỳ (hệ 4)" 
-                      fill="#60A5FA" 
-                      radius={[4, 4, 0, 0]} 
+
+                    <Bar
+                      yAxisId="left"
+                      dataKey="semGPA"
+                      name="Điểm TB học kỳ (hệ 4)"
+                      fill="#60A5FA"
+                      radius={[4, 4, 0, 0]}
                       barSize={40}
                     />
-                    
-                    <Line 
-                      yAxisId="left" 
-                      type="monotone" 
-                      dataKey="cumGPA" 
-                      name="Điểm TB tích lũy (hệ 4)" 
-                      stroke="#F97316" 
+
+                    <Line
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="cumGPA"
+                      name="Điểm TB tích lũy (hệ 4)"
+                      stroke="#F97316"
                       strokeWidth={3}
                       dot={{ r: 6, fill: '#F97316', stroke: '#FFF', strokeWidth: 2 }}
                       activeDot={{ r: 8 }}
@@ -302,10 +302,10 @@ const uniqueSchedules = Array.from(new Map(schedules.map(item => [`${item.NgayHo
               <h3 className="font-bold text-gray-800 text-lg">Cần lưu ý</h3>
               <RefreshCw className="w-4 h-4 text-gray-400" />
             </div>
-            
+
             <div className="p-3">
               {/* Lịch học trong tuần */}
-              <button 
+              <button
                 onClick={() => setActiveMenu && setActiveMenu('lichhoc')}
                 className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-orange-50 transition-colors group mb-2"
               >

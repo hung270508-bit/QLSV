@@ -131,9 +131,9 @@ function DashboardOverview({ onNavigate }) {
   };
 
   const COLORS = [
-    '#f97316','#3b82f6','#22c55e','#eab308','#ef4444','#8b5cf6',
-    '#06b6d4','#ec4899','#f59e0b','#14b8a6','#84cc16','#6366f1',
-    '#d946ef','#f43f5e','#0ea5e9','#a855f7','#fb923c','#10b981'
+    '#f97316', '#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6',
+    '#06b6d4', '#ec4899', '#f59e0b', '#14b8a6', '#84cc16', '#6366f1',
+    '#d946ef', '#f43f5e', '#0ea5e9', '#a855f7', '#fb923c', '#10b981'
   ];
 
   const statCards = [
@@ -247,9 +247,9 @@ function DashboardOverview({ onNavigate }) {
                 />
                 <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(249,115,22,0.04)', radius: 8 }} />
-                {hasLopHoc && <Bar dataKey="lopHoc"    stackId="a" fill="#facc15" name="Lớp học"    radius={[0,0,0,0]} isAnimationActive={true} animationDuration={600} />}
-                {hasGiangVien && <Bar dataKey="giangVien" stackId="a" fill="#4ade80" name="Giảng viên" radius={[0,0,0,0]} isAnimationActive={true} animationDuration={700} />}
-                {hasSinhVien && <Bar dataKey="sinhVien"  stackId="a" fill="#60a5fa" name="Sinh viên"  radius={[6,6,0,0]} isAnimationActive={true} animationDuration={800} />}
+                {hasLopHoc && <Bar dataKey="lopHoc" stackId="a" fill="#facc15" name="Lớp học" radius={[0, 0, 0, 0]} isAnimationActive={true} animationDuration={600} />}
+                {hasGiangVien && <Bar dataKey="giangVien" stackId="a" fill="#4ade80" name="Giảng viên" radius={[0, 0, 0, 0]} isAnimationActive={true} animationDuration={700} />}
+                {hasSinhVien && <Bar dataKey="sinhVien" stackId="a" fill="#60a5fa" name="Sinh viên" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={800} />}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -353,9 +353,8 @@ function DashboardOverview({ onNavigate }) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors duration-200 ${
-                  activeTab === tab.id ? 'text-orange-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`relative px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors duration-200 ${activeTab === tab.id ? 'text-orange-600' : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 {activeTab === tab.id && (
                   <motion.div
@@ -404,9 +403,8 @@ function DashboardOverview({ onNavigate }) {
                         <td className="py-3.5 px-6 text-sm font-semibold text-gray-700">{student.HoTen}</td>
                         <td className="py-3.5 px-6 text-sm text-gray-500">{student.TenLop || '—'}</td>
                         <td className="py-3.5 px-6">
-                          <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${
-                            student.GioiTinh === 'Nam' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'
-                          }`}>
+                          <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${student.GioiTinh === 'Nam' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'
+                            }`}>
                             {student.GioiTinh || '—'}
                           </span>
                         </td>
