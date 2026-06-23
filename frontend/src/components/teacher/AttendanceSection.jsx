@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ClipboardCheck, Calendar, ArrowLeft, Clock, 
-  MapPin, Users, BookOpen, CheckCircle2, AlertCircle, History 
+import {
+  ClipboardCheck, Calendar, ArrowLeft, Clock,
+  MapPin, Users, BookOpen, CheckCircle2, AlertCircle, History
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -15,7 +15,7 @@ const STATUS_OPTIONS = [
 
 function AttendanceSection({ teachingSchedule = [], students = [] }) {
   const [activeTab, setActiveTab] = useState('today'); // 'today' | 'history'
-  
+
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
   const [historyDates, setHistoryDates] = useState([]); // List of past dates for a selected course
@@ -24,7 +24,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
   const [attendanceTimes, setAttendanceTimes] = useState({}); // Lưu giờ:phút:giây
   const manualEditsRef = useRef(new Set()); // Lưu MSSV đã bị chỉnh tay
 
-  const [classStudents, setClassStudents] = useState([]); 
+  const [classStudents, setClassStudents] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [sessionState, setSessionState] = useState('PENDING');
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -79,17 +79,17 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
           // Lấy giờ phút giây
           if (record.ThoiGianDiemDanh) {
             const t = new Date(record.ThoiGianDiemDanh);
-            restoredTimes[record.MSSV] = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}:${t.getSeconds().toString().padStart(2,'0')}`;
+            restoredTimes[record.MSSV] = `${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}:${t.getSeconds().toString().padStart(2, '0')}`;
           }
         });
         setAttendanceStatus(prev => ({ ...prev, ...restoredStatus }));
         setAttendanceTimes(prev => ({ ...prev, ...restoredTimes }));
       }
-      
+
       const sessionRes = await axios.get(`${API_URL}/api/attendance/course/${maLopHocPhan}/session/${dateString}`);
       const { status, timeOpened } = sessionRes.data;
       setSessionState(status);
-      
+
       if (status === 'OPEN' && timeOpened && activeTab === 'today') {
         const elapsed = (new Date().getTime() - new Date(timeOpened).getTime()) / 1000;
         const remaining = 900 - Math.floor(elapsed);
@@ -145,14 +145,14 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
     try {
       const res = await axios.get(`${API_URL}/api/attendance/course/${schedule.MaLopHocPhan}/history-dates`);
       setHistoryDates(res.data);
-    } catch(err) {
+    } catch (err) {
       console.error("Lỗi lấy lịch sử:", err);
     }
   };
 
   const handleSelectSchedule = async (schedule, historyDate = null) => {
     if (!schedule.MaLopHocPhan) return alert("Lỗi dữ liệu: Lớp này không có Mã Lớp Học Phần!");
-    
+
     setSelectedSchedule(schedule);
     setSelectedHistoryDate(historyDate);
     setAttendanceStatus({});
@@ -174,7 +174,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
 
       const targetDate = historyDate || new Date().toISOString().split('T')[0];
       fetchScheduleAttendance(schedule.MaLopHocPhan, targetDate);
-      
+
     } catch (error) {
       console.error("Lỗi tải danh sách sinh viên:", error);
       alert("Không thể tải danh sách sinh viên!");
@@ -214,7 +214,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
 
   const handleEarlyClose = async () => {
     setIsTimeUp(false);
-    await handleSaveAttendance(false);
+    await handleSaveAttendance(true);
   };
 
   const handleStatusChange = (mssv, value) => {
@@ -248,17 +248,17 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
     setIsSaving(true);
     try {
       const targetDate = selectedHistoryDate || new Date().toISOString().split('T')[0];
-      
+
       const attendanceData = classStudents
         .map(student => ({
-            MSSV: student.MSSV,
-            TrangThai: attendanceStatus[student.MSSV] || 'Chưa điểm danh'
-          }))
+          MSSV: student.MSSV,
+          TrangThai: attendanceStatus[student.MSSV] || 'Chưa điểm danh'
+        }))
         .filter(p => p.TrangThai !== 'Chưa điểm danh');
 
       if (attendanceData.length > 0) {
-        await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${targetDate}`, { 
-          attendance: attendanceData 
+        await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${targetDate}`, {
+          attendance: attendanceData
         });
       }
 
@@ -272,7 +272,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       manualEditsRef.current.clear(); // Xóa lịch sử chỉnh sửa tay sau khi lưu thành công
 
       if (shouldCloseModal) {
-        handleBack(); 
+        handleBack();
       } else {
         fetchScheduleAttendance(selectedSchedule.MaLopHocPhan, targetDate);
       }
@@ -286,12 +286,13 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
 
   const counts = useMemo(() => {
     const summary = { present: 0, absent: 0 };
-    Object.values(attendanceStatus).forEach(status => {
+    classStudents.forEach(student => {
+      const status = attendanceStatus[student.MSSV];
       if (status === 'Có mặt') summary.present += 1;
       if (status === 'Vắng mặt') summary.absent += 1;
     });
     return summary;
-  }, [attendanceStatus]);
+  }, [attendanceStatus, classStudents]);
 
   const renderAvatar = (student) => {
     const initial = student.HoTen?.charAt(0).toUpperCase() || student.MSSV?.charAt(0);
@@ -311,22 +312,20 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       >
         <button
           onClick={() => { setActiveTab('today'); handleBack(); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-bold transition-all ${
-            activeTab === 'today' 
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200' 
+          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-bold transition-all ${activeTab === 'today'
+              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
               : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
-          }`}
+            }`}
         >
           <ClipboardCheck className="w-5 h-5" />
           Lịch dạy hôm nay
         </button>
         <button
           onClick={() => { setActiveTab('history'); handleBack(); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-bold transition-all ${
-            activeTab === 'history' 
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200' 
+          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-bold transition-all ${activeTab === 'history'
+              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
               : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
-          }`}
+            }`}
         >
           <History className="w-5 h-5" />
           Lịch sử điểm danh
@@ -345,14 +344,14 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                 {activeTab === 'today' ? 'Lịch dạy hôm nay' : 'Lịch sử điểm danh'}
               </p>
               <h3 className="text-2xl font-bold text-gray-800">
-                {activeTab === 'today' 
+                {activeTab === 'today'
                   ? (todaySchedules.length ? 'Các lớp của hôm nay' : 'Chưa có lịch dạy')
                   : 'Chọn lớp để xem lịch sử'}
               </h3>
             </div>
             {activeTab === 'today' && (
               <div className="bg-orange-50 px-5 py-3 rounded-2xl flex items-center gap-3 border border-orange-100 shadow-inner">
-                <Calendar className="w-5 h-5 text-orange-500" /> 
+                <Calendar className="w-5 h-5 text-orange-500" />
                 <span className="font-bold text-orange-700 text-sm tracking-wide">{formatDate(today.toISOString())}</span>
               </div>
             )}
@@ -371,7 +370,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                 className="relative group bg-white text-left rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all overflow-hidden flex flex-col h-full"
               >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-orange-400 to-orange-600"></div>
-                
+
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
                     <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold mb-3 uppercase tracking-wider">
@@ -400,7 +399,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
               </motion.button>
             ))}
           </div>
-          
+
           {(activeTab === 'today' ? todaySchedules : uniqueCourses).length === 0 && (
             <div className="text-center py-16">
               <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -436,7 +435,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {historyDates.map((item, i) => (
-              <button 
+              <button
                 key={i}
                 onClick={() => handleSelectSchedule(selectedSchedule, item.Ngay)}
                 className="p-5 border border-gray-200 rounded-2xl hover:border-orange-500 hover:shadow-md transition-all text-left flex items-center gap-4"
@@ -453,10 +452,10 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
           </div>
 
           {historyDates.length === 0 && (
-             <div className="text-center py-16">
-               <History className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-               <p className="text-gray-500">Lớp này chưa có bản ghi điểm danh nào trong quá khứ.</p>
-             </div>
+            <div className="text-center py-16">
+              <History className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Lớp này chưa có bản ghi điểm danh nào trong quá khứ.</p>
+            </div>
           )}
         </motion.div>
       ) : null}
@@ -466,8 +465,8 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
         {selectedSchedule && (activeTab === 'today' || (activeTab === 'history' && selectedHistoryDate)) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-gray-50 w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
             >
@@ -493,7 +492,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                       <h3 className="text-2xl font-bold text-gray-800">{selectedSchedule.TenMonHoc}</h3>
                     </div>
                   </div>
-                  
+
                   {/* Stats Mini Cards */}
                   <div className="hidden md:flex items-center gap-3 ml-4">
                     <div className="bg-blue-50 px-4 py-2 rounded-xl text-center border border-blue-100">
@@ -564,9 +563,9 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
               {/* Footer Actions */}
               <div className="bg-white p-6 border-t border-gray-200 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                  <AlertCircle className="w-5 h-5 text-orange-500" /> 
-                  {activeTab === 'today' 
-                    ? 'Hệ thống tự động lưu thời gian khi bấm "Chốt sổ"' 
+                  <AlertCircle className="w-5 h-5 text-orange-500" />
+                  {activeTab === 'today'
+                    ? 'Hệ thống tự động lưu thời gian khi bấm "Chốt sổ"'
                     : 'Chỉnh sửa lịch sử sẽ thay đổi kết quả điểm danh của sinh viên trong quá khứ.'}
                 </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -583,8 +582,8 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                       onClick={handleOpenSession}
                       className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700 transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
                     >
-                      <Clock className="w-5 h-5" /> 
-                      Bắt đầu điểm danh (15p)
+                      <Clock className="w-5 h-5" />
+                      Bắt đầu điểm danh
                     </button>
                   )}
 
@@ -594,7 +593,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                       disabled={isSaving}
                       className="px-8 py-3 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-orange-200 hover:from-orange-500 hover:to-orange-600 transition-all flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-70"
                     >
-                      <Clock className="w-5 h-5 animate-pulse" /> 
+                      <Clock className="w-5 h-5 animate-pulse" />
                       {formatTime(timeRemaining)} - Chốt sổ sớm
                     </button>
                   )}

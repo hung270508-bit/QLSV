@@ -71,7 +71,7 @@ db.getConnection((err, connection) => {
         return;
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
-    
+
     // Tự động tạo bảng lưu trạng thái RFID nếu chưa có
     const createRfidTable = `
         CREATE TABLE IF NOT EXISTS rfid_state (
@@ -87,10 +87,19 @@ db.getConnection((err, connection) => {
         }
     });
 
-    // Thêm cột TrangThai vào bảng users nếu chưa có
-    connection.query("SHOW COLUMNS FROM users LIKE 'TrangThai'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE users ADD COLUMN TrangThai TINYINT DEFAULT 1");
+    // Tự động tạo bảng thẻ sinh viên the_sv nếu chưa có
+    const createTheSvTable = `
+        CREATE TABLE IF NOT EXISTS the_sv (
+          uid varchar(20) NOT NULL,
+          MSSV varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+          PRIMARY KEY (uid),
+          KEY fk_the_sv_sinhvien (MSSV),
+          CONSTRAINT fk_the_sv_sinhvien FOREIGN KEY (MSSV) REFERENCES sinhvien (MSSV) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+    connection.query(createTheSvTable, (errTheSv) => {
+        if (errTheSv) {
+            console.error('Lỗi tự động tạo bảng the_sv:', errTheSv);
         }
     });
 
@@ -466,6 +475,103 @@ app.post('/api/change-password', verifyToken, async (req, res) => {
                 res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
             });
         } catch (error) {
+            res.status(500).json({ success: false, message: 'Lỗi mã hóa mật khẩu!' });
+        }
+    });
+});
+
+// Student change password endpoint (without token verification for simplicity)
+app.post('/api/student/change-password', async (req, res) => {
+    const { username, currentPassword, newPassword } = req.body;
+
+    if (!username || !currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin!' });
+    }
+    if (newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự!' });
+    }
+
+    const query = 'SELECT password FROM users WHERE TaiKhoan = ?';
+    db.query(query, [username], async (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi server!' });
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản!' });
+        }
+
+        const user = results[0];
+        let passwordMatch = false;
+
+        if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+            passwordMatch = await bcrypt.compare(currentPassword, user.password);
+        } else {
+            passwordMatch = (currentPassword === user.password);
+        }
+
+        if (!passwordMatch) {
+            return res.status(401).json({ success: false, message: 'Mật khẩu hiện tại không đúng!' });
+        }
+
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, username], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
+                res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: 'Lỗi mã hóa mật khẩu!' });
+        }
+    });
+});
+
+// Teacher change password endpoint (without token verification for simplicity)
+app.post('/api/teacher/change-password', async (req, res) => {
+    const { username, currentPassword, newPassword } = req.body;
+    console.log('Teacher password change request:', { username, hasCurrent: !!currentPassword, hasNew: !!newPassword, newLength: newPassword?.length });
+
+    if (!username || !currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin!' });
+    }
+    if (newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự!' });
+    }
+
+    const query = 'SELECT password FROM users WHERE TaiKhoan = ?';
+    db.query(query, [username], async (err, results) => {
+        if (err) {
+            console.error('Teacher password change DB error:', err);
+            return res.status(500).json({ success: false, message: 'Lỗi server!' });
+        }
+        console.log('Teacher password change DB results:', { found: results.length > 0 });
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản!' });
+        }
+
+        const user = results[0];
+        let passwordMatch = false;
+
+        if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+            passwordMatch = await bcrypt.compare(currentPassword, user.password);
+        } else {
+            passwordMatch = (currentPassword === user.password);
+        }
+        console.log('Teacher password match:', passwordMatch);
+
+        if (!passwordMatch) {
+            return res.status(401).json({ success: false, message: 'Mật khẩu hiện tại không đúng!' });
+        }
+
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, username], (err) => {
+                if (err) {
+                    console.error('Teacher password update error:', err);
+                    return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
+                }
+                console.log('Teacher password updated successfully');
+                res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+            });
+        } catch (error) {
+            console.error('Teacher password hash error:', error);
             res.status(500).json({ success: false, message: 'Lỗi mã hóa mật khẩu!' });
         }
     });
@@ -1618,7 +1724,7 @@ app.post('/api/attendance', (req, res) => executeInsert('INSERT INTO diemdanh (M
 app.put('/api/attendance/:id', (req, res) => executeUpdate('UPDATE diemdanh SET MaLichHoc=?, MSSV=?, NgayDiemDanh=?, TrangThai=? WHERE MaDiemDanh=?', [req.body.MaLichHoc, req.body.MSSV, req.body.NgayDiemDanh, req.body.TrangThai, req.params.id], res, 'Thành công', 'Lỗi'));
 app.delete('/api/attendance/:id', (req, res) => executeDelete('DELETE FROM diemdanh WHERE MaDiemDanh=?', [req.params.id], res, 'Thành công', 'Lỗi'));
 app.get('/api/attendance/course/:maLhp/date/:ngay', (req, res) => executeQuery('SELECT * FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ?', [req.params.maLhp, req.params.ngay], res, 'Lỗi!'));
-app.get('/api/attendance/course/:maLhp/history-dates', (req, res) => executeQuery('SELECT DISTINCT DATE_FORMAT(NgayDiemDanh, "%Y-%m-%d") as Ngay FROM diemdanh WHERE MaLopHocPhan = ? ORDER BY Ngay DESC', [req.params.maLhp], res, 'Lỗi lấy lịch sử!'));
+app.get('/api/attendance/course/:maLhp/history-dates', (req, res) => executeQuery("SELECT DISTINCT DATE_FORMAT(NgayDiemDanh, '%Y-%m-%d') as Ngay FROM diemdanh WHERE MaLopHocPhan = ? ORDER BY Ngay DESC", [req.params.maLhp], res, 'Lỗi lấy lịch sử!'));
 app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
     const { maLhp, ngay } = req.params; const attendanceList = req.body.attendance;
     if (!Array.isArray(attendanceList) || attendanceList.length === 0) return res.status(400).json({ success: false });
@@ -1836,7 +1942,7 @@ app.post('/api/attendance/uid', async (req, res) => {
 
             try {
                 const [results] = await db.promise().query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid]);
-                
+
                 if (!results || results.length === 0) {
                     return res.status(404).json({ success: false, action: "UNREGISTERED", message: 'Thẻ lạ, Chưa đăng ký' });
                 }
@@ -1846,13 +1952,13 @@ app.post('/api/attendance/uid', async (req, res) => {
                 const trangthai = TrangThai || 'Có mặt';
 
                 const [checkResults] = await db.promise().query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [targetLHP, MSSV, ngay]);
-                
+
                 if (checkResults && checkResults.length > 0) {
                     return res.json({ success: true, action: "ATTENDANCE_OK", message: "Đã điểm danh từ trước", MSSV });
                 }
 
                 await db.promise().query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [targetLHP, MSSV, ngay, trangthai]);
-                
+
                 return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
             } catch (err) {
                 return res.status(500).json({ success: false, message: 'Lỗi DB xử lý điểm danh', error: err.message });
