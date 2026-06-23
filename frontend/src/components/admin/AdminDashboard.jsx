@@ -34,7 +34,7 @@ const menuItems = [
   { id: 'diemrenluyen', label: 'Quản lý điểm rèn luyện', icon: Award },
   { id: 'taikhoan', label: 'Quản lý tài khoản', icon: UserCircle },
 ];
-
+//
 const pageComponents = {
   dashboard: DashboardOverview,
   sinhvien: StudentManagement,
