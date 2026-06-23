@@ -264,6 +264,11 @@ function StudentTrainingPoints({ user }) {
   };
 
   const handleEdit = async (record) => {
+    const isPeriodActive = activePeriods.some(ap => ap.HocKy === record.HocKy);
+    if (!isPeriodActive) {
+      showToast('Đợt đánh giá đã đóng, không thể chỉnh sửa!', 'error');
+      return;
+    }
     setEditingRecord(record);
     setSelectedSemester(record.HocKy);
     setFormScores({});
@@ -612,8 +617,8 @@ function StudentTrainingPoints({ user }) {
                             <Eye className="w-4 h-4" />
                           </button>
 
-                          {/* Nút Sửa (chỉ khi chưa duyệt) */}
-                          {p.TrangThai !== 'Đã xác nhận' && (
+                          {/* Nút Sửa (chỉ khi chưa duyệt và đợt còn mở) */}
+                          {p.TrangThai !== 'Đã xác nhận' && activePeriods.some(ap => ap.HocKy === p.HocKy) && (
                             <button 
                               onClick={() => handleEdit(p)} 
                               className="p-2 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-lg shadow-sm"

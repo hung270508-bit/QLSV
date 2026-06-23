@@ -3,190 +3,221 @@ import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap, Plus, Edit, Trash2, Search, X, Filter,
-  XCircle, Download, FileText, BarChart3, AlertCircle, CheckCircle2
+  XCircle, Download, FileText, BarChart3, AlertCircle, CheckCircle2,
+  Info, ChevronDown, ChevronUp, Users, Lock, Save,
+  CheckCircle, AlertTriangle
 } from 'lucide-react';
 import axios from 'axios';
 import { GradeSkeleton } from '../common/AdminSkeleton';
-import ModalPortal from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
 
 // ================================================================
-// Toast — góc trên phải, tự biến mất sau 4s
+// STORAGE KEY
 // ================================================================
-function Toast({ toasts, onRemove }) {
-  return (
-    <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
-      <AnimatePresence>
-        {toasts.map(t => (
-          <motion.div
-            key={t.id}
-            initial={{ opacity: 0, x: 60 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 60 }}
-            transition={{ duration: 0.22 }}
-            className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border min-w-[280px] max-w-sm
-              ${t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800'
-                : t.type === 'success' ? 'bg-green-50 border-green-200 text-green-800'
-                  : 'bg-blue-50 border-blue-200 text-blue-800'}`}
-          >
-            {t.type === 'error'
-              ? <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500 mt-0.5" />
-              : <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-green-500 mt-0.5" />}
-            <p className="text-sm font-medium flex-1">{t.message}</p>
-            <button onClick={() => onRemove(t.id)} className="ml-2 opacity-50 hover:opacity-100">
-              <X className="w-4 h-4" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  );
-}
+const getConfigKey = (maLopHocPhan) => `grade_config_${maLopHocPhan}`;
+const getLockKey = (maLopHocPhan) => `grade_config_locked_${maLopHocPhan}`;
+
+const DEFAULT_COMPONENTS = [
+  { key: 'DiemChuyenCan', label: 'Chuyên cần', shortLabel: 'CC', weight: 10, enabled: true },
+  { key: 'DiemBaiTap',    label: 'Bài tập',    shortLabel: 'BT', weight: 20, enabled: true },
+  { key: 'DiemGiuaKy',   label: 'Giữa kỳ',    shortLabel: 'GK', weight: 20, enabled: true },
+  { key: 'DiemCuoiKy',   label: 'Cuối kỳ',    shortLabel: 'CK', weight: 50, enabled: true },
+];
+
+const loadConfig = (maLopHocPhan) => {
+  try {
+    const saved = localStorage.getItem(getConfigKey(maLopHocPhan));
+    if (saved) return JSON.parse(saved);
+  } catch (_) {}
+  return DEFAULT_COMPONENTS.map(c => ({ ...c }));
+};
+
+const calcTotal10 = (formData, components) => {
+  const active = components.filter(c => c.enabled && Number(c.weight) > 0);
+  if (active.length === 0) return '0.00';
+  const total = active.reduce((sum, c) => {
+    let val = parseFloat(formData[c.key]);
+    if (isNaN(val) || val < 0) val = 0; 
+    return sum + (val * (Number(c.weight) / 100));
+  }, 0);
+  return total.toFixed(2);
+};
+
+const convertToGPA = (total10) => {
+  const t = parseFloat(total10);
+  if (isNaN(t)) return { gpa: 0.0, letter: 'F', text: 'Chưa có điểm' }; 
+  if (t >= 8.5) return { gpa: 4.0, letter: 'A',  text: 'Xuất sắc' };
+  if (t >= 7.8) return { gpa: 3.7, letter: 'B+', text: 'Giỏi' };
+  if (t >= 7.0) return { gpa: 3.5, letter: 'B',  text: 'Khá giỏi' };
+  if (t >= 6.3) return { gpa: 3.0, letter: 'C+', text: 'Khá' };
+  if (t >= 5.5) return { gpa: 2.5, letter: 'C',  text: 'Trung bình khá' };
+  if (t >= 4.8) return { gpa: 2.0, letter: 'D+', text: 'Trung bình' };
+  if (t >= 4.0) return { gpa: 1.5, letter: 'D',  text: 'Yếu' };
+  if (t >= 3.0) return { gpa: 1.0, letter: 'F+', text: 'Kém' };
+  return { gpa: 0.0, letter: 'F',  text: 'Không đạt' };
+};
+
+const getLetterColor = (letter) => {
+  if (!letter) return 'text-gray-300';
+  if (letter === 'A') return 'text-green-600';
+  if (letter.startsWith('B')) return 'text-blue-600';
+  if (letter.startsWith('C')) return 'text-yellow-600';
+  if (letter.startsWith('D')) return 'text-orange-500';
+  return 'text-red-600';
+};
+
+const hasAnyScore = (cc, bt, gk, ck) =>
+  (cc !== '' && cc != null) || (bt !== '' && bt != null) ||
+  (gk !== '' && gk != null) || (ck !== '' && ck != null);
 
 // ================================================================
-// ConfirmDialog — xác nhận 2 bước
+// Component: ScoreInput
 // ================================================================
-function ConfirmDialog({ open, title, message, confirmLabel = 'Xác nhận', confirmClass = 'bg-red-500 hover:bg-red-600', onConfirm, onCancel }) {
-  React.useEffect(() => {
-    if (!open) return;
-    const handler = (e) => { if (e.key === 'Enter') { e.preventDefault(); onConfirm && onConfirm(); } };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onConfirm]);
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-      >
-        <div className="px-6 pt-6 pb-4">
-          <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="w-6 h-6 text-orange-500" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">{title}</h3>
-              <p className="text-sm text-gray-500 mt-1">{message}</p>
-            </div>
-          </div>
-        </div>
-        <div className="px-6 pb-5 flex gap-3">
-          <button onClick={onCancel}
-            className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors text-sm"
-          >Hủy bỏ</button>
-          <button onClick={onConfirm}
-            className={`flex-1 py-2.5 text-white font-semibold rounded-xl transition-colors text-sm ${confirmClass}`}
-          >{confirmLabel}</button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-// ================================================================
-// ScoreInput — giữ nguyên giá trị đang gõ, chỉ báo lỗi, không clear
-// ================================================================
-function ScoreInput({ value, onChange, onError, placeholder = 'Để trống nếu chưa có', error }) {
-  const [localVal, setLocalVal] = useState(value ?? '');
-  const [localError, setLocalError] = useState('');
-
-  // Đồng bộ khi parent reset value (đóng modal / clear form)
-  React.useEffect(() => {
-    if ((value === '' || value == null) && localVal !== '') {
-      setLocalVal('');
-      setLocalError('');
-      onError && onError(false);
-    }
-  }, [value]); // eslint-disable-line
-
-  const setErr = (msg) => {
-    setLocalError(msg);
-    onError && onError(!!msg);
-  };
-
-  const handleChange = (e) => {
-    const raw = e.target.value;
-    setLocalVal(raw);
-    if (raw === '') { setErr(''); onChange(''); return; }
-    const num = parseFloat(raw);
-    if (isNaN(num)) { setErr('Giá trị không hợp lệ'); return; }
-    if (num < 0)    { setErr('Điểm không được âm'); return; }
-    if (num > 10)   { setErr('Điểm không được vượt quá 10'); return; }
-    setErr('');
-    onChange(raw);
-  };
-
-  const displayError = localError || error;
-  return (
-    <div>
-      <input
-        type="number" step="0.1"
-        placeholder={placeholder}
-        value={localVal}
-        onChange={handleChange}
-        onWheel={e => e.target.blur()}
-        // Tắt tooltip validation mặc định của browser
-        onInvalid={e => e.preventDefault()}
-        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
-          ${displayError ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
-      />
-      {displayError && (
-        <p className="text-red-500 text-xs mt-1 font-medium">{displayError}</p>
-      )}
-    </div>
-  );
-}
-
-// ================================================================
-// BulkScoreInput — giữ localVal khi lỗi, không clear ô, thông báo rõ
-// ================================================================
-function BulkScoreInput({ value, onChange, onError }) {
+function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' }) {
   const [localVal, setLocalVal] = useState(value ?? '');
   const [err, setErr] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if ((value === '' || value == null) && localVal !== '') {
       setLocalVal(''); setErr(''); onError && onError(false);
+    } else if (value !== localVal) {
+      setLocalVal(value ?? '');
     }
-  }, [value]); // eslint-disable-line
+  }, [value]); 
 
   const setE = (msg) => { setErr(msg); onError && onError(!!msg); };
 
   const handle = (e) => {
-    const raw = e.target.value;
+    let raw = e.target.value;
+    if (raw.includes('-')) return; 
+
     setLocalVal(raw);
     if (raw === '') { setE(''); onChange(''); return; }
     const n = parseFloat(raw);
-    if (isNaN(n))  { setE('Giá trị không hợp lệ'); return; }
-    if (n < 0)     { setE('Điểm không được âm'); return; }
-    if (n > 10)    { setE('Không được vượt quá 10'); return; }
+    if (isNaN(n))  { setE('Không hợp lệ'); return; }
+    if (n < 0)     { setE('Không được âm'); return; }
+    if (n > 10)    { setE('Tối đa 10'); return; }
     setE(''); onChange(raw);
+  };
+
+  const blockInvalidKeys = (e) => {
+    if (['-', 'e', '+'].includes(e.key)) e.preventDefault();
+  };
+
+  return (
+    <div>
+      <input
+        type="number" step="0.1" min="0" max="10"
+        placeholder={placeholder}
+        value={localVal}
+        onChange={handle}
+        onKeyDown={blockInvalidKeys}
+        disabled={disabled}
+        onWheel={e => e.target.blur()}
+        className={`w-full px-3 py-2.5 border-2 rounded-xl focus:outline-none transition-colors text-sm font-semibold
+          ${disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed border-gray-100 text-gray-500' :
+            err ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-orange-500 text-gray-800'}`}
+      />
+      {err && <p className="text-red-500 text-xs mt-1.5 font-bold">{err}</p>}
+    </div>
+  );
+}
+
+function BulkScoreInput({ value, onChange, onError, disabled }) {
+  const [localVal, setLocalVal] = useState(value ?? '');
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if ((value === '' || value == null) && localVal !== '') {
+      setLocalVal(''); setErr(''); onError && onError(false);
+    } else if (value !== localVal) {
+      setLocalVal(value ?? '');
+    }
+  }, [value]);
+
+  const setE = (msg) => { setErr(msg); onError && onError(!!msg); };
+
+  const handle = (e) => {
+    let raw = e.target.value;
+    if (raw.includes('-')) return;
+
+    setLocalVal(raw);
+    if (raw === '') { setE(''); onChange(''); return; }
+    const n = parseFloat(raw);
+    if (isNaN(n))  { setE('Không hợp lệ'); return; }
+    if (n < 0)     { setE('Điểm âm'); return; }
+    if (n > 10)    { setE('Quá 10'); return; }
+    setE(''); onChange(raw);
+  };
+
+  const blockInvalidKeys = (e) => {
+    if (['-', 'e', '+'].includes(e.key)) e.preventDefault();
   };
 
   return (
     <div className="flex flex-col items-center gap-0.5">
       <input
-        type="number" step="0.1"
+        type="number" step="0.1" min="0" max="10"
         placeholder="—"
         value={localVal}
         onChange={handle}
+        onKeyDown={blockInvalidKeys}
+        disabled={disabled}
         onWheel={e => e.target.blur()}
-        onInvalid={e => e.preventDefault()}
-        className={`w-20 text-center px-2 py-2 border-2 rounded-lg focus:outline-none text-sm transition-colors
-          ${err ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500 bg-white'}`}
+        className={`w-16 text-center px-2 py-2 border-2 rounded-lg focus:outline-none text-sm transition-colors font-semibold
+          ${disabled ? 'bg-gray-100 border-transparent text-gray-400 cursor-not-allowed' : err ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500 bg-white text-gray-800'}`}
       />
-      {err && (
-        <span className="text-red-500 text-[10px] font-medium text-center leading-tight whitespace-nowrap">{err}</span>
-      )}
+      {err && <span className="text-red-500 text-[10px] font-bold text-center leading-tight">{err}</span>}
     </div>
   );
 }
 
 // ================================================================
-// Main Component
+// Component: ConfigPanel — ADMIN CHỈ XEM
+// ================================================================
+function ConfigPanelAdmin({ tenLop, components, locked }) {
+  const totalWeight = components.filter(c => c.enabled).reduce((s, c) => s + (parseInt(c.weight) || 0), 0);
+
+  return (
+    <div className="border-2 rounded-2xl p-5 shadow-sm bg-gray-50 border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Info className="w-5 h-5 text-blue-500" />
+          <span className="font-bold text-gray-800">
+            Cấu hình điểm do Giảng viên thiết lập — {tenLop}
+          </span>
+        </div>
+        <div className={`text-sm font-bold px-3 py-1 rounded-full ${locked ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+          Trạng thái: {locked ? 'Đã chốt cấu hình' : 'Giảng viên chưa chốt'}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        {components.map(c => (
+          <div key={c.key} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all
+            ${c.enabled ? 'border-gray-300 bg-white' : 'border-gray-100 bg-gray-100 opacity-60'}`}>
+            <input type="checkbox" checked={c.enabled} disabled className="w-4 h-4 accent-gray-500 cursor-not-allowed" />
+            <span className="text-sm font-bold text-gray-700">{c.label}</span>
+            <div className="flex items-center gap-1 ml-auto">
+              <input type="number" value={c.enabled ? c.weight : ''} disabled placeholder="0" className="w-14 text-center px-2 py-1.5 border-2 rounded-lg text-sm font-bold bg-gray-100 border-transparent text-gray-500 cursor-not-allowed" />
+              <span className="text-sm font-bold text-gray-500">%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+          <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(totalWeight, 100)}%` }} />
+        </div>
+        <span className="text-sm font-bold text-gray-600">Tổng trọng số: {totalWeight}%</span>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
+// MAIN COMPONENT ADMIN
 // ================================================================
 function GradeManagement() {
   const [grades, setGrades] = useState([]);
@@ -194,65 +225,46 @@ function GradeManagement() {
   const [courseSections, setCourseSections] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
-  // Cache: map MaLopHocPhan -> Set<MSSV> — xây từ grades lần đầu fetch, không bị ảnh hưởng khi xóa điểm
-  const [enrolledCache, setEnrolledCache] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // Toast
-  const [toasts, setToasts] = useState([]);
-  const addToast = useCallback((message, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
-  }, []);
-  const removeToast = useCallback((id) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+  const [configOpen, setConfigOpen] = useState({}); 
+  const [classConfigs, setClassConfigs] = useState({});
+  const [activeConfigs, setActiveConfigs] = useState({});
+  const [lockedConfigs, setLockedConfigs] = useState({}); 
 
-  // Confirm dialog
-  const [confirm, setConfirm] = useState({
-    open: false, title: '', message: '', confirmLabel: '', confirmClass: '', onConfirm: null
-  });
-  const closeConfirm = () => setConfirm(p => ({ ...p, open: false }));
-
-  // Modal thêm/sửa
   const [showModal, setShowModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
+  const [submitConfirmModal, setSubmitConfirmModal] = useState({ show: false, payload: null, isEdit: false, isBulk: false });
+  const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
+
   const [editingGrade, setEditingGrade] = useState(null);
   const [formData, setFormData] = useState({
     selectedKhoa: '', MSSV: '', MaLopHocPhan: '', HocKy: '',
     DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
   });
   const [formErrors, setFormErrors] = useState({});
-  // Track lỗi đang tồn tại trong các ô ScoreInput (giá trị đang gõ chưa hợp lệ)
   const [scoreInputErrors, setScoreInputErrors] = useState({});
-  const setScoreError = (field, hasErr) =>
-    setScoreInputErrors(prev => ({ ...prev, [field]: hasErr }));
 
-  // Bulk modal
-  const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkKhoa, setBulkKhoa] = useState('');
   const [bulkSection, setBulkSection] = useState('');
   const [bulkGrades, setBulkGrades] = useState([]);
-  const [bulkError, setBulkError] = useState('');
 
-  // Search & filter
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ khoaFilter: '', sectionFilter: '' });
   const [displayFilters, setDisplayFilters] = useState({ khoaFilter: '', sectionFilter: '' });
 
-  // Pagination calculations
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Stats — được tính bằng useMemo bên dưới (không dùng useState)
-
   const SCORE_FIELDS = ['DiemChuyenCan', 'DiemBaiTap', 'DiemGiuaKy', 'DiemCuoiKy'];
 
-  // ================================================================
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [gradesRes, studentsRes, sectionsRes, facultiesRes, enrollmentsRes] = await Promise.all([
         axios.get(`${API_URL}/api/grades`),
         axios.get(`${API_URL}/api/students`),
@@ -265,24 +277,19 @@ function GradeManagement() {
       setCourseSections(sectionsRes.data);
       setFaculties(facultiesRes.data);
       setEnrollments(enrollmentsRes.data);
-      // Xây cache enrolledCache từ grades lần đầu load — không bị mất khi xóa điểm
-      // Map: { MaLopHocPhan: Set<MSSV> }
-      if (enrollmentsRes.data.length === 0) {
-        const cache = {};
-        gradesRes.data.forEach(g => {
-          if (!cache[g.MaLopHocPhan]) cache[g.MaLopHocPhan] = new Set();
-          cache[g.MaLopHocPhan].add(g.MSSV);
-        });
-        setEnrolledCache(prev => {
-          // Merge: giữ lại SV cũ, thêm SV mới — không xóa SV đã bị remove khỏi grades
-          const merged = { ...prev };
-          Object.entries(cache).forEach(([lhp, mssSet]) => {
-            if (!merged[lhp]) merged[lhp] = new Set();
-            mssSet.forEach(m => merged[lhp].add(m));
-          });
-          return merged;
-        });
-      }
+      
+      const configs = {};
+      const active = {};
+      const locks = {};
+      sectionsRes.data.forEach(ta => {
+        const cfg = loadConfig(ta.MaLopHocPhan);
+        configs[ta.MaLopHocPhan] = cfg;
+        active[ta.MaLopHocPhan] = cfg;
+        locks[ta.MaLopHocPhan] = localStorage.getItem(getLockKey(ta.MaLopHocPhan)) === 'true';
+      });
+      setClassConfigs(configs);
+      setActiveConfigs(active);
+      setLockedConfigs(locks);
     } catch (err) {
       console.error('fetchData error:', err);
     } finally {
@@ -290,324 +297,145 @@ function GradeManagement() {
     }
   };
 
-  // ================================================================
-  // Helpers tính điểm
-  // ================================================================
-  const hasAnyScore = (cc, bt, gk, ck) =>
-    (cc !== '' && cc != null) ||
-    (bt !== '' && bt != null) ||
-    (gk !== '' && gk != null) ||
-    (ck !== '' && ck != null);
+  const getActiveConfig = (maLopHocPhan) => activeConfigs[maLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
 
-  const isScoreValid = (val) => {
-    if (val === '' || val == null) return true;
-    const n = parseFloat(val);
-    return !isNaN(n) && n >= 0 && n <= 10;
-  };
-
-  // Tính trọng số động theo thành phần điểm có mặt
-  // Quy tắc: CK luôn = 50%, phần quá trình = 50%
-  // CC < BT và CC < GK; tỷ lệ mặc định: CC=10%, BT=20%, GK=20% (tổng QT=50%)
-  // Nếu thiếu BT: CC=15%, GK=35% (CC < GK, tổng QT=50%)
-  // Nếu thiếu GK: CC=15%, BT=35% (CC < BT, tổng QT=50%)
-  // Nếu chỉ còn CC: CC=50% (tổng QT=50%)
-  const getDynamicWeights = (cc, bt, gk) => {
-    const hasCC = cc !== '' && cc != null;
-    const hasBT = bt !== '' && bt != null;
-    const hasGK = gk !== '' && gk != null;
-
-    if (hasCC && hasBT && hasGK) return { wCC: 0.10, wBT: 0.20, wGK: 0.20 };
-    if (hasCC && hasBT && !hasGK) return { wCC: 0.15, wBT: 0.35, wGK: 0 };
-    if (hasCC && !hasBT && hasGK) return { wCC: 0.15, wBT: 0, wGK: 0.35 };
-    if (!hasCC && hasBT && hasGK) return { wCC: 0, wBT: 0.25, wGK: 0.25 };
-    if (hasCC && !hasBT && !hasGK) return { wCC: 0.50, wBT: 0, wGK: 0 };
-    if (!hasCC && hasBT && !hasGK) return { wCC: 0, wBT: 0.50, wGK: 0 };
-    if (!hasCC && !hasBT && hasGK) return { wCC: 0, wBT: 0, wGK: 0.50 };
-    return { wCC: 0, wBT: 0, wGK: 0 };
-  };
-
-  const getWeightLabels = (cc, bt, gk) => {
-    const { wCC, wBT, wGK } = getDynamicWeights(cc, bt, gk);
-    return {
-      cc: wCC > 0 ? `${Math.round(wCC * 100)}%` : '—',
-      bt: wBT > 0 ? `${Math.round(wBT * 100)}%` : '—',
-      gk: wGK > 0 ? `${Math.round(wGK * 100)}%` : '—',
-      ck: '50%',
-    };
-  };
-
-  const calculateTotal10 = (cc, bt, gk, ck) => {
-    const { wCC, wBT, wGK } = getDynamicWeights(cc, bt, gk);
-    const vCC = parseFloat(cc) || 0;
-    const vBT = parseFloat(bt) || 0;
-    const vGK = parseFloat(gk) || 0;
-    const vCK = parseFloat(ck) || 0;
-    return ((vCC * wCC) + (vBT * wBT) + (vGK * wGK) + (vCK * 0.5)).toFixed(2);
-  };
-
-  const convertToGPA = (total10) => {
-    const t = parseFloat(total10);
-    if (t >= 8.5) return { letter: 'A', gpa: 4.0, text: 'Xuất sắc / Giỏi' };
-    if (t >= 7.8) return { letter: 'B+', gpa: 3.5, text: 'Giỏi' };
-    if (t >= 7.0) return { letter: 'B', gpa: 3.0, text: 'Khá' };
-    if (t >= 6.3) return { letter: 'C+', gpa: 2.5, text: 'Khá' };
-    if (t >= 5.5) return { letter: 'C', gpa: 2.0, text: 'Trung bình' };
-    if (t >= 4.8) return { letter: 'D+', gpa: 1.5, text: 'Trung bình yếu' };
-    if (t >= 4.0) return { letter: 'D', gpa: 1.0, text: 'Yếu' };
-    if (t >= 3.0) return { letter: 'F+', gpa: 0.5, text: 'Kém' };
-    return { letter: 'F', gpa: 0.0, text: 'Kém' };
-  };
-
-  const getLetterColor = (letter) => {
-    if (!letter) return 'text-gray-300';
-    if (letter === 'A') return 'text-green-600';
-    if (letter === 'B+' || letter === 'B') return 'text-blue-600';
-    if (letter === 'C+' || letter === 'C') return 'text-yellow-600';
-    if (letter === 'D+' || letter === 'D') return 'text-orange-500';
-    return 'text-red-600';
-  };
-
-  // ================================================================
-  // SIÊU FIX: Hàm gọt bỏ khoảng trắng & chuẩn hóa trích xuất Khoa
-  // ================================================================
   const extractKhoa = (maKhoaDB, maMonHoc) => {
-    // Ưu tiên cột MaKhoa, nếu không có thì Regex bóc tách chữ cái đầu mã môn học (VD: CNTT001 -> CNTT)
     const k = maKhoaDB || (maMonHoc ? maMonHoc.match(/^[A-Z]+/i)?.[0] : '');
-    return String(k).trim().toUpperCase(); // Cắt sạch khoảng trắng dư thừa
+    return String(k).trim().toUpperCase();
   };
 
-  const getSectionsByKhoa = (maKhoa) => {
-    if (!maKhoa) return courseSections;
-    const targetKhoa = String(maKhoa).trim().toUpperCase();
-    return courseSections.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === targetKhoa);
-  };
-
-  // SV đã đăng ký LHP cụ thể (từ enrollments API hoặc cache)
-  const getEnrolledStudents = (maLopHocPhan) => {
+  // HÀM GOM SINH VIÊN BẢO ĐẢM 100% CHÍNH XÁC
+  const getStudentsForLHP = useCallback((maLopHocPhan) => {
     if (!maLopHocPhan) return [];
-    if (enrollments.length > 0) {
-      // Có API enrollments → dùng trực tiếp (chính xác nhất)
-      const mssv = enrollments
-        .filter(e => e.MaLopHocPhan === maLopHocPhan && e.TrangThai !== 'Từ chối')
-        .map(e => e.MSSV);
-      return students.filter(s => mssv.includes(s.MSSV));
+    const ta = courseSections.find(cs => cs.MaLopHocPhan === maLopHocPhan);
+    const map = new Map();
+    
+    if (ta && ta.MaLop) {
+      students.filter(s => s.MaLop === ta.MaLop).forEach(s => map.set(s.MSSV, { ...s }));
     }
-    // Không có API enrollments → dùng enrolledCache (được xây từ grades lúc đầu, không mất khi xóa điểm)
-    const cachedSet = enrolledCache[maLopHocPhan];
-    if (cachedSet && cachedSet.size > 0) {
-      return students.filter(s => cachedSet.has(s.MSSV));
-    }
-    // Lần đầu chưa có cache (LHP chưa có ai trong grades) → lấy từ grades hiện tại
-    const mssv = enrollments
-      .filter(e => e.MaLopHocPhan === maLopHocPhan && e.TrangThai !== 'Từ chối')
-      .map(e => e.MSSV);
-    return students.filter(s => mssv.includes(s.MSSV));
-  };
-
-  // ================================================================
-  // Payload builder
-  // ================================================================
-  const buildPayload = (data) => {
-    const { DiemChuyenCan: cc, DiemBaiTap: bt, DiemGiuaKy: gk, DiemCuoiKy: ck } = data;
-    const scored = hasAnyScore(cc, bt, gk, ck);
-    const { wCC, wBT, wGK } = getDynamicWeights(cc, bt, gk);
-    const base = {
-      MSSV: data.MSSV,
-      MaLopHocPhan: data.MaLopHocPhan,
-      HocKy: data.HocKy,
-      DiemChuyenCan: (cc !== '' && cc != null) ? cc : null,
-      DiemBaiTap: (bt !== '' && bt != null) ? bt : null,
-      DiemGiuaKy: (gk !== '' && gk != null) ? gk : null,
-      DiemCuoiKy: (ck !== '' && ck != null) ? ck : null,
-      TrongSoCC: wCC > 0 ? wCC : null,
-      TrongSoBT: wBT > 0 ? wBT : null,
-      TrongSoGK: wGK > 0 ? wGK : null,
-    };
-    if (scored) {
-      const t10 = calculateTotal10(cc, bt, gk, ck);
-      const gpa = convertToGPA(t10);
-      return { ...base, DiemTong: t10, DiemGPA: gpa.gpa, DiemChu: gpa.letter, XepLoai: gpa.text };
-    }
-    return { ...base, DiemTong: null, DiemGPA: null, DiemChu: null, XepLoai: null };
-  };
-
-  // ================================================================
-  // Form modal — validate
-  // ================================================================
-  const validateForm = () => {
-    const errors = {};
-
-    // Chặn ngay nếu đang có ô điểm nhập sai (âm / >10)
-    if (Object.values(scoreInputErrors).some(Boolean)) {
-      // Lỗi đã hiển thị tại ô — không cần thêm lỗi form, chỉ block
-      setFormErrors({});
-      return false;
-    }
-
-    if (!formData.MSSV) errors.MSSV = 'Vui lòng chọn sinh viên';
-    if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
-
-    if (formData.MSSV && formData.MaLopHocPhan && !editingGrade) {
-      // Kiểm tra đã có điểm thực sự (không phải chỉ có bản ghi trống —)
-      const existingRecord = grades.find(g => g.MSSV === formData.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
-      const hasRealScore = existingRecord && (
-        (existingRecord.DiemChuyenCan !== null && existingRecord.DiemChuyenCan !== undefined && existingRecord.DiemChuyenCan !== '') ||
-        (existingRecord.DiemBaiTap !== null && existingRecord.DiemBaiTap !== undefined && existingRecord.DiemBaiTap !== '') ||
-        (existingRecord.DiemGiuaKy !== null && existingRecord.DiemGiuaKy !== undefined && existingRecord.DiemGiuaKy !== '') ||
-        (existingRecord.DiemCuoiKy !== null && existingRecord.DiemCuoiKy !== undefined && existingRecord.DiemCuoiKy !== '')
-      );
-      if (hasRealScore) {
-        errors.MaLopHocPhan = 'Sinh viên này đã có điểm môn học phần này rồi';
-      } else if (enrollments.length > 0) {
-        // Kiểm tra đăng ký
-        const enrolled = enrollments.some(
-          e => e.MSSV === formData.MSSV &&
-            e.MaLopHocPhan === formData.MaLopHocPhan &&
-            e.TrangThai !== 'Từ chối'
-        );
-        if (!enrolled) errors.MaLopHocPhan = 'Sinh viên chưa đăng ký lớp học phần này';
-      }
-    }
-
-    // Điểm số hợp lệ — kiểm tra giá trị đã được đẩy lên formData
-    SCORE_FIELDS.forEach(f => {
-      const v = formData[f];
-      if (v === '' || v == null) return; // trống = hợp lệ
-      const n = parseFloat(v);
-      if (isNaN(n) || n < 0 || n > 10) {
-        errors[f] = n < 0 ? 'Điểm không được âm' : 'Điểm không được vượt quá 10';
+    
+    const enrolledMSSV = enrollments.filter(e => e.MaLopHocPhan === maLopHocPhan && e.TrangThai !== 'Từ chối').map(e => e.MSSV);
+    students.filter(s => enrolledMSSV.includes(s.MSSV)).forEach(s => map.set(s.MSSV, { ...s }));
+    
+    grades.filter(g => g.MaLopHocPhan === maLopHocPhan).forEach(g => {
+      if (!map.has(g.MSSV)) {
+         const stuInfo = students.find(s => s.MSSV === g.MSSV);
+         map.set(g.MSSV, { MSSV: g.MSSV, HoTen: stuInfo?.HoTen || g.TenSinhVien || 'Sinh viên' });
       }
     });
+    
+    return Array.from(map.values()).sort((a, b) => a.MSSV.localeCompare(b.MSSV));
+  }, [courseSections, students, enrollments, grades]);
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+  const showNotification = (type, message) => {
+    setNotification({ show: true, type, message });
+    setTimeout(() => setNotification({ show: false, type: 'success', message: '' }), 4000);
   };
 
-  // Submit → confirm → API
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    const isEdit = !!editingGrade;
-    setConfirm({
-      open: true,
-      title: isEdit ? 'Xác nhận cập nhật điểm' : 'Xác nhận thêm điểm',
-      message: isEdit
-        ? 'Bạn có chắc chắn muốn lưu thay đổi điểm này không?'
-        : 'Bạn có chắc chắn muốn thêm điểm mới không?',
-      confirmLabel: isEdit ? 'Lưu thay đổi' : 'Thêm điểm',
-      confirmClass: 'bg-orange-500 hover:bg-orange-600',
-      onConfirm: async () => {
-        closeConfirm();
-        try {
-          const payload = buildPayload(formData);
-          if (isEdit) {
-            await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
-            addToast('Cập nhật điểm thành công!', 'success');
-          } else {
-            // Kiểm tra xem SV đã có bản ghi trong DB chưa (dù trống —)
-            // Nếu có → PUT để cập nhật, không POST tạo trùng
-            const existingRecord = grades.find(
-              g => g.MSSV === formData.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan
-            );
-            if (existingRecord?.MaDiem) {
-              await axios.put(`${API_URL}/api/grades/${existingRecord.MaDiem}`, payload);
-              addToast('Cập nhật điểm thành công!', 'success');
-            } else {
-              await axios.post(`${API_URL}/api/grades`, payload);
-              addToast('Thêm điểm thành công!', 'success');
-            }
-          }
-          fetchData();
-          handleCloseModal();
-        } catch (err) {
-          addToast(err.response?.data?.message || 'Lỗi khi lưu điểm!', 'error');
-        }
-      }
+  const openAddModal = () => {
+    setEditingGrade(null);
+    setFormData({ selectedKhoa: '', MSSV: '', MaLopHocPhan: '', HocKy: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' });
+    setFormErrors({}); setScoreInputErrors({}); setShowModal(true);
+  };
+
+  const openAddGradeForStudent = (ta, student) => {
+    if (!lockedConfigs[ta.MaLopHocPhan]) {
+      showNotification('error', `Giảng viên chưa chốt cấu hình điểm cho môn ${ta.TenMonHoc}! Không thể nhập điểm.`);
+      return;
+    }
+    setEditingGrade(null);
+    setFormData({
+      selectedKhoa: extractKhoa(ta.MaKhoa, ta.MaMonHoc),
+      MSSV: student.MSSV, MaLopHocPhan: ta.MaLopHocPhan, HocKy: ta.HocKy || '',
+      DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
     });
+    setFormErrors({}); setScoreInputErrors({}); setShowModal(true);
   };
 
-  const handleEdit = (grade) => {
+  const openEditModal = (grade) => {
+    if (!lockedConfigs[grade.MaLopHocPhan]) {
+      showNotification('error', `Giảng viên chưa chốt cấu hình điểm cho môn học này! Không thể sửa điểm.`);
+      return;
+    }
     const sec = courseSections.find(cs => cs.MaLopHocPhan === grade.MaLopHocPhan);
     setEditingGrade(grade);
     setFormData({
       selectedKhoa: sec ? extractKhoa(sec.MaKhoa, sec.MaMonHoc) : '',
-      MSSV: grade.MSSV,
-      MaLopHocPhan: grade.MaLopHocPhan,
-      HocKy: grade.HocKy || '',
-      DiemChuyenCan: grade.DiemChuyenCan ?? '',
-      DiemBaiTap: grade.DiemBaiTap ?? '',
-      DiemGiuaKy: grade.DiemGiuaKy ?? '',
-      DiemCuoiKy: grade.DiemCuoiKy ?? ''
+      MSSV: grade.MSSV, MaLopHocPhan: grade.MaLopHocPhan || '', HocKy: grade.HocKy || '',
+      DiemChuyenCan: grade.DiemChuyenCan ?? '', DiemBaiTap: grade.DiemBaiTap ?? '', DiemGiuaKy: grade.DiemGiuaKy ?? '', DiemCuoiKy: grade.DiemCuoiKy ?? ''
     });
-    setShowModal(true);
+    setFormErrors({}); setScoreInputErrors({}); setShowModal(true);
   };
 
-  const handleDelete = (maDiem, tenSinhVien, tenMonHoc) => {
-    setConfirm({
-      open: true,
-      title: 'Xác nhận xóa điểm',
-      message: `Bạn có chắc chắn muốn xóa điểm của ${tenSinhVien || 'sinh viên này'} — ${tenMonHoc || 'môn này'}? Hành động không thể hoàn tác.`,
-      confirmLabel: 'Xóa điểm',
-      confirmClass: 'bg-red-500 hover:bg-red-600',
-      onConfirm: async () => {
-        closeConfirm();
-        try {
-          await axios.delete(`${API_URL}/api/grades/${maDiem}`);
-          addToast('Đã xóa điểm thành công!', 'success');
-          fetchData();
-        } catch {
-          addToast('Lỗi khi xóa điểm!', 'error');
-        }
-      }
-    });
+  const closeFormModal = () => {
+    setShowModal(false); setEditingGrade(null); setFormErrors({}); setScoreInputErrors({});
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingGrade(null);
-    setFormData({ selectedKhoa: '', MSSV: '', MaLopHocPhan: '', HocKy: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' });
-    setFormErrors({});
-    setScoreInputErrors({});
-  };
-
-  // Chọn LHP → auto-fill HocKy, reset SV
   const handleSectionChange = (maLopHocPhan) => {
     const sec = courseSections.find(cs => cs.MaLopHocPhan === maLopHocPhan);
-    // Tránh prefix "HK" kép nếu HocKy đã chứa sẵn (vd: "HK1_2026_2027")
     const rawHK = sec?.HocKy || '';
-    const hocKy = sec
-      ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim())
-      : '';
+    const hocKy = sec ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim()) : '';
     setFormData(prev => ({ ...prev, MaLopHocPhan: maLopHocPhan, HocKy: hocKy, MSSV: '' }));
     if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
   };
 
-  // ================================================================
-  // Bulk modal
-  // ================================================================
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (Object.values(scoreInputErrors).some(Boolean)) return;
+    const errors = {};
+    if (!formData.MSSV) errors.MSSV = 'Vui lòng chọn sinh viên';
+    if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
+    if (Object.keys(errors).length) { setFormErrors(errors); return; }
+
+    if (!lockedConfigs[formData.MaLopHocPhan]) {
+        showNotification('error', 'Giảng viên chưa chốt cấu hình điểm! Không thể lưu điểm.');
+        return;
+    }
+
+    const cfg = getActiveConfig(formData.MaLopHocPhan);
+    const ta  = courseSections.find(a => a.MaLopHocPhan === formData.MaLopHocPhan);
+    const t10  = calcTotal10(formData, cfg);
+    const gpa  = convertToGPA(t10);
+
+    const weights = {};
+    cfg.forEach(c => { if (c.enabled) weights[`TrongSo_${c.shortLabel}`] = Number(c.weight) / 100; });
+
+    const getPayloadValue = (key) => {
+      const comp = cfg.find(c => c.key === key);
+      if (!comp || !comp.enabled || Number(comp.weight) === 0) return null; 
+      return formData[key] !== '' && formData[key] != null ? formData[key] : null;
+    };
+
+    const payload = {
+      MSSV: formData.MSSV, MaLopHocPhan: formData.MaLopHocPhan, HocKy: ta?.HocKy || formData.HocKy || '',
+      DiemChuyenCan: getPayloadValue('DiemChuyenCan'),
+      DiemBaiTap:    getPayloadValue('DiemBaiTap'),
+      DiemGiuaKy:    getPayloadValue('DiemGiuaKy'),
+      DiemCuoiKy:    getPayloadValue('DiemCuoiKy'),
+      DiemTong: t10, DiemGPA: gpa.gpa, DiemChu: gpa.letter, XepLoai: gpa.text,
+      ...weights,
+    };
+
+    setSubmitConfirmModal({ show: true, payload, isEdit: !!editingGrade, isBulk: false });
+  };
+
   const handleOpenBulkModal = () => {
-    setBulkKhoa(''); setBulkSection(''); setBulkGrades([]); setBulkError('');
-    setShowBulkModal(true);
+    setBulkKhoa(''); setBulkSection(''); setBulkGrades([]); setShowBulkModal(true);
   };
 
   const handleBulkSectionChange = (maLopHocPhan) => {
     setBulkSection(maLopHocPhan);
-    setBulkError('');
     if (!maLopHocPhan) { setBulkGrades([]); return; }
-    const enrolled = getEnrolledStudents(maLopHocPhan);
+    const enrolled = getStudentsForLHP(maLopHocPhan); 
     if (enrolled.length === 0) { setBulkGrades([]); return; }
+    
     setBulkGrades(enrolled.map(student => {
       const existing = grades.find(g => g.MSSV === student.MSSV && g.MaLopHocPhan === maLopHocPhan);
       return {
-        MSSV: student.MSSV, HoTen: student.HoTen,
-        MaLopHocPhan: maLopHocPhan,
-        DiemChuyenCan: existing?.DiemChuyenCan ?? '',
-        DiemBaiTap: existing?.DiemBaiTap ?? '',
-        DiemGiuaKy: existing?.DiemGiuaKy ?? '',
-        DiemCuoiKy: existing?.DiemCuoiKy ?? '',
-        alreadyExists: !!existing,
-        MaDiem: existing?.MaDiem || null,
-        rowErrors: {}
+        MSSV: student.MSSV, HoTen: student.HoTen, MaLopHocPhan: maLopHocPhan,
+        DiemChuyenCan: existing?.DiemChuyenCan ?? '', DiemBaiTap: existing?.DiemBaiTap ?? '',
+        DiemGiuaKy: existing?.DiemGiuaKy ?? '', DiemCuoiKy: existing?.DiemCuoiKy ?? '',
+        alreadyExists: !!existing, MaDiem: existing?.MaDiem || null, rowErrors: {}
       };
     }));
   };
@@ -615,722 +443,629 @@ function GradeManagement() {
   const handleBulkFieldChange = (index, field, val, hasErr) => {
     setBulkGrades(prev => {
       const next = [...prev];
-      // val là giá trị hợp lệ đã pass qua BulkScoreInput (hoặc '')
-      // hasErr = true nghĩa là ô đang hiển thị lỗi, chưa push giá trị hợp lệ
       next[index] = { ...next[index], [field]: val };
       next[index].rowErrors = { ...next[index].rowErrors, [field]: !!hasErr };
       return next;
     });
   };
 
-  const handleBulkSubmit = () => {
-    if (!bulkSection) { setBulkError('Vui lòng chọn lớp học phần'); return; }
+  const handleBulkSubmitRequest = () => {
+    if (!bulkSection) { showNotification('error', 'Vui lòng chọn lớp học phần'); return; }
+    if (!lockedConfigs[bulkSection]) {
+        showNotification('error', 'Giảng viên chưa chốt cấu hình điểm cho môn này!');
+        return;
+    }
     const hasErr = bulkGrades.some(g => Object.values(g.rowErrors || {}).some(Boolean));
-    if (hasErr) { setBulkError('⚠ Có ô điểm không hợp lệ (âm hoặc > 10) — vui lòng sửa trước khi lưu'); return; }
-    setConfirm({
-      open: true,
-      title: 'Xác nhận lưu điểm hàng loạt',
-      message: `Bạn có chắc chắn muốn lưu điểm cho ${bulkGrades.length} sinh viên không?`,
-      confirmLabel: 'Lưu tất cả',
-      confirmClass: 'bg-purple-500 hover:bg-purple-600',
-      onConfirm: async () => {
-        closeConfirm();
-        const sec = courseSections.find(cs => cs.MaLopHocPhan === bulkSection);
-        // Tránh prefix "HK" kép nếu HocKy đã chứa sẵn (vd: "HK1_2026_2027")
-    const rawHK = sec?.HocKy || '';
-    const hocKy = sec
-      ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim())
-      : '';
-        try {
-          await Promise.all(bulkGrades.map(g => {
-            const payload = buildPayload({ ...g, HocKy: hocKy });
-            if (g.alreadyExists && g.MaDiem)
-              return axios.put(`${API_URL}/api/grades/${g.MaDiem}`, payload);
-            return axios.post(`${API_URL}/api/grades`, payload);
-          }));
-          addToast(`Đã lưu điểm ${bulkGrades.length} sinh viên thành công!`, 'success');
-          setShowBulkModal(false);
-          fetchData();
-        } catch (err) {
-          setBulkError(err.response?.data?.message || 'Lỗi khi lưu điểm hàng loạt!');
-        }
-      }
-    });
+    if (hasErr) { showNotification('error', 'Có ô điểm không hợp lệ (âm hoặc > 10) — vui lòng sửa trước khi lưu'); return; }
+    
+    setSubmitConfirmModal({ show: true, payload: null, isEdit: false, isBulk: true });
   };
 
-  // ================================================================
-  // Search & filter
-  // ================================================================
+  const executeSubmitGrade = async () => {
+    const { payload, isEdit, isBulk } = submitConfirmModal;
+    try {
+      if (isBulk) {
+        const sec = courseSections.find(cs => cs.MaLopHocPhan === bulkSection);
+        const rawHK = sec?.HocKy || '';
+        const hocKy = sec ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim()) : '';
+        const cfg = getActiveConfig(bulkSection);
+        const weights = {};
+        cfg.forEach(c => { if (c.enabled) weights[`TrongSo_${c.shortLabel}`] = Number(c.weight) / 100; });
 
-  // Trích xuất lọc cho an toàn tuyệt đối
-  const filteredSectionsForFilter = displayFilters.khoaFilter
-    ? courseSections.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase())
-    : courseSections;
+        const getPayloadValueBulk = (g, key) => {
+          const comp = cfg.find(c => c.key === key);
+          if (!comp || !comp.enabled || Number(comp.weight) === 0) return null;
+          return g[key] !== '' && g[key] != null ? g[key] : null;
+        };
 
-  const filteredGrades = grades.filter(grade => {
-    const term = searchTerm.toLowerCase();
-    const sec = courseSections.find(cs => cs.MaLopHocPhan === grade.MaLopHocPhan);
-    const matchSearch = !searchTerm ||
-      grade.TenSinhVien?.toLowerCase().includes(term) ||
-      grade.MSSV?.toLowerCase().includes(term) ||
-      grade.TenMonHoc?.toLowerCase().includes(term) ||
-      (grade.TenKhoa || sec?.TenKhoa || '')?.toLowerCase().includes(term) ||
-      grade.MaLopHocPhan?.toLowerCase().includes(term);
+        await Promise.all(bulkGrades.map(g => {
+          const t10 = calcTotal10(g, cfg);
+          const gpa = convertToGPA(t10);
+          const isScored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+          
+          const bulkPayload = {
+            MSSV: g.MSSV, MaLopHocPhan: bulkSection, HocKy: hocKy,
+            DiemChuyenCan: getPayloadValueBulk(g, 'DiemChuyenCan'),
+            DiemBaiTap:    getPayloadValueBulk(g, 'DiemBaiTap'),
+            DiemGiuaKy:    getPayloadValueBulk(g, 'DiemGiuaKy'),
+            DiemCuoiKy:    getPayloadValueBulk(g, 'DiemCuoiKy'),
+            DiemTong: isScored ? t10 : null, DiemGPA: isScored ? gpa.gpa : null, DiemChu: isScored ? gpa.letter : null, XepLoai: isScored ? gpa.text : null,
+            ...weights
+          };
+          if (g.alreadyExists && g.MaDiem) return axios.put(`${API_URL}/api/grades/${g.MaDiem}`, bulkPayload);
+          return axios.post(`${API_URL}/api/grades`, bulkPayload);
+        }));
+        showNotification('success', `Đã lưu điểm ${bulkGrades.length} sinh viên thành công!`);
+        setShowBulkModal(false);
+      } else {
+        if (isEdit) {
+          await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
+          showNotification('success', 'Cập nhật điểm thành công!');
+        } else {
+          const existing = grades.find(g => g.MSSV === payload.MSSV && g.MaLopHocPhan === payload.MaLopHocPhan);
+          if (existing?.MaDiem) {
+            await axios.put(`${API_URL}/api/grades/${existing.MaDiem}`, payload);
+          } else {
+            await axios.post(`${API_URL}/api/grades`, payload);
+          }
+          showNotification('success', 'Thêm điểm thành công!');
+        }
+        closeFormModal();
+      }
+      fetchData();
+      setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false });
+    } catch (err) {
+      setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false });
+      showNotification('error', err.response?.data?.message || 'Lỗi khi lưu điểm!');
+    }
+  };
 
-    // Gọt khoảng trắng khi filter bằng Khoa
-    const gradeKhoa = extractKhoa(grade.MaKhoa || sec?.MaKhoa, grade.MaMonHoc || sec?.MaMonHoc);
-    const matchKhoa = !filters.khoaFilter || gradeKhoa === String(filters.khoaFilter).trim().toUpperCase();
+  const handleDeleteCancel = () => setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
+  
+  const handleDeleteConfirm = async () => {
+    try {
+      await axios.delete(`${API_URL}/api/grades/${deleteModal.maDiem}`);
+      handleDeleteCancel();
+      fetchData();
+      showNotification('success', 'Xóa điểm thành công!');
+    } catch (err) {
+      showNotification('error', err.response?.data?.message || 'Lỗi khi xóa điểm!');
+    }
+  };
 
-    const matchSection = !filters.sectionFilter || grade.MaLopHocPhan === filters.sectionFilter;
-    return matchSearch && matchKhoa && matchSection;
-  });
+  const filteredSections = useMemo(() => {
+    let secs = courseSections;
+    if (displayFilters.khoaFilter) {
+      secs = secs.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase());
+    }
+    if (displayFilters.sectionFilter) {
+      secs = secs.filter(cs => cs.MaLopHocPhan === displayFilters.sectionFilter);
+    }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      secs = secs.filter(cs => cs.TenMonHoc?.toLowerCase().includes(term) || cs.MaLopHocPhan?.toLowerCase().includes(term));
+    }
+    return secs;
+  }, [courseSections, displayFilters, searchTerm]);
 
-  const hasActiveFilters = filters.khoaFilter || filters.sectionFilter || searchTerm;
-  const activeFilterCount = (filters.khoaFilter ? 1 : 0) + (filters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = displayFilters.khoaFilter || displayFilters.sectionFilter || searchTerm;
+  const activeFilterCount = (displayFilters.khoaFilter ? 1 : 0) + (displayFilters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0);
 
   const clearFilters = () => {
-    setFilters({ khoaFilter: '', sectionFilter: '' });
     setDisplayFilters({ khoaFilter: '', sectionFilter: '' });
     setSearchTerm(''); setDisplaySearchTerm('');
-    setCurrentPage(1);
   };
-
-  // ================================================================
-  // Stats — tính trực tiếp bằng useMemo, không dùng useEffect tránh vòng lặp
-  // ================================================================
-  const gradeStats = useMemo(() => {
-    const stats = { a: 0, bPlus: 0, b: 0, cPlus: 0, c: 0, dPlus: 0, d: 0, fPlus: 0, f: 0 };
-    filteredGrades.forEach(g => {
-      if (!hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy)) return;
-      const t = parseFloat(calculateTotal10(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy));
-      if (t >= 8.5) stats.a++;
-      else if (t >= 7.8) stats.bPlus++;
-      else if (t >= 7.0) stats.b++;
-      else if (t >= 6.3) stats.cPlus++;
-      else if (t >= 5.5) stats.c++;
-      else if (t >= 4.8) stats.dPlus++;
-      else if (t >= 4.0) stats.d++;
-      else if (t >= 3.0) stats.fPlus++;
-      else stats.f++;
-    });
-    return stats;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grades, searchTerm, filters]);
-
-  // ================================================================
-  // Export CSV
-  // ================================================================
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredGrades.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredGrades.length / itemsPerPage);
 
   const handleExport = () => {
     const rows = [
-      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC(10%)', 'BT(20%)', 'GK(20%)', 'CK(50%)', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
-      ...filteredGrades.map(g => {
+      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC', 'BT', 'GK', 'CK', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
+      ...grades.filter(g => filteredSections.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).map(g => {
+        const cfg = getActiveConfig(g.MaLopHocPhan);
         const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
         if (!scored) return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '', '-', '-', '-', '-', 'Chưa có điểm', '', '', ''];
-        const t10 = calculateTotal10(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+        const t10 = calcTotal10(g, cfg);
         const gpa = convertToGPA(t10);
+        
+        const getExportVal = (key) => {
+          const comp = cfg.find(c => c.key === key);
+          if (!comp || !comp.enabled || Number(comp.weight) === 0) return '0';
+          return g[key] ?? '-';
+        };
+
         return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '',
-        g.DiemChuyenCan ?? '-', g.DiemBaiTap ?? '-', g.DiemGiuaKy ?? '-', g.DiemCuoiKy ?? '-',
+        getExportVal('DiemChuyenCan'), getExportVal('DiemBaiTap'), getExportVal('DiemGiuaKy'), getExportVal('DiemCuoiKy'),
         g.DiemTong || t10, g.DiemGPA ?? gpa.gpa.toFixed(1), g.DiemChu || gpa.letter, gpa.text];
       })
     ].map(r => r.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'diem_sinh_vien.csv';
+    a.download = 'diem_sinh_vien_admin.csv';
     a.click();
   };
 
-  // ================================================================
-  // Preview trong modal
-  // ================================================================
-  const previewTotal = calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
-  const previewGPA = convertToGPA(previewTotal);
-  const hasPreview = hasAnyScore(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
-  const allScoresValid = SCORE_FIELDS.every(f => isScoreValid(formData[f]));
+  const activeCfgModal = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
+  const previewTotal = calcTotal10(formData, activeCfgModal);
+  const previewGPA   = convertToGPA(previewTotal);
+  const hasPreview   = activeCfgModal.some(c => c.enabled && Number(c.weight) > 0 && formData[c.key] !== '' && formData[c.key] != null);
 
   if (loading) return <GradeSkeleton />;
 
   return (
-    <div className="space-y-6">
-      <Toast toasts={toasts} onRemove={removeToast} />
-      <ConfirmDialog
-        open={confirm.open}
-        title={confirm.title}
-        message={confirm.message}
-        confirmLabel={confirm.confirmLabel}
-        confirmClass={confirm.confirmClass}
-        onConfirm={confirm.onConfirm}
-        onCancel={closeConfirm}
-      />
-
-      {/* ── Header ── */}
+    <div className="space-y-6 pb-12">
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 shadow-lg shadow-orange-200/50 flex items-center justify-between"
+        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-white/20 rounded-xl"><GraduationCap className="w-7 h-7 text-white" /></div>
+          <div className="p-3 bg-white/20 rounded-2xl"><GraduationCap className="w-8 h-8 text-white" /></div>
           <div>
-            <h2 className="text-xl font-bold text-white">Quản lý điểm sinh viên</h2>
-            <p className="text-orange-100 text-sm mt-0.5">Thêm, sửa, xóa điểm sinh viên</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Quản lý điểm sinh viên</h2>
+            <p className="text-orange-100 text-sm font-medium">Hỗ trợ giảng viên thêm, sửa, xóa điểm toàn trường</p>
           </div>
         </div>
         <div className="flex gap-3">
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={handleOpenBulkModal}
-            className="flex items-center gap-2 bg-purple-500 text-white px-5 py-3 rounded-xl shadow-lg"
-          ><FileText className="w-5 h-5" /> Nhập hàng loạt</motion.button>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={handleExport}
-            className="flex items-center gap-2 bg-green-500 text-white px-5 py-3 rounded-xl shadow-lg"
-          ><Download className="w-5 h-5" /> Export</motion.button>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-white text-orange-600 font-semibold px-5 py-3 rounded-xl shadow-lg"
-          ><Plus className="w-5 h-5" /> Thêm điểm</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleOpenBulkModal} className="flex items-center gap-2 bg-purple-500 text-white px-5 py-3 rounded-xl shadow-lg font-bold"><FileText className="w-5 h-5" /> Nhập hàng loạt</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleExport} className="flex items-center gap-2 bg-green-500 text-white px-5 py-3 rounded-xl shadow-lg font-bold"><Download className="w-5 h-5" /> Export</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={openAddModal} className="flex items-center gap-2 bg-white text-orange-600 px-5 py-3 rounded-xl shadow-lg font-bold"><Plus className="w-5 h-5" /> Thêm điểm</motion.button>
         </div>
       </motion.div>
 
-      {/* ── Search & Filters ── */}
       <div className="space-y-3">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input type="text"
-              placeholder="Tìm theo MSSV, tên sinh viên, tên môn, khoa, mã lớp học phần..."
-              value={displaySearchTerm}
-              onChange={e => setDisplaySearchTerm(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  setSearchTerm(displaySearchTerm);
-                  setCurrentPage(1);
-                }
-              }}
-              className="w-full pl-12 pr-12 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+              placeholder="Tìm theo mã lớp học phần, tên môn học..."
+              value={displaySearchTerm} onChange={e => setDisplaySearchTerm(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') setSearchTerm(displaySearchTerm); }}
+              className="w-full pl-14 pr-12 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 transition-all shadow-sm font-medium text-sm"
             />
             <button type="button" onClick={() => setShowFilters(v => !v)}
-              className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-orange-500' : 'text-gray-400'}`}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-orange-500' : 'text-gray-400'}`}
             >
               <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
+              {activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>}
             </button>
           </div>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setSearchTerm(displaySearchTerm);
-              setCurrentPage(1);
-            }}
-            className="flex items-center gap-2 bg-orange-500 text-white px-5 py-3 rounded-xl shadow-lg"
-          ><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
-          {hasActiveFilters && (
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              onClick={clearFilters}
-              className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 flex items-center gap-2"
-            ><XCircle className="w-5 h-5" /> Xóa bộ lọc</motion.button>
-          )}
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm(displaySearchTerm)} className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg font-bold"><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
+          {hasActiveFilters && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={clearFilters} className="px-5 py-3 bg-red-100 text-red-600 rounded-xl font-bold hover:bg-red-200 flex items-center gap-2"><XCircle className="w-5 h-5" /> Xóa lọc</motion.button>}
         </div>
 
-        {showFilters && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-            className="bg-gray-50 rounded-xl p-4 space-y-4"
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo Khoa</label>
-                <select value={displayFilters.khoaFilter}
-                  onChange={e => setDisplayFilters(p => ({ ...p, khoaFilter: e.target.value, sectionFilter: '' }))}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
-                >
-                  <option value="">Tất cả khoa</option>
-                  {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lọc theo Lớp học phần</label>
-                <select value={displayFilters.sectionFilter}
-                  onChange={e => setDisplayFilters(p => ({ ...p, sectionFilter: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
-                >
-                  <option value="">Tất cả lớp học phần</option>
-                  {filteredSectionsForFilter.map(cs => (
-                    <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>
-                      {cs.TenMonHoc} — {cs.MaLopHocPhan}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => { setFilters({ ...displayFilters }); setShowFilters(false); setCurrentPage(1); }}
-                className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-semibold hover:bg-orange-600"
-              >Áp dụng</button>
-              <button onClick={() => { setDisplayFilters({ khoaFilter: '', sectionFilter: '' }); setCurrentPage(1); }}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-semibold hover:bg-gray-300"
-              >Đặt lại</button>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* ── Thống kê ── */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
-        className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
-      >
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="w-5 h-5 text-orange-600" />
-          <h3 className="text-lg font-bold text-gray-800">Thống kê điểm</h3>
-          <span className="ml-auto text-sm text-gray-400">
-            {filteredGrades.length} bản ghi · {filteredGrades.filter(g => hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy)).length} đã có điểm
-          </span>
-        </div>
-        <div className="grid grid-cols-3 md:grid-cols-9 gap-3">
-          {[
-            { label: 'A', sub: '≥8.5', color: 'green', val: gradeStats.a },
-            { label: 'B+', sub: '≥7.8', color: 'emerald', val: gradeStats.bPlus },
-            { label: 'B', sub: '≥7.0', color: 'teal', val: gradeStats.b },
-            { label: 'C+', sub: '≥6.3', color: 'cyan', val: gradeStats.cPlus },
-            { label: 'C', sub: '≥5.5', color: 'sky', val: gradeStats.c },
-            { label: 'D+', sub: '≥4.8', color: 'indigo', val: gradeStats.dPlus },
-            { label: 'D', sub: '≥4.0', color: 'violet', val: gradeStats.d },
-            { label: 'F+', sub: '≥3.0', color: 'orange', val: gradeStats.fPlus },
-            { label: 'F', sub: '<3.0', color: 'red', val: gradeStats.f },
-          ].map(({ label, sub, color, val }) => (
-            <div key={label} className={`text-center p-3 bg-${color}-50 rounded-xl`}>
-              <div className={`text-xl font-bold text-${color}-600`}>{val}</div>
-              <div className={`text-sm font-semibold text-${color}-700`}>{label}</div>
-              <div className="text-xs text-gray-400">{sub}</div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* ── Bảng điểm ── */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">MSSV</th>
-                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Sinh viên</th>
-                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Môn học</th>
-                <th className="text-left py-4 px-3 text-sm font-semibold text-gray-500">Học kỳ</th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CC<br /><span className="text-xs font-normal text-gray-400">(10%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
-                <th className="text-center py-4 px-2 text-sm font-semibold text-gray-700">CK<br /><span className="text-xs font-normal text-gray-400">(50%)</span></th>
-                <th className="text-center py-4 px-3 text-sm font-bold text-gray-800">TB</th>
-                <th className="text-center py-4 px-3 text-sm font-bold text-orange-600">GPA</th>
-                <th className="text-center py-4 px-3 text-sm font-semibold text-gray-700">Xếp loại</th>
-                <th className="text-center py-4 px-4 text-sm font-semibold text-gray-700">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.length > 0 ? currentItems.map((grade, idx) => {
-                const scored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
-                const t10 = scored ? calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy) : null;
-                const gpa = t10 ? convertToGPA(t10) : null;
-                const letter = scored ? (grade.DiemChu || gpa?.letter) : null;
-                return (
-                  <motion.tr key={grade.MaDiem}
-                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
-                    className="border-b border-gray-100 hover:bg-orange-50 transition-colors"
-                  >
-                    <td className="py-4 px-4 text-sm font-medium text-gray-800">{grade.MSSV}</td>
-                    <td className="py-4 px-4 text-sm text-gray-700">{grade.TenSinhVien || 'N/A'}</td>
-                    <td className="py-4 px-4 text-sm text-gray-600 max-w-[160px] truncate">{grade.TenMonHoc || 'N/A'}</td>
-                    <td className="py-4 px-3 text-xs text-gray-400">{grade.HocKy || '—'}</td>
-                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemChuyenCan ?? '—'}</td>
-                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemBaiTap ?? '—'}</td>
-                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemGiuaKy ?? '—'}</td>
-                    <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemCuoiKy ?? '—'}</td>
-                    <td className="py-4 px-3 text-sm text-center font-bold text-gray-800">
-                      {scored ? (grade.DiemTong || t10) : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="py-4 px-3 text-sm text-center font-bold text-orange-600">
-                      {scored ? (grade.DiemGPA ?? gpa?.gpa.toFixed(1)) : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className={`py-4 px-3 text-sm text-center font-bold ${getLetterColor(letter)}`}>
-                      {letter ?? <span className="text-gray-300 font-normal">—</span>}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(grade)}
-                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200"
-                        ><Edit className="w-4 h-4" /></motion.button>
-                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(grade.MaDiem, grade.TenSinhVien, grade.TenMonHoc)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                        ><Trash2 className="w-4 h-4" /></motion.button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                );
-              }) : (
-                <tr>
-                  <td colSpan="12" className="py-16 text-center text-gray-400">
-                    <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    Không tìm thấy điểm nào
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      </div>
-
-      {/* ── Modal Thêm / Sửa ── */}
-      {showModal && (
-        <ModalPortal>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-            >
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
-                <div className="text-white">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5" />
-                    {editingGrade ? 'Cập nhật điểm' : 'Thêm điểm mới'}
-                  </h3>
-                  <p className="text-orange-100 text-sm mt-0.5">Nhập điểm thành phần và xem quy đổi GPA</p>
-                </div>
-                <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-                {/* 1. Chọn Khoa */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Khoa <span className="text-gray-400 font-normal">(lọc lớp học phần)</span>
-                  </label>
-                  <select value={formData.selectedKhoa}
-                    onChange={e => setFormData(prev => ({
-                      ...prev, selectedKhoa: e.target.value, MaLopHocPhan: '', HocKy: '', MSSV: ''
-                    }))}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
-                  >
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Khoa</label>
+                  <select value={displayFilters.khoaFilter} onChange={e => setDisplayFilters(p => ({ ...p, khoaFilter: e.target.value, sectionFilter: '' }))} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 font-medium text-sm">
                     <option value="">Tất cả khoa</option>
                     {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
                   </select>
                 </div>
-
-                {/* 2. Chọn LHP */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Lớp học phần <span className="text-red-500">*</span>
-                  </label>
-                  <select value={formData.MaLopHocPhan}
-                    onChange={e => handleSectionChange(e.target.value)}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
-                      ${formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
-                  >
-                    <option value="">Chọn lớp học phần</option>
-                    {getSectionsByKhoa(formData.selectedKhoa).map(cs => (
-                      <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>
-                        {cs.TenMonHoc} — {cs.MaLopHocPhan}
-                      </option>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Lớp học phần</label>
+                  <select value={displayFilters.sectionFilter} onChange={e => setDisplayFilters(p => ({ ...p, sectionFilter: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 font-medium text-sm">
+                    <option value="">Tất cả lớp học phần</option>
+                    {courseSections.filter(cs => !displayFilters.khoaFilter || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase()).map(cs => (
+                      <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>{cs.TenMonHoc} — {cs.MaLopHocPhan}</option>
                     ))}
                   </select>
-                  {formErrors.MaLopHocPhan && (
-                    <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded-lg border border-red-100">
-                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="underline decoration-red-400 decoration-dotted">{formErrors.MaLopHocPhan}</span>
-                    </p>
-                  )}
                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-                {/* Học kỳ readonly */}
-                {formData.HocKy && (
-                  <div className="px-4 py-2 bg-gray-100 rounded-xl text-sm text-gray-600 flex items-center gap-2">
-                    <span className="font-semibold">Học kỳ:</span> {formData.HocKy}
-                  </div>
-                )}
+      {filteredSections.length > 0 ? (
+        <div className="space-y-4">
+          {filteredSections.map(ta => {
+            const isOpen = configOpen[ta.MaLopHocPhan];
+            const cfg = classConfigs[ta.MaLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
+            const isLocked = lockedConfigs[ta.MaLopHocPhan];
+            const active = getActiveConfig(ta.MaLopHocPhan).filter(c => c.enabled);
+            
+            const studentsWithGrades = getStudentsForLHP(ta.MaLopHocPhan).map(s => {
+              const grade = grades.find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === ta.MaLopHocPhan);
+              return { ...s, grade };
+            });
 
-                {/* 3. Chọn SV */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Sinh viên <span className="text-red-500">*</span>
-                    {formData.MaLopHocPhan && (
-                      <span className="ml-2 text-xs font-normal text-orange-500">
-                        ({getEnrolledStudents(formData.MaLopHocPhan).length} sinh viên trong lớp)
-                      </span>
-                    )}
-                  </label>
-                  <select value={formData.MSSV}
-                    disabled={!formData.MaLopHocPhan || !!editingGrade}
-                    onChange={e => {
-                      if (editingGrade) return;
-                      setFormData(prev => ({ ...prev, MSSV: e.target.value }));
-                      if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' }));
-                    }}
-                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors
-                      ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed' : ''}
-                      ${formErrors.MSSV ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500'}`}
-                  >
-                    <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên trong lớp' : 'Chọn lớp học phần trước'}</option>
-                    {getEnrolledStudents(formData.MaLopHocPhan).map(s => {
-                      const gradeRecord = !editingGrade && grades.find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
-                      const hasRealScore = gradeRecord && (
-                        (gradeRecord.DiemChuyenCan !== null && gradeRecord.DiemChuyenCan !== undefined && gradeRecord.DiemChuyenCan !== '') ||
-                        (gradeRecord.DiemBaiTap !== null && gradeRecord.DiemBaiTap !== undefined && gradeRecord.DiemBaiTap !== '') ||
-                        (gradeRecord.DiemGiuaKy !== null && gradeRecord.DiemGiuaKy !== undefined && gradeRecord.DiemGiuaKy !== '') ||
-                        (gradeRecord.DiemCuoiKy !== null && gradeRecord.DiemCuoiKy !== undefined && gradeRecord.DiemCuoiKy !== '')
-                      );
-                      return (
-                        <option key={s.MSSV} value={s.MSSV} disabled={!!hasRealScore}>
-                          {s.MSSV} — {s.HoTen}{hasRealScore ? ' ✓ đã có điểm' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  {formErrors.MSSV && (
-                    <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded-lg border border-red-100">
-                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="underline decoration-red-400 decoration-dotted">{formErrors.MSSV}</span>
-                    </p>
-                  )}
-                </div>
+            const term = searchTerm.toLowerCase();
+            const filteredStudents = studentsWithGrades.filter(s => 
+              !term || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+            );
 
-                {/* 4. Điểm thành phần */}
-                {(() => {
-                  const wLabels = getWeightLabels(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy);
-                  return (
-                    <div className="space-y-3">
-                      {/* Thông báo trọng số đang áp dụng */}
-                      <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
-                        <span className="font-semibold">Trọng số tự động:</span>
-                        <span>CC {wLabels.cc}</span>
-                        <span>·</span>
-                        <span>BT {wLabels.bt}</span>
-                        <span>·</span>
-                        <span>GK {wLabels.gk}</span>
-                        <span>·</span>
-                        <span>CK {wLabels.ck}</span>
-                        <span className="ml-auto text-orange-500 font-semibold">Quá trình 50% + CK 50%</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        {[
-                          { field: 'DiemChuyenCan', label: 'Chuyên cần', pct: wLabels.cc },
-                          { field: 'DiemBaiTap', label: 'Bài tập', pct: wLabels.bt },
-                          { field: 'DiemGiuaKy', label: 'Giữa kỳ', pct: wLabels.gk },
-                          { field: 'DiemCuoiKy', label: 'Cuối kỳ', pct: wLabels.ck },
-                        ].map(({ field, label, pct }) => (
-                          <div key={field}>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                              {label} <span className="text-gray-400 font-normal">({pct})</span>
-                            </label>
-                            <ScoreInput
-                              value={formData[field]}
-                              onChange={val => {
-                                setFormData(prev => ({ ...prev, [field]: val }));
-                                if (formErrors[field]) setFormErrors(p => ({ ...p, [field]: '' }));
-                              }}
-                              onError={hasErr => setScoreError(field, hasErr)}
-                              error={formErrors[field]}
-                            />
-                          </div>
-                        ))}
+            if (term && filteredStudents.length === 0) return null;
+
+            return (
+              <div key={ta.MaLopHocPhan} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <button onClick={() => setConfigOpen(prev => ({ ...prev, [ta.MaLopHocPhan]: !isOpen }))} className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-orange-50/50 transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-orange-50 text-orange-500 rounded-xl group-hover:scale-110 transition-transform"><GraduationCap className="w-6 h-6" /></div>
+                    <div className="text-left">
+                      <p className="font-bold text-gray-800 text-base">{ta.TenMonHoc} <span className="text-gray-400 font-medium ml-1 text-sm">({ta.MaLopHocPhan})</span></p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {active.map(c => <span key={c.key} className="text-[11px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">{c.shortLabel}: {Number(c.weight)}%</span>)}
                       </div>
                     </div>
-                  );
-                })()}
-
-                {/* Preview */}
-                <div className={`p-4 rounded-xl border flex items-center justify-between
-                  ${hasPreview && allScoresValid ? 'bg-orange-50 border-orange-100' : 'bg-gray-50 border-gray-100'}`}
-                >
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Tạm tính Hệ 10</p>
-                    <p className={`text-2xl font-bold ${hasPreview && allScoresValid ? 'text-gray-800' : 'text-gray-300'}`}>
-                      {hasPreview && allScoresValid ? previewTotal : '—'}
-                    </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500 font-medium">Quy đổi GPA</p>
-                    {hasPreview && allScoresValid ? (
-                      <p className="text-2xl font-bold text-orange-600">
-                        {previewGPA.gpa.toFixed(1)}
-                        <span className={`text-lg ml-2 ${getLetterColor(previewGPA.letter)}`}>
-                          ({previewGPA.letter})
-                        </span>
-                      </p>
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-300">—</p>
-                    )}
+                  <div className="flex items-center gap-4">
+                    {isLocked && <span className="text-[11px] text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
+                    {!isLocked && <span className="text-[11px] text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
+                    <div className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                      {isOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                    </div>
                   </div>
-                </div>
-                {hasPreview && allScoresValid && (
-                  <p className="text-center text-sm text-gray-500">{previewGPA.text}</p>
-                )}
+                </button>
+                
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-100 bg-gray-50/30">
+                      
+                      <div className="p-6">
+                        <ConfigPanelAdmin tenLop={ta.TenMonHoc} components={cfg} locked={isLocked} />
+                      </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={handleCloseModal}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
-                  >Hủy</button>
-                  <button type="submit"
-                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
-                  >{editingGrade ? 'Lưu thay đổi' : 'Thêm điểm'}</button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        </ModalPortal>
+                      <div className="px-6 pb-6">
+                        <div className="flex items-center justify-between mb-4 bg-blue-50 px-4 py-3 rounded-xl border border-blue-100">
+                          <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-blue-500"/>Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
+                          <span className="text-sm text-blue-600 font-bold bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
+                        </div>
+                        
+                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                              <thead className="bg-gray-50/80 border-b border-gray-200">
+                                <tr>
+                                  <th className="py-4 px-5 text-xs font-black text-gray-500 uppercase tracking-wider">MSSV</th>
+                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider">Họ Tên</th>
+                                  {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-gray-500 uppercase tracking-wider text-center">{c.shortLabel}</th>)}
+                                  <th className="py-4 px-3 text-xs font-black text-gray-800 uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
+                                  <th className="py-4 px-3 text-xs font-black text-orange-600 uppercase tracking-wider text-center bg-orange-50/50">GPA</th>
+                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Thao tác</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
+                                  const grade = stu.grade;
+                                  const hasGrade = !!grade;
+                                  const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
+                                  const gpa = hasGrade ? convertToGPA(t10) : null;
+                                  return (
+                                    <tr key={stu.MSSV} className="hover:bg-blue-50/40 transition-colors group">
+                                      <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
+                                      <td className="py-4 px-4 text-sm font-bold text-gray-900">{stu.HoTen}</td>
+                                      {active.map(c => {
+                                        const isZero = !c.enabled || Number(c.weight) === 0;
+                                        const val = grade && grade[c.key];
+                                        const displayVal = isZero ? '0' : (hasGrade && val != null && val !== '' ? val : '—');
+                                        return <td key={c.key} className="py-4 px-3 text-sm text-center text-gray-600 font-medium">{displayVal}</td>;
+                                      })}
+                                      <td className="py-4 px-3 text-sm text-center font-black text-gray-800 bg-gray-50/50 group-hover:bg-transparent">{t10}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-orange-600 bg-orange-50/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
+                                      <td className="py-3 px-4">
+                                        <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                          {hasGrade ? (
+                                            <>
+                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
+                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
+                                            </>
+                                          ) : (
+                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-400 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm">
+          <Search className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+          <p className="font-semibold text-gray-500 text-lg">Không tìm thấy Lớp Học Phần nào khớp với bộ lọc.</p>
+        </div>
       )}
 
-      {/* ── Modal Nhập hàng loạt ── */}
-      {showBulkModal && (
-        <ModalPortal>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
-          >
+      {/* ============================================================
+          MODALS
+      ============================================================ */}
+
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeFormModal} />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-2xl p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl"
+              initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10"
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-t-[2rem] px-8 py-6 flex items-center justify-between shrink-0">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800">Nhập điểm hàng loạt</h3>
-                  <p className="text-sm text-gray-500 mt-1">Chọn Khoa → Lớp học phần → hệ thống tải đúng sinh viên đã đăng ký</p>
+                  <h3 className="text-2xl font-bold text-white mb-1">{editingGrade ? 'Cập nhật điểm' : 'Nhập điểm sinh viên'}</h3>
+                  <p className="text-orange-100 text-sm font-medium">Hệ thống sẽ tự động tính toán theo cấu hình lớp</p>
                 </div>
-                <button onClick={() => setShowBulkModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                  <X className="w-5 h-5 text-gray-500" />
+                <button onClick={closeFormModal} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-white" />
                 </button>
               </div>
 
-              {bulkError && (
-                <div className="mb-4 flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <span className="underline decoration-red-400">{bulkError}</span>
-                  <button onClick={() => setBulkError('')} className="ml-auto"><X className="w-4 h-4" /></button>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="p-8 space-y-7">
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
-                    <select value={bulkKhoa}
-                      onChange={e => { setBulkKhoa(e.target.value); setBulkSection(''); setBulkGrades([]); }}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.MaLopHocPhan} disabled={!!editingGrade || !!formData.MSSV}
+                      onChange={e => {
+                        setFormData(prev => ({ ...prev, MaLopHocPhan: e.target.value, MSSV: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' }));
+                        if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
+                      }}
+                      className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
+                        ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
+                          formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
                     >
+                      <option value="">Chọn lớp học phần</option>
+                      {(courseSections || []).map(ta => {
+                        const isLocked = lockedConfigs[ta.MaLopHocPhan];
+                        return (
+                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked}>
+                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!isLocked ? '(Chưa chốt cấu hình)' : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sinh viên <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.MSSV} disabled={!formData.MaLopHocPhan || !!editingGrade}
+                      onChange={e => {
+                        setFormData(prev => ({ ...prev, MSSV: e.target.value }));
+                        if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' }));
+                      }}
+                      className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
+                        ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
+                          formErrors.MSSV ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                    >
+                      <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên' : 'Chưa chọn lớp học phần'}</option>
+                      {getStudentsForLHP(formData.MaLopHocPhan).map(s => {
+                        const existRecord = (grades || []).find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
+                        const hasScore = existRecord && activeCfgModal.some(c => c.enabled && existRecord[c.key] != null && existRecord[c.key] !== '');
+                        return (
+                          <option key={s.MSSV} value={s.MSSV} disabled={!!hasScore && !editingGrade}>
+                            {s.MSSV} — {s.HoTen}{hasScore ? ' ✓ đã có điểm' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {formErrors.MSSV && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MSSV}</p>}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                    {activeCfgModal.map(c => {
+                      const isZero = !c.enabled || Number(c.weight) === 0;
+                      return (
+                        <div key={c.key}>
+                          <label className="block text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide">
+                            {c.label} {!isZero ? <span className="text-orange-500 text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-400 text-[11px] ml-0.5">(0%)</span>}
+                          </label>
+                          <ScoreInput
+                            value={isZero ? 0 : formData[c.key]}
+                            disabled={isZero}
+                            placeholder={!isZero ? '0.0' : '0'}
+                            onChange={val => setFormData(prev => ({ ...prev, [c.key]: val }))}
+                            onError={hasErr => setScoreInputErrors(prev => ({ ...prev, [c.key]: hasErr }))}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {hasPreview && (
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-100 rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
+                    <div>
+                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
+                      <p className="text-[2.5rem] leading-none font-black text-gray-800">{previewTotal}</p>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-[2rem] leading-none font-black text-orange-600">{previewGPA.gpa.toFixed(1)}</p>
+                        <p className="text-2xl font-black text-blue-600">({previewGPA.letter})</p>
+                      </div>
+                      <p className="text-xs text-gray-500 font-bold mt-1.5 uppercase bg-white px-2 py-0.5 rounded-md border border-gray-200">{previewGPA.text}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-2">
+                  <button type="button" onClick={closeFormModal} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
+                  <button type="submit" disabled={Object.values(scoreInputErrors).some(Boolean)} className={`flex-1 py-4 rounded-xl font-bold text-base shadow-md transition-all ${Object.values(scoreInputErrors).some(Boolean) ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-none' : 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 border border-orange-600'}`}>{editingGrade ? 'Lưu thay đổi' : 'Xác nhận Thêm điểm'}</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBulkModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBulkModal(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }} className="bg-white rounded-[2rem] w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 flex flex-col">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-t-[2rem] px-8 py-6 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-1">Nhập điểm hàng loạt</h3>
+                  <p className="text-purple-100 text-sm font-medium">Chỉ cho phép nhập đối với Lớp học phần đã được Giảng viên chốt cấu hình</p>
+                </div>
+                <button onClick={() => setShowBulkModal(false)} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5 text-white" /></button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-6 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Bộ lọc Khoa</label>
+                    <select value={bulkKhoa} onChange={e => { setBulkKhoa(e.target.value); setBulkSection(''); setBulkGrades([]); }} className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm">
                       <option value="">Tất cả khoa</option>
                       {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Lớp học phần <span className="text-red-500">*</span>
-                    </label>
-                    <select value={bulkSection} onChange={e => handleBulkSectionChange(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
-                    >
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
+                    <select value={bulkSection} onChange={e => handleBulkSectionChange(e.target.value)} className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm text-gray-800">
                       <option value="">Chọn lớp học phần</option>
-                      {getSectionsByKhoa(bulkKhoa).map(cs => (
-                        <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>
-                          {cs.TenMonHoc} — {cs.MaLopHocPhan} — HK{cs.HocKy} {cs.NamBatDau}
-                        </option>
-                      ))}
+                      {courseSections.filter(cs => !bulkKhoa || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === bulkKhoa.toUpperCase()).map(cs => {
+                        const isLocked = lockedConfigs[cs.MaLopHocPhan];
+                        return <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan} disabled={!isLocked}>{cs.TenMonHoc} — {cs.MaLopHocPhan} {!isLocked ? '(Giảng viên chưa chốt)' : ''}</option>
+                      })}
                     </select>
                   </div>
                 </div>
 
                 {bulkGrades.length > 0 ? (
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                  <div className="border-2 border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CC<br /><span className="text-xs font-normal text-gray-400">(10%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">BT<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">GK<br /><span className="text-xs font-normal text-gray-400">(20%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">CK<br /><span className="text-xs font-normal text-gray-400">(50%)</span></th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">TB</th>
-                          <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700">Xếp loại</th>
+                          <th className="text-left py-4 px-5 text-xs font-black text-gray-500 uppercase tracking-wider">MSSV</th>
+                          <th className="text-left py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider">Họ tên</th>
+                          {getActiveConfig(bulkSection).map(c => {
+                             const isZero = !c.enabled || Number(c.weight) === 0;
+                             return (
+                               <th key={c.key} className="text-center py-4 px-3 text-xs font-black text-gray-500 uppercase tracking-wider">
+                                 {c.shortLabel} <span className="text-[10px] text-purple-500">({!isZero ? c.weight+'%' : '0%'})</span>
+                               </th>
+                             );
+                          })}
+                          <th className="text-center py-4 px-3 text-xs font-black text-gray-800 bg-gray-100 uppercase tracking-wider">Hệ 10</th>
+                          <th className="text-center py-4 px-3 text-xs font-black text-purple-600 bg-purple-50 uppercase tracking-wider">GPA</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-gray-100">
                         {bulkGrades.map((grade, idx) => {
-                          const scored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
+                          const cfg = getActiveConfig(bulkSection);
                           const hasRowErr = SCORE_FIELDS.some(f => grade.rowErrors?.[f]);
-                          const t10 = scored && !hasRowErr ? calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy) : null;
+                          const isScored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
+                          const t10 = isScored && !hasRowErr ? calcTotal10(grade, cfg) : null;
                           const gpa = t10 ? convertToGPA(t10) : null;
                           return (
-                            <tr key={idx} className={`border-b border-gray-100 ${grade.alreadyExists ? 'bg-blue-50/40' : ''} ${hasRowErr ? 'bg-red-50/30' : ''}`}>
-                              <td className="py-3 px-4 text-sm font-medium text-gray-800">
+                            <tr key={idx} className={`hover:bg-purple-50/30 transition-colors ${grade.alreadyExists ? 'bg-blue-50/20' : ''} ${hasRowErr ? 'bg-red-50/30' : ''}`}>
+                              <td className="py-3 px-5 text-sm font-bold text-gray-800">
                                 {grade.MSSV}
-                                {grade.alreadyExists && <span className="ml-1 text-xs text-blue-500">(cập nhật)</span>}
+                                {grade.alreadyExists && <span className="block mt-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">Cập nhật</span>}
                               </td>
-                              <td className="py-3 px-4 text-sm text-gray-600">{grade.HoTen}</td>
-                              {SCORE_FIELDS.map(field => (
-                                <td key={field} className="py-2 px-3 text-center align-middle">
-                                  <BulkScoreInput
-                                    value={grade[field]}
-                                    onChange={val => handleBulkFieldChange(idx, field, val, false)}
-                                    onError={hasErr => handleBulkFieldChange(idx, field, grade[field], hasErr)}
-                                  />
-                                </td>
-                              ))}
-                              <td className="py-3 px-3 text-center text-sm font-bold text-gray-700">
-                                {t10 ?? <span className="text-gray-300">—</span>}
-                              </td>
-                              <td className={`py-3 px-3 text-center text-sm font-bold ${getLetterColor(gpa?.letter)}`}>
-                                {gpa?.letter ?? <span className="text-gray-300">—</span>}
-                              </td>
+                              <td className="py-3 px-4 text-sm font-bold text-gray-900">{grade.HoTen}</td>
+                              {cfg.map(c => {
+                                const isZero = !c.enabled || Number(c.weight) === 0;
+                                return (
+                                  <td key={c.key} className="py-2 px-3 text-center align-middle">
+                                    <BulkScoreInput
+                                      value={isZero ? 0 : grade[c.key]}
+                                      disabled={isZero}
+                                      onChange={val => handleBulkFieldChange(idx, c.key, val, false)}
+                                      onError={hasErr => handleBulkFieldChange(idx, c.key, grade[c.key], hasErr)}
+                                    />
+                                  </td>
+                                );
+                              })}
+                              <td className="py-3 px-3 text-center text-sm font-black text-gray-800 bg-gray-50/50">{t10 ?? <span className="text-gray-300">—</span>}</td>
+                              <td className={`py-3 px-3 text-center text-sm font-black bg-purple-50/50 ${getLetterColor(gpa?.letter)}`}>{gpa?.letter ?? <span className="text-gray-300">—</span>}</td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
                   </div>
-                ) : bulkSection ? (
-                  <div className="py-10 text-center text-gray-400">Không có sinh viên nào đã đăng ký lớp này</div>
-                ) : null}
+                ) : bulkSection ? <div className="py-20 text-center text-gray-400 font-semibold border-2 border-dashed border-gray-200 rounded-2xl">Không có sinh viên nào đăng ký lớp này</div> : null}
 
-                <div className="flex gap-3 pt-2">
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    onClick={handleBulkSubmit}
-                    disabled={bulkGrades.length === 0}
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-xl font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >Lưu tất cả ({bulkGrades.length} sinh viên)</motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowBulkModal(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300"
-                  >Hủy</motion.button>
+                <div className="flex gap-4 pt-2">
+                  <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
+                  <button type="button" disabled={bulkGrades.length === 0} onClick={handleBulkSubmitRequest} className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-4 rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-indigo-700 text-base">Lưu tất cả ({bulkGrades.length} SV)</button>
                 </div>
               </div>
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {submitConfirmModal.show && (
+          <div className="fixed inset-0 flex items-center justify-center z-[10005] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false })} />
+            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
+               <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
+                 <Save className="w-10 h-10" />
+               </div>
+               <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Xác nhận lưu điểm</h3>
+               <p className="text-gray-600 text-sm font-medium mb-7 px-2 leading-relaxed">
+                 Bạn có chắc chắn muốn lưu điểm {submitConfirmModal.isBulk ? 'cho toàn bộ lớp' : 'cho sinh viên này'} vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.
+               </p>
+               <div className="flex gap-3">
+                 <button onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Kiểm tra lại</button>
+                 <button onClick={executeSubmitGrade} className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 hover:shadow-blue-500/25 transition-all">
+                   Đồng ý lưu
+                 </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteModal.show && (
+          <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDeleteCancel} />
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10"
+            >
+              <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-orange-100/50">
+                <AlertTriangle className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-800 mb-2 tracking-tight">Xác nhận xóa điểm</h3>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-7 space-y-1.5">
+                <p className="text-sm text-gray-500 font-medium">Xóa điểm của sinh viên:</p>
+                <p className="text-base font-black text-gray-800">{deleteModal.tenSinhVien}</p>
+                <p className="text-xs text-red-500 font-bold mt-2 pt-2 border-t border-gray-200">Dữ liệu xóa sẽ không thể khôi phục!</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={handleDeleteCancel} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Hủy</button>
+                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-orange-500 text-white rounded-xl font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {notification.show && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className={`fixed bottom-8 right-8 z-[11000] flex items-center gap-3.5 px-6 py-4 rounded-2xl shadow-2xl text-white font-bold tracking-wide
+              ${notification.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-rose-600'}`}
+          >
+            {notification.type === 'success' ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+            <span className="text-[15px]">{notification.message}</span>
           </motion.div>
-        </ModalPortal>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
+//
 export default GradeManagement;

@@ -404,6 +404,27 @@ app.post('/api/forgot-password', (req, res) => {
     });
 });
 
+// Global middleware to check if account is locked out across all API requests
+app.use((req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const username = decoded.username;
+            const now = new Date();
+            if (loginAttempts[username] && loginAttempts[username].lockoutUntil && loginAttempts[username].lockoutUntil > now) {
+                const remainingMs = loginAttempts[username].lockoutUntil - now;
+                const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+                return res.status(403).json({
+                    success: false,
+                    isLocked: true,
+                    message: `Tài khoản của bạn đã bị khóa tạm thời do nhập sai quá nhiều lần. Các thiết bị khác cũng bị buộc đăng xuất. Vui lòng thử lại sau ${remainingMinutes} phút.`
+                });
+            }
+        } catch (error) {}
+    }
+    next();
+});
 
 // Verify token endpoint
 app.get('/api/verify-token', verifyToken, (req, res) => {
@@ -1654,6 +1675,7 @@ app.post('/api/attendance', (req, res) => executeInsert('INSERT INTO diemdanh (M
 app.put('/api/attendance/:id', (req, res) => executeUpdate('UPDATE diemdanh SET MaLichHoc=?, MSSV=?, NgayDiemDanh=?, TrangThai=? WHERE MaDiemDanh=?', [req.body.MaLichHoc, req.body.MSSV, req.body.NgayDiemDanh, req.body.TrangThai, req.params.id], res, 'Thành công', 'Lỗi'));
 app.delete('/api/attendance/:id', (req, res) => executeDelete('DELETE FROM diemdanh WHERE MaDiemDanh=?', [req.params.id], res, 'Thành công', 'Lỗi'));
 app.get('/api/attendance/course/:maLhp/date/:ngay', (req, res) => executeQuery('SELECT * FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ?', [req.params.maLhp, req.params.ngay], res, 'Lỗi!'));
+app.get('/api/attendance/course/:maLhp/history-dates', (req, res) => executeQuery('SELECT DISTINCT DATE_FORMAT(NgayDiemDanh, "%Y-%m-%d") as Ngay FROM diemdanh WHERE MaLopHocPhan = ? ORDER BY Ngay DESC', [req.params.maLhp], res, 'Lỗi lấy lịch sử!'));
 app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
     const { maLhp, ngay } = req.params; const attendanceList = req.body.attendance;
     if (!Array.isArray(attendanceList) || attendanceList.length === 0) return res.status(400).json({ success: false });
@@ -1703,6 +1725,79 @@ app.post('/api/rfid/reset-status', async (req, res) => {
         return res.status(500).json({ success: false, message: 'Lỗi DB' });
     }
 });
+// Lấy trạng thái điểm danh hiện tại của 1 lớp
+app.get('/api/attendance/course/:id/session/:date', async (req, res) => {
+    try {
+        const { id, date } = req.params;
+        const [rows] = await db.promise().query(
+            'SELECT TrangThaiDiemDanh, ThoiGianMoDiemDanh FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
+            [id, date]
+        );
+        if (rows.length === 0) return res.json({ status: 'PENDING', timeOpened: null });
+        res.json({ status: rows[0].TrangThaiDiemDanh || 'PENDING', timeOpened: rows[0].ThoiGianMoDiemDanh });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
+// Mở điểm danh 15 phút
+app.post('/api/attendance/course/:id/open/:date', async (req, res) => {
+    try {
+        const { id, date } = req.params;
+        await db.promise().query(
+            "UPDATE lichhoc SET TrangThaiDiemDanh = 'OPEN', ThoiGianMoDiemDanh = NOW() WHERE MaLopHocPhan = ? AND NgayHoc = ?",
+            [id, date]
+        );
+        res.json({ success: true, message: 'Đã mở điểm danh' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
+// Đóng điểm danh sớm
+app.post('/api/attendance/course/:id/close/:date', async (req, res) => {
+    try {
+        const { id, date } = req.params;
+        await db.promise().query(
+            "UPDATE lichhoc SET TrangThaiDiemDanh = 'CLOSED' WHERE MaLopHocPhan = ? AND NgayHoc = ?",
+            [id, date]
+        );
+        
+        // Tự động đánh vắng những sinh viên chưa điểm danh
+        const [students] = await db.promise().query(
+            "SELECT the_sv.MSSV FROM the_sv JOIN lophocphan lhp ON the_sv.MSSV IN (SELECT MSSV FROM the_sv) WHERE lhp.MaLopHocPhan = ?"
+        );
+        
+        // Lấy ds sv của lớp
+        const [enrolled] = await db.promise().query(
+            "SELECT sv.MSSV FROM sinhvien sv JOIN lophoc lh ON sv.MaLop = lh.MaLop JOIN lophocphan lhp ON lh.MaLop = lhp.MaLop WHERE lhp.MaLopHocPhan = ?",
+            [id]
+        );
+        
+        if (enrolled.length > 0) {
+            const mssvList = enrolled.map(s => s.MSSV);
+            // Tìm những sv đã có mặt
+            const [attended] = await db.promise().query(
+                "SELECT MSSV FROM diemdanh WHERE MaLopHocPhan = ? AND NgayDiemDanh = ?",
+                [id, date]
+            );
+            const attendedSet = new Set(attended.map(a => a.MSSV));
+            
+            for (let mssv of mssvList) {
+                if (!attendedSet.has(mssv)) {
+                    await db.promise().query(
+                        "INSERT IGNORE INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, 'Vắng mặt', NOW())",
+                        [id, mssv, date]
+                    );
+                }
+            }
+        }
+
+        res.json({ success: true, message: 'Đã chốt sổ' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
 
 // API nhận dữ liệu từ ESP32 bắn lên
 app.post('/api/attendance/uid', async (req, res) => {
@@ -1733,15 +1828,17 @@ app.post('/api/attendance/uid', async (req, res) => {
         else {
             let targetLHP = MaLopHocPhan;
             const { PhongHoc } = req.body;
+            let targetTrangThai = 'PENDING';
+            let phutDaQua = 0;
+
+            const now = new Date();
+            const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+            const todayStr = vnTime.toISOString().split('T')[0];
+            const currentTime = vnTime.toISOString().split('T')[1].substring(0, 8); // "HH:MM:SS"
 
             if (PhongHoc && !targetLHP) {
-                const now = new Date();
-                const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-                const todayStr = vnTime.toISOString().split('T')[0];
-                const currentTime = vnTime.toISOString().split('T')[1].substring(0, 8); // "HH:MM:SS"
-
                 const [lichhocRows] = await db.promise().query(
-                    'SELECT MaLopHocPhan, CaHoc FROM lichhoc WHERE NgayHoc = ? AND PhongHoc = ?',
+                    'SELECT MaLopHocPhan, CaHoc, TrangThaiDiemDanh, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE NgayHoc = ? AND PhongHoc = ?',
                     [todayStr, PhongHoc]
                 );
 
@@ -1760,16 +1857,38 @@ app.post('/api/attendance/uid', async (req, res) => {
                             if (startInfo && endInfo) {
                                 if (currentTime >= startInfo.GioBatDau && currentTime <= endInfo.GioKetThuc) {
                                     targetLHP = lh.MaLopHocPhan;
+                                    targetTrangThai = lh.TrangThaiDiemDanh;
+                                    phutDaQua = lh.PhutDaQua;
                                     break;
                                 }
                             }
                         }
                     }
                 }
+            } else if (targetLHP) {
+                const [lhRows] = await db.promise().query(
+                    'SELECT TrangThaiDiemDanh, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
+                    [targetLHP, todayStr]
+                );
+                if (lhRows.length > 0) {
+                    targetTrangThai = lhRows[0].TrangThaiDiemDanh;
+                    phutDaQua = lhRows[0].PhutDaQua;
+                }
             }
 
             if (!targetLHP) {
                 return res.status(404).json({ success: false, action: "NO_CLASS", message: 'Không có tiết học nào đang diễn ra tại phòng này' });
+            }
+
+            // KIỂM TRA LUỒNG 15 PHÚT
+            if (targetTrangThai === 'OPEN' && phutDaQua !== null && phutDaQua >= 15) {
+                // Tự động đóng nếu quá 15 phút
+                await db.promise().query("UPDATE lichhoc SET TrangThaiDiemDanh = 'CLOSED' WHERE MaLopHocPhan = ? AND NgayHoc = ?", [targetLHP, todayStr]);
+                targetTrangThai = 'CLOSED';
+            }
+
+            if (targetTrangThai !== 'OPEN') {
+                return res.status(403).json({ success: false, action: "CLOSED", message: 'Hiện không trong thời gian điểm danh' });
             }
 
             try {
@@ -1780,7 +1899,7 @@ app.post('/api/attendance/uid', async (req, res) => {
                 }
 
                 const MSSV = results[0].MSSV;
-                const ngay = NgayDiemDanh || new Date().toISOString().slice(0, 10);
+                const ngay = NgayDiemDanh || todayStr;
                 const trangthai = TrangThai || 'Có mặt';
 
                 const [checkResults] = await db.promise().query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [targetLHP, MSSV, ngay]);
@@ -1828,9 +1947,9 @@ app.get('/api/attendance/percentage/:mssv', (req, res) => {
 });
 
 // ==================== TÀI LIỆU, NỘP BÀI, THÔNG BÁO ====================
-app.get('/api/materials', (req, res) => executeQuery(`SELECT tl.*, lhp.MaGiangVien, lhp.MaMonHoc, lhp.HocKy, gv.HoTen as TenGiangVien, mh.TenMonHoc FROM tailieu_baitap tl LEFT JOIN lophocphan lhp ON tl.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc`, [], res, 'Lỗi!'));
-app.post('/api/materials', (req, res) => executeInsert('INSERT INTO tailieu_baitap (MaLopHocPhan, TieuDe, Loai, FileUrl, HanNop) VALUES (?, ?, ?, ?, ?)', [req.body.MaLopHocPhan || req.body.MaPhanCong, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop], res, 'Thêm thành công', 'Lỗi'));
-app.put('/api/materials/:id', (req, res) => executeUpdate('UPDATE tailieu_baitap SET MaLopHocPhan=?, TieuDe=?, Loai=?, FileUrl=?, HanNop=? WHERE MaTaiLieu=?', [req.body.MaLopHocPhan || req.body.MaPhanCong, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop, req.params.id], res, 'Cập nhật thành công', 'Lỗi'));
+app.get('/api/materials', (req, res) => executeQuery(`SELECT tl.*, lhp.MaGiangVien, lhp.MaMonHoc, lhp.HocKy, gv.HoTen as TenGiangVien, mh.TenMonHoc FROM tailieu_baitap tl LEFT JOIN phancong pc ON tl.MaPhanCong = pc.MaPhanCong LEFT JOIN lophocphan lhp ON pc.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc`, [], res, 'Lỗi!'));
+app.post('/api/materials', (req, res) => executeInsert('INSERT INTO tailieu_baitap (MaPhanCong, TieuDe, Loai, FileUrl, HanNop) VALUES (?, ?, ?, ?, ?)', [req.body.MaPhanCong || req.body.MaLopHocPhan, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop], res, 'Thêm thành công', 'Lỗi'));
+app.put('/api/materials/:id', (req, res) => executeUpdate('UPDATE tailieu_baitap SET MaPhanCong=?, TieuDe=?, Loai=?, FileUrl=?, HanNop=? WHERE MaTaiLieu=?', [req.body.MaPhanCong || req.body.MaLopHocPhan, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop, req.params.id], res, 'Cập nhật thành công', 'Lỗi'));
 app.delete('/api/materials/:id', (req, res) => executeDelete('DELETE FROM tailieu_baitap WHERE MaTaiLieu=?', [req.params.id], res, 'Xóa thành công', 'Lỗi'));
 
 app.get('/api/submissions', (req, res) => executeQuery(`SELECT nb.*, s.HoTen as TenSinhVien, tl.TieuDe, tl.Loai FROM nopbai nb LEFT JOIN sinhvien s ON nb.MSSV = s.MSSV LEFT JOIN tailieu_baitap tl ON nb.MaTaiLieu = tl.MaTaiLieu`, [], res, 'Lỗi!'));

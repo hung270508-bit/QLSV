@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import API_URL from './api';
 import axios from 'axios';
@@ -7,6 +7,8 @@ import StudentDashboard from './components/student/StudentDashboard';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
 import ResetPassword from './components/auth/ResetPassword';
 import LoginForm from './components/auth/LoginForm';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldAlert, LogIn } from 'lucide-react';
 
 const DASHBOARD_MAP = {
   admin: AdminDashboard,
@@ -65,6 +67,9 @@ function App() {
     return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
   });
   const [sessionTimeout, setSessionTimeout] = useState(null);
+  
+  // State quản lý thông báo UI khi bị khóa tài khoản
+  const [lockedAccountInfo, setLockedAccountInfo] = useState(null);
 
   useEffect(() => {
     if (!loggedInUser) {
@@ -81,6 +86,37 @@ function App() {
       }
     }
   }, [loggedInUser, location.pathname, location.hash, navigate]);
+
+  // Thêm mới: Polling kiểm tra trạng thái khóa tài khoản thời gian thực (mỗi 3 giây)
+  useEffect(() => {
+    let intervalId;
+    if (loggedInUser && token) {
+      intervalId = setInterval(async () => {
+        try {
+          await axios.get(`${API_URL}/api/verify-token`);
+        } catch {
+          // Lỗi 403 sẽ được xử lý tự động ở interceptor trong main.jsx
+        }
+      }, 3000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [loggedInUser, token]);
+
+  // Lắng nghe sự kiện forceLogout từ main.jsx để hiển thị Modal xịn xò
+  useEffect(() => {
+    const handleForceLogout = (e) => {
+      // Chỉ hiển thị thông báo, không clear token ngay lập tức
+      // để người dùng vẫn thấy giao diện phía sau mờ mờ cho đến khi bấm nút
+      if (!lockedAccountInfo) {
+        setLockedAccountInfo(e.detail.message);
+      }
+    };
+
+    window.addEventListener('forceLogout', handleForceLogout);
+    return () => window.removeEventListener('forceLogout', handleForceLogout);
+  }, [lockedAccountInfo]);
 
   const handleSelectAccount = (acc) => {
     setUsername(acc.username);
@@ -269,46 +305,137 @@ function App() {
   if (loggedInUser) {
     const DashboardComponent = DASHBOARD_MAP[loggedInUser.role];
     if (DashboardComponent) {
-      return <DashboardComponent user={loggedInUser} onLogout={handleLogout} />;
+      return (
+        <>
+          <DashboardComponent user={loggedInUser} onLogout={handleLogout} />
+          {/* Giao diện hiện đại thông báo khóa tài khoản */}
+          <AnimatePresence>
+            {lockedAccountInfo && (
+              <div className="fixed inset-0 flex items-center justify-center z-[999999] p-4 bg-black/60 backdrop-blur-md">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-100"
+                >
+                  <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-10 text-center relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_white_0%,_transparent_100%)]"></div>
+                    <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 backdrop-blur-sm border border-white/30 shadow-inner">
+                      <ShieldAlert className="w-12 h-12 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-black text-white relative z-10 tracking-wide">TÀI KHOẢN BỊ KHÓA</h2>
+                  </div>
+                  <div className="p-8 text-center bg-white space-y-6">
+                    <div className="bg-red-50 text-red-700 p-5 rounded-2xl border border-red-100 text-sm font-semibold leading-relaxed shadow-sm">
+                      {lockedAccountInfo}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setLockedAccountInfo(null);
+                        // Thực hiện clear token và logout TẠI ĐÂY sau khi người dùng xác nhận
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        sessionStorage.removeItem('token');
+                        sessionStorage.removeItem('user');
+                        setToken(null);
+                        setLoggedInUser(null);
+                      }}
+                      className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                      <LogIn className="w-5 h-5" />
+                      Xác nhận và quay lại đăng nhập
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        </>
+      );
     }
   }
 
   return (
-    <Routes>
-      <Route path="/reset-password/:token" element={<ResetPassword />} />
-      <Route
-        path="*"
-        element={
-          !loggedInUser ? (
-            <LoginForm
-              username={username}
-              setUsername={setUsername}
-              password={password}
-              setPassword={setPassword}
-              showPassword={showPassword}
-              setShowPassword={setShowPassword}
-              rememberMe={rememberMe}
-              setRememberMe={setRememberMe}
-              savedAccounts={savedAccounts}
-              showAccountList={showAccountList}
-              setShowAccountList={setShowAccountList}
-              loading={loading}
-              message={message}
-              setMessage={setMessage}
-              showForgotPassword={showForgotPassword}
-              setShowForgotPassword={setShowForgotPassword}
-              forgotEmail={forgotEmail}
-              setForgotEmail={setForgotEmail}
-              forgotLoading={forgotLoading}
-              handleLogin={handleLogin}
-              handleForgotPassword={handleForgotPassword}
-              handleSelectAccount={handleSelectAccount}
-              handleRemoveAccount={handleRemoveAccount}
-            />
-          ) : null
-        }
-      />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route
+          path="*"
+          element={
+            !loggedInUser ? (
+              <LoginForm
+                username={username}
+                setUsername={setUsername}
+                password={password}
+                setPassword={setPassword}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                rememberMe={rememberMe}
+                setRememberMe={setRememberMe}
+                savedAccounts={savedAccounts}
+                showAccountList={showAccountList}
+                setShowAccountList={setShowAccountList}
+                loading={loading}
+                message={message}
+                setMessage={setMessage}
+                showForgotPassword={showForgotPassword}
+                setShowForgotPassword={setShowForgotPassword}
+                forgotEmail={forgotEmail}
+                setForgotEmail={setForgotEmail}
+                forgotLoading={forgotLoading}
+                handleLogin={handleLogin}
+                handleForgotPassword={handleForgotPassword}
+                handleSelectAccount={handleSelectAccount}
+                handleRemoveAccount={handleRemoveAccount}
+              />
+            ) : null
+          }
+        />
+      </Routes>
+
+      {/* Giao diện hiện đại thông báo khóa tài khoản */}
+      <AnimatePresence>
+        {lockedAccountInfo && (
+          <div className="fixed inset-0 flex items-center justify-center z-[999999] p-4 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-100"
+            >
+              <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-10 text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_white_0%,_transparent_100%)]"></div>
+                <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 backdrop-blur-sm border border-white/30 shadow-inner">
+                  <ShieldAlert className="w-12 h-12 text-white" />
+                </div>
+                <h2 className="text-2xl font-black text-white relative z-10 tracking-wide">TÀI KHOẢN BỊ KHÓA</h2>
+              </div>
+              <div className="p-8 text-center bg-white space-y-6">
+                <div className="bg-red-50 text-red-700 p-5 rounded-2xl border border-red-100 text-sm font-semibold leading-relaxed shadow-sm">
+                  {lockedAccountInfo}
+                </div>
+                <button
+                  onClick={() => {
+                    setLockedAccountInfo(null);
+                    // Thực hiện clear token và logout TẠI ĐÂY sau khi người dùng xác nhận
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
+                    setToken(null);
+                    setLoggedInUser(null);
+                  }}
+                  className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  <LogIn className="w-5 h-5" />
+                  Xác nhận và quay lại đăng nhập
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
