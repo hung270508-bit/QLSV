@@ -137,11 +137,11 @@ function DashboardOverview({ onNavigate }) {
   ];
 
   const statCards = [
-    { title: 'Tổng sinh viên',  value: stats.totalStudents,  icon: Users,         color: 'from-orange-500 to-orange-600', menuId: 'sinhvien' },
-    { title: 'Tổng môn học',    value: stats.totalSubjects,  icon: BookOpen,      color: 'from-amber-500  to-amber-600',  menuId: 'monhoc'   },
-    { title: 'Tổng lớp học',    value: stats.totalClasses,   icon: Building2,     color: 'from-yellow-500 to-yellow-600', menuId: 'lophoc'   },
-    { title: 'Tổng giảng viên', value: stats.totalTeachers,  icon: GraduationCap, color: 'from-orange-400 to-orange-500', menuId: 'giangvien'},
     { title: 'Tổng khoa',       value: facultyStats.length,  icon: Building2,     color: 'from-red-500    to-red-600',    menuId: 'khoa'     },
+    { title: 'Tổng lớp học',    value: stats.totalClasses,   icon: Building2,     color: 'from-yellow-500 to-yellow-600', menuId: 'lophoc'   },
+    { title: 'Tổng môn học',    value: stats.totalSubjects,  icon: BookOpen,      color: 'from-amber-500  to-amber-600',  menuId: 'monhoc'   },
+    { title: 'Tổng giảng viên', value: stats.totalTeachers,  icon: GraduationCap, color: 'from-orange-400 to-orange-500', menuId: 'giangvien'},
+    { title: 'Tổng sinh viên',  value: stats.totalStudents,  icon: Users,         color: 'from-orange-500 to-orange-600', menuId: 'sinhvien' },
   ];
 
   const facultyStudentData = useMemo(() =>

@@ -1,628 +1,1066 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, Plus, Edit, Trash2, Search, X, Filter, XCircle, RefreshCw, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
+import {
+  GraduationCap, Plus, Edit, Trash2, Search, X, Filter,
+  XCircle, Download, FileText, BarChart3, AlertCircle, CheckCircle2,
+  Info, ChevronDown, ChevronUp, Users, Lock, Save,
+  CheckCircle, AlertTriangle
+} from 'lucide-react';
 import axios from 'axios';
+import { GradeSkeleton } from '../common/AdminSkeleton';
+import Pagination from '../common/Pagination';
 
-function GradesSection({ grades, teachingAssignments, students, user, onRefresh }) {
-  const [selectedClass, setSelectedClass] = useState(null);
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [showGradeModal, setShowGradeModal] = useState(false);
-  const [gradeData, setGradeData] = useState({});
-  const [editingStudent, setEditingStudent] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingGrade, setEditingGrade] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ subjectFilter: '', semesterFilter: '' });
-  const [displayFilters, setDisplayFilters] = useState({ subjectFilter: '', semesterFilter: '' });
-  const [lophocphanList, setLophocphanList] = useState([]);
-  const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
-  const [validationError, setValidationError] = useState('');
-  const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
+// ================================================================
+// STORAGE KEY
+// ================================================================
+const getConfigKey = (maLopHocPhan) => `grade_config_${maLopHocPhan}`;
+const getLockKey = (maLopHocPhan) => `grade_config_locked_${maLopHocPhan}`;
 
-  const initialFormState = {
-    MSSV: '', MaLopHocPhan: '', HocKy: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
-  };
-  const [formData, setFormData] = useState(initialFormState);
+const DEFAULT_COMPONENTS = [
+  { key: 'DiemChuyenCan', label: 'Chuyên cần', shortLabel: 'CC', weight: 10, enabled: true },
+  { key: 'DiemBaiTap',    label: 'Bài tập',    shortLabel: 'BT', weight: 20, enabled: true },
+  { key: 'DiemGiuaKy',   label: 'Giữa kỳ',    shortLabel: 'GK', weight: 20, enabled: true },
+  { key: 'DiemCuoiKy',   label: 'Cuối kỳ',    shortLabel: 'CK', weight: 50, enabled: true },
+];
+
+const loadConfig = (maLopHocPhan) => {
+  try {
+    const saved = localStorage.getItem(getConfigKey(maLopHocPhan));
+    if (saved) return JSON.parse(saved);
+  } catch (_) {}
+  return DEFAULT_COMPONENTS.map(c => ({ ...c }));
+};
+
+const calcTotal10 = (formData, components) => {
+  const active = components.filter(c => c.enabled && Number(c.weight) > 0);
+  if (active.length === 0) return '0.00';
+  const total = active.reduce((sum, c) => {
+    let val = parseFloat(formData[c.key]);
+    if (isNaN(val) || val < 0) val = 0; 
+    return sum + (val * (Number(c.weight) / 100));
+  }, 0);
+  return total.toFixed(2);
+};
+
+const convertToGPA = (total10) => {
+  const t = parseFloat(total10);
+  if (isNaN(t)) return { gpa: 0.0, letter: 'F', text: 'Chưa có điểm' }; 
+  if (t >= 8.5) return { gpa: 4.0, letter: 'A',  text: 'Xuất sắc' };
+  if (t >= 7.8) return { gpa: 3.7, letter: 'B+', text: 'Giỏi' };
+  if (t >= 7.0) return { gpa: 3.5, letter: 'B',  text: 'Khá giỏi' };
+  if (t >= 6.3) return { gpa: 3.0, letter: 'C+', text: 'Khá' };
+  if (t >= 5.5) return { gpa: 2.5, letter: 'C',  text: 'Trung bình khá' };
+  if (t >= 4.8) return { gpa: 2.0, letter: 'D+', text: 'Trung bình' };
+  if (t >= 4.0) return { gpa: 1.5, letter: 'D',  text: 'Yếu' };
+  if (t >= 3.0) return { gpa: 1.0, letter: 'F+', text: 'Kém' };
+  return { gpa: 0.0, letter: 'F',  text: 'Không đạt' };
+};
+
+const getLetterColor = (letter) => {
+  if (!letter) return 'text-gray-300';
+  if (letter === 'A') return 'text-green-600';
+  if (letter.startsWith('B')) return 'text-blue-600';
+  if (letter.startsWith('C')) return 'text-yellow-600';
+  if (letter.startsWith('D')) return 'text-orange-500';
+  return 'text-red-600';
+};
+
+const hasAnyScore = (cc, bt, gk, ck) =>
+  (cc !== '' && cc != null) || (bt !== '' && bt != null) ||
+  (gk !== '' && gk != null) || (ck !== '' && ck != null);
+
+// ================================================================
+// Component: ScoreInput
+// ================================================================
+function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' }) {
+  const [localVal, setLocalVal] = useState(value ?? '');
+  const [err, setErr] = useState('');
 
   useEffect(() => {
-    if (teachingAssignments?.length > 0) setLophocphanList(teachingAssignments);
-  }, [teachingAssignments]);
+    if ((value === '' || value == null) && localVal !== '') {
+      setLocalVal(''); setErr(''); onError && onError(false);
+    } else if (value !== localVal) {
+      setLocalVal(value ?? '');
+    }
+  }, [value]); 
 
-  const myClasses = teachingAssignments.map(a => a.MaLop);
-  const myLopHocPhans = teachingAssignments.map(a => a.MaLopHocPhan);
-  const myStudents = students.filter(s => myClasses.includes(s.MaLop));
-  const myGrades = grades.filter(g => 
-    myStudents.map(s => s.MSSV).includes(g.MSSV) && myLopHocPhans.includes(g.MaLopHocPhan)
+  const setE = (msg) => { setErr(msg); onError && onError(!!msg); };
+
+  const handle = (e) => {
+    let raw = e.target.value;
+    if (raw.includes('-')) return; 
+
+    setLocalVal(raw);
+    if (raw === '') { setE(''); onChange(''); return; }
+    const n = parseFloat(raw);
+    if (isNaN(n))  { setE('Không hợp lệ'); return; }
+    if (n < 0)     { setE('Không được âm'); return; }
+    if (n > 10)    { setE('Tối đa 10'); return; }
+    setE(''); onChange(raw);
+  };
+
+  const blockInvalidKeys = (e) => {
+    if (['-', 'e', '+'].includes(e.key)) e.preventDefault();
+  };
+
+  return (
+    <div>
+      <input
+        type="number" step="0.1" min="0" max="10"
+        placeholder={placeholder}
+        value={localVal}
+        onChange={handle}
+        onKeyDown={blockInvalidKeys}
+        disabled={disabled}
+        onWheel={e => e.target.blur()}
+        className={`w-full px-3 py-2.5 border-2 rounded-xl focus:outline-none transition-colors text-sm font-semibold
+          ${disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed border-gray-100 text-gray-500' :
+            err ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-orange-500 text-gray-800'}`}
+      />
+      {err && <p className="text-red-500 text-xs mt-1.5 font-bold">{err}</p>}
+    </div>
   );
+}
 
-  const calculateTotal10 = (cc, bt, gk, ck) => {
-    return ((parseFloat(cc) || 0) * 0.1 + (parseFloat(bt) || 0) * 0.15 + (parseFloat(gk) || 0) * 0.25 + (parseFloat(ck) || 0) * 0.5).toFixed(2);
+function BulkScoreInput({ value, onChange, onError, disabled }) {
+  const [localVal, setLocalVal] = useState(value ?? '');
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if ((value === '' || value == null) && localVal !== '') {
+      setLocalVal(''); setErr(''); onError && onError(false);
+    } else if (value !== localVal) {
+      setLocalVal(value ?? '');
+    }
+  }, [value]);
+
+  const setE = (msg) => { setErr(msg); onError && onError(!!msg); };
+
+  const handle = (e) => {
+    let raw = e.target.value;
+    if (raw.includes('-')) return;
+
+    setLocalVal(raw);
+    if (raw === '') { setE(''); onChange(''); return; }
+    const n = parseFloat(raw);
+    if (isNaN(n))  { setE('Không hợp lệ'); return; }
+    if (n < 0)     { setE('Điểm âm'); return; }
+    if (n > 10)    { setE('Quá 10'); return; }
+    setE(''); onChange(raw);
   };
 
-  const convertToGPA = (total10) => {
-    const total = parseFloat(total10);
-    if (total >= 8.5) return { gpa: 4.0, letter: 'A', classification: 'Xuất sắc' };
-    if (total >= 7.0) return { gpa: 3.5, letter: 'B', classification: 'Giỏi' };
-    if (total >= 5.5) return { gpa: 3.0, letter: 'C', classification: 'Khá' };
-    if (total >= 4.0) return { gpa: 2.0, letter: 'D', classification: 'Đạt' };
-    return { gpa: 0.0, letter: 'F', classification: 'Không đạt' };
+  const blockInvalidKeys = (e) => {
+    if (['-', 'e', '+'].includes(e.key)) e.preventDefault();
   };
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <input
+        type="number" step="0.1" min="0" max="10"
+        placeholder="—"
+        value={localVal}
+        onChange={handle}
+        onKeyDown={blockInvalidKeys}
+        disabled={disabled}
+        onWheel={e => e.target.blur()}
+        className={`w-16 text-center px-2 py-2 border-2 rounded-lg focus:outline-none text-sm transition-colors font-semibold
+          ${disabled ? 'bg-gray-100 border-transparent text-gray-400 cursor-not-allowed' : err ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500 bg-white text-gray-800'}`}
+      />
+      {err && <span className="text-red-500 text-[10px] font-bold text-center leading-tight">{err}</span>}
+    </div>
+  );
+}
+
+// ================================================================
+// Component: ConfigPanel — ADMIN CHỈ XEM
+// ================================================================
+function ConfigPanelAdmin({ tenLop, components, locked }) {
+  const totalWeight = components.filter(c => c.enabled).reduce((s, c) => s + (parseInt(c.weight) || 0), 0);
+
+  return (
+    <div className="border-2 rounded-2xl p-5 shadow-sm bg-gray-50 border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Info className="w-5 h-5 text-blue-500" />
+          <span className="font-bold text-gray-800">
+            Cấu hình điểm do Giảng viên thiết lập — {tenLop}
+          </span>
+        </div>
+        <div className={`text-sm font-bold px-3 py-1 rounded-full ${locked ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+          Trạng thái: {locked ? 'Đã chốt cấu hình' : 'Giảng viên chưa chốt'}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        {components.map(c => (
+          <div key={c.key} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all
+            ${c.enabled ? 'border-gray-300 bg-white' : 'border-gray-100 bg-gray-100 opacity-60'}`}>
+            <input type="checkbox" checked={c.enabled} disabled className="w-4 h-4 accent-gray-500 cursor-not-allowed" />
+            <span className="text-sm font-bold text-gray-700">{c.label}</span>
+            <div className="flex items-center gap-1 ml-auto">
+              <input type="number" value={c.enabled ? c.weight : ''} disabled placeholder="0" className="w-14 text-center px-2 py-1.5 border-2 rounded-lg text-sm font-bold bg-gray-100 border-transparent text-gray-500 cursor-not-allowed" />
+              <span className="text-sm font-bold text-gray-500">%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+          <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(totalWeight, 100)}%` }} />
+        </div>
+        <span className="text-sm font-bold text-gray-600">Tổng trọng số: {totalWeight}%</span>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
+// MAIN COMPONENT ADMIN
+// ================================================================
+function GradeManagement() {
+  const [grades, setGrades] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [courseSections, setCourseSections] = useState([]);
+  const [faculties, setFaculties] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [configOpen, setConfigOpen] = useState({}); 
+  const [classConfigs, setClassConfigs] = useState({});
+  const [activeConfigs, setActiveConfigs] = useState({});
+  const [lockedConfigs, setLockedConfigs] = useState({}); 
+
+  const [showModal, setShowModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
+  const [submitConfirmModal, setSubmitConfirmModal] = useState({ show: false, payload: null, isEdit: false, isBulk: false });
+  const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
+
+  const [editingGrade, setEditingGrade] = useState(null);
+  const [formData, setFormData] = useState({
+    selectedKhoa: '', MSSV: '', MaLopHocPhan: '', HocKy: '',
+    DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
+  });
+  const [formErrors, setFormErrors] = useState({});
+  const [scoreInputErrors, setScoreInputErrors] = useState({});
+
+  const [bulkKhoa, setBulkKhoa] = useState('');
+  const [bulkSection, setBulkSection] = useState('');
+  const [bulkGrades, setBulkGrades] = useState([]);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [displayFilters, setDisplayFilters] = useState({ khoaFilter: '', sectionFilter: '' });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const SCORE_FIELDS = ['DiemChuyenCan', 'DiemBaiTap', 'DiemGiuaKy', 'DiemCuoiKy'];
+
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [gradesRes, studentsRes, sectionsRes, facultiesRes, enrollmentsRes] = await Promise.all([
+        axios.get(`${API_URL}/api/grades`),
+        axios.get(`${API_URL}/api/students`),
+        axios.get(`${API_URL}/api/course-sections`),
+        axios.get(`${API_URL}/api/faculties`),
+        axios.get(`${API_URL}/api/enrollments/all`).catch(() => ({ data: [] }))
+      ]);
+      setGrades(gradesRes.data);
+      setStudents(studentsRes.data);
+      setCourseSections(sectionsRes.data);
+      setFaculties(facultiesRes.data);
+      setEnrollments(enrollmentsRes.data);
+      
+      const configs = {};
+      const active = {};
+      const locks = {};
+      sectionsRes.data.forEach(ta => {
+        const cfg = loadConfig(ta.MaLopHocPhan);
+        configs[ta.MaLopHocPhan] = cfg;
+        active[ta.MaLopHocPhan] = cfg;
+        locks[ta.MaLopHocPhan] = localStorage.getItem(getLockKey(ta.MaLopHocPhan)) === 'true';
+      });
+      setClassConfigs(configs);
+      setActiveConfigs(active);
+      setLockedConfigs(locks);
+    } catch (err) {
+      console.error('fetchData error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getActiveConfig = (maLopHocPhan) => activeConfigs[maLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
+
+  const extractKhoa = (maKhoaDB, maMonHoc) => {
+    const k = maKhoaDB || (maMonHoc ? maMonHoc.match(/^[A-Z]+/i)?.[0] : '');
+    return String(k).trim().toUpperCase();
+  };
+
+  // HÀM GOM SINH VIÊN BẢO ĐẢM 100% CHÍNH XÁC
+  const getStudentsForLHP = useCallback((maLopHocPhan) => {
+    if (!maLopHocPhan) return [];
+    const ta = courseSections.find(cs => cs.MaLopHocPhan === maLopHocPhan);
+    const map = new Map();
+    
+    if (ta && ta.MaLop) {
+      students.filter(s => s.MaLop === ta.MaLop).forEach(s => map.set(s.MSSV, { ...s }));
+    }
+    
+    const enrolledMSSV = enrollments.filter(e => e.MaLopHocPhan === maLopHocPhan && e.TrangThai !== 'Từ chối').map(e => e.MSSV);
+    students.filter(s => enrolledMSSV.includes(s.MSSV)).forEach(s => map.set(s.MSSV, { ...s }));
+    
+    grades.filter(g => g.MaLopHocPhan === maLopHocPhan).forEach(g => {
+      if (!map.has(g.MSSV)) {
+         const stuInfo = students.find(s => s.MSSV === g.MSSV);
+         map.set(g.MSSV, { MSSV: g.MSSV, HoTen: stuInfo?.HoTen || g.TenSinhVien || 'Sinh viên' });
+      }
+    });
+    
+    return Array.from(map.values()).sort((a, b) => a.MSSV.localeCompare(b.MSSV));
+  }, [courseSections, students, enrollments, grades]);
 
   const showNotification = (type, message) => {
     setNotification({ show: true, type, message });
-    setTimeout(() => setNotification({ show: false, type: 'success', message: '' }), 3000);
+    setTimeout(() => setNotification({ show: false, type: 'success', message: '' }), 4000);
   };
 
-  const validateGradeInput = (value) => {
-    // Check if the value is empty (allow empty for now, will validate on submit)
-    if (value === '' || value === undefined || value === null) {
-      return { valid: true, message: '' };
-    }
-    
-    // Check for whitespace
-    if (/\s/.test(value)) {
-      return { valid: false, message: 'Không được nhập khoảng trắng' };
-    }
-    
-    // Check for letters and special characters
-    const regex = /^\d*\.?\d*$/;
-    if (!regex.test(value)) {
-      return { valid: false, message: 'Vui lòng nhập số từ 0 tới 10' };
-    }
-    
-    // Check if the value is a valid number between 0 and 10
-    const num = parseFloat(value);
-    if (isNaN(num)) {
-      return { valid: false, message: 'Vui lòng nhập số' };
-    }
-    
-    if (num < 0) {
-      return { valid: false, message: 'Không được nhập số âm' };
-    }
-    
-    if (num > 10) {
-      return { valid: false, message: 'Điểm tối đa là 10' };
-    }
-    
-    return { valid: true, message: '' };
+  const openAddModal = () => {
+    setEditingGrade(null);
+    setFormData({ selectedKhoa: '', MSSV: '', MaLopHocPhan: '', HocKy: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' });
+    setFormErrors({}); setScoreInputErrors({}); setShowModal(true);
   };
 
-  const handleGradeInputChange = (field, value) => {
-    const validation = validateGradeInput(value);
-    setValidationError(validation.message);
-    setFormData({ ...formData, [field]: value });
+  const openAddGradeForStudent = (ta, student) => {
+    if (!lockedConfigs[ta.MaLopHocPhan]) {
+      showNotification('error', `Giảng viên chưa chốt cấu hình điểm cho môn ${ta.TenMonHoc}! Không thể nhập điểm.`);
+      return;
+    }
+    setEditingGrade(null);
+    setFormData({
+      selectedKhoa: extractKhoa(ta.MaKhoa, ta.MaMonHoc),
+      MSSV: student.MSSV, MaLopHocPhan: ta.MaLopHocPhan, HocKy: ta.HocKy || '',
+      DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: ''
+    });
+    setFormErrors({}); setScoreInputErrors({}); setShowModal(true);
   };
 
-  const handleGradeChange = (mssv, field, value) => {
-    const validation = validateGradeInput(value);
-    setValidationError(validation.message);
-    setGradeData(prev => ({ ...prev, [mssv]: { ...prev[mssv], [field]: value } }));
-  };
-
-  const handleEdit = (grade) => {
+  const openEditModal = (grade) => {
+    if (!lockedConfigs[grade.MaLopHocPhan]) {
+      showNotification('error', `Giảng viên chưa chốt cấu hình điểm cho môn học này! Không thể sửa điểm.`);
+      return;
+    }
+    const sec = courseSections.find(cs => cs.MaLopHocPhan === grade.MaLopHocPhan);
     setEditingGrade(grade);
     setFormData({
-      MSSV: grade.MSSV, MaLopHocPhan: grade.MaLopHocPhan || '', HocKy: grade.HocKy,
-      DiemChuyenCan: grade.DiemChuyenCan || '', DiemBaiTap: grade.DiemBaiTap || '',
-      DiemGiuaKy: grade.DiemGiuaKy || '', DiemCuoiKy: grade.DiemCuoiKy || ''
+      selectedKhoa: sec ? extractKhoa(sec.MaKhoa, sec.MaMonHoc) : '',
+      MSSV: grade.MSSV, MaLopHocPhan: grade.MaLopHocPhan || '', HocKy: grade.HocKy || '',
+      DiemChuyenCan: grade.DiemChuyenCan ?? '', DiemBaiTap: grade.DiemBaiTap ?? '', DiemGiuaKy: grade.DiemGiuaKy ?? '', DiemCuoiKy: grade.DiemCuoiKy ?? ''
     });
-    setShowAddModal(true);
+    setFormErrors({}); setScoreInputErrors({}); setShowModal(true);
   };
 
-  const handleCloseAddModal = () => {
-    setShowAddModal(false);
-    setEditingGrade(null);
-    setFormData(initialFormState);
-    setValidationError('');
+  const closeFormModal = () => {
+    setShowModal(false); setEditingGrade(null); setFormErrors({}); setScoreInputErrors({});
   };
 
-  const handleSubmit = async (e) => {
+  const handleSectionChange = (maLopHocPhan) => {
+    const sec = courseSections.find(cs => cs.MaLopHocPhan === maLopHocPhan);
+    const rawHK = sec?.HocKy || '';
+    const hocKy = sec ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim()) : '';
+    setFormData(prev => ({ ...prev, MaLopHocPhan: maLopHocPhan, HocKy: hocKy, MSSV: '' }));
+    if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // Validate all grade fields before submission
-    const gradeFields = ['DiemChuyenCan', 'DiemBaiTap', 'DiemGiuaKy', 'DiemCuoiKy'];
-    for (const field of gradeFields) {
-      const value = formData[field];
-      if (value !== '' && value !== undefined && value !== null) {
-        const validation = validateGradeInput(value);
-        if (!validation.valid) {
-          setValidationError(validation.message);
-          return;
-        }
-      }
-    }
-    
-    setValidationError('');
-    
-    try {
-      const diemTong10 = calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
-      const gpaResult = convertToGPA(diemTong10);
+    if (Object.values(scoreInputErrors).some(Boolean)) return;
+    const errors = {};
+    if (!formData.MSSV) errors.MSSV = 'Vui lòng chọn sinh viên';
+    if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
+    if (Object.keys(errors).length) { setFormErrors(errors); return; }
 
-      const payload = {
-        ...formData,
-        DiemChuyenCan: formData.DiemChuyenCan || null, DiemBaiTap: formData.DiemBaiTap || null,
-        DiemGiuaKy: formData.DiemGiuaKy || null, DiemCuoiKy: formData.DiemCuoiKy || null,
-        DiemTong: diemTong10, DiemGPA: gpaResult.gpa, DiemChu: gpaResult.letter, XepLoai: gpaResult.classification
-      };
-
-      if (editingGrade) {
-        await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
-      } else {
-        await axios.post(`${API_URL}/api/grades`, payload);
-      }
-      onRefresh();
-      handleCloseAddModal();
-      showNotification('success', editingGrade ? 'Cập nhật điểm thành công!' : 'Thêm điểm thành công!');
-    } catch (error) {
-      showNotification('error', error.response?.data?.message || 'Lỗi khi lưu điểm!');
+    if (!lockedConfigs[formData.MaLopHocPhan]) {
+        showNotification('error', 'Giảng viên chưa chốt cấu hình điểm! Không thể lưu điểm.');
+        return;
     }
+
+    const cfg = getActiveConfig(formData.MaLopHocPhan);
+    const ta  = courseSections.find(a => a.MaLopHocPhan === formData.MaLopHocPhan);
+    const t10  = calcTotal10(formData, cfg);
+    const gpa  = convertToGPA(t10);
+
+    const weights = {};
+    cfg.forEach(c => { if (c.enabled) weights[`TrongSo_${c.shortLabel}`] = Number(c.weight) / 100; });
+
+    const getPayloadValue = (key) => {
+      const comp = cfg.find(c => c.key === key);
+      if (!comp || !comp.enabled || Number(comp.weight) === 0) return null; 
+      return formData[key] !== '' && formData[key] != null ? formData[key] : null;
+    };
+
+    const payload = {
+      MSSV: formData.MSSV, MaLopHocPhan: formData.MaLopHocPhan, HocKy: ta?.HocKy || formData.HocKy || '',
+      DiemChuyenCan: getPayloadValue('DiemChuyenCan'),
+      DiemBaiTap:    getPayloadValue('DiemBaiTap'),
+      DiemGiuaKy:    getPayloadValue('DiemGiuaKy'),
+      DiemCuoiKy:    getPayloadValue('DiemCuoiKy'),
+      DiemTong: t10, DiemGPA: gpa.gpa, DiemChu: gpa.letter, XepLoai: gpa.text,
+      ...weights,
+    };
+
+    setSubmitConfirmModal({ show: true, payload, isEdit: !!editingGrade, isBulk: false });
   };
 
-  const handleSaveGrades = async () => {
+  const handleOpenBulkModal = () => {
+    setBulkKhoa(''); setBulkSection(''); setBulkGrades([]); setShowBulkModal(true);
+  };
+
+  const handleBulkSectionChange = (maLopHocPhan) => {
+    setBulkSection(maLopHocPhan);
+    if (!maLopHocPhan) { setBulkGrades([]); return; }
+    const enrolled = getStudentsForLHP(maLopHocPhan); 
+    if (enrolled.length === 0) { setBulkGrades([]); return; }
+    
+    setBulkGrades(enrolled.map(student => {
+      const existing = grades.find(g => g.MSSV === student.MSSV && g.MaLopHocPhan === maLopHocPhan);
+      return {
+        MSSV: student.MSSV, HoTen: student.HoTen, MaLopHocPhan: maLopHocPhan,
+        DiemChuyenCan: existing?.DiemChuyenCan ?? '', DiemBaiTap: existing?.DiemBaiTap ?? '',
+        DiemGiuaKy: existing?.DiemGiuaKy ?? '', DiemCuoiKy: existing?.DiemCuoiKy ?? '',
+        alreadyExists: !!existing, MaDiem: existing?.MaDiem || null, rowErrors: {}
+      };
+    }));
+  };
+
+  const handleBulkFieldChange = (index, field, val, hasErr) => {
+    setBulkGrades(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: val };
+      next[index].rowErrors = { ...next[index].rowErrors, [field]: !!hasErr };
+      return next;
+    });
+  };
+
+  const handleBulkSubmitRequest = () => {
+    if (!bulkSection) { showNotification('error', 'Vui lòng chọn lớp học phần'); return; }
+    if (!lockedConfigs[bulkSection]) {
+        showNotification('error', 'Giảng viên chưa chốt cấu hình điểm cho môn này!');
+        return;
+    }
+    const hasErr = bulkGrades.some(g => Object.values(g.rowErrors || {}).some(Boolean));
+    if (hasErr) { showNotification('error', 'Có ô điểm không hợp lệ (âm hoặc > 10) — vui lòng sửa trước khi lưu'); return; }
+    
+    setSubmitConfirmModal({ show: true, payload: null, isEdit: false, isBulk: true });
+  };
+
+  const executeSubmitGrade = async () => {
+    const { payload, isEdit, isBulk } = submitConfirmModal;
     try {
-      const promises = Object.entries(gradeData).map(async ([mssv, data]) => {
-        const total = calculateTotal10(data.DiemChuyenCan, data.DiemBaiTap, data.DiemGiuaKy, data.DiemCuoiKy);
-        const gpaData = convertToGPA(total);
-        const payload = {
-          MSSV: mssv, MaLopHocPhan: selectedSubject.id, HocKy: data.HocKy,
-          DiemChuyenCan: data.DiemChuyenCan || null, DiemBaiTap: data.DiemBaiTap || null,
-          DiemGiuaKy: data.DiemGiuaKy || null, DiemCuoiKy: data.DiemCuoiKy || null,
-          DiemTong: total, DiemGPA: gpaData.gpa, DiemChu: gpaData.letter, XepLoai: gpaData.classification
+      if (isBulk) {
+        const sec = courseSections.find(cs => cs.MaLopHocPhan === bulkSection);
+        const rawHK = sec?.HocKy || '';
+        const hocKy = sec ? (rawHK.toUpperCase().startsWith('HK') ? rawHK : `HK${rawHK} ${sec.NamBatDau || ''}`.trim()) : '';
+        const cfg = getActiveConfig(bulkSection);
+        const weights = {};
+        cfg.forEach(c => { if (c.enabled) weights[`TrongSo_${c.shortLabel}`] = Number(c.weight) / 100; });
+
+        const getPayloadValueBulk = (g, key) => {
+          const comp = cfg.find(c => c.key === key);
+          if (!comp || !comp.enabled || Number(comp.weight) === 0) return null;
+          return g[key] !== '' && g[key] != null ? g[key] : null;
         };
 
-        if (data.MaDiem) return axios.put(`${API_URL}/api/grades/${data.MaDiem}`, payload);
-        if (data.DiemChuyenCan || data.DiemBaiTap || data.DiemGiuaKy || data.DiemCuoiKy) {
-          return axios.post(`${API_URL}/api/grades`, payload);
+        await Promise.all(bulkGrades.map(g => {
+          const t10 = calcTotal10(g, cfg);
+          const gpa = convertToGPA(t10);
+          const isScored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+          
+          const bulkPayload = {
+            MSSV: g.MSSV, MaLopHocPhan: bulkSection, HocKy: hocKy,
+            DiemChuyenCan: getPayloadValueBulk(g, 'DiemChuyenCan'),
+            DiemBaiTap:    getPayloadValueBulk(g, 'DiemBaiTap'),
+            DiemGiuaKy:    getPayloadValueBulk(g, 'DiemGiuaKy'),
+            DiemCuoiKy:    getPayloadValueBulk(g, 'DiemCuoiKy'),
+            DiemTong: isScored ? t10 : null, DiemGPA: isScored ? gpa.gpa : null, DiemChu: isScored ? gpa.letter : null, XepLoai: isScored ? gpa.text : null,
+            ...weights
+          };
+          if (g.alreadyExists && g.MaDiem) return axios.put(`${API_URL}/api/grades/${g.MaDiem}`, bulkPayload);
+          return axios.post(`${API_URL}/api/grades`, bulkPayload);
+        }));
+        showNotification('success', `Đã lưu điểm ${bulkGrades.length} sinh viên thành công!`);
+        setShowBulkModal(false);
+      } else {
+        if (isEdit) {
+          await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
+          showNotification('success', 'Cập nhật điểm thành công!');
+        } else {
+          const existing = grades.find(g => g.MSSV === payload.MSSV && g.MaLopHocPhan === payload.MaLopHocPhan);
+          if (existing?.MaDiem) {
+            await axios.put(`${API_URL}/api/grades/${existing.MaDiem}`, payload);
+          } else {
+            await axios.post(`${API_URL}/api/grades`, payload);
+          }
+          showNotification('success', 'Thêm điểm thành công!');
         }
-        return Promise.resolve();
-      });
-
-      await Promise.all(promises);
-      showNotification('success', 'Lưu điểm thành công!');
-      setShowGradeModal(false);
-      setEditingStudent(null);
-      onRefresh();
-    } catch (error) {
-      showNotification('error', error.response?.data?.message || 'Lỗi khi lưu điểm!');
+        closeFormModal();
+      }
+      fetchData();
+      setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false });
+    } catch (err) {
+      setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false });
+      showNotification('error', err.response?.data?.message || 'Lỗi khi lưu điểm!');
     }
   };
 
-  const handleDeleteClick = (grade) => {
-    setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: grade.TenSinhVien || grade.MSSV, tenMonHoc: grade.TenMonHoc || '' });
-  };
-
+  const handleDeleteCancel = () => setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
+  
   const handleDeleteConfirm = async () => {
     try {
       await axios.delete(`${API_URL}/api/grades/${deleteModal.maDiem}`);
-      setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
-      onRefresh();
+      handleDeleteCancel();
+      fetchData();
       showNotification('success', 'Xóa điểm thành công!');
-    } catch (error) {
-      showNotification('error', error.response?.data?.message || 'Lỗi khi xóa điểm!');
+    } catch (err) {
+      showNotification('error', err.response?.data?.message || 'Lỗi khi xóa điểm!');
     }
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
-  };
+  const filteredSections = useMemo(() => {
+    let secs = courseSections;
+    if (displayFilters.khoaFilter) {
+      secs = secs.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase());
+    }
+    if (displayFilters.sectionFilter) {
+      secs = secs.filter(cs => cs.MaLopHocPhan === displayFilters.sectionFilter);
+    }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      secs = secs.filter(cs => cs.TenMonHoc?.toLowerCase().includes(term) || cs.MaLopHocPhan?.toLowerCase().includes(term));
+    }
+    return secs;
+  }, [courseSections, displayFilters, searchTerm]);
 
-  const filteredGrades = myGrades.filter(grade => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = grade.TenSinhVien?.toLowerCase().includes(term) || grade.MSSV?.toLowerCase().includes(term) || grade.TenMonHoc?.toLowerCase().includes(term);
-    const matchesSubject = !filters.subjectFilter || grade.MaLopHocPhan === filters.subjectFilter;
-    const matchesSemester = !filters.semesterFilter || grade.HocKy === filters.semesterFilter;
-    return matchesSearch && matchesSubject && matchesSemester;
-  });
+  const hasActiveFilters = displayFilters.khoaFilter || displayFilters.sectionFilter || searchTerm;
+  const activeFilterCount = (displayFilters.khoaFilter ? 1 : 0) + (displayFilters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0);
 
   const clearFilters = () => {
-    setFilters({ subjectFilter: '', semesterFilter: '' });
-    setDisplayFilters({ subjectFilter: '', semesterFilter: '' });
-    setSearchTerm('');
+    setDisplayFilters({ khoaFilter: '', sectionFilter: '' });
+    setSearchTerm(''); setDisplaySearchTerm('');
   };
 
-  const activeFilterCount = (filters.subjectFilter ? 1 : 0) + (filters.semesterFilter ? 1 : 0) + (searchTerm ? 1 : 0);
-  const hasActiveFilters = filters.subjectFilter || filters.semesterFilter || searchTerm;
+  const handleExport = () => {
+    const rows = [
+      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC', 'BT', 'GK', 'CK', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
+      ...grades.filter(g => filteredSections.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).map(g => {
+        const cfg = getActiveConfig(g.MaLopHocPhan);
+        const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+        if (!scored) return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '', '-', '-', '-', '-', 'Chưa có điểm', '', '', ''];
+        const t10 = calcTotal10(g, cfg);
+        const gpa = convertToGPA(t10);
+        
+        const getExportVal = (key) => {
+          const comp = cfg.find(c => c.key === key);
+          if (!comp || !comp.enabled || Number(comp.weight) === 0) return '0';
+          return g[key] ?? '-';
+        };
 
-  // Helpers for reducing UI code
-  const gradeFields = [
-    { key: 'DiemChuyenCan', label: 'Chuyên cần (10%)' },
-    { key: 'DiemBaiTap', label: 'Bài tập (15%)' },
-    { key: 'DiemGiuaKy', label: 'Giữa kỳ (25%)' },
-    { key: 'DiemCuoiKy', label: 'Cuối kỳ/Báo cáo (50%)' }
-  ];
+        return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '',
+        getExportVal('DiemChuyenCan'), getExportVal('DiemBaiTap'), getExportVal('DiemGiuaKy'), getExportVal('DiemCuoiKy'),
+        g.DiemTong || t10, g.DiemGPA ?? gpa.gpa.toFixed(1), g.DiemChu || gpa.letter, gpa.text];
+      })
+    ].map(r => r.join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'diem_sinh_vien_admin.csv';
+    a.click();
+  };
 
-  const studentsToRender = editingStudent ? [editingStudent] : students.filter(s => s.MaLop === selectedClass?.id);
+  const activeCfgModal = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
+  const previewTotal = calcTotal10(formData, activeCfgModal);
+  const previewGPA   = convertToGPA(previewTotal);
+  const hasPreview   = activeCfgModal.some(c => c.enabled && Number(c.weight) > 0 && formData[c.key] !== '' && formData[c.key] != null);
+
+  if (loading) return <GradeSkeleton />;
 
   return (
-    <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl flex items-center justify-between"
+    <div className="space-y-6 pb-12">
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}
+        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
       >
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Quản lý điểm sinh viên</h2>
-          <p className="text-orange-100">Thêm, sửa, xóa điểm sinh viên</p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white/20 rounded-2xl"><GraduationCap className="w-8 h-8 text-white" /></div>
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Quản lý điểm sinh viên</h2>
+            <p className="text-orange-100 text-sm font-medium">Hỗ trợ giảng viên thêm, sửa, xóa điểm toàn trường</p>
+          </div>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" /> Thêm điểm
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleOpenBulkModal} className="flex items-center gap-2 bg-purple-500 text-white px-5 py-3 rounded-xl shadow-lg font-bold"><FileText className="w-5 h-5" /> Nhập hàng loạt</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleExport} className="flex items-center gap-2 bg-green-500 text-white px-5 py-3 rounded-xl shadow-lg font-bold"><Download className="w-5 h-5" /> Export</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={openAddModal} className="flex items-center gap-2 bg-white text-orange-600 px-5 py-3 rounded-xl shadow-lg font-bold"><Plus className="w-5 h-5" /> Thêm điểm</motion.button>
+        </div>
       </motion.div>
 
-      {/* Cụm Tìm kiếm & Lọc */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.2 }}
-        className="space-y-4"
-      >
+      <div className="space-y-3">
         <div className="flex gap-3">
-          <div className="relative w-2/3">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text" placeholder="Tìm kiếm điểm..." value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-2.5 bg-white/80 backdrop-blur-xl border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all shadow-lg"
+          <div className="relative flex-1">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input type="text"
+              placeholder="Tìm theo mã lớp học phần, tên môn học..."
+              value={displaySearchTerm} onChange={e => setDisplaySearchTerm(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') setSearchTerm(displaySearchTerm); }}
+              className="w-full pl-14 pr-12 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 transition-all shadow-sm font-medium text-sm"
             />
-            <button type="button" onClick={() => setShowFilters(!showFilters)} className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}>
+            <button type="button" onClick={() => setShowFilters(v => !v)}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-orange-500' : 'text-gray-400'}`}
+            >
               <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && (<span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>)}
+              {activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>}
             </button>
           </div>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onRefresh} className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg transition-all"><RefreshCw className="w-5 h-5" /> Làm mới</motion.button>
-          {hasActiveFilters && (
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={clearFilters} className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center gap-2"><XCircle className="w-5 h-5" /> Xóa bộ lọc</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm(displaySearchTerm)} className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg font-bold"><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
+          {hasActiveFilters && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={clearFilters} className="px-5 py-3 bg-red-100 text-red-600 rounded-xl font-bold hover:bg-red-200 flex items-center gap-2"><XCircle className="w-5 h-5" /> Xóa lọc</motion.button>}
+        </div>
+
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Khoa</label>
+                  <select value={displayFilters.khoaFilter} onChange={e => setDisplayFilters(p => ({ ...p, khoaFilter: e.target.value, sectionFilter: '' }))} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 font-medium text-sm">
+                    <option value="">Tất cả khoa</option>
+                    {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Lớp học phần</label>
+                  <select value={displayFilters.sectionFilter} onChange={e => setDisplayFilters(p => ({ ...p, sectionFilter: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 font-medium text-sm">
+                    <option value="">Tất cả lớp học phần</option>
+                    {courseSections.filter(cs => !displayFilters.khoaFilter || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase()).map(cs => (
+                      <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>{cs.TenMonHoc} — {cs.MaLopHocPhan}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
+      </div>
 
-        {showFilters && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 space-y-4 relative z-50 w-2/3 shadow-xl border border-gray-100/50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Lọc theo môn học</label>
-                <select value={displayFilters.subjectFilter} onChange={(e) => setDisplayFilters({ ...displayFilters, subjectFilter: e.target.value })} className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all">
-                  <option value="">Tất cả môn học</option>
-                  {teachingAssignments.map((ta, idx) => <option key={ta.MaLopHocPhan || idx} value={ta.MaLopHocPhan}>{ta.TenMonHoc}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Lọc theo học kỳ</label>
-                <select value={displayFilters.semesterFilter} onChange={(e) => setDisplayFilters({ ...displayFilters, semesterFilter: e.target.value })} className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all">
-                  <option value="">Tất cả học kỳ</option>
-                  <option value="HK1_2025_2026">HK1 2025-2026</option>
-                  <option value="HK2_2025_2026">HK2 2025-2026</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setFilters({ ...displayFilters }); setShowFilters(false); }} className="flex-1 bg-orange-500 text-white py-2 rounded-xl font-bold hover:bg-orange-600 transition-colors">Áp dụng lọc</motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDisplayFilters({ subjectFilter: '', semesterFilter: '' })} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-bold hover:bg-gray-300 transition-colors">Đặt lại</motion.button>
-            </div>
-          </motion.div>
-        )}
-      </motion.div>
+      {filteredSections.length > 0 ? (
+        <div className="space-y-4">
+          {filteredSections.map(ta => {
+            const isOpen = configOpen[ta.MaLopHocPhan];
+            const cfg = classConfigs[ta.MaLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
+            const isLocked = lockedConfigs[ta.MaLopHocPhan];
+            const active = getActiveConfig(ta.MaLopHocPhan).filter(c => c.enabled);
+            
+            const studentsWithGrades = getStudentsForLHP(ta.MaLopHocPhan).map(s => {
+              const grade = grades.find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === ta.MaLopHocPhan);
+              return { ...s, grade };
+            });
 
-      {/* Bảng Hiển thị Điểm */}
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, type: "spring" }}
-        className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-gray-100/50 overflow-hidden"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-amber-50">
-              <tr>
-                <th className="text-left py-4 px-6 text-sm font-bold text-gray-700">MSSV</th>
-                <th className="text-left py-4 px-6 text-sm font-bold text-gray-700">Sinh viên</th>
-                <th className="text-left py-4 px-6 text-sm font-bold text-gray-700">Môn học</th>
-                <th className="text-center py-4 px-2 text-sm font-bold text-gray-700">CC (10%)</th>
-                <th className="text-center py-4 px-2 text-sm font-bold text-gray-700">BT (15%)</th>
-                <th className="text-center py-4 px-2 text-sm font-bold text-gray-700">GK (25%)</th>
-                <th className="text-center py-4 px-2 text-sm font-bold text-gray-700">CK (50%)</th>
-                <th className="text-center py-4 px-3 text-sm font-bold text-gray-800">Hệ 10</th>
-                <th className="text-center py-4 px-3 text-sm font-bold text-orange-600">Hệ 4</th>
-                <th className="text-center py-4 px-3 text-sm font-bold text-gray-700">Điểm chữ</th>
-                <th className="text-left py-4 px-6 text-sm font-bold text-gray-700">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredGrades.length > 0 ? (
-                filteredGrades.map((grade, index) => {
-                  const total10 = grade.DiemTong || calculateTotal10(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
-                  const gpaData = convertToGPA(total10);
-                  return (
-                    <motion.tr key={grade.MaDiem || `grade-${index}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, type: "spring" }} whileHover={{ x: 5, backgroundColor: "rgba(251, 146, 60, 0.05)" }} className="border-b border-gray-100 transition-all cursor-pointer">
-                      <td className="py-4 px-4 text-sm font-bold text-gray-800">{grade.MSSV}</td>
-                      <td className="py-4 px-4 text-sm text-gray-600">{grade.TenSinhVien || 'N/A'}</td>
-                      <td className="py-4 px-4 text-sm text-gray-600 truncate max-w-[150px]">{grade.TenMonHoc || 'N/A'}</td>
-                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemChuyenCan || '-'}</td>
-                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemBaiTap || '-'}</td>
-                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemGiuaKy || '-'}</td>
-                      <td className="py-4 px-2 text-sm text-center text-gray-600">{grade.DiemCuoiKy || '-'}</td>
-                      <td className="py-4 px-3 text-sm text-center font-bold text-gray-800">{grade.DiemTong || total10}</td>
-                      <td className="py-4 px-3 text-sm text-center font-bold text-orange-600">{grade.DiemGPA || gpaData.gpa.toFixed(1)}</td>
-                      <td className="py-4 px-3 text-sm text-center font-bold text-blue-600">{grade.DiemChu || gpaData.letter}</td>
-                      <td className="py-4 px-4 text-sm">
-                        <div className="flex items-center justify-center gap-2">
-                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleEdit(grade)} className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"><Edit className="w-4 h-4" /></motion.button>
-                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteClick(grade)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"><Trash2 className="w-4 h-4" /></motion.button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  );
-                })
-              ) : (
-                <tr><td colSpan={11} className="py-16">
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center text-gray-400"
-                  >
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <GraduationCap className="w-10 h-10 text-gray-300" />
+            const term = searchTerm.toLowerCase();
+            const filteredStudents = studentsWithGrades.filter(s => 
+              !term || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+            );
+
+            if (term && filteredStudents.length === 0) return null;
+
+            return (
+              <div key={ta.MaLopHocPhan} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <button onClick={() => setConfigOpen(prev => ({ ...prev, [ta.MaLopHocPhan]: !isOpen }))} className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-orange-50/50 transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-orange-50 text-orange-500 rounded-xl group-hover:scale-110 transition-transform"><GraduationCap className="w-6 h-6" /></div>
+                    <div className="text-left">
+                      <p className="font-bold text-gray-800 text-base">{ta.TenMonHoc} <span className="text-gray-400 font-medium ml-1 text-sm">({ta.MaLopHocPhan})</span></p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {active.map(c => <span key={c.key} className="text-[11px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">{c.shortLabel}: {Number(c.weight)}%</span>)}
+                      </div>
                     </div>
-                    <p className="text-lg font-medium text-gray-600">Không tìm thấy điểm nào</p>
-                  </motion.div>
-                </td></tr>
-              )}
-            </tbody>
-          </table>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {isLocked && <span className="text-[11px] text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
+                    {!isLocked && <span className="text-[11px] text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
+                    <div className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                      {isOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                    </div>
+                  </div>
+                </button>
+                
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-100 bg-gray-50/30">
+                      
+                      <div className="p-6">
+                        <ConfigPanelAdmin tenLop={ta.TenMonHoc} components={cfg} locked={isLocked} />
+                      </div>
+
+                      <div className="px-6 pb-6">
+                        <div className="flex items-center justify-between mb-4 bg-blue-50 px-4 py-3 rounded-xl border border-blue-100">
+                          <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-blue-500"/>Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
+                          <span className="text-sm text-blue-600 font-bold bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
+                        </div>
+                        
+                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                              <thead className="bg-gray-50/80 border-b border-gray-200">
+                                <tr>
+                                  <th className="py-4 px-5 text-xs font-black text-gray-500 uppercase tracking-wider">MSSV</th>
+                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider">Họ Tên</th>
+                                  {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-gray-500 uppercase tracking-wider text-center">{c.shortLabel}</th>)}
+                                  <th className="py-4 px-3 text-xs font-black text-gray-800 uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
+                                  <th className="py-4 px-3 text-xs font-black text-orange-600 uppercase tracking-wider text-center bg-orange-50/50">GPA</th>
+                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Thao tác</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
+                                  const grade = stu.grade;
+                                  const hasGrade = !!grade;
+                                  const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
+                                  const gpa = hasGrade ? convertToGPA(t10) : null;
+                                  return (
+                                    <tr key={stu.MSSV} className="hover:bg-blue-50/40 transition-colors group">
+                                      <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
+                                      <td className="py-4 px-4 text-sm font-bold text-gray-900">{stu.HoTen}</td>
+                                      {active.map(c => {
+                                        const isZero = !c.enabled || Number(c.weight) === 0;
+                                        const val = grade && grade[c.key];
+                                        const displayVal = isZero ? '0' : (hasGrade && val != null && val !== '' ? val : '—');
+                                        return <td key={c.key} className="py-4 px-3 text-sm text-center text-gray-600 font-medium">{displayVal}</td>;
+                                      })}
+                                      <td className="py-4 px-3 text-sm text-center font-black text-gray-800 bg-gray-50/50 group-hover:bg-transparent">{t10}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-orange-600 bg-orange-50/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
+                                      <td className="py-3 px-4">
+                                        <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                          {hasGrade ? (
+                                            <>
+                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
+                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
+                                            </>
+                                          ) : (
+                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-400 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
-      </motion.div>
-
-      {/* Modal Thêm/Sửa Điểm Đơn Lẻ */}
-      <AnimatePresence>
-        {showAddModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">{editingGrade ? 'Cập nhật điểm' : 'Thêm điểm mới'}</h3>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleCloseAddModal}
-                  className="p-2.5 hover:bg-gray-100 rounded-xl transition-all"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </motion.button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Sinh viên</label>
-                  <select value={formData.MSSV} onChange={(e) => setFormData({ ...formData, MSSV: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500" required>
-                    <option value="">Chọn sinh viên</option>
-                    {myStudents.map((s) => <option key={s.MSSV} value={s.MSSV}>{s.MSSV} - {s.HoTen}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp học phần</label>
-                  <select value={formData.MaLopHocPhan || ''} onChange={(e) => setFormData({ ...formData, MaLopHocPhan: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500" required>
-                    <option value="">Chọn lớp học phần</option>
-                    {lophocphanList.map((lhp) => <option key={lhp.MaLopHocPhan} value={lhp.MaLopHocPhan}>{lhp.TenMonHoc} - {lhp.TenLop} ({lhp.HocKy})</option>)}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Học kỳ</label>
-                  <select value={formData.HocKy} onChange={(e) => setFormData({ ...formData, HocKy: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500" required>
-                    <option value="">Chọn học kỳ</option>
-                    <option value="HK1_2025_2026">HK1 2025-2026</option>
-                    <option value="HK2_2025_2026">HK2 2025-2026</option>
-                  </select>
-                </div>
-
-                {gradeFields.map(field => (
-                  <div key={field.key}>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">{field.label}</label>
-                    <input 
-                      type="number" 
-                      step="0.1" 
-                      min="0" 
-                      max="10" 
-                      value={formData[field.key]} 
-                      onChange={(e) => handleGradeInputChange(field.key, e.target.value)} 
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-all ${validationError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Validation Error Message */}
-              {validationError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium"
-                >
-                  {validationError}
-                </motion.div>
-              )}
-
-              {/* Tính toán hiển thị nhanh */}
-              {(() => {
-                const curTotal = calculateTotal10(formData.DiemChuyenCan, formData.DiemBaiTap, formData.DiemGiuaKy, formData.DiemCuoiKy);
-                const curGPA = convertToGPA(curTotal);
-                return (
-                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex justify-between mt-4">
-                    <div><p className="text-sm text-gray-600 font-medium">Tạm tính Hệ 10:</p><p className="text-2xl font-bold text-gray-800">{curTotal}</p></div>
-                    <div className="text-right"><p className="text-sm text-gray-600 font-medium">Quy đổi Hệ 4:</p><p className="text-2xl font-bold text-orange-600">{curGPA.gpa.toFixed(1)} <span className="text-lg text-blue-600 ml-2">({curGPA.letter})</span></p></div>
-                  </div>
-                )
-              })()}
-
-              <div className="flex gap-3 pt-4">
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg">{editingGrade ? 'Cập nhật' : 'Thêm mới'}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={handleCloseAddModal} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300">Hủy</motion.button>
-              </div>
-            </form>
-          </motion.div>
-        </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal Cập nhật Danh sách Điểm (Nhập nhiều) */}
-      {showGradeModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/10">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <div><h3 className="text-xl font-bold text-gray-800">Nhập điểm</h3><p className="text-sm text-gray-500">{selectedSubject?.name} - {selectedClass?.name}</p></div>
-              <button onClick={() => {setShowGradeModal(false); setValidationError('');}} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
-            </div>
-
-            {/* Validation Error Message */}
-            {validationError && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium mb-4"
-              >
-                {validationError}
-              </motion.div>
-            )}
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">MSSV</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Họ tên</th>
-                    <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">CC(10%)</th>
-                    <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">BT(15%)</th>
-                    <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">GK(25%)</th>
-                    <th className="text-center py-3 px-2 text-sm font-semibold text-gray-700">CK(50%)</th>
-                    <th className="text-center py-3 px-3 text-sm font-bold text-gray-800">Hệ 10</th>
-                    <th className="text-center py-3 px-3 text-sm font-bold text-orange-600">Hệ 4</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentsToRender.map((student) => {
-                    const stData = gradeData[student.MSSV] || {};
-                    const t10 = calculateTotal10(stData.DiemChuyenCan, stData.DiemBaiTap, stData.DiemGiuaKy, stData.DiemCuoiKy);
-                    const gpa = convertToGPA(t10);
-                    return (
-                      <tr key={student.MSSV} className="border-b border-gray-100">
-                        <td className="py-3 px-4 text-sm font-medium text-gray-800">{student.MSSV}</td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{student.HoTen}</td>
-                        {gradeFields.map(field => (
-                          <td key={field.key} className="py-3 px-2">
-                            <input 
-                              type="number" 
-                              min="0" 
-                              max="10" 
-                              step="0.1" 
-                              value={stData[field.key] || ''} 
-                              onChange={(e) => handleGradeChange(student.MSSV, field.key, e.target.value)} 
-                              className={`w-full px-3 py-2 border rounded-lg text-center focus:outline-none transition-all ${validationError ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-orange-500'}`}
-                            />
-                          </td>
-                        ))}
-                        <td className="py-3 px-3 text-center font-bold text-gray-800">{t10}</td>
-                        <td className="py-3 px-3 text-center font-bold text-orange-600">{gpa.gpa.toFixed(1)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex gap-3 pt-6">
-              <button onClick={handleSaveGrades} className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold shadow-lg">Lưu điểm</button>
-              <button onClick={() => setShowGradeModal(false)} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300">Hủy</button>
-            </div>
-          </div>
+      ) : (
+        <div className="text-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm">
+          <Search className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+          <p className="font-semibold text-gray-500 text-lg">Không tìm thấy Lớp Học Phần nào khớp với bộ lọc.</p>
         </div>
       )}
 
-      {/* Modal Xác nhận Xóa */}
+      {/* ============================================================
+          MODALS
+      ============================================================ */}
+
       <AnimatePresence>
-        {deleteModal.show && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
-            onClick={handleDeleteCancel}
-          >
+        {showModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeFormModal} />
             <motion.div
-              initial={{ scale: 0.85, y: 20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.85, y: 20, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10"
             >
-              {/* Icon */}
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-8 h-8 text-red-500" />
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-t-[2rem] px-8 py-6 flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-1">{editingGrade ? 'Cập nhật điểm' : 'Nhập điểm sinh viên'}</h3>
+                  <p className="text-orange-100 text-sm font-medium">Hệ thống sẽ tự động tính toán theo cấu hình lớp</p>
                 </div>
+                <button onClick={closeFormModal} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-white" />
+                </button>
               </div>
 
-              {/* Title */}
-              <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Xác nhận xóa điểm</h3>
+              <form onSubmit={handleSubmit} className="p-8 space-y-7">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.MaLopHocPhan} disabled={!!editingGrade || !!formData.MSSV}
+                      onChange={e => {
+                        setFormData(prev => ({ ...prev, MaLopHocPhan: e.target.value, MSSV: '', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' }));
+                        if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
+                      }}
+                      className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
+                        ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
+                          formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                    >
+                      <option value="">Chọn lớp học phần</option>
+                      {(courseSections || []).map(ta => {
+                        const isLocked = lockedConfigs[ta.MaLopHocPhan];
+                        return (
+                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked}>
+                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!isLocked ? '(Chưa chốt cấu hình)' : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
+                  </div>
 
-              {/* Info */}
-              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-center space-y-1">
-                <p className="text-sm text-gray-600">
-                  Bạn sắp xóa điểm của sinh viên
-                </p>
-                <p className="font-bold text-gray-800">{deleteModal.tenSinhVien}</p>
-                {deleteModal.tenMonHoc && (
-                  <p className="text-sm text-gray-500">Môn: <span className="font-semibold text-gray-700">{deleteModal.tenMonHoc}</span></p>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sinh viên <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.MSSV} disabled={!formData.MaLopHocPhan || !!editingGrade}
+                      onChange={e => {
+                        setFormData(prev => ({ ...prev, MSSV: e.target.value }));
+                        if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' }));
+                      }}
+                      className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
+                        ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
+                          formErrors.MSSV ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                    >
+                      <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên' : 'Chưa chọn lớp học phần'}</option>
+                      {getStudentsForLHP(formData.MaLopHocPhan).map(s => {
+                        const existRecord = (grades || []).find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === formData.MaLopHocPhan);
+                        const hasScore = existRecord && activeCfgModal.some(c => c.enabled && existRecord[c.key] != null && existRecord[c.key] !== '');
+                        return (
+                          <option key={s.MSSV} value={s.MSSV} disabled={!!hasScore && !editingGrade}>
+                            {s.MSSV} — {s.HoTen}{hasScore ? ' ✓ đã có điểm' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {formErrors.MSSV && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MSSV}</p>}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                    {activeCfgModal.map(c => {
+                      const isZero = !c.enabled || Number(c.weight) === 0;
+                      return (
+                        <div key={c.key}>
+                          <label className="block text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide">
+                            {c.label} {!isZero ? <span className="text-orange-500 text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-400 text-[11px] ml-0.5">(0%)</span>}
+                          </label>
+                          <ScoreInput
+                            value={isZero ? 0 : formData[c.key]}
+                            disabled={isZero}
+                            placeholder={!isZero ? '0.0' : '0'}
+                            onChange={val => setFormData(prev => ({ ...prev, [c.key]: val }))}
+                            onError={hasErr => setScoreInputErrors(prev => ({ ...prev, [c.key]: hasErr }))}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {hasPreview && (
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-100 rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
+                    <div>
+                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
+                      <p className="text-[2.5rem] leading-none font-black text-gray-800">{previewTotal}</p>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-[2rem] leading-none font-black text-orange-600">{previewGPA.gpa.toFixed(1)}</p>
+                        <p className="text-2xl font-black text-blue-600">({previewGPA.letter})</p>
+                      </div>
+                      <p className="text-xs text-gray-500 font-bold mt-1.5 uppercase bg-white px-2 py-0.5 rounded-md border border-gray-200">{previewGPA.text}</p>
+                    </div>
+                  </div>
                 )}
-                <p className="text-xs text-red-500 font-medium mt-1">Hành động này không thể hoàn tác.</p>
-              </div>
 
-              {/* Buttons */}
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleDeleteCancel}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Hủy
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleDeleteConfirm}
-                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold shadow-lg shadow-red-100 hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" /> Xóa điểm
-                </motion.button>
-              </div>
+                <div className="flex gap-4 pt-2">
+                  <button type="button" onClick={closeFormModal} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
+                  <button type="submit" disabled={Object.values(scoreInputErrors).some(Boolean)} className={`flex-1 py-4 rounded-xl font-bold text-base shadow-md transition-all ${Object.values(scoreInputErrors).some(Boolean) ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-none' : 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 border border-orange-600'}`}>{editingGrade ? 'Lưu thay đổi' : 'Xác nhận Thêm điểm'}</button>
+                </div>
+              </form>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Thông báo Toast */}
+      <AnimatePresence>
+        {showBulkModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBulkModal(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }} className="bg-white rounded-[2rem] w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 flex flex-col">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-t-[2rem] px-8 py-6 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-1">Nhập điểm hàng loạt</h3>
+                  <p className="text-purple-100 text-sm font-medium">Chỉ cho phép nhập đối với Lớp học phần đã được Giảng viên chốt cấu hình</p>
+                </div>
+                <button onClick={() => setShowBulkModal(false)} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5 text-white" /></button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-6 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Bộ lọc Khoa</label>
+                    <select value={bulkKhoa} onChange={e => { setBulkKhoa(e.target.value); setBulkSection(''); setBulkGrades([]); }} className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm">
+                      <option value="">Tất cả khoa</option>
+                      {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
+                    <select value={bulkSection} onChange={e => handleBulkSectionChange(e.target.value)} className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm text-gray-800">
+                      <option value="">Chọn lớp học phần</option>
+                      {courseSections.filter(cs => !bulkKhoa || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === bulkKhoa.toUpperCase()).map(cs => {
+                        const isLocked = lockedConfigs[cs.MaLopHocPhan];
+                        return <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan} disabled={!isLocked}>{cs.TenMonHoc} — {cs.MaLopHocPhan} {!isLocked ? '(Giảng viên chưa chốt)' : ''}</option>
+                      })}
+                    </select>
+                  </div>
+                </div>
+
+                {bulkGrades.length > 0 ? (
+                  <div className="border-2 border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-4 px-5 text-xs font-black text-gray-500 uppercase tracking-wider">MSSV</th>
+                          <th className="text-left py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider">Họ tên</th>
+                          {getActiveConfig(bulkSection).map(c => {
+                             const isZero = !c.enabled || Number(c.weight) === 0;
+                             return (
+                               <th key={c.key} className="text-center py-4 px-3 text-xs font-black text-gray-500 uppercase tracking-wider">
+                                 {c.shortLabel} <span className="text-[10px] text-purple-500">({!isZero ? c.weight+'%' : '0%'})</span>
+                               </th>
+                             );
+                          })}
+                          <th className="text-center py-4 px-3 text-xs font-black text-gray-800 bg-gray-100 uppercase tracking-wider">Hệ 10</th>
+                          <th className="text-center py-4 px-3 text-xs font-black text-purple-600 bg-purple-50 uppercase tracking-wider">GPA</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {bulkGrades.map((grade, idx) => {
+                          const cfg = getActiveConfig(bulkSection);
+                          const hasRowErr = SCORE_FIELDS.some(f => grade.rowErrors?.[f]);
+                          const isScored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
+                          const t10 = isScored && !hasRowErr ? calcTotal10(grade, cfg) : null;
+                          const gpa = t10 ? convertToGPA(t10) : null;
+                          return (
+                            <tr key={idx} className={`hover:bg-purple-50/30 transition-colors ${grade.alreadyExists ? 'bg-blue-50/20' : ''} ${hasRowErr ? 'bg-red-50/30' : ''}`}>
+                              <td className="py-3 px-5 text-sm font-bold text-gray-800">
+                                {grade.MSSV}
+                                {grade.alreadyExists && <span className="block mt-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">Cập nhật</span>}
+                              </td>
+                              <td className="py-3 px-4 text-sm font-bold text-gray-900">{grade.HoTen}</td>
+                              {cfg.map(c => {
+                                const isZero = !c.enabled || Number(c.weight) === 0;
+                                return (
+                                  <td key={c.key} className="py-2 px-3 text-center align-middle">
+                                    <BulkScoreInput
+                                      value={isZero ? 0 : grade[c.key]}
+                                      disabled={isZero}
+                                      onChange={val => handleBulkFieldChange(idx, c.key, val, false)}
+                                      onError={hasErr => handleBulkFieldChange(idx, c.key, grade[c.key], hasErr)}
+                                    />
+                                  </td>
+                                );
+                              })}
+                              <td className="py-3 px-3 text-center text-sm font-black text-gray-800 bg-gray-50/50">{t10 ?? <span className="text-gray-300">—</span>}</td>
+                              <td className={`py-3 px-3 text-center text-sm font-black bg-purple-50/50 ${getLetterColor(gpa?.letter)}`}>{gpa?.letter ?? <span className="text-gray-300">—</span>}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : bulkSection ? <div className="py-20 text-center text-gray-400 font-semibold border-2 border-dashed border-gray-200 rounded-2xl">Không có sinh viên nào đăng ký lớp này</div> : null}
+
+                <div className="flex gap-4 pt-2">
+                  <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
+                  <button type="button" disabled={bulkGrades.length === 0} onClick={handleBulkSubmitRequest} className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-4 rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-indigo-700 text-base">Lưu tất cả ({bulkGrades.length} SV)</button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {submitConfirmModal.show && (
+          <div className="fixed inset-0 flex items-center justify-center z-[10005] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false })} />
+            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
+               <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
+                 <Save className="w-10 h-10" />
+               </div>
+               <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Xác nhận lưu điểm</h3>
+               <p className="text-gray-600 text-sm font-medium mb-7 px-2 leading-relaxed">
+                 Bạn có chắc chắn muốn lưu điểm {submitConfirmModal.isBulk ? 'cho toàn bộ lớp' : 'cho sinh viên này'} vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.
+               </p>
+               <div className="flex gap-3">
+                 <button onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Kiểm tra lại</button>
+                 <button onClick={executeSubmitGrade} className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 hover:shadow-blue-500/25 transition-all">
+                   Đồng ý lưu
+                 </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteModal.show && (
+          <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDeleteCancel} />
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10"
+            >
+              <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-orange-100/50">
+                <AlertTriangle className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-800 mb-2 tracking-tight">Xác nhận xóa điểm</h3>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-7 space-y-1.5">
+                <p className="text-sm text-gray-500 font-medium">Xóa điểm của sinh viên:</p>
+                <p className="text-base font-black text-gray-800">{deleteModal.tenSinhVien}</p>
+                <p className="text-xs text-red-500 font-bold mt-2 pt-2 border-t border-gray-200">Dữ liệu xóa sẽ không thể khôi phục!</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={handleDeleteCancel} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Hủy</button>
+                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-orange-500 text-white rounded-xl font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {notification.show && (
-          <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white ${notification.type === 'success' ? 'bg-gradient-to-r from-green-500 to-green-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className={`fixed bottom-8 right-8 z-[11000] flex items-center gap-3.5 px-6 py-4 rounded-2xl shadow-2xl text-white font-bold tracking-wide
+              ${notification.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-rose-600'}`}
+          >
             {notification.type === 'success' ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
-            <span className="font-semibold">{notification.message}</span>
+            <span className="text-[15px]">{notification.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -630,4 +1068,4 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
   );
 }
 
-export default GradesSection;
+export default GradeManagement;
