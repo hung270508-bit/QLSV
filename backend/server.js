@@ -1618,36 +1618,71 @@ app.post('/api/attendance/uid', async (req, res) => {
 
         // TRƯỜNG HỢP B: CHẾ ĐỘ ĐIỂM DANH MẶC ĐỊNH -> QUÉT TRONG BẢNG the_sv
         else {
-        if (!MaLopHocPhan) return res.status(400).json({ success: false, message: 'Thiếu MaLopHocPhan' });
+            let targetLHP = MaLopHocPhan;
+            const { PhongHoc } = req.body;
 
-        db.query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid], (err, results) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+            if (PhongHoc && !targetLHP) {
+                const now = new Date();
+                const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+                const todayStr = vnTime.toISOString().split('T')[0];
+                const currentTime = vnTime.toISOString().split('T')[1].substring(0, 8); // "HH:MM:SS"
 
-            // Thẻ lạ chưa đăng ký
-            if (!results || results.length === 0) {
-                return res.status(404).json({ success: false, action: "UNREGISTERED", message: 'Thẻ lạ, Chưa đăng ký' });
+                const [lichhocRows] = await db.promise().query(
+                    'SELECT MaLopHocPhan, CaHoc FROM lichhoc WHERE NgayHoc = ? AND PhongHoc = ?',
+                    [todayStr, PhongHoc]
+                );
+
+                if (lichhocRows.length > 0) {
+                    const [tiethocRows] = await db.promise().query('SELECT Tiet, GioBatDau, GioKetThuc FROM tiethoc');
+                    for (let lh of lichhocRows) {
+                        if (!lh.CaHoc) continue;
+                        const parts = lh.CaHoc.split('-');
+                        if (parts.length === 2) {
+                            const startTiet = parseInt(parts[0]);
+                            const endTiet = parseInt(parts[1]);
+
+                            const startInfo = tiethocRows.find(t => t.Tiet === startTiet);
+                            const endInfo = tiethocRows.find(t => t.Tiet === endTiet);
+
+                            if (startInfo && endInfo) {
+                                if (currentTime >= startInfo.GioBatDau && currentTime <= endInfo.GioKetThuc) {
+                                    targetLHP = lh.MaLopHocPhan;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            // Thẻ hợp lệ -> Ghi nhận điểm danh
-            const MSSV = results[0].MSSV;
-            const ngay = NgayDiemDanh || new Date().toISOString().slice(0, 10);
-            const trangthai = TrangThai || 'Có mặt';
+            if (!targetLHP) {
+                return res.status(404).json({ success: false, action: "NO_CLASS", message: 'Không có tiết học nào đang diễn ra tại phòng này' });
+            }
 
-            db.query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [MaLopHocPhan, MSSV, ngay], (errCheck, checkResults) => {
-                if (errCheck) return res.status(500).json({ success: false, message: 'Lỗi DB khi kiểm tra trùng', error: errCheck.message });
+            try {
+                const [results] = await db.promise().query('SELECT MSSV FROM the_sv WHERE uid = ? LIMIT 1', [uid]);
+                
+                if (!results || results.length === 0) {
+                    return res.status(404).json({ success: false, action: "UNREGISTERED", message: 'Thẻ lạ, Chưa đăng ký' });
+                }
 
+                const MSSV = results[0].MSSV;
+                const ngay = NgayDiemDanh || new Date().toISOString().slice(0, 10);
+                const trangthai = TrangThai || 'Có mặt';
+
+                const [checkResults] = await db.promise().query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [targetLHP, MSSV, ngay]);
+                
                 if (checkResults && checkResults.length > 0) {
                     return res.json({ success: true, action: "ATTENDANCE_OK", message: "Đã điểm danh từ trước", MSSV });
                 }
 
-                db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())',
-                    [MaLopHocPhan, MSSV, ngay, trangthai], (err2) => {
-                        if (err2) return res.status(500).json({ success: false, message: 'Lỗi khi ghi điểm danh', error: err2.message });
-                        return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
-                    });
-            });
-        });
-    }
+                await db.promise().query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [targetLHP, MSSV, ngay, trangthai]);
+                
+                return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
+            } catch (err) {
+                return res.status(500).json({ success: false, message: 'Lỗi DB xử lý điểm danh', error: err.message });
+            }
+        }
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Lỗi DB' });
     }
