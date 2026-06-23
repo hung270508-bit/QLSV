@@ -16,7 +16,8 @@ function OverviewSection({ user, setActiveMenu }) {
     courses: [],
     todaySchedules: [],
     totalSchedules: 0,
-    totalStudents: 0
+    totalStudents: 0,
+    totalSubjects: 0
   });
 
   useEffect(() => {
@@ -58,7 +59,8 @@ function OverviewSection({ user, setActiveMenu }) {
           courses: courses,
           todaySchedules: todaySchedules,
           totalSchedules: schedules.length,
-          totalStudents: uniqueStudents.size
+          totalStudents: uniqueStudents.size,
+          totalSubjects: new Set(courses.map(c => c.MaMonHoc)).size
         });
 
       } catch (error) {
@@ -111,8 +113,8 @@ function OverviewSection({ user, setActiveMenu }) {
             <BookOpen className="w-8 h-8 text-orange-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Lớp giảng dạy</p>
-            <h3 className="text-3xl font-black text-gray-800">{data.courses.length}</h3>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Môn giảng dạy</p>
+            <h3 className="text-3xl font-black text-gray-800">{data.totalSubjects}</h3>
           </div>
         </motion.div>
 

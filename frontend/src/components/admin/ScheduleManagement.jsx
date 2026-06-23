@@ -244,6 +244,18 @@ function ScheduleManagement() {
 
   // Xóa trắng lỗi Real-time khi User bắt đầu sửa
   const handleFieldChange = (field, value) => {
+    if (field === 'MaLopHocPhan') {
+      setFormData({
+        MaLopHocPhan: value,
+        NgayHoc: '', NgayBatDau: '', PhongHoc: '',
+        tanSuat: 1, thu1: '', thu2: '',
+        tietBatDau1: '', soTiet1: '',
+        tietBatDau2: '', soTiet2: ''
+      });
+      setFormErrors({});
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
@@ -725,8 +737,15 @@ function ScheduleManagement() {
                             isDisabled = hasAnySchedule;
                             if (hasAnySchedule) labelSuffix = ' (Đã đăng ký)';
                           } else {
-                            isDisabled = isFullyScheduled;
-                            if (isFullyScheduled) labelSuffix = ' (Đã đăng ký đủ)';
+                            if (!hasAnySchedule) {
+                              isDisabled = true;
+                              labelSuffix = ' (Chưa có lịch chính thức)';
+                            } else if (isFullyScheduled) {
+                              isDisabled = true;
+                              labelSuffix = ' (Đã đăng ký đủ)';
+                            } else {
+                              isDisabled = false;
+                            }
                           }
                         }
 
