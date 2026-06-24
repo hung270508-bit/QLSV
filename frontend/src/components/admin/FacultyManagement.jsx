@@ -91,7 +91,7 @@ function FacultyManagement() {
     if (!value) return 'Tên khoa không được để trống';
     // FIX TC_09: Yêu cầu từ 2 ký tự trở lên
     if (value.length < 2) return 'Tên khoa phải có ít nhất 2 ký tự';
-    if (value.length > 30) return 'Tên khoa không được quá 30 ký tự';
+    if (value.length > 50) return 'Tên khoa không được quá 50 ký tự';
     if (/\d/.test(value)) return 'Tên khoa không được chứa số';
     if (!/[A-Za-zÀ-ỹ]/.test(value)) return 'Tên khoa phải chứa ít nhất một chữ cái';
     if (!/^[A-Za-zÀ-ỹ\s-]+$/.test(value)) return 'Tên khoa không được chứa ký tự đặc biệt';

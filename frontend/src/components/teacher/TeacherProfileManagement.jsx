@@ -14,12 +14,7 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-  const [forgotPasswordError, setForgotPasswordError] = useState('');
-  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
-  const [forgotPasswordSubmitting, setForgotPasswordSubmitting] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [modalMode, setModalMode] = useState('change');
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -70,36 +65,6 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
     }
   };
 
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!forgotPasswordEmail) {
-      setForgotPasswordError('Vui lòng nhập email!');
-      return;
-    }
-    if (!emailRegex.test(forgotPasswordEmail)) {
-      setForgotPasswordError('Email không đúng định dạng!');
-      return;
-    }
-
-    setForgotPasswordError('');
-    setForgotPasswordSubmitting(true);
-
-    try {
-      await axios.post(`${API_URL}/api/forgot-password`, { email: forgotPasswordEmail });
-      setForgotPasswordSuccess(true);
-      setForgotPasswordEmail('');
-      setTimeout(() => {
-        setForgotPasswordSuccess(false);
-        setShowForgotPassword(false);
-      }, 5000);
-    } catch (error) {
-      setForgotPasswordError(error.response?.data?.message || 'Gửi yêu cầu thất bại. Vui lòng thử lại.');
-    } finally {
-      setForgotPasswordSubmitting(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -129,119 +94,115 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
         <motion.div 
-          initial={{ opacity: 0, y: 30, scale: 0.95 }} 
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 200 }}
-          className="bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 rounded-3xl p-8 sm:p-10 text-white shadow-2xl relative overflow-hidden"
+          className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg"
         >
-          <div className="absolute top-4 right-4 opacity-10">
-            <GraduationCap className="w-32 h-32 text-white" />
-          </div>
-          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8">
-            <div className="w-32 h-32 bg-white rounded-full p-2 shadow-2xl flex-shrink-0">
-              <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center overflow-hidden border-4 border-white/30">
-                <UserCircle className="w-24 h-24 text-orange-500 mt-4" />
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="w-24 h-24 bg-white rounded-full p-2 shadow-lg flex-shrink-0">
+              <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center">
+                <UserCircle className="w-16 h-16 text-orange-500" />
               </div>
             </div>
             <div className="text-center sm:text-left">
-              <h2 className="text-3xl sm:text-4xl font-bold mb-2">{fallbackProfile.HoTen}</h2>
-              <p className="text-orange-100 text-lg font-medium flex items-center justify-center sm:justify-start gap-2">
-                <Briefcase className="w-5 h-5" /> Mã GV: {fallbackProfile.MaGiangVien}
+              <h2 className="text-2xl sm:text-3xl font-bold mb-1">{fallbackProfile.HoTen}</h2>
+              <p className="text-orange-100 text-base font-medium flex items-center justify-center sm:justify-start gap-2">
+                <Briefcase className="w-4 h-4" /> Mã GV: {fallbackProfile.MaGiangVien}
               </p>
-              <div className="mt-4 flex flex-wrap gap-3 justify-center sm:justify-start">
-                <span className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold border border-white/30">
+              <div className="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
+                <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
                   {fallbackProfile.TenKhoa}
                 </span>
               </div>
             </div>
           </div>
-          <BookOpen className="absolute -right-10 -bottom-10 w-64 h-64 text-white opacity-10 transform -rotate-12" />
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <motion.div 
-            initial={{ opacity: 0, y: 30, scale: 0.95 }} 
-            animate={{ opacity: 1, y: 0, scale: 1 }} 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: 0.1, type: "spring" }}
-            className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
+            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-                <Mail className="w-5 h-5 text-white" />
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <Mail className="w-4 h-4 text-white" />
               </div>
               Thông tin liên hệ
             </h3>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-md">
-                  <Mail className="w-6 h-6" />
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                  <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-500">Email công vụ</p>
-                  <p className="text-gray-800 font-semibold text-lg">{fallbackProfile.Email}</p>
+                  <p className="text-xs font-medium text-gray-500">Email công vụ</p>
+                  <p className="text-gray-800 font-semibold">{fallbackProfile.Email}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center flex-shrink-0 text-green-600 shadow-md">
-                  <Phone className="w-6 h-6" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 text-green-600">
+                  <Phone className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-500">Số điện thoại</p>
-                  <p className="text-gray-800 font-semibold text-lg">{fallbackProfile.SoDienThoai}</p>
+                  <p className="text-xs font-medium text-gray-500">Số điện thoại</p>
+                  <p className="text-gray-800 font-semibold">{fallbackProfile.SoDienThoai}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center flex-shrink-0 text-pink-600 shadow-md">
-                  <Calendar className="w-6 h-6" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center flex-shrink-0 text-pink-600">
+                  <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-500">Ngày sinh</p>
-                  <p className="text-gray-800 font-semibold text-lg">
+                  <p className="text-xs font-medium text-gray-500">Ngày sinh</p>
+                  <p className="text-gray-800 font-semibold">
                     {fallbackProfile.NgaySinh ? new Date(fallbackProfile.NgaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center flex-shrink-0 text-indigo-600 shadow-md">
-                  <User className="w-6 h-6" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 text-indigo-600">
+                  <User className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-500">Giới tính</p>
-                  <p className="text-gray-800 font-semibold text-lg">{fallbackProfile.GioiTinh}</p>
+                  <p className="text-xs font-medium text-gray-500">Giới tính</p>
+                  <p className="text-gray-800 font-semibold">{fallbackProfile.GioiTinh}</p>
                 </div>
               </div>
             </div>
           </motion.div>
 
           <motion.div 
-            initial={{ opacity: 0, y: 30, scale: 0.95 }} 
-            animate={{ opacity: 1, y: 0, scale: 1 }} 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: 0.2, type: "spring" }}
-            className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
+            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
-                <Building className="w-5 h-5 text-white" />
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                <Building className="w-4 h-4 text-white" />
               </div>
               Thông tin công tác
             </h3>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center flex-shrink-0 text-orange-600 shadow-md">
-                  <Building className="w-6 h-6" />
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0 text-orange-600">
+                  <Building className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-500">Khoa</p>
-                  <p className="text-gray-800 font-semibold text-lg">{fallbackProfile.TenKhoa}</p>
+                  <p className="text-xs font-medium text-gray-500">Khoa</p>
+                  <p className="text-gray-800 font-semibold">{fallbackProfile.TenKhoa}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center flex-shrink-0 text-purple-600 shadow-md">
-                  <Briefcase className="w-6 h-6" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 text-purple-600">
+                  <Briefcase className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-500">Chức vụ</p>
-                  <p className="text-gray-800 font-semibold text-lg">Giảng viên</p>
+                  <p className="text-xs font-medium text-gray-500">Chức vụ</p>
+                  <p className="text-gray-800 font-semibold">Giảng viên</p>
                 </div>
               </div>
             </div>
@@ -256,91 +217,84 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
       
       {/* Header Banner */}
       <motion.div 
-        initial={{ opacity: 0, y: 30, scale: 0.95 }} 
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200 }}
-        className="bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 rounded-3xl p-8 sm:p-10 text-white shadow-2xl relative overflow-hidden"
+        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg"
       >
-        <div className="absolute top-4 right-4 opacity-10">
-          <GraduationCap className="w-32 h-32 text-white" />
-        </div>
-        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8">
-          {/* Avatar Mặc định */}
-          <div className="w-32 h-32 bg-white rounded-full p-2 shadow-2xl flex-shrink-0">
-            <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center overflow-hidden border-4 border-white/30">
-              <UserCircle className="w-24 h-24 text-orange-500 mt-4" />
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="w-24 h-24 bg-white rounded-full p-2 shadow-lg flex-shrink-0">
+            <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center">
+              <UserCircle className="w-16 h-16 text-orange-500" />
             </div>
           </div>
           
           <div className="text-center sm:text-left">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-2">{profile.HoTen}</h2>
-            <p className="text-orange-100 text-lg font-medium flex items-center justify-center sm:justify-start gap-2">
-              <Briefcase className="w-5 h-5" /> Mã GV: {profile.MaGiangVien}
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1">{profile.HoTen}</h2>
+            <p className="text-orange-100 text-base font-medium flex items-center justify-center sm:justify-start gap-2">
+              <Briefcase className="w-4 h-4" /> Mã GV: {profile.MaGiangVien}
             </p>
-            <div className="mt-4 flex flex-wrap gap-3 justify-center sm:justify-start">
-              <span className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold border border-white/30">
+            <div className="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
+              <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
                 {profile.TenKhoa || 'Chưa cập nhật khoa'}
               </span>
             </div>
           </div>
         </div>
-        
-        {/* Background Decoration */}
-        <BookOpen className="absolute -right-10 -bottom-10 w-64 h-64 text-white opacity-10 transform -rotate-12" />
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Cột 1: Thông tin liên hệ */}
         <motion.div 
-          initial={{ opacity: 0, y: 30, scale: 0.95 }} 
-          animate={{ opacity: 1, y: 0, scale: 1 }} 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.1, type: "spring" }}
-          className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
+          className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
         >
-          <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-              <Mail className="w-5 h-5 text-white" />
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+              <Mail className="w-4 h-4 text-white" />
             </div>
             Thông tin liên hệ
           </h3>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-md">
-                <Mail className="w-6 h-6" />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                <Mail className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-500">Email công vụ</p>
-                <p className="text-gray-800 font-semibold text-lg">{profile.Email || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-gray-500">Email công vụ</p>
+                <p className="text-gray-800 font-semibold">{profile.Email || 'Chưa cập nhật'}</p>
               </div>
             </div>
             
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center flex-shrink-0 text-green-600 shadow-md">
-                <Phone className="w-6 h-6" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 text-green-600">
+                <Phone className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-500">Số điện thoại</p>
-                <p className="text-gray-800 font-semibold text-lg">{profile.SoDienThoai || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-gray-500">Số điện thoại</p>
+                <p className="text-gray-800 font-semibold">{profile.SoDienThoai || 'Chưa cập nhật'}</p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center flex-shrink-0 text-pink-600 shadow-md">
-                <Calendar className="w-6 h-6" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center flex-shrink-0 text-pink-600">
+                <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-500">Ngày sinh</p>
-                <p className="text-gray-800 font-semibold text-lg">
+                <p className="text-xs font-medium text-gray-500">Ngày sinh</p>
+                <p className="text-gray-800 font-semibold">
                   {profile.NgaySinh ? new Date(profile.NgaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center flex-shrink-0 text-indigo-600 shadow-md">
-                <User className="w-6 h-6" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 text-indigo-600">
+                <User className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-500">Giới tính</p>
-                <p className="text-gray-800 font-semibold text-lg">{profile.GioiTinh || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-gray-500">Giới tính</p>
+                <p className="text-gray-800 font-semibold">{profile.GioiTinh || 'Chưa cập nhật'}</p>
               </div>
             </div>
           </div>
@@ -348,35 +302,35 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
 
         {/* Cột 2: Thông tin công tác */}
         <motion.div 
-          initial={{ opacity: 0, y: 30, scale: 0.95 }} 
-          animate={{ opacity: 1, y: 0, scale: 1 }} 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.2, type: "spring" }}
-          className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
+          className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
         >
-          <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
-              <Building className="w-5 h-5 text-white" />
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <Building className="w-4 h-4 text-white" />
             </div>
             Thông tin công tác
           </h3>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center flex-shrink-0 text-orange-600 shadow-md">
-                <Building className="w-6 h-6" />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0 text-orange-600">
+                <Building className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-500">Khoa</p>
-                <p className="text-gray-800 font-semibold text-lg">{profile.TenKhoa || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-gray-500">Khoa</p>
+                <p className="text-gray-800 font-semibold">{profile.TenKhoa || 'Chưa cập nhật'}</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center flex-shrink-0 text-purple-600 shadow-md">
-                <Briefcase className="w-6 h-6" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 text-purple-600">
+                <Briefcase className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-500">Chức vụ</p>
-                <p className="text-gray-800 font-semibold text-lg">Giảng viên</p>
+                <p className="text-xs font-medium text-gray-500">Chức vụ</p>
+                <p className="text-gray-800 font-semibold">Giảng viên</p>
               </div>
             </div>
           </div>
@@ -387,20 +341,23 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+        transition={{ delay: 0.3, type: "spring" }}
+        className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
       >
-        <h3 className="text-xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4 flex items-center gap-2">
-          <Lock className="w-6 h-6 text-orange-600" /> Đổi mật khẩu
+        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+            <Lock className="w-4 h-4 text-white" />
+          </div>
+          Mật Khẩu & Bảo Mật
         </h3>
-        <div className="text-center py-8">
+        <div className="text-center py-6">
           <button
             onClick={() => setShowForgotPassword(true)}
-            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-3 px-8 rounded-lg transition-all shadow-md shadow-orange-200 flex items-center gap-2 mx-auto text-sm"
+            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center gap-2 mx-auto text-sm"
           >
-            <Lock className="w-4 h-4" /> Đổi mật khẩu
+            <Lock className="w-4 h-4" /> Chỉnh sửa mật khẩu
           </button>
-          <p className="text-gray-500 text-sm mt-3">Nhấn vào để thay đổi mật khẩu của bạn</p>
+          <p className="text-gray-500 text-sm mt-2">Nhấn vào để chỉnh sửa mật khẩu của bạn</p>
         </div>
       </motion.div>
 
@@ -420,19 +377,16 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden"
               >
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-5 text-white flex justify-between items-center">
+                <div className="bg-orange-500 p-4 text-white flex justify-between items-center">
                   <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Lock className="w-5 h-5" /> {modalMode === 'email' ? 'Quên mật khẩu' : 'Đổi mật khẩu'}
+                    <Lock className="w-5 h-5" /> Đổi mật khẩu
                   </h3>
                   <button
                     onClick={() => {
                       setShowForgotPassword(false);
-                      setForgotPasswordEmail('');
-                      setForgotPasswordError('');
-                      setForgotPasswordSuccess(false);
-                      setModalMode('change');
                       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
                       setPasswordErrors({});
+                      setPasswordSuccess(false);
                     }}
                     className="text-white/70 hover:text-white transition-colors"
                   >
@@ -441,54 +395,7 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 </div>
 
                 <div className="p-6">
-                  {modalMode === 'email' ? (
-                    forgotPasswordSuccess ? (
-                      <div className="text-center py-6">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <CheckCircle2 className="w-8 h-8 text-green-600" />
-                        </div>
-                        <h4 className="text-lg font-bold text-gray-800 mb-2">Đã gửi email!</h4>
-                        <p className="text-gray-600 text-sm">Liên kết đặt lại mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.</p>
-                      </div>
-                    ) : (
-                      <form onSubmit={handleForgotPassword} className="space-y-4">
-                        <p className="text-gray-600 text-sm mb-4">
-                          Nhập email của bạn để nhận liên kết đặt lại mật khẩu.
-                        </p>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                          <input
-                            type="email"
-                            value={forgotPasswordEmail}
-                            onChange={(e) => {
-                              setForgotPasswordEmail(e.target.value);
-                              if (forgotPasswordError) setForgotPasswordError('');
-                            }}
-                            className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 text-sm ${forgotPasswordError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-orange-500 focus:ring-orange-500/20'}`}
-                            placeholder="nhập email của bạn..."
-                          />
-                          {forgotPasswordError && <p className="text-red-500 text-xs mt-1">{forgotPasswordError}</p>}
-                        </div>
-                        <div className="pt-2 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setModalMode('change')}
-                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-lg transition-all text-sm"
-                          >
-                            Đổi mật khẩu trực tiếp
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={forgotPasswordSubmitting}
-                            className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-md shadow-orange-200 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-                          >
-                            {forgotPasswordSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi...</> : 'Gửi liên kết'}
-                          </button>
-                        </div>
-                      </form>
-                    )
-                  ) : (
-                    <form onSubmit={handlePasswordChange} className="space-y-4">
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
                       {passwordSuccess && (
                         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
                           Đổi mật khẩu thành công!
@@ -567,16 +474,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                         >
                           {passwordSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý...</> : <><Key className="w-4 h-4" /> Đổi mật khẩu</>}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setModalMode('email')}
-                          className="w-full mt-2 text-orange-600 hover:text-orange-700 font-medium text-sm transition-colors"
-                        >
-                          Quên mật khẩu?
-                        </button>
                       </div>
                     </form>
-                  )}
                 </div>
               </motion.div>
             </motion.div>

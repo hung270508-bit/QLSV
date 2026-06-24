@@ -92,6 +92,12 @@ function TeachingAssignment() {
     return teachers.filter(t => t.TrangThai === 'Đang dạy' && String(t.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
   }, [formData.MaKhoa, teachers]);
 
+  // LỌC LỚP THEO KHOA
+  const filteredClasses = useMemo(() => {
+    if (!formData.MaKhoa) return [];
+    return classes.filter(c => String(c.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
+  }, [formData.MaKhoa, classes]);
+
   // RÀNG BUỘC CỐ ĐỊNH NĂM 2026
   useEffect(() => {
     let msg = '';
@@ -348,7 +354,7 @@ function TeachingAssignment() {
                       {assign.TenGiangVien}
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-600">
-                      {assign.TenLop || 'Tất cả sinh viên'}
+                      {assign.TenLop || 'Lớp tự do'}
                     </td>
                     <td className="py-4 px-6">
                       {/* NÚT THAO TÁC CỨNG - CHỈ CÒN NÚT XÓA */}
@@ -436,7 +442,7 @@ function TeachingAssignment() {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
                       <select value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className={`w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl outline-none focus:border-orange-500 transition-all`}>
                         <option value="">-- Dành cho mọi sinh viên --</option>
-                        {classes.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
+                        {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
                       </select>
                       {formErrors.MaLop && <p className="text-red-500 text-sm mt-1">{formErrors.MaLop}</p>}
                     </div>
