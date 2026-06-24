@@ -187,8 +187,8 @@ function UserAccountManagement() {
   };
 
   const handleToggleStatus = (user) => {
-    const isLocked = user.TrangThai === 0 || user.TrangThai === false;
-    const newStatus = isLocked ? 1 : 0;
+    const isLocked = user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa';
+    const newStatus = isLocked ? 'Hoạt động' : 'Bị khóa';
     const actionText = isLocked ? 'mở khóa' : 'khóa';
 
     setConfirmDialog({
@@ -452,8 +452,8 @@ function UserAccountManagement() {
                         {user.NgayTao ? new Date(user.NgayTao).toLocaleDateString('vi-VN') : 'N/A'}
                       </td>
                       <td className="py-5 px-6 text-sm">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${user.TrangThai === 0 || user.TrangThai === false ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                          {user.TrangThai === 0 || user.TrangThai === false ? 'Đã khóa' : 'Hoạt động'}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                          {user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'Đã khóa' : 'Hoạt động'}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center">
@@ -472,10 +472,10 @@ function UserAccountManagement() {
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}
-                              className={`p-2.5 rounded-xl transition-colors shadow-sm ${user.TrangThai === 0 || user.TrangThai === false ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
-                              title={user.TrangThai === 0 || user.TrangThai === false ? "Mở khóa tài khoản" : "Khóa tài khoản"}
+                              className={`p-2.5 rounded-xl transition-colors shadow-sm ${user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+                              title={user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? "Mở khóa tài khoản" : "Khóa tài khoản"}
                             >
-                              {user.TrangThai === 0 || user.TrangThai === false ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                              {user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                             </motion.button>
                           )}
                         </div>
@@ -735,8 +735,8 @@ function UserAccountManagement() {
                   <div className="grid grid-cols-3 gap-4 border-b pb-4">
                     <div className="col-span-1 text-sm font-bold text-gray-500">Trạng thái:</div>
                     <div className="col-span-2 text-sm font-bold">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${viewingUser.TrangThai === 0 || viewingUser.TrangThai === false ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                        {viewingUser.TrangThai === 0 || viewingUser.TrangThai === false ? 'Đã khóa' : 'Hoạt động'}
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${viewingUser.TrangThai === 0 || viewingUser.TrangThai === false || viewingUser.TrangThai === 'Bị khóa' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                        {viewingUser.TrangThai === 0 || viewingUser.TrangThai === false || viewingUser.TrangThai === 'Bị khóa' ? 'Bị khóa' : 'Hoạt động'}
                       </span>
                     </div>
                   </div>
