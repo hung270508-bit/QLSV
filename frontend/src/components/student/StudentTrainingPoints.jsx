@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Award, PlusCircle, CheckCircle2, Clock, Loader2, X, FileSignature, 
-  Edit, Lock, AlertTriangle, AlertCircle, HelpCircle, Eye, MessageSquare, Send,
+  Award, CheckCircle2, Clock, X, FileSignature, 
+  Edit, AlertTriangle, AlertCircle, Eye, MessageSquare, Send,
   Upload, FileImage, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -197,6 +197,22 @@ function StudentTrainingPoints({ user }) {
 
   const handleFileUpload = (itemId, file) => {
     if (viewOnly) return;
+
+    // Validate file size
+    const isImage = file.type.startsWith('image/');
+    const maxSizeImage = 5 * 1024 * 1024; // 5 MB
+    const maxSizeDoc = 50 * 1024 * 1024; // 50 MB
+
+    if (isImage && file.size > maxSizeImage) {
+      showToast('Dung lượng ảnh tải lên không được vượt quá 5MB!', 'error');
+      return;
+    }
+
+    if (!isImage && file.size > maxSizeDoc) {
+      showToast('Dung lượng tệp tài liệu tải lên không được vượt quá 50MB!', 'error');
+      return;
+    }
+
     setFormScores(prev => {
       const current = prev[itemId] || { point: 0, optionIndex: 0 };
       const currentFiles = current.Files || [];

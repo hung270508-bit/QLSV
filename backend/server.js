@@ -26,8 +26,6 @@ const app = express();
 
 // Đã xóa global.currentRfidState, chuyển sang dùng bảng rfid_state trong MySQL
 
-// Middleware giải mã dữ liệu JSON và cho phép Frontend gọi API (CORS)
-app.use(express.json());
 // Middleware CORS cho Express API
 app.use(cors({
     origin: [
@@ -45,8 +43,9 @@ app.use(cors({
     credentials: true
 }));
 
-// Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh Base64)
-app.use(express.json({ limit: '10mb' }));
+// Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh/tệp Base64 lớn)
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 // Cấu hình kết nối đến MySQL sử dụng Pool (Tối ưu từ server mới)
 const db = mysql.createPool({

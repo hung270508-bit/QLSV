@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator,
   UserCheck, AlertCircle, CalendarDays, PlusCircle, Power, PlayCircle,
-  StopCircle, Search, Users, TrendingUp, AlertTriangle, BookOpen, Loader2, FileImage
+  StopCircle, Search, Users, BookOpen, Loader2, FileImage
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -349,9 +349,6 @@ function AdminTrainingPoints() {
   const totalSubmitted = filteredData.length;
   const totalPending = filteredData.filter(item => item.TrangThai !== 'Đã xác nhận').length;
   const totalApproved = filteredData.filter(item => item.TrangThai === 'Đã xác nhận').length;
-  const avgScore = totalSubmitted > 0
-    ? Math.round(filteredData.reduce((sum, item) => sum + (item.TongDiem || item.DiemTuDanhGia || 0), 0) / totalSubmitted)
-    : 0;
 
 
   // === XÉT DUYỆT CHI TIẾT ===
@@ -615,7 +612,7 @@ function AdminTrainingPoints() {
           <motion.div key="reviews" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
 
             {/* THỐNG KÊ TỔNG QUAN (Summary Cards) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-2">
               <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
                 <div className="p-3 bg-blue-50 rounded-xl text-blue-600"><Users className="w-6 h-6" /></div>
                 <div>
@@ -635,13 +632,6 @@ function AdminTrainingPoints() {
                 <div>
                   <p className="text-xs font-bold text-gray-400 uppercase">Đã xác nhận</p>
                   <p className="text-2xl font-black text-gray-800">{totalApproved}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                <div className="p-3 bg-purple-50 rounded-xl text-purple-600"><TrendingUp className="w-6 h-6" /></div>
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase">Điểm trung bình</p>
-                  <p className="text-2xl font-black text-gray-800">{avgScore} <span className="text-sm font-bold text-gray-400">/ 100</span></p>
                 </div>
               </div>
             </div>
