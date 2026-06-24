@@ -1262,8 +1262,8 @@ app.get('/api/classes/next-code/:startYear/:maKhoa', (req, res) => {
         res.json({ MaLop: `${prefix}${maxStt + 1}` });
     });
 });
-app.get('/api/classes/next-name/:tenLop/:maKhoa', (req, res) => {
-    const { tenLop, maKhoa } = req.params;
+app.get('/api/classes/next-name/:tenLop/:maKhoa/:nienKhoa', (req, res) => {
+    const { tenLop, maKhoa, nienKhoa } = req.params;
 
     // Tách phần tên gốc và số thứ tự nếu có (ví dụ: "Lớp A 1" -> base="Lớp A", num=1)
     const baseMatch = tenLop.match(/^(.*?)\s*(\d+)$/);
@@ -1274,13 +1274,13 @@ app.get('/api/classes/next-name/:tenLop/:maKhoa', (req, res) => {
         startNum = parseInt(baseMatch[2], 10);
     }
 
-    // Tìm tất cả các lớp có tên bắt đầu bằng baseName trong cùng một khoa
+    // Tìm tất cả các lớp có tên bắt đầu bằng baseName trong cùng một khoa và cùng niên khóa
     const query = `
         SELECT TenLop FROM lophoc 
-        WHERE MaKhoa = ? AND (TenLop = ? OR TenLop LIKE ?)
+        WHERE MaKhoa = ? AND NienKhoa = ? AND (TenLop = ? OR TenLop LIKE ?)
     `;
 
-    db.query(query, [maKhoa, tenLop, `${baseName}%`], (err, rows) => {
+    db.query(query, [maKhoa, decodeURIComponent(nienKhoa), tenLop, `${baseName}%`], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
 
         // Nếu tên hiện tại chưa tồn tại thì trả về chính nó

@@ -878,7 +878,7 @@ function ScheduleManagement() {
                                 <select value={formData.thu2} onChange={e => handleFieldChange('thu2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.thu2 ? 'border-red-500' : 'border-gray-300'}`}>
                                   <option value="">Chọn</option>
                                   {sysConfig.thuList.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                </select>
+                                       </select>
                                 {formErrors.thu2 && <p className="text-red-500 text-[10px] mt-1">{formErrors.thu2}</p>}
                               </div>
                               <div>

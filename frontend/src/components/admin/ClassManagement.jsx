@@ -281,18 +281,20 @@ function ClassManagement() {
     if (!validateForm()) return;
 
     const tenLopTrimmed = formData.TenLop.trim();
+    const nienKhoa = `${formData.startYear}-${formData.endYear}`;
 
-    // Kiểm tra trùng tên trong cùng Khoa
+    // Kiểm tra trùng tên trong cùng Khoa và cùng Niên Khóa
     const isDuplicate = classes.some(
       c => c.TenLop.trim().toLowerCase() === tenLopTrimmed.toLowerCase() &&
         c.MaKhoa === formData.MaKhoa &&
+        c.NienKhoa === nienKhoa &&
         (!editingClass || c.MaLop !== editingClass.MaLop)
     );
 
     if (isDuplicate) {
       // Báo cho người dùng biết tên đã trùng, hỏi xác nhận trước khi tự thêm số vào sau
       try {
-        const res = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(tenLopTrimmed)}/${formData.MaKhoa}`);
+        const res = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(tenLopTrimmed)}/${formData.MaKhoa}/${encodeURIComponent(nienKhoa)}`);
         const suggestedName = res.data.TenLop;
 
         setConfirmDialog({
