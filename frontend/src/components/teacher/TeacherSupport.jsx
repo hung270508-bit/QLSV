@@ -73,9 +73,7 @@ function TeacherSupport({ user, profile }) {
     const noiDungTrim = requestForm.noiDung.trim();
     const errors = { noiDung: '' };
     if (!noiDungTrim) { errors.noiDung = 'Vui lòng nhập nội dung yêu cầu!'; setRequestFormErrors(errors); return; }
-    if (noiDungTrim.length < 10) { errors.noiDung = 'Nội dung phải có ít nhất 10 ký tự!'; setRequestFormErrors(errors); return; }
     if (noiDungTrim.length > 1000) { errors.noiDung = 'Nội dung không được vượt quá 1000 ký tự!'; setRequestFormErrors(errors); return; }
-    if (/[`~#^]/.test(noiDungTrim)) { errors.noiDung = 'Nội dung không được chứa ký tự đặc biệt: ` ~ # ^'; setRequestFormErrors(errors); return; }
     setRequestFormErrors(errors);
     setConfirmDialog({
       show: true,
@@ -110,9 +108,7 @@ function TeacherSupport({ user, profile }) {
     if (!formData.chuDe) { errors.chuDe = 'Vui lòng chọn chủ đề!'; setFormErrors(errors); return; }
     if (!formData.noiDung) { errors.noiDung = 'Vui lòng nhập nội dung chi tiết!'; setFormErrors(errors); return; }
     const noiDungTrim = formData.noiDung.trim();
-    if (noiDungTrim.length < 10) { errors.noiDung = 'Nội dung phải có ít nhất 10 ký tự!'; setFormErrors(errors); return; }
     if (noiDungTrim.length > 1000) { errors.noiDung = 'Nội dung không được vượt quá 1000 ký tự!'; setFormErrors(errors); return; }
-    if (/[`~#^]/.test(noiDungTrim)) { errors.noiDung = 'Nội dung không được chứa ký tự đặc biệt: ` ~ # ^'; setFormErrors(errors); return; }
     setFormErrors(errors);
     setConfirmDialog({
       show: true,

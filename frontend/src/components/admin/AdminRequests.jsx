@@ -78,12 +78,8 @@ function AdminRequests() {
     const requiresReply = ['Đang xử lý', 'Đã phản hồi', 'Từ chối'].includes(updateStatus);
     if (requiresReply && !replyText.trim()) {
       errors.replyText = 'Vui lòng nhập nội dung phản hồi';
-    } else if (replyText.trim() && replyText.trim().length < 10) {
-      errors.replyText = 'Nội dung phản hồi phải có ít nhất 10 ký tự';
     } else if (replyText.trim().length > 1000) {
       errors.replyText = 'Nội dung phản hồi tối đa 1000 ký tự';
-    } else if (replyText.trim() && /[^a-zA-ZÀ-ỹà-ỹ\s]/.test(replyText.trim())) {
-      errors.replyText = 'Nội dung phản hồi không được chứa ký tự đặc biệt hoặc số';
     }
     setReplyErrors(errors);
     return Object.keys(errors).length === 0;
