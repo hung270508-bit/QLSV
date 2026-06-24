@@ -2263,8 +2263,7 @@ app.put('/api/admin/training-periods/:id/status', (req, res) => {
 app.get('/api/training-periods/active', (req, res) => {
     const query = `
         SELECT * FROM dot_danhgia 
-        WHERE TrangThai = 'Đang tự đánh giá' 
-        AND CURDATE() BETWEEN NgayBatDau AND NgayKetThuc 
+        WHERE TrangThai = 'Đang tự đánh giá'
         ORDER BY MaDotDanhGia DESC
     `;
     executeQuery(query, [], res, 'Lỗi lấy đợt đánh giá đang mở!');
