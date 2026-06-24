@@ -111,9 +111,9 @@ function TeacherDashboard({ user, onLogout }) {
 
     switch (activeMenu) {
       case 'tongquan':
-        return <OverviewSection teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} />;
+        return <OverviewSection teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} setActiveMenu={setActiveMenu} />;
       case 'sinhvien':
-        return <StudentsSection students={students} teachingAssignments={teachingAssignments} />;
+        return <StudentsSection students={students} teachingAssignments={teachingAssignments} grades={grades} />;
       case 'quanlydiem':
         return <GradesSection grades={grades} teachingAssignments={teachingAssignments} students={students} user={user} onRefresh={fetchTeacherData} />;
       case 'diemdanh':
@@ -127,7 +127,7 @@ function TeacherDashboard({ user, onLogout }) {
       case 'thongbao':
         return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} classes={teachingAssignments} />;
       default:
-        return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} />;
+        return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={setActiveMenu} />;
     }
   };
 
