@@ -337,8 +337,21 @@ function ScheduleManagement() {
 
       if (formData.tanSuat === 2) {
         if (!formData.thu2) errors.thu2 = 'Chọn thứ học buổi 2';
-        if (formData.thu1 && formData.thu2 && formData.thu1 === formData.thu2)
-          errors.thu2 = 'Thứ buổi 2 phải khác thứ buổi 1';
+        if (formData.thu1 && formData.thu2 && formData.thu1 === formData.thu2) {
+          // Cho phép chọn cùng 1 thứ, nhưng phải kiểm tra không được trùng tiết
+          const start1 = parseInt(formData.tietBatDau1);
+          const num1 = parseInt(formData.soTiet1);
+          const start2 = parseInt(formData.tietBatDau2);
+          const num2 = parseInt(formData.soTiet2);
+          if (start1 && num1 && start2 && num2) {
+            const end1 = start1 + num1 - 1;
+            const end2 = start2 + num2 - 1;
+            // Kỹ thuật kiểm tra 2 khoảng thời gian giao nhau
+            if (!(end1 < start2 || start1 > end2)) {
+              errors.buoi2 = 'Thời gian buổi 2 bị trùng với buổi 1 trong cùng 1 ngày!';
+            }
+          }
+        }
         validateTiet(formData.tietBatDau2, formData.soTiet2, 'buoi2');
       }
     } else {
@@ -864,7 +877,7 @@ function ScheduleManagement() {
                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thứ học <span className="text-red-500">*</span></label>
                                 <select value={formData.thu2} onChange={e => handleFieldChange('thu2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.thu2 ? 'border-red-500' : 'border-gray-300'}`}>
                                   <option value="">Chọn</option>
-                                  {sysConfig.thuList.map(t => <option key={t.value} value={t.value} disabled={String(t.value) === formData.thu1}>{t.label}</option>)}
+                                  {sysConfig.thuList.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
                                 {formErrors.thu2 && <p className="text-red-500 text-[10px] mt-1">{formErrors.thu2}</p>}
                               </div>

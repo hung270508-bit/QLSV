@@ -354,7 +354,7 @@ function TeachingAssignment() {
                       {assign.TenGiangVien}
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-600">
-                      {assign.TenLop || 'Tất cả sinh viên'}
+                      {assign.TenLop || 'Lớp tự do'}
                     </td>
                     <td className="py-4 px-6">
                       {/* NÚT THAO TÁC CỨNG - CHỈ CÒN NÚT XÓA */}

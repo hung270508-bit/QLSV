@@ -151,9 +151,9 @@ function StudentsSection({ students, teachingAssignments, grades }) {
                           >
                             <td className="py-4 px-6 text-sm font-bold text-gray-800">{student.MSSV}</td>
                             <td className="py-4 px-6 text-sm text-gray-600">{student.HoTen}</td>
-                            <td className="py-4 px-6 text-sm text-gray-600">{student.TenLop || student.MaLop || 'N/A'}</td>
-                            <td className="py-4 px-6 text-sm text-gray-600">{student.Email || 'N/A'}</td>
-                            <td className="py-4 px-6 text-sm text-gray-600">{student.SoDienThoai || 'N/A'}</td>
+                            <td className="py-4 px-6 text-sm text-gray-600">{student.TenLop || student.MaLop || 'Chưa xếp lớp'}</td>
+                            <td className="py-4 px-6 text-sm text-gray-600">{student.Email || 'Chưa cập nhật'}</td>
+                            <td className="py-4 px-6 text-sm text-gray-600">{student.SoDienThoai || 'Chưa cập nhật'}</td>
                           </motion.tr>
                         ))}
                       </tbody>
@@ -202,7 +202,7 @@ function StudentsSection({ students, teachingAssignments, grades }) {
                   </div>
                   <div>
                     <h3 className="text-white font-bold text-lg">{selectedStudent.HoTen || 'Chưa cập nhật tên'}</h3>
-                    <p className="text-orange-100 text-sm">{selectedStudent.MSSV} • Lớp: {selectedStudent.TenLop || selectedStudent.MaLop || 'N/A'}</p>
+                    <p className="text-orange-100 text-sm">{selectedStudent.MSSV} • Lớp: {selectedStudent.TenLop || selectedStudent.MaLop || 'Chưa xếp lớp'}</p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedStudent(null)} className="text-white hover:bg-white/20 p-2 rounded-full transition-colors">

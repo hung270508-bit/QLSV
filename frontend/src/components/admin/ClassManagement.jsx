@@ -181,8 +181,8 @@ function ClassManagement() {
     } else if (tenLopTrimmed.includes('-')) {
       // Validate dash position: must be between two words
       const parts = tenLopTrimmed.split('-');
-      if (parts.length > 2) {
-        newErrors.TenLop = 'Tên lớp chỉ được phép có một dấu "-"';
+      if (parts.length > 3) {
+        newErrors.TenLop = 'Tên lớp chỉ được phép có tối đa hai dấu "-"';
       } else {
         const beforeDash = parts[0].trim();
         const afterDash = parts[1].trim();
@@ -491,11 +491,11 @@ function ClassManagement() {
   return (
     <div className="space-y-8">
       {/* Toast Notification */}
-      <Toast 
-        show={toast.show} 
-        message={toast.message} 
-        type={toast.type} 
-        onClose={() => setToast({ ...toast, show: false })} 
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, show: false })}
       />
 
       {/* Header Section */}
@@ -555,11 +555,10 @@ function ClassManagement() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
-                hasActiveFilters 
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
-                  : 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100'
-              }`}
+              className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${hasActiveFilters
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
+                : 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100'
+                }`}
             >
               <Filter className="w-4 h-4" />
               Bộ lọc
@@ -730,8 +729,8 @@ function ClassManagement() {
             </tbody>
           </table>
         </div>
-        
-        <Pagination 
+
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
@@ -824,40 +823,40 @@ function ClassManagement() {
 
                   {/* Tên lớp */}
                   <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
-                      <input
-                        type="text"
-                        value={formData.TenLop}
-                        onChange={(e) => {
-                          let value = e.target.value;
-                          
-                          // 1. Loại bỏ ký tự đặc biệt, chỉ giữ chữ, số, khoảng trắng và dấu gạch ngang
-                          value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
-                          
-                          // 2. CHUẨN HÓA VIẾT HOA / VIẾT THƯỜNG
-                          if (value.length > 0) {
-                            // Cách 1: Chỉ viết hoa chữ cái đầu câu, các chữ sau ép về in thường 
-                            // VD: "Valorant NhẬp MôN" -> "Valorant nhập môn"
-                            value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-                            
-                            // --- HOẶC ---
-                            
-                            // Cách 2: Nếu muốn viết hoa chữ cái đầu của MỖI TỪ (đúng chuẩn danh từ riêng)
-                            // VD: "Valorant NhẬp MôN" -> "Valorant Nhập Môn"
-                            // (Xóa comment dòng dưới và bỏ Cách 1 nếu muốn dùng cách này)
-                            value = value.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
-                          }
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Tên lớp</label>
+                    <input
+                      type="text"
+                      value={formData.TenLop}
+                      onChange={(e) => {
+                        let value = e.target.value;
 
-                          setFormData({ ...formData, TenLop: value });
-                          if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
-                        }}
-                        placeholder="Nhập tên lớp học"
-                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
-                      />
-                      {formErrors.TenLop && (
-                        <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
-                      )}
-                    </div>
+                        // 1. Loại bỏ ký tự đặc biệt, chỉ giữ chữ, số, khoảng trắng và dấu gạch ngang
+                        value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
+
+                        // 2. CHUẨN HÓA VIẾT HOA / VIẾT THƯỜNG
+                        if (value.length > 0) {
+                          // Cách 1: Chỉ viết hoa chữ cái đầu câu, các chữ sau ép về in thường 
+                          // VD: "Valorant NhẬp MôN" -> "Valorant nhập môn"
+                          value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+
+                          // --- HOẶC ---
+
+                          // Cách 2: Nếu muốn viết hoa chữ cái đầu của MỖI TỪ (đúng chuẩn danh từ riêng)
+                          // VD: "Valorant NhẬp MôN" -> "Valorant Nhập Môn"
+                          // (Xóa comment dòng dưới và bỏ Cách 1 nếu muốn dùng cách này)
+                          value = value.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+                        }
+
+                        setFormData({ ...formData, TenLop: value });
+                        if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
+                      }}
+                      placeholder="Nhập tên lớp học"
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                    />
+                    {formErrors.TenLop && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.TenLop}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -976,8 +975,8 @@ function ClassManagement() {
                         key={tab.id}
                         onClick={() => setDetailTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${detailTab === tab.id
-                            ? 'bg-white text-orange-600 shadow-md'
-                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                          ? 'bg-white text-orange-600 shadow-md'
+                          : 'text-white/70 hover:text-white hover:bg-white/10'
                           }`}
                       >
                         <Icon className="w-4 h-4" />

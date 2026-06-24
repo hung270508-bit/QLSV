@@ -18,6 +18,9 @@ function ScheduleSection({ user }) {
   const [tooltipData, setTooltipData] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
+  // Modal chi tiết lịch dạy
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
+
   // 1. LẤY DỮ LIỆU LỊCH GIẢNG DẠY
   useEffect(() => {
     const fetchSchedule = async () => {
@@ -54,7 +57,7 @@ function ScheduleSection({ user }) {
             id: item.MaLichHoc || Math.random(),
             maHP: item.MaLopHocPhan || item.MaMonHoc || 'N/A',
             tenMon: item.TenMonHoc || 'Môn học chưa xác định',
-            tenLop: item.TenLop || item.MaLop || 'N/A', // Thêm Tên Lớp cho Giảng viên
+            tenLop: item.TenLop || item.MaLop || 'Lớp tự do', // Thêm Tên Lớp cho Giảng viên
             phong: item.PhongHoc || 'Chưa xếp phòng',
             ngayHoc: d,
             thuStr: thu === 8 ? 'CN' : `${thu}`,
@@ -322,6 +325,7 @@ function ScheduleSection({ user }) {
                             onMouseEnter={(e) => { setTooltipData(cellData); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
                             onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
                             onMouseLeave={() => setTooltipData(null)}
+                            onClick={() => setSelectedSchedule(cellData)}
                             className="border border-gray-200 bg-[#FDE28A] p-3 align-top transition-colors cursor-pointer hover:brightness-95 shadow-sm relative overflow-hidden"
                           >
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full z-10 relative">
@@ -403,7 +407,7 @@ function ScheduleSection({ user }) {
                     </tr>
                     
                     {semesterData[hk].map((course, idx) => (
-                      <tr key={idx} className="border-b border-gray-200 hover:bg-orange-50 transition-colors">
+                      <tr key={idx} onClick={() => setSelectedSchedule(course)} className="border-b border-gray-200 hover:bg-orange-50 cursor-pointer transition-colors">
                         <td className="p-3 text-sm text-gray-700 font-medium">{course.maHP}</td>
                         <td className="p-3 text-sm font-semibold text-gray-800">{course.tenMon}</td>
                         <td className="p-3 text-sm font-bold text-orange-600 text-center">{course.tenLop}</td>
@@ -427,6 +431,63 @@ function ScheduleSection({ user }) {
         </motion.div>
       )}
 
+      {/* MODAL CHI TIẾT LỊCH DẠY */}
+      <AnimatePresence>
+        {selectedSchedule && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+              onClick={() => setSelectedSchedule(null)} 
+            />
+            <motion.div 
+              initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.95 }} 
+              className="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  Chi tiết Lịch giảng dạy
+                </h3>
+                <button onClick={() => setSelectedSchedule(null)} className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div>
+                  <h4 className="text-2xl font-bold text-gray-800">{selectedSchedule.tenMon}</h4>
+                  <p className="text-orange-600 font-medium mt-1">Mã HP: {selectedSchedule.maHP}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 bg-orange-50 rounded-xl p-4 border border-orange-100">
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">Lớp sinh hoạt</p>
+                    <p className="font-bold text-gray-800">{selectedSchedule.tenLop}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">Số tín chỉ</p>
+                    <p className="font-bold text-gray-800">{selectedSchedule.stc} tín chỉ</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">Phòng học</p>
+                    <p className="font-bold flex items-center gap-1 text-gray-800"><MapPin className="w-4 h-4 text-orange-500"/> {selectedSchedule.phong}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">Thời gian</p>
+                    <p className="font-bold flex items-center gap-1 text-gray-800"><Clock className="w-4 h-4 text-orange-500"/> Tiết {selectedSchedule.tietBatDau} - {selectedSchedule.tietBatDau + selectedSchedule.soTiet - 1}</p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="text-sm text-gray-500 font-medium mb-1">Thứ trong tuần</p>
+                  <p className="font-bold text-gray-800">{selectedSchedule.thuStr === 'CN' ? 'Chủ nhật' : `Thứ ${selectedSchedule.thuStr}`}</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
