@@ -106,8 +106,8 @@ function StudentSupport({ user, profile }) {
       setRequestFormErrors(errors);
       return;
     }
-    if (/[^a-zA-ZÀ-ỹà-ỹ0-9\s]/.test(noiDungTrim)) {
-      errors.noiDung = 'Nội dung không được chứa ký tự đặc biệt!';
+    if (/[`~#^]/.test(noiDungTrim)) {
+      errors.noiDung = 'Nội dung không được chứa các ký tự đặc biệt: ` ~ # ^';
       setRequestFormErrors(errors);
       return;
     }
@@ -174,8 +174,8 @@ function StudentSupport({ user, profile }) {
       setFormErrors(errors);
       return;
     }
-    if (/[^a-zA-ZÀ-ỹà-ỹ0-9\s]/.test(noiDungTrim)) {
-      errors.noiDung = 'Nội dung không được chứa ký tự đặc biệt!';
+    if (/[`~#^]/.test(noiDungTrim)) {
+      errors.noiDung = 'Nội dung không được chứa các ký tự đặc biệt: ` ~ # ^';
       setFormErrors(errors);
       return;
     }
