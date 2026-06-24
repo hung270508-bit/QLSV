@@ -65,11 +65,11 @@ const convertToGPA = (total10) => {
 
 const getLetterColor = (letter) => {
   if (!letter) return 'text-gray-300';
-  if (letter === 'A') return 'text-green-600';
-  if (letter.startsWith('B')) return 'text-blue-600';
+  if (letter === 'A') return 'text-[#22C55E]';
+  if (letter.startsWith('B')) return 'text-[#3B82F6]';
   if (letter.startsWith('C')) return 'text-yellow-600';
-  if (letter.startsWith('D')) return 'text-orange-500';
-  return 'text-red-600';
+  if (letter.startsWith('D')) return 'text-[#F4C542]';
+  return 'text-[#EF4444]';
 };
 
 // ================================================================
@@ -117,10 +117,10 @@ function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' })
         disabled={disabled}
         onWheel={e => e.target.blur()}
         className={`w-full px-3 py-2.5 border-2 rounded-xl focus:outline-none transition-colors text-sm font-semibold
-          ${disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed border-gray-100 text-gray-500' :
-            err ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-orange-500 text-gray-800'}`}
+          ${disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed border-[#E5E7EB] text-[#6B7280]' :
+            err ? 'border-red-500 bg-[#EF4444]/10' : 'bg-[#F7F8FA] border-[#E5E7EB] focus:border-[#F4C542] text-[#1F2937]'}`}
       />
-      {err && <p className="text-red-500 text-xs mt-1.5 font-bold">{err}</p>}
+      {err && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{err}</p>}
     </div>
   );
 }
@@ -155,15 +155,15 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
   };
 
   return (
-    <div className={`border-2 rounded-2xl p-5 shadow-sm transition-colors ${locked ? 'bg-gray-50 border-gray-200' : 'bg-white border-orange-200'}`}>
+    <div className={`border-2 rounded-2xl p-5 shadow-sm transition-colors ${locked ? 'bg-[#F7F8FA] border-[#E5E7EB]' : 'bg-[#FFFFFF] border-[#F4C542]/30'}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          {locked ? <Lock className="w-5 h-5 text-gray-500" /> : <Settings className="w-5 h-5 text-orange-500" />}
-          <span className={`font-bold ${locked ? 'text-gray-600' : 'text-gray-800'}`}>
+          {locked ? <Lock className="w-5 h-5 text-[#6B7280]" /> : <Settings className="w-5 h-5 text-[#F4C542]" />}
+          <span className={`font-bold ${locked ? 'text-[#6B7280]' : 'text-[#1F2937]'}`}>
             Cấu hình điểm — {tenLop} {locked && '(Đã chốt)'}
           </span>
         </div>
-        <div className={`text-sm font-bold px-3 py-1 rounded-full ${locked ? 'bg-gray-200 text-gray-600' : isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+        <div className={`text-sm font-bold px-3 py-1 rounded-full ${locked ? 'bg-gray-200 text-[#6B7280]' : isValid ? 'bg-[#22C55E]/20 text-green-700' : 'bg-[#EF4444]/20 text-[#EF4444]'}`}>
           Tổng: {totalWeight}% {isValid && !locked ? ' ✓' : ''}
         </div>
       </div>
@@ -171,7 +171,7 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         {components.map(c => (
           <div key={c.key} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all
-            ${locked ? 'border-gray-200 bg-gray-100 opacity-80' : c.enabled ? 'border-orange-200 bg-orange-50/50 hover:bg-orange-50' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+            ${locked ? 'border-[#E5E7EB] bg-gray-100 opacity-80' : c.enabled ? 'border-[#F4C542]/30 bg-[#FFF7D6]/50 hover:bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA] opacity-60'}`}>
             <input
               type="checkbox" checked={c.enabled} disabled={locked} onChange={() => toggleComp(c.key)}
               className="w-4 h-4 accent-orange-500 cursor-pointer disabled:cursor-not-allowed"
@@ -182,9 +182,9 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
                 type="number" min="0" max="100" value={c.enabled ? c.weight : ''} disabled={!c.enabled || locked}
                 onChange={e => setWeight(c.key, e.target.value)} onKeyDown={blockInvalidKeys} placeholder="0"
                 className={`w-14 text-center px-2 py-1.5 border-2 rounded-lg text-sm font-bold focus:outline-none transition-colors
-                  ${(!c.enabled || locked) ? 'bg-gray-100 border-transparent text-gray-400 cursor-not-allowed' : 'bg-white border-orange-300 focus:border-orange-500 text-gray-800'}`}
+                  ${(!c.enabled || locked) ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed' : 'bg-[#FFFFFF] border-orange-300 focus:border-[#F4C542] text-[#1F2937]'}`}
               />
-              <span className="text-sm font-bold text-gray-500">%</span>
+              <span className="text-sm font-bold text-[#6B7280]">%</span>
             </div>
           </div>
         ))}
@@ -193,19 +193,19 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
       <div className="flex items-center gap-4">
         <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${locked ? 'bg-gray-400' : totalWeight === 100 ? 'bg-green-500' : totalWeight > 100 ? 'bg-red-500' : 'bg-orange-400'}`}
+            className={`h-full rounded-full transition-all ${locked ? 'bg-gray-400' : totalWeight === 100 ? 'bg-[#22C55E]/100' : totalWeight > 100 ? 'bg-[#EF4444]/100' : 'bg-orange-400'}`}
             style={{ width: `${Math.min(totalWeight, 100)}%` }}
           />
         </div>
         {locked ? (
-          <button disabled className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300">
+          <button disabled className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gray-200 text-[#6B7280] cursor-not-allowed border border-gray-300">
             <Lock className="w-4 h-4" /> Đã chốt cấu hình
           </button>
         ) : (
           <motion.button
             whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} disabled={!isValid} onClick={() => isValid && onSaveRequest()}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md
-              ${isValid ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+              ${isValid ? 'bg-gradient-to-r from-[#F4C542] to-red-500 text-white' : 'bg-gray-200 text-gray-300 cursor-not-allowed'}`}
           >
             <Lock className="w-4 h-4" /> Chốt cấu hình điểm
           </motion.button>
@@ -213,7 +213,7 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
       </div>
 
       {!isValid && totalWeight !== 0 && !locked && (
-        <p className="text-red-500 text-xs mt-3 flex items-center gap-1.5 font-bold">
+        <p className="text-[#EF4444] text-xs mt-3 flex items-center gap-1.5 font-bold">
           <AlertCircle className="w-4 h-4" />
           Tổng trọng số phải bằng đúng 100%. Hiện tại đang là {totalWeight}%.
         </p>
@@ -440,30 +440,30 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
     <div className="space-y-6">
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
+        className="bg-[#F4C542] rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
       >
         <div>
-          <h2 className="text-2xl font-bold text-white mb-1">Quản lý điểm sinh viên</h2>
-          <p className="text-orange-100 text-sm font-medium">Cấu hình trọng số & nhập điểm theo từng lớp học phần</p>
+          <h2 className="text-2xl font-bold text-[#152238] mb-1">Quản lý điểm sinh viên</h2>
+          <p className="text-[#152238]/70 text-sm font-medium">Cấu hình trọng số & nhập điểm theo từng lớp học phần</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
           onClick={openAddModal}
-          className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl shadow-lg font-bold"
+          className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl shadow-lg font-bold"
         >
           <Plus className="w-5 h-5" /> Thêm điểm thủ công
         </motion.button>
       </motion.div>
 
       <div className="relative max-w-2xl">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
         <input
           type="text" placeholder="Tìm sinh viên theo MSSV hoặc Họ tên..."
           value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-14 pr-10 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all shadow-sm font-medium text-sm"
+          className="w-full pl-14 pr-10 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:border-[#F4C542] focus:ring-4 focus:ring-orange-500/10 transition-all shadow-sm font-medium text-sm"
         />
         {searchTerm && (
-          <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 bg-gray-100 rounded-full">
+          <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#6B7280] p-1 bg-gray-100 rounded-full">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -490,18 +490,18 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
             if (term && filteredStudents.length === 0) return null;
 
             return (
-              <div key={ta.MaLopHocPhan} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <div key={ta.MaLopHocPhan} className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => setConfigOpen(prev => ({ ...prev, [ta.MaLopHocPhan]: !isOpen }))}
-                  className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-orange-50/50 transition-colors group"
+                  className="w-full flex items-center justify-between px-6 py-4 bg-[#FFFFFF] hover:bg-[#FFF7D6]/50 transition-colors group"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="p-2.5 bg-orange-50 text-orange-500 rounded-xl group-hover:scale-110 transition-transform"><GraduationCap className="w-6 h-6" /></div>
+                    <div className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl group-hover:scale-110 transition-transform"><GraduationCap className="w-6 h-6" /></div>
                     <div className="text-left">
-                      <p className="font-bold text-gray-800 text-base">{ta.TenMonHoc} <span className="text-gray-400 font-medium ml-1 text-sm">({ta.MaLopHocPhan})</span></p>
+                      <p className="font-bold text-[#1F2937] text-base">{ta.TenMonHoc} <span className="text-gray-300 font-medium ml-1 text-sm">({ta.MaLopHocPhan})</span></p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {active.map(c => (
-                          <span key={c.key} className="text-[11px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
+                          <span key={c.key} className="text-[11px] bg-gray-100 text-[#6B7280] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
                             {c.shortLabel}: {Number(c.weight)}%
                           </span>
                         ))}
@@ -509,17 +509,17 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {isLocked && <span className="text-[11px] text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
-                    {!isLocked && <span className="text-[11px] text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
+                    {isLocked && <span className="text-[11px] text-green-700 bg-[#22C55E]/10 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
+                    {!isLocked && <span className="text-[11px] text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
                     <div className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-5 h-5 text-gray-300 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
                 </button>
                 
                 <AnimatePresence>
                   {isOpen && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-100 bg-gray-50/30">
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[#E5E7EB] bg-[#F7F8FA]/30">
                       
                       <div className="p-6">
                         <ConfigPanel
@@ -533,22 +533,22 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                       </div>
 
                       <div className="px-6 pb-6">
-                        <div className="flex items-center justify-between mb-4 bg-blue-50 px-4 py-3 rounded-xl border border-blue-100">
-                          <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-blue-500"/>Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
-                          <span className="text-sm text-blue-600 font-bold bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
+                        <div className="flex items-center justify-between mb-4 bg-[#3B82F6]/10 px-4 py-3 rounded-xl border border-blue-100">
+                          <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-[#3B82F6]"/>Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
+                          <span className="text-sm text-[#3B82F6] font-bold bg-[#FFFFFF] px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
                         </div>
                         
-                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
                           <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                              <thead className="bg-gray-50/80 border-b border-gray-200">
+                              <thead className="bg-[#F7F8FA]/80 border-b border-[#E5E7EB]">
                                 <tr>
-                                  <th className="py-4 px-5 text-xs font-black text-gray-500 uppercase tracking-wider">MSSV</th>
-                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider">Họ Tên</th>
-                                  {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-gray-500 uppercase tracking-wider text-center">{c.shortLabel}</th>)}
-                                  <th className="py-4 px-3 text-xs font-black text-gray-800 uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
-                                  <th className="py-4 px-3 text-xs font-black text-orange-600 uppercase tracking-wider text-center bg-orange-50/50">GPA</th>
-                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Thao tác</th>
+                                  <th className="py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>
+                                  <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider">Họ Tên</th>
+                                  {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">{c.shortLabel}</th>)}
+                                  <th className="py-4 px-3 text-xs font-black text-[#1F2937] uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
+                                  <th className="py-4 px-3 text-xs font-black text-[#152238] uppercase tracking-wider text-center bg-[#FFF7D6]/50">GPA</th>
+                                  <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">Thao tác</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100">
@@ -558,36 +558,36 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                                   const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
                                   const gpa = hasGrade ? convertToGPA(t10) : null;
                                   return (
-                                    <tr key={stu.MSSV} className="hover:bg-blue-50/40 transition-colors group">
+                                    <tr key={stu.MSSV} className="hover:bg-[#3B82F6]/10/40 transition-colors group">
                                       <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
-                                      <td className="py-4 px-4 text-sm font-bold text-gray-900">{stu.HoTen}</td>
+                                      <td className="py-4 px-4 text-sm font-bold text-[#1F2937]">{stu.HoTen}</td>
                                       {active.map(c => {
                                         const isZero = !c.enabled || Number(c.weight) === 0;
                                         const val = grade && grade[c.key];
                                         const displayVal = isZero ? '0' : (hasGrade && val != null && val !== '' ? val : '—');
                                         return (
-                                          <td key={c.key} className="py-4 px-3 text-sm text-center text-gray-600 font-medium">
+                                          <td key={c.key} className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">
                                             {displayVal}
                                           </td>
                                         );
                                       })}
-                                      <td className="py-4 px-3 text-sm text-center font-black text-gray-800 bg-gray-50/50 group-hover:bg-transparent">{t10}</td>
-                                      <td className="py-4 px-3 text-sm text-center font-black text-orange-600 bg-orange-50/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
                                       <td className="py-3 px-4">
                                         <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                           {hasGrade ? (
                                             <>
-                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
-                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
+                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
+                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
                                             </>
                                           ) : (
-                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
+                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
                                           )}
                                         </div>
                                       </td>
                                     </tr>
                                   );
-                                }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-400 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
+                                }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-300 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
                               </tbody>
                             </table>
                           </div>
@@ -601,9 +601,9 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
           })}
         </div>
       ) : (
-        <div className="text-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm">
+        <div className="text-center py-20 bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-sm">
           <Search className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-          <p className="font-semibold text-gray-500 text-lg">Không tìm thấy Lớp Học Phần nào khớp với bộ lọc.</p>
+          <p className="font-semibold text-[#6B7280] text-lg">Không tìm thấy Lớp Học Phần nào khớp với bộ lọc.</p>
         </div>
       )}
 
@@ -615,14 +615,14 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
             <motion.div
               initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10"
+              className="bg-[#FFFFFF] rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10"
             >
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-t-[2rem] px-8 py-6 flex items-center justify-between shrink-0">
+              <div className="bg-[#F4C542] rounded-t-[2rem] px-8 py-6 flex items-center justify-between shrink-0">
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-1">{editingGrade ? 'Cập nhật điểm' : 'Nhập điểm sinh viên'}</h3>
-                  <p className="text-orange-100 text-sm font-medium">Hệ thống sẽ tự động tính toán theo cấu hình lớp</p>
+                  <h3 className="text-2xl font-bold text-[#152238] mb-1">{editingGrade ? 'Cập nhật điểm' : 'Nhập điểm sinh viên'}</h3>
+                  <p className="text-[#152238]/70 text-sm font-medium">Hệ thống sẽ tự động tính toán theo cấu hình lớp</p>
                 </div>
-                <button type="button" onClick={closeModal} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                <button type="button" onClick={closeModal} className="p-2.5 bg-[#FFFFFF]/10 hover:bg-white/40 rounded-full transition-colors">
                   <X className="w-5 h-5 text-white" />
                 </button>
               </div>
@@ -630,7 +630,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
               <form onSubmit={handleSubmit} className="p-8 space-y-7">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-[#EF4444]">*</span></label>
                     <select
                       value={formData.MaLopHocPhan} disabled={!!editingGrade || !!formData.MSSV}
                       onChange={e => {
@@ -638,8 +638,8 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                         if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
                       }}
                       className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
-                        ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
-                          formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                        ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-[#E5E7EB]' :
+                          formErrors.MaLopHocPhan ? 'border-red-500 bg-[#EF4444]/10' : 'bg-[#FFFFFF] border-[#E5E7EB] focus:border-[#F4C542] text-[#1F2937]'}`}
                     >
                       <option value="">Chọn lớp học phần</option>
                       {(teachingAssignments || []).map(ta => {
@@ -651,11 +651,11 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                         )
                       })}
                     </select>
-                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
+                    {formErrors.MaLopHocPhan && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sinh viên <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sinh viên <span className="text-[#EF4444]">*</span></label>
                     <select
                       value={formData.MSSV} disabled={!formData.MaLopHocPhan || !!editingGrade}
                       onChange={e => {
@@ -663,8 +663,8 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                         if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' }));
                       }}
                       className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
-                        ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
-                          formErrors.MSSV ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                        ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-[#E5E7EB]' :
+                          formErrors.MSSV ? 'border-red-500 bg-[#EF4444]/10' : 'bg-[#FFFFFF] border-[#E5E7EB] focus:border-[#F4C542] text-[#1F2937]'}`}
                     >
                       <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên' : 'Chưa chọn lớp học phần'}</option>
                       {getStudentsForLHP(formData.MaLopHocPhan).map(s => {
@@ -677,18 +677,18 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                         );
                       })}
                     </select>
-                    {formErrors.MSSV && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MSSV}</p>}
+                    {formErrors.MSSV && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{formErrors.MSSV}</p>}
                   </div>
                 </div>
 
-                <div className="bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
+                <div className="bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-2xl p-6">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                     {activeCfgForm.map(c => {
                       const isZero = !c.enabled || Number(c.weight) === 0;
                       return (
                         <div key={c.key}>
-                          <label className="block text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide">
-                            {c.label} {!isZero ? <span className="text-orange-500 text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-400 text-[11px] ml-0.5">(0%)</span>}
+                          <label className="block text-xs font-bold text-[#1F2937] mb-2 uppercase tracking-wide">
+                            {c.label} {!isZero ? <span className="text-[#F4C542] text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-300 text-[11px] ml-0.5">(0%)</span>}
                           </label>
                           <ScoreInput
                             value={isZero ? 0 : formData[c.key]}
@@ -704,25 +704,25 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                 </div>
 
                 {hasPreview && (
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-100 rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#FFF7D6] rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
                     <div>
-                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
-                      <p className="text-[2.5rem] leading-none font-black text-gray-800">{previewTotal}</p>
+                      <p className="text-xs text-[#F4C542] font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
+                      <p className="text-[2.5rem] leading-none font-black text-[#1F2937]">{previewTotal}</p>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p>
+                      <p className="text-xs text-[#F4C542] font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p>
                       <div className="flex items-baseline gap-2">
-                        <p className="text-[2rem] leading-none font-black text-orange-600">{previewGPA.gpa.toFixed(1)}</p>
-                        <p className="text-2xl font-black text-blue-600">({previewGPA.letter})</p>
+                        <p className="text-[2rem] leading-none font-black text-[#F4C542]">{previewGPA.gpa.toFixed(1)}</p>
+                        <p className="text-2xl font-black text-[#3B82F6]">({previewGPA.letter})</p>
                       </div>
-                      <p className="text-xs text-gray-500 font-bold mt-1.5 uppercase bg-white px-2 py-0.5 rounded-md border border-gray-200">{previewGPA.text}</p>
+                      <p className="text-xs text-[#6B7280] font-bold mt-1.5 uppercase bg-[#FFFFFF] px-2 py-0.5 rounded-md border border-[#E5E7EB]">{previewGPA.text}</p>
                     </div>
                   </div>
                 )}
 
                 <div className="flex gap-4 pt-2">
                   <button type="button" onClick={closeModal} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
-                  <button type="submit" disabled={Object.values(scoreInputErrors).some(Boolean)} className={`flex-1 py-4 rounded-xl font-bold text-base shadow-md transition-all ${Object.values(scoreInputErrors).some(Boolean) ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-none' : 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 border border-orange-600'}`}>{editingGrade ? 'Lưu thay đổi' : 'Xác nhận Thêm điểm'}</button>
+                  <button type="submit" disabled={Object.values(scoreInputErrors).some(Boolean)} className={`flex-1 py-4 rounded-xl font-bold text-base shadow-md transition-all ${Object.values(scoreInputErrors).some(Boolean) ? 'bg-gray-200 text-gray-300 cursor-not-allowed border-none' : 'bg-[#F4C542] text-[#152238] hover:bg-[#F4C542]/90 hover:shadow-lg hover:-translate-y-0.5 border border-[#F4C542]'}`}>{editingGrade ? 'Lưu thay đổi' : 'Xác nhận Thêm điểm'}</button>
                 </div>
               </form>
             </motion.div>
@@ -735,12 +735,12 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
         {submitConfirmModal.show && (
           <div className="fixed inset-0 flex items-center justify-center z-[10005] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false })} />
-            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
-               <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
+            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
+               <div className="w-20 h-20 bg-[#3B82F6]/10 text-[#3B82F6] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
                  <Save className="w-10 h-10" />
                </div>
-               <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Xác nhận lưu điểm</h3>
-               <p className="text-gray-600 text-sm font-medium mb-7 px-2 leading-relaxed">
+               <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận lưu điểm</h3>
+               <p className="text-[#6B7280] text-sm font-medium mb-7 px-2 leading-relaxed">
                  Bạn có chắc chắn muốn lưu điểm cho sinh viên này vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.
                </p>
                <div className="flex gap-3">
@@ -759,16 +759,16 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
         {configConfirm.show && (
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} />
-             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
-                <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-red-100/50 shadow-inner">
+             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
+                <div className="w-20 h-20 bg-red-100 text-[#DC2626] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-red-200/50 shadow-inner">
                   <Lock className="w-10 h-10" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Xác nhận chốt cấu hình</h3>
-                <p className="text-gray-600 text-sm font-medium mb-6 px-2 leading-relaxed">
+                <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận chốt cấu hình</h3>
+                <p className="text-[#6B7280] text-sm font-medium mb-6 px-2 leading-relaxed">
                   Trọng số điểm của môn học này sẽ được áp dụng cho toàn bộ sinh viên trong danh sách.
                 </p>
                 
-                <label className="flex items-start gap-3 bg-red-50/50 hover:bg-red-50 p-4 rounded-xl border-2 border-red-100 text-left cursor-pointer mb-7 transition-colors group">
+                <label className="flex items-start gap-3 bg-[#EF4444]/10/50 hover:bg-[#EF4444]/10 p-4 rounded-xl border-2 border-red-200 text-left cursor-pointer mb-7 transition-colors group">
                   <div className="pt-0.5">
                     <input 
                       type="checkbox" 
@@ -787,7 +787,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                   <button 
                     disabled={!configConfirm.checked} 
                     onClick={executeSaveConfig} 
-                    className={`flex-1 py-3.5 rounded-xl font-bold shadow-md transition-all ${!configConfirm.checked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-red-500/25'}`}
+                    className={`flex-1 py-3.5 rounded-xl font-bold shadow-md transition-all ${!configConfirm.checked ? 'bg-gray-200 text-gray-300 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-red-500/25'}`}
                   >
                     Chốt vĩnh viễn
                   </button>
@@ -804,20 +804,20 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDeleteCancel} />
             <motion.div
               initial={{ scale: 0.85, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.85, y: 20, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10"
+              className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10"
             >
-              <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-orange-100/50">
+              <div className="w-20 h-20 bg-[#F4C542]/20 text-[#B45309] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-[#FFF7D6]/50">
                 <AlertTriangle className="w-10 h-10" />
               </div>
-              <h3 className="text-2xl font-black text-gray-800 mb-2 tracking-tight">Xác nhận xóa điểm</h3>
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-7 space-y-1.5">
-                <p className="text-sm text-gray-500 font-medium">Xóa điểm của sinh viên:</p>
-                <p className="text-base font-black text-gray-800">{deleteModal.tenSinhVien}</p>
-                <p className="text-xs text-red-500 font-bold mt-2 pt-2 border-t border-gray-200">Dữ liệu xóa sẽ không thể khôi phục!</p>
+              <h3 className="text-2xl font-black text-[#1F2937] mb-2 tracking-tight">Xác nhận xóa điểm</h3>
+              <div className="bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl p-4 mb-7 space-y-1.5">
+                <p className="text-sm text-[#6B7280] font-medium">Xóa điểm của sinh viên:</p>
+                <p className="text-base font-black text-[#1F2937]">{deleteModal.tenSinhVien}</p>
+                <p className="text-xs text-[#EF4444] font-bold mt-2 pt-2 border-t border-[#E5E7EB]">Dữ liệu xóa sẽ không thể khôi phục!</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={handleDeleteCancel} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Hủy</button>
-                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-orange-500 text-white rounded-xl font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
+                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-[#F4C542] text-[#152238] rounded-xl font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
               </div>
             </motion.div>
           </div>

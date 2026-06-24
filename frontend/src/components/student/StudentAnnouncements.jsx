@@ -42,11 +42,11 @@ function StudentAnnouncements({ user }) {
     <div className="max-w-4xl mx-auto space-y-6">
       
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-md flex items-center gap-4 relative overflow-hidden">
+      <div className="bg-[#F4C542] rounded-2xl p-6 text-[#152238] shadow-md flex items-center gap-4 relative overflow-hidden">
         <Bell className="w-10 h-10 relative z-10" />
         <div className="relative z-10">
           <h2 className="text-2xl font-bold">Bảng Thông Báo</h2>
-          <p className="text-orange-100">Cập nhật các tin tức và thông báo mới nhất từ Nhà trường</p>
+          <p className="text-[#152238]/70">Cập nhật các tin tức và thông báo mới nhất từ Nhà trường</p>
         </div>
         <Megaphone className="absolute -right-6 -bottom-6 w-32 h-32 text-white opacity-10 transform -rotate-12" />
       </div>
@@ -58,48 +58,48 @@ function StudentAnnouncements({ user }) {
             <motion.div 
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
               key={item.MaThongBao} 
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow relative overflow-hidden group"
+              className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] p-5 hover:shadow-md transition-shadow relative overflow-hidden group"
             >
               {/* Vạch màu chỉ định loại thông báo */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${item.PhamVi === 'Toàn trường' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${item.PhamVi === 'Toàn trường' ? 'bg-[#F4C542]' : 'bg-[#3B82F6]/100'}`}></div>
               
               <div className="pl-3">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
-                  <h3 className="text-xl font-bold text-gray-800 flex-1 group-hover:text-orange-600 transition-colors">
+                  <h3 className="text-xl font-bold text-[#1F2937] flex-1 group-hover:text-[#F4C542] transition-colors">
                     {item.TieuDe}
                   </h3>
                   
                   {/* Nhãn phạm vi */}
-                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold w-fit sm:flex-shrink-0 ${item.PhamVi === 'Toàn trường' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold w-fit sm:flex-shrink-0 ${item.PhamVi === 'Toàn trường' ? 'bg-[#F4C542]/20 text-[#B45309]' : 'bg-blue-100 text-blue-700'}`}>
                     {item.PhamVi === 'Toàn trường' ? <Megaphone className="w-3.5 h-3.5"/> : <Users className="w-3.5 h-3.5"/>}
                     {item.PhamVi}
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-500 mb-4 bg-gray-50 w-fit px-3 py-1.5 rounded-lg border border-gray-100">
+                <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-[#6B7280] mb-4 bg-[#F7F8FA] w-fit px-3 py-1.5 rounded-lg border border-[#E5E7EB]">
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <Calendar className="w-4 h-4 text-gray-300" />
                     {formatDate(item.NgayTao)}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Pin className="w-4 h-4 text-gray-400" />
+                    <Pin className="w-4 h-4 text-gray-300" />
                     Người đăng: {item.NguoiTaoTen || 'Admin'}
                   </span>
                 </div>
 
-                <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap bg-gray-50/50 p-4 rounded-xl border border-gray-50">
+                <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap bg-[#F7F8FA]/50 p-4 rounded-xl border border-gray-50">
                   {item.NoiDung}
                 </div>
               </div>
             </motion.div>
           ))
         ) : (
-          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="text-center py-16 bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm">
+            <div className="w-20 h-20 bg-[#F7F8FA] rounded-full flex items-center justify-center mx-auto mb-4">
               <Bell className="w-10 h-10 text-gray-300" />
             </div>
             <h3 className="text-lg font-bold text-gray-700 mb-2">Chưa có thông báo nào</h3>
-            <p className="text-gray-500">Hiện tại không có thông báo mới nào dành cho bạn.</p>
+            <p className="text-[#6B7280]">Hiện tại không có thông báo mới nào dành cho bạn.</p>
           </div>
         )}
       </div>

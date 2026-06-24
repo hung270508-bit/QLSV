@@ -306,17 +306,17 @@ function FacultyManagement() {
       {/* Header Section */}
       <motion.div
         initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6"
+        className="bg-[#F4C542] rounded-3xl p-8 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6"
       >
         <div className="flex items-center gap-5 relative z-10">
-          <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-sm">
-            <Building2 className="w-10 h-10 text-white" />
+          <div className="p-4 bg-white/40 rounded-2xl backdrop-blur-sm">
+            <Building2 className="w-10 h-10 text-[#152238]" />
           </div>
           <div>
-            <h2 className="text-3xl font-bold text-white mb-1">
+            <h2 className="text-3xl font-bold text-[#152238] mb-1">
               Quản lý khoa
             </h2>
-            <p className="text-orange-100 text-lg">Thêm, sửa thông tin khoa</p>
+            <p className="text-[#152238]/70 text-lg">Thêm, sửa thông tin khoa</p>
           </div>
         </div>
         <div className="relative z-10">
@@ -324,7 +324,7 @@ function FacultyManagement() {
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+            className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
           >
             <Plus className="w-5 h-5" />
             Thêm khoa
@@ -334,10 +334,10 @@ function FacultyManagement() {
       </motion.div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-300 w-5 h-5" />
             <input
               type="text"
               placeholder="Tìm kiếm theo tên hoặc mã khoa..."
@@ -347,12 +347,12 @@ function FacultyManagement() {
                 if (e.key === 'Escape') handleClearSearch();
                 if (e.key === 'Enter') setDebouncedSearchTerm(searchTerm); // FIX TC_18: Phím Enter tìm ngay
               }}
-              className="w-full pl-11 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all text-gray-700 font-medium placeholder:text-gray-400 placeholder:font-semibold"
+              className="w-full pl-11 pr-10 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 transition-all text-gray-700 font-medium placeholder:text-gray-300 placeholder:font-semibold"
             />
             {searchTerm && (
               <button
                 onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-[#6B7280] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -365,14 +365,14 @@ function FacultyManagement() {
               onClick={() => setShowFilters(!showFilters)}
               className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
                 hasActiveFilters
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
-                  : 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100'
+                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30'
+                  : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
                 }`}
             >
               <Filter className="w-4 h-4" />
               Bộ lọc
               {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-[#EF4444]/100 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -382,7 +382,7 @@ function FacultyManagement() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={clearFilters}
-                className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-100"
+                className="px-5 py-2.5 bg-red-100 text-[#DC2626] rounded-xl font-medium hover:bg-red-200 transition-colors flex items-center gap-2 border border-red-200"
               >
                 <XCircle className="w-4 h-4" />
                 Xóa lọc
@@ -395,7 +395,7 @@ function FacultyManagement() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+            className="bg-[#FFF7D6]/50 border border-[#FFF7D6] rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
           >
             {/* Box Sắp xếp */}
             <div className="grid grid-cols-1 gap-4">
@@ -404,7 +404,7 @@ function FacultyManagement() {
                 <select
                   value={displaySortBy}
                   onChange={(e) => setDisplaySortBy(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
                 >
                   <option value="default">Mặc định</option>
                   <option value="asc">Từ A - Z</option>
@@ -418,7 +418,7 @@ function FacultyManagement() {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 onClick={handleApplyFilters}
-                className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
+                className="flex-1 bg-[#F4C542] text-[#152238] py-2.5 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm"
               >
                 Áp dụng bộ lọc
               </motion.button>
@@ -438,10 +438,10 @@ function FacultyManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50/80 to-orange-100/60 border-b border-orange-100">
+            <thead className="bg-gradient-to-r from-orange-50/80 to-orange-100/60 border-b border-[#FFF7D6]">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã khoa</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên khoa</th>
@@ -456,14 +456,14 @@ function FacultyManagement() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-gray-50 hover:bg-orange-50/20 transition-colors cursor-pointer"
+                    className="border-b border-gray-50 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer"
                     onClick={() => handleViewDetails(faculty)}
                   >
                     <td className="py-5 px-6">
-                      <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{faculty.MaKhoa}</span>
+                      <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{faculty.MaKhoa}</span>
                     </td>
                     <td className="py-5 px-6">
-                      <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{faculty.TenKhoa}</span>
+                      <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{faculty.TenKhoa}</span>
                     </td>
                     <td className="py-5 px-6">
                       <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
@@ -471,7 +471,7 @@ function FacultyManagement() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(faculty)}
-                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
@@ -483,7 +483,7 @@ function FacultyManagement() {
               ) : (
                 <tr>
                   <td colSpan="3" className="py-16">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center text-gray-300">
                       <Building2 className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy khoa nào</p>
                       <p className="text-sm mt-2">Thử tìm kiếm với từ khóa khác</p>
@@ -509,19 +509,19 @@ function FacultyManagement() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="bg-[#FFFFFF] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+              <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center flex-shrink-0">
                 <div className="text-white">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <Building2 className="w-5 h-5" />
                     {editingFaculty ? 'Cập nhật khoa' : 'Thêm khoa mới'}
                   </h3>
-                  <p className="text-orange-100 text-sm mt-0.5">
+                  <p className="text-[#152238]/70 text-sm mt-0.5">
                     {editingFaculty ? 'Chỉnh sửa thông tin khoa' : 'Tạo khoa mới trong hệ thống'}
                   </p>
                 </div>
-                <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                <button onClick={handleCloseModal} className="p-2 hover:bg-white/40 rounded-lg text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -554,12 +554,12 @@ function FacultyManagement() {
                     }}
                     className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${errors.TenKhoa
                         ? 'border-red-500'
-                        : 'border-gray-200 focus:border-orange-500'
+                        : 'border-[#E5E7EB] focus:border-[#F4C542]'
                       }`}
                   />
 
                   {errors.TenKhoa && (
-                    <p className="mt-2 text-sm text-red-500 font-medium">
+                    <p className="mt-2 text-sm text-[#EF4444] font-medium">
                       {errors.TenKhoa}
                     </p>
                   )}
@@ -576,7 +576,7 @@ function FacultyManagement() {
                   <button
                     type="button"
                     onClick={validateAndConfirm}
-                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                    className="flex-1 py-3 bg-[#F4C542] text-[#152238] font-semibold rounded-xl shadow-lg"
                   >
                     {editingFaculty ? 'Lưu thay đổi' : 'Thêm khoa'}
                   </button>
@@ -594,10 +594,10 @@ function FacultyManagement() {
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+              className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-sm shadow-2xl"
             >
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Xác nhận</h3>
-              <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn {editingFaculty ? 'cập nhật' : 'thêm'} khoa <strong className="text-orange-600">{formData.TenKhoa}</strong> không?</p>
+              <h3 className="text-xl font-bold text-[#1F2937] mb-2">Xác nhận</h3>
+              <p className="text-[#6B7280] mb-6">Bạn có chắc chắn muốn {editingFaculty ? 'cập nhật' : 'thêm'} khoa <strong className="text-[#F4C542]">{formData.TenKhoa}</strong> không?</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmModal(false)}
@@ -607,7 +607,7 @@ function FacultyManagement() {
                 </button>
                 <button
                   onClick={executeSubmit}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg"
+                  className="flex-1 px-4 py-2 bg-[#F4C542] text-[#152238] rounded-xl font-semibold hover:bg-[#F4C542]/90 shadow-lg"
                 >
                   Có
                 </button>
@@ -626,13 +626,13 @@ function FacultyManagement() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
+              className="bg-[#FFFFFF] rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+              <div className="bg-[#F4C542] px-8 py-6 flex-shrink-0">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <div className="bg-[#FFFFFF]/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
                       {(selectedFaculty.TenKhoa || 'KH')
                         .split(' ')
                         .map(w => w[0])
@@ -642,13 +642,13 @@ function FacultyManagement() {
                         .toUpperCase()}
                     </div>
                     <div>
-                      <span className="text-orange-100 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="text-[#152238]/70 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
                         <Building2 className="w-4 h-4" />
                         Chi tiết khoa
                       </span>
                       <h2 className="text-2xl font-bold text-white mt-1">{selectedFaculty.TenKhoa}</h2>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{selectedFaculty.MaKhoa}</span>
+                        <span className="bg-white/40 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{selectedFaculty.MaKhoa}</span>
                       </div>
                     </div>
                   </div>
@@ -656,7 +656,7 @@ function FacultyManagement() {
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={handleCloseDetailModal}
-                    className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                    className="bg-white/40 hover:bg-[#FFFFFF]/30 rounded-xl p-2 transition-colors"
                   >
                     <X className="w-5 h-5 text-white" />
                   </motion.button>
@@ -676,14 +676,14 @@ function FacultyManagement() {
                         key={tab.id}
                         onClick={() => setDetailTab(tab.id)}
                         className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all z-10 ${detailTab === tab.id
-                            ? 'text-orange-600'
-                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                            ? 'text-[#F4C542]'
+                            : 'text-white/70 hover:text-white hover:bg-[#FFFFFF]/10'
                           }`}
                       >
                         {detailTab === tab.id && (
                           <motion.div
                             layoutId="activeDetailTab"
-                            className="absolute inset-0 bg-white rounded-xl shadow-md -z-10"
+                            className="absolute inset-0 bg-[#FFFFFF] rounded-xl shadow-md -z-10"
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                           />
                         )}
@@ -699,7 +699,7 @@ function FacultyManagement() {
               <div className="flex-1 overflow-y-auto p-6">
                 {detailTab === 'teachers' && (
                   <div>
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-4">
                       Danh sách giảng viên ({facultyTeachers.length})
                     </h4>
                     {facultyTeachers.length > 0 ? (
@@ -711,20 +711,20 @@ function FacultyManagement() {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.06 }}
                             whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
-                            className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all duration-300"
+                            className="flex items-center gap-3 bg-[#F7F8FA] rounded-xl p-4 border border-[#E5E7EB] hover:border-[#F4C542]/30 hover:bg-[#FFF7D6]/30 transition-all duration-300"
                           >
-                            <div className="bg-orange-100 rounded-xl p-2 flex-shrink-0">
-                              <UserCheck className="w-5 h-5 text-orange-600" />
+                            <div className="bg-[#FFF7D6] rounded-xl p-2 flex-shrink-0">
+                              <UserCheck className="w-5 h-5 text-[#F4C542]" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-gray-800 text-sm truncate">{teacher.HoTen}</div>
-                              <div className="text-xs text-gray-500">{teacher.MaGiangVien}</div>
+                              <div className="font-semibold text-[#1F2937] text-sm truncate">{teacher.HoTen}</div>
+                              <div className="text-xs text-[#6B7280]">{teacher.MaGiangVien}</div>
                             </div>
                           </motion.div>
                         ))}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-300">
                         <Users className="w-14 h-14 mb-3 text-gray-200" />
                         <p className="font-medium">Chưa có giảng viên nào</p>
                       </div>
@@ -734,18 +734,18 @@ function FacultyManagement() {
 
                 {detailTab === 'students' && (
                   <div>
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-4">
                       Danh sách sinh viên ({facultyStudents.length})
                     </h4>
                     {facultyStudents.length > 0 ? (
-                      <div className="overflow-x-auto rounded-2xl border border-orange-100">
+                      <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
                         <table className="w-full">
                           <thead>
                             <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">MSSV</th>
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Họ tên</th>
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">MSSV</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Họ tên</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Giới tính</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Lớp</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -755,24 +755,24 @@ function FacultyManagement() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: index * 0.03 }}
-                                className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                                className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
                               >
-                                <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{student.MSSV}</td>
-                                <td className="py-3.5 px-5 text-sm text-gray-600">{student.HoTen}</td>
+                                <td className="py-3.5 px-5 font-semibold text-[#1F2937] text-sm">{student.MSSV}</td>
+                                <td className="py-3.5 px-5 text-sm text-[#6B7280]">{student.HoTen}</td>
                                 <td className="py-3.5 px-5">
                                   <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${student.GioiTinh === 'Nam' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
                                     }}`}>
                                     {student.GioiTinh || '—'}
                                   </span>
                                 </td>
-                                <td className="py-3.5 px-5 text-sm text-gray-600">{student.TenLop || '—'}</td>
+                                <td className="py-3.5 px-5 text-sm text-[#6B7280]">{student.TenLop || '—'}</td>
                               </motion.tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-300">
                         <GraduationCap className="w-14 h-14 mb-3 text-gray-200" />
                         <p className="font-medium">Chưa có sinh viên nào</p>
                       </div>
@@ -782,17 +782,17 @@ function FacultyManagement() {
 
                 {detailTab === 'classes' && (
                   <div>
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-4">
                       Danh sách lớp học ({facultyClasses.length})
                     </h4>
                     {facultyClasses.length > 0 ? (
-                      <div className="overflow-x-auto rounded-2xl border border-orange-100">
+                      <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
                         <table className="w-full">
                           <thead>
                             <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Mã lớp</th>
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Tên lớp</th>
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Số sinh viên</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Mã lớp</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Tên lớp</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Số sinh viên</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -802,12 +802,12 @@ function FacultyManagement() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: index * 0.03 }}
-                                className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                                className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
                               >
-                                <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{cls.MaLop}</td>
-                                <td className="py-3.5 px-5 text-sm text-gray-600">{cls.TenLop}</td>
+                                <td className="py-3.5 px-5 font-semibold text-[#1F2937] text-sm">{cls.MaLop}</td>
+                                <td className="py-3.5 px-5 text-sm text-[#6B7280]">{cls.TenLop}</td>
                                 <td className="py-3.5 px-5">
-                                  <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-md font-bold text-sm">{cls.SoSinhVien || 0} SV</span>
+                                  <span className="bg-[#F4C542]/20 text-[#B45309] px-2.5 py-1 rounded-md font-bold text-sm">{cls.SoSinhVien || 0} SV</span>
                                 </td>
                               </motion.tr>
                             ))}
@@ -815,7 +815,7 @@ function FacultyManagement() {
                         </table>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-300">
                         <BookOpen className="w-14 h-14 mb-3 text-gray-200" />
                         <p className="font-medium">Chưa có lớp nào</p>
                       </div>
@@ -834,8 +834,8 @@ function FacultyManagement() {
                       ].map((card, i) => {
                         const Icon = card.icon;
                         const colorMap = {
-                          blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
-                          green: 'bg-green-50 text-green-600 border-green-100 hover:border-green-300 hover:bg-green-100/30',
+                          blue: 'bg-[#3B82F6]/10 text-[#3B82F6] border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
+                          green: 'bg-[#22C55E]/10 text-[#22C55E] border-green-100 hover:border-green-300 hover:bg-[#22C55E]/20/30',
                           purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
                         };
                         return (
@@ -849,7 +849,7 @@ function FacultyManagement() {
                           >
                             <div className="flex justify-between items-start">
                               <div className="text-3xl font-bold font-mono tracking-tight">{card.value}</div>
-                              <div className="p-2 bg-white rounded-xl shadow-sm">
+                              <div className="p-2 bg-[#FFFFFF] rounded-xl shadow-sm">
                                 <Icon className="w-5 h-5 opacity-90" />
                               </div>
                             </div>
@@ -860,10 +860,10 @@ function FacultyManagement() {
                     </div>
 
                     {/* Summary card */}
-                    <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-center text-white">
+                    <div className="bg-gradient-to-br from-[#F4C542] to-[#F4C542]/90 rounded-2xl p-6 text-center text-white">
                       <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
                       <div className="text-5xl font-bold mb-1">{facultyStats.totalStudents > 0 ? Math.round(facultyStats.totalTeachers / facultyStats.totalStudents * 10) / 10 : 0}</div>
-                      <div className="text-orange-100 font-medium">Tỷ lệ giảng viên/sinh viên</div>
+                      <div className="text-[#152238]/70 font-medium">Tỷ lệ giảng viên/sinh viên</div>
                       <div className="text-orange-200 text-sm mt-1">Trung bình mỗi giảng viên phụ trách {facultyStats.totalTeachers > 0 ? Math.round(facultyStats.totalStudents / facultyStats.totalTeachers) : 0} sinh viên</div>
                     </div>
                   </div>

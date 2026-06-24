@@ -102,6 +102,28 @@ db.getConnection((err, connection) => {
         }
     });
 
+    const createYCHTTable = `
+        CREATE TABLE IF NOT EXISTS yeucau_hotro (
+            MaYeuCau INT AUTO_INCREMENT PRIMARY KEY,
+            MSSV VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+            MaGiangVien VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+            LoaiYeuCau VARCHAR(100) NOT NULL,
+            ChuDe VARCHAR(255) NOT NULL,
+            NoiDung TEXT NOT NULL,
+            NgayGui DATETIME NOT NULL,
+            TrangThai VARCHAR(50) NOT NULL,
+            PhanHoi TEXT NULL,
+            NgayPhanHoi DATETIME NULL,
+            FOREIGN KEY (MSSV) REFERENCES sinhvien(MSSV) ON DELETE CASCADE,
+            FOREIGN KEY (MaGiangVien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+    connection.query(createYCHTTable, (errYCHT) => {
+        if (errYCHT) {
+            console.error('Lỗi tự động tạo bảng yeucau_hotro:', errYCHT);
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);

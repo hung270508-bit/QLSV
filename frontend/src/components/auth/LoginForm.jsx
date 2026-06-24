@@ -133,19 +133,19 @@ const LoginForm = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -30 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl shadow-orange-200/50 border border-orange-100 relative z-10"
+          className="bg-[#FFFFFF] w-full max-w-md p-8 rounded-3xl shadow-2xl shadow-[#F4C542]/30/50 border border-[#FFF7D6] relative z-10"
         >
           <div className="text-center mb-8">
             <motion.div 
               initial={{ scale: 0.8, rotate: -10 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
-              className="inline-flex p-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl text-white mb-4 shadow-xl shadow-orange-300"
+              className="inline-flex p-4 bg-gradient-to-br from-[#F4C542] to-[#F4C542]/90 rounded-3xl text-white mb-4 shadow-xl shadow-orange-300"
             >
               <School className="w-10 h-10" />
             </motion.div>
-            <h2 className="text-3xl font-bold text-gray-800">Hệ Thống Quản Lý</h2>
-            <p className="text-gray-400 text-sm mt-2">Vui lòng đăng nhập để tiếp tục</p>
+            <h2 className="text-3xl font-bold text-[#1F2937]">Hệ Thống Quản Lý</h2>
+            <p className="text-gray-300 text-sm mt-2">Vui lòng đăng nhập để tiếp tục</p>
           </div>
 
           {message.text && (
@@ -153,9 +153,9 @@ const LoginForm = ({
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               className={`p-4 rounded-xl text-sm mb-6 text-center font-medium ${
-                message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 
-                message.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
-                'bg-blue-50 text-blue-600 border border-blue-200'
+                message.type === 'success' ? 'bg-[#22C55E]/10 text-[#22C55E] border border-green-200' : 
+                message.type === 'error' ? 'bg-red-100 text-[#DC2626] border border-red-200' :
+                'bg-[#3B82F6]/10 text-[#3B82F6] border border-blue-200'
               }`}
             >
               {message.text}
@@ -172,12 +172,12 @@ const LoginForm = ({
                 <div className="flex items-center gap-1.5 mb-2">
                   <label className="text-sm font-semibold text-gray-700">Mã số tài khoản</label>
                   <div className="relative group/tooltip">
-                    <Info className="w-4 h-4 text-gray-400 hover:text-orange-500 cursor-help transition-colors" />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-white/95 backdrop-blur-sm text-slate-800 text-[11px] rounded-xl shadow-xl border border-orange-100 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-30 pointer-events-none text-left font-normal leading-relaxed">
-                      <p className="font-semibold text-orange-600 mb-1">Quy định mã số:</p>
+                    <Info className="w-4 h-4 text-gray-300 hover:text-[#F4C542] cursor-help transition-colors" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-[#FFFFFF]/95 backdrop-blur-sm text-slate-800 text-[11px] rounded-xl shadow-xl border border-[#FFF7D6] opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-30 pointer-events-none text-left font-normal leading-relaxed">
+                      <p className="font-semibold text-[#F4C542] mb-1">Quy định mã số:</p>
                       <ul className="list-disc pl-3.5 space-y-0.5 text-slate-600">
-                        <li>MSSV (ví dụ: <code className="text-orange-600 bg-orange-50 px-1 py-0.5 rounded font-mono border border-orange-100/50">20012345</code>)</li>
-                        <li>Mã GV (ví dụ: <code className="text-orange-600 bg-orange-50 px-1 py-0.5 rounded font-mono border border-orange-100/50">GV012</code>)</li>
+                        <li>MSSV (ví dụ: <code className="text-[#F4C542] bg-[#FFF7D6] px-1 py-0.5 rounded font-mono border border-[#FFF7D6]/50">20012345</code>)</li>
+                        <li>Mã GV (ví dụ: <code className="text-[#F4C542] bg-[#FFF7D6] px-1 py-0.5 rounded font-mono border border-[#FFF7D6]/50">GV012</code>)</li>
                         <li>Chỉ chứa chữ cái không dấu và số</li>
                         <li>Độ dài từ 3 đến 20 ký tự</li>
                       </ul>
@@ -187,7 +187,7 @@ const LoginForm = ({
                 </div>
                 <div className="relative group">
                   <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
-                    errors.username ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
+                    errors.username ? 'text-red-400' : 'text-gray-300 group-focus-within:text-[#F4C542]'
                   }`}>
                     <User className="w-5 h-5" />
                   </div>
@@ -207,10 +207,10 @@ const LoginForm = ({
                     }}
                     onBlur={() => setUsername(username.trim())}
                     onFocus={() => savedAccounts.length > 0 && setShowAccountList(true)}
-                    className={`w-full pl-12 pr-10 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
+                    className={`w-full pl-12 pr-10 py-3.5 bg-[#F7F8FA] border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       errors.username
-                        ? 'border-red-300 focus:border-red-500 focus:bg-white'
-                        : 'border-gray-200 focus:border-orange-500 focus:bg-white group-hover:border-gray-300'
+                        ? 'border-red-300 focus:border-red-500 focus:bg-[#FFFFFF]'
+                        : 'border-[#E5E7EB] focus:border-[#F4C542] focus:bg-[#FFFFFF] group-hover:border-gray-300'
                     }`}
                     placeholder="Nhập MSSV hoặc Mã GV..."
                   />
@@ -218,7 +218,7 @@ const LoginForm = ({
                     <button
                       type="button"
                       onClick={() => setShowAccountList(!showAccountList)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-300 hover:text-[#6B7280] transition-colors"
                     >
                       <ChevronDown className={`w-5 h-5 transition-transform ${showAccountList ? 'rotate-180' : ''}`} />
                     </button>
@@ -228,27 +228,27 @@ const LoginForm = ({
                     <motion.div
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute left-0 right-0 mt-2 bg-white border-2 border-orange-100 rounded-2xl shadow-xl z-20 overflow-hidden"
+                      className="absolute left-0 right-0 mt-2 bg-[#FFFFFF] border-2 border-[#FFF7D6] rounded-2xl shadow-xl z-20 overflow-hidden"
                     >
                       {savedAccounts.map((acc) => (
                         <div
                           key={acc.username}
                           onClick={() => handleSelectAccountLocal(acc)}
-                          className="flex items-center justify-between gap-2 px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
+                          className="flex items-center justify-between gap-2 px-4 py-3 hover:bg-[#FFF7D6] cursor-pointer transition-colors border-b border-gray-50 last:border-0"
                         >
                           <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0">
+                            <div className="w-9 h-9 rounded-full bg-[#F4C542]/20 text-[#B45309] flex items-center justify-center flex-shrink-0">
                               <User className="w-4 h-4" />
                             </div>
                             <div className="text-left overflow-hidden">
                               <div className="font-semibold text-gray-700 text-sm truncate">{acc.username}</div>
-                              <div className="text-xs text-gray-400 truncate">{acc.tenQuyen || acc.role || 'Tài khoản'}</div>
+                              <div className="text-xs text-gray-300 truncate">{acc.tenQuyen || acc.role || 'Tài khoản'}</div>
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={(e) => handleRemoveAccount(e, acc.username)}
-                            className="p-1.5 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                            className="p-1.5 rounded-full text-gray-300 hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors flex-shrink-0"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -261,7 +261,7 @@ const LoginForm = ({
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                    className="text-[#EF4444] text-xs mt-1.5 ml-2 font-medium"
                   >
                     {errors.username}
                   </motion.p>
@@ -276,9 +276,9 @@ const LoginForm = ({
                 <div className="flex items-center gap-1.5 mb-2">
                   <label className="text-sm font-semibold text-gray-700">Mật khẩu</label>
                   <div className="relative group/tooltip">
-                    <Info className="w-4 h-4 text-gray-400 hover:text-orange-500 cursor-help transition-colors" />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-white/95 backdrop-blur-sm text-slate-800 text-[11px] rounded-xl shadow-xl border border-orange-100 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-30 pointer-events-none text-left font-normal leading-relaxed">
-                      <p className="font-semibold text-orange-600 mb-1">Quy định mật khẩu:</p>
+                    <Info className="w-4 h-4 text-gray-300 hover:text-[#F4C542] cursor-help transition-colors" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-[#FFFFFF]/95 backdrop-blur-sm text-slate-800 text-[11px] rounded-xl shadow-xl border border-[#FFF7D6] opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-30 pointer-events-none text-left font-normal leading-relaxed">
+                      <p className="font-semibold text-[#F4C542] mb-1">Quy định mật khẩu:</p>
                       <ul className="list-disc pl-3.5 space-y-0.5 text-slate-600">
                         <li>Độ dài tối đa 20 ký tự</li>
                         <li>Không chứa khoảng trắng đầu/cuối</li>
@@ -289,7 +289,7 @@ const LoginForm = ({
                 </div>
                 <div className="relative group">
                   <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
-                    errors.password ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
+                    errors.password ? 'text-red-400' : 'text-gray-300 group-focus-within:text-[#F4C542]'
                   }`}>
                     <Lock className="w-5 h-5" />
                   </div>
@@ -308,10 +308,10 @@ const LoginForm = ({
                       if (message?.text) setMessage({ type: '', text: '' });
                     }}
                     onBlur={() => setPassword(password.trim())}
-                    className={`w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
+                    className={`w-full pl-12 pr-12 py-3.5 bg-[#F7F8FA] border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       errors.password
-                        ? 'border-red-300 focus:border-red-500 focus:bg-white'
-                        : 'border-gray-200 focus:border-orange-500 focus:bg-white group-hover:border-gray-300'
+                        ? 'border-red-300 focus:border-red-500 focus:bg-[#FFFFFF]'
+                        : 'border-[#E5E7EB] focus:border-[#F4C542] focus:bg-[#FFFFFF] group-hover:border-gray-300'
                     }`}
                     placeholder="Nhập mật khẩu..."
                   />
@@ -320,10 +320,10 @@ const LoginForm = ({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors group/eye"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-300 hover:text-[#6B7280] transition-colors group/eye"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    <span className="absolute bottom-full right-0 mb-2 whitespace-nowrap bg-white/95 backdrop-blur-sm text-slate-800 text-[10px] py-1 px-2.5 rounded-lg shadow-xl border border-orange-100 opacity-0 invisible group-hover/eye:opacity-100 group-hover/eye:visible transition-all duration-200 pointer-events-none font-semibold z-30">
+                    <span className="absolute bottom-full right-0 mb-2 whitespace-nowrap bg-[#FFFFFF]/95 backdrop-blur-sm text-slate-800 text-[10px] py-1 px-2.5 rounded-lg shadow-xl border border-[#FFF7D6] opacity-0 invisible group-hover/eye:opacity-100 group-hover/eye:visible transition-all duration-200 pointer-events-none font-semibold z-30">
                       {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                       <span className="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-white" />
                     </span>
@@ -333,7 +333,7 @@ const LoginForm = ({
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                    className="text-[#EF4444] text-xs mt-1.5 ml-2 font-medium"
                   >
                     {errors.password}
                   </motion.p>
@@ -346,15 +346,15 @@ const LoginForm = ({
                 transition={{ delay: 0.3 }}
                 className="flex items-center justify-between"
               >
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none relative group/checkbox-tooltip">
+                <label className="flex items-center gap-2 text-sm font-medium text-[#6B7280] cursor-pointer select-none relative group/checkbox-tooltip">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400 cursor-pointer"
+                    className="w-4 h-4 rounded border-gray-300 text-[#F4C542] focus:ring-orange-400 cursor-pointer"
                   />
                   <span>Lưu thông tin đăng nhập</span>
-                  <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-white/95 backdrop-blur-sm text-slate-700 text-[10px] rounded-lg shadow-xl border border-orange-100 opacity-0 invisible group-hover/checkbox-tooltip:opacity-100 group-hover/checkbox-tooltip:visible transition-all duration-200 z-30 pointer-events-none font-normal leading-normal">
+                  <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-[#FFFFFF]/95 backdrop-blur-sm text-slate-700 text-[10px] rounded-lg shadow-xl border border-[#FFF7D6] opacity-0 invisible group-hover/checkbox-tooltip:opacity-100 group-hover/checkbox-tooltip:visible transition-all duration-200 z-30 pointer-events-none font-normal leading-normal">
                     Lưu tên đăng nhập và mật khẩu trên thiết bị này để tự động điền vào lần sau.
                     <div className="absolute top-full left-6 -mt-1 border-4 border-transparent border-t-white" />
                   </div>
@@ -366,7 +366,7 @@ const LoginForm = ({
                   onClick={() => {
                     setShowForgotPassword(true);
                   }}
-                  className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors"
+                  className="text-sm font-semibold text-[#F4C542] hover:text-[#F4C542] transition-colors"
                 >
                   Quên mật khẩu?
                 </motion.button>
@@ -380,7 +380,7 @@ const LoginForm = ({
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-300 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-300 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -413,7 +413,7 @@ const LoginForm = ({
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                 <div className="relative group">
                   <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${
-                    forgotEmailError ? 'text-red-400' : 'text-gray-400 group-focus-within:text-orange-500'
+                    forgotEmailError ? 'text-red-400' : 'text-gray-300 group-focus-within:text-[#F4C542]'
                   }`}>
                     <Mail className="w-5 h-5" />
                   </div>
@@ -426,10 +426,10 @@ const LoginForm = ({
                       if (message?.text) setMessage({ type: '', text: '' });
                     }}
                     onBlur={() => setForgotEmail(forgotEmail.trim())}
-                    className={`w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
+                    className={`w-full pl-12 pr-4 py-3.5 bg-[#F7F8FA] border-2 rounded-2xl focus:outline-none transition-all duration-300 text-gray-700 ${
                       forgotEmailError
-                        ? 'border-red-300 focus:border-red-500 focus:bg-white'
-                        : 'border-gray-200 focus:border-orange-500 focus:bg-white group-hover:border-gray-300'
+                        ? 'border-red-300 focus:border-red-500 focus:bg-[#FFFFFF]'
+                        : 'border-[#E5E7EB] focus:border-[#F4C542] focus:bg-[#FFFFFF] group-hover:border-gray-300'
                     }`}
                     placeholder="email@example.com"
                   />
@@ -438,7 +438,7 @@ const LoginForm = ({
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-500 text-xs mt-1.5 ml-2 font-medium"
+                    className="text-[#EF4444] text-xs mt-1.5 ml-2 font-medium"
                   >
                     {forgotEmailError}
                   </motion.p>
@@ -453,7 +453,7 @@ const LoginForm = ({
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={forgotLoading}
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-300 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-300 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {forgotLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -472,7 +472,7 @@ const LoginForm = ({
                 onClick={() => {
                   setShowForgotPassword(false);
                 }}
-                className="w-full py-3 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors"
+                className="w-full py-3 text-sm font-semibold text-[#6B7280] hover:text-[#1F2937] transition-colors"
               >
                 ← Quay lại đăng nhập
               </motion.button>

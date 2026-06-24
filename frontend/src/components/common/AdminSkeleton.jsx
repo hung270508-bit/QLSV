@@ -17,12 +17,12 @@ export function TableSkeleton({ columns = 5, rows = 6, accentColor = 'orange' })
     <div className="space-y-8 animate-pulse">
       {/* Header Banner */}
       <div className={`${gradientClass} rounded-2xl p-8 h-28`}>
-        <Bone className="h-7 w-64 mb-3 !bg-white/40" />
-        <Bone className="h-4 w-96 !bg-white/30" />
+        <Bone className="h-7 w-64 mb-3 !bg-[#FFFFFF]/40" />
+        <Bone className="h-4 w-96 !bg-[#FFFFFF]/30" />
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-lg border border-[#E5E7EB] p-6">
         <div className="flex gap-4">
           <Bone className="flex-1 h-12" />
           <Bone className="w-32 h-12" />
@@ -30,11 +30,11 @@ export function TableSkeleton({ columns = 5, rows = 6, accentColor = 'orange' })
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
         {/* Table Header */}
         <div className={`${gradientClass} px-6 py-5 flex gap-6`}>
           {[...Array(columns)].map((_, i) => (
-            <Bone key={i} className="h-4 flex-1 !bg-white/40 !rounded-md" />
+            <Bone key={i} className="h-4 flex-1 !bg-[#FFFFFF]/40 !rounded-md" />
           ))}
         </div>
         {/* Table Rows */}
@@ -63,12 +63,12 @@ export function GradeSkeleton() {
     <div className="space-y-6 animate-pulse">
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-200 to-orange-100 rounded-2xl p-8 h-28">
-        <Bone className="h-7 w-72 mb-3 !bg-white/40" />
-        <Bone className="h-4 w-80 !bg-white/30" />
+        <Bone className="h-7 w-72 mb-3 !bg-[#FFFFFF]/40" />
+        <Bone className="h-4 w-80 !bg-[#FFFFFF]/30" />
       </div>
 
       {/* Selector Row */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-lg border border-[#E5E7EB] p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Bone className="h-12" />
           <Bone className="h-12" />
@@ -77,10 +77,10 @@ export function GradeSkeleton() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
         <div className="bg-gradient-to-r from-orange-200 to-orange-100 px-6 py-5 flex gap-6">
           {[...Array(7)].map((_, i) => (
-            <Bone key={i} className="h-4 flex-1 !bg-white/40 !rounded-md" />
+            <Bone key={i} className="h-4 flex-1 !bg-[#FFFFFF]/40 !rounded-md" />
           ))}
         </div>
         <div className="divide-y divide-gray-100">
@@ -106,10 +106,10 @@ export function ScheduleSkeleton() {
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-200 to-orange-100 rounded-2xl p-8 h-28 flex items-center justify-between">
         <div>
-          <Bone className="h-7 w-56 mb-3 !bg-white/40" />
-          <Bone className="h-4 w-80 !bg-white/30" />
+          <Bone className="h-7 w-56 mb-3 !bg-[#FFFFFF]/40" />
+          <Bone className="h-4 w-80 !bg-[#FFFFFF]/30" />
         </div>
-        <Bone className="h-12 w-40 !bg-white/40" />
+        <Bone className="h-12 w-40 !bg-[#FFFFFF]/40" />
       </div>
 
       {/* Search */}
@@ -117,7 +117,7 @@ export function ScheduleSkeleton() {
 
       {/* Timeline cards */}
       {[...Array(3)].map((_, i) => (
-        <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <div key={i} className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl overflow-hidden shadow-sm">
           <div className="bg-gray-100 px-5 py-3 flex justify-between items-center">
             <Bone className="h-5 w-48" />
             <Bone className="h-6 w-20 !rounded-full" />
@@ -151,23 +151,23 @@ export function RequestsSkeleton() {
     <div className="max-w-7xl mx-auto space-y-5 animate-pulse">
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-200 to-orange-100 rounded-2xl p-6 flex items-center gap-4">
-        <Bone className="w-14 h-14 !rounded-xl !bg-white/40" />
+        <Bone className="w-14 h-14 !rounded-xl !bg-[#FFFFFF]/40" />
         <div className="flex-1">
-          <Bone className="h-6 w-56 mb-2 !bg-white/40" />
-          <Bone className="h-4 w-80 !bg-white/30" />
+          <Bone className="h-6 w-56 mb-2 !bg-[#FFFFFF]/40" />
+          <Bone className="h-4 w-80 !bg-[#FFFFFF]/30" />
         </div>
-        <Bone className="h-12 w-28 !rounded-xl !bg-white/30" />
+        <Bone className="h-12 w-28 !rounded-xl !bg-[#FFFFFF]/30" />
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-3">
+      <div className="bg-[#FFFFFF] p-4 rounded-2xl shadow-sm border border-[#E5E7EB] flex gap-3">
         <Bone className="h-10 w-48" />
         <Bone className="h-10 w-40" />
         <Bone className="h-10 w-40" />
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
         <div className="bg-gray-100 px-4 py-4 flex gap-6">
           {[...Array(6)].map((_, i) => (
             <Bone key={i} className="h-4 flex-1 !rounded-md" />
@@ -195,21 +195,21 @@ export function TrainingPointsSkeleton() {
     <div className="max-w-7xl mx-auto space-y-6 animate-pulse">
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-200 to-orange-100 rounded-3xl p-8 flex items-center gap-5">
-        <Bone className="w-18 h-18 !rounded-2xl !bg-white/40" />
+        <Bone className="w-18 h-18 !rounded-2xl !bg-[#FFFFFF]/40" />
         <div>
-          <Bone className="h-8 w-48 mb-2 !bg-white/40" />
-          <Bone className="h-5 w-72 !bg-white/30" />
+          <Bone className="h-8 w-48 mb-2 !bg-[#FFFFFF]/40" />
+          <Bone className="h-5 w-72 !bg-[#FFFFFF]/30" />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 w-fit">
+      <div className="flex bg-[#FFFFFF] rounded-2xl p-1.5 shadow-sm border border-[#E5E7EB] w-fit">
         <Bone className="h-10 w-56 !rounded-xl" />
         <Bone className="h-10 w-48 !rounded-xl ml-1" />
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
         <div className="bg-gray-100 px-4 py-4 flex gap-6">
           {[...Array(5)].map((_, i) => (
             <Bone key={i} className="h-4 flex-1 !rounded-md" />

@@ -565,10 +565,10 @@ function ScheduleManagement() {
       <AnimatePresence>
         {toast.show && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded border-l-4 shadow-xl ${toast.type === 'success' ? 'bg-white border-green-500' : 'bg-white border-red-500'}`}
+            className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded border-l-4 shadow-xl ${toast.type === 'success' ? 'bg-[#FFFFFF] border-green-500' : 'bg-[#FFFFFF] border-red-500'}`}
           >
-            {toast.type === 'success' ? <CheckCircle2 className="text-green-500 w-5 h-5" /> : <AlertCircle className="text-red-500 w-5 h-5" />}
-            <p className="font-bold text-sm text-gray-800">{toast.message}</p>
+            {toast.type === 'success' ? <CheckCircle2 className="text-[#22C55E] w-5 h-5" /> : <AlertCircle className="text-[#EF4444] w-5 h-5" />}
+            <p className="font-bold text-sm text-[#1F2937]">{toast.message}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -583,10 +583,10 @@ function ScheduleManagement() {
       />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        className="relative bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm z-10"
+        className="relative bg-[#FFFFFF] rounded-xl shadow-2xl p-6 w-full max-w-sm z-10"
       >
-        <h4 className="text-base font-bold text-gray-800 mb-2">{confirmDialog.title}</h4>
-        <p className="text-sm text-gray-600 mb-5">{confirmDialog.message}</p>
+        <h4 className="text-base font-bold text-[#1F2937] mb-2">{confirmDialog.title}</h4>
+        <p className="text-sm text-[#6B7280] mb-5">{confirmDialog.message}</p>
         <div className="flex gap-3 justify-end">
           <button
             onClick={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
@@ -596,7 +596,7 @@ function ScheduleManagement() {
           </button>
           <button
             onClick={() => confirmDialog.action && confirmDialog.action()}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600"
+            className="px-4 py-2 bg-[#F4C542] text-[#152238] rounded-lg text-sm font-bold hover:bg-[#F4C542]/90"
           >
             Xác nhận
           </button>
@@ -605,28 +605,28 @@ function ScheduleManagement() {
     </div>
   )}
 </AnimatePresence>
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl text-white flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl text-[#152238] flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="bg-white/20 p-3 rounded-full shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>
+          <div className="bg-white/40 p-3 rounded-full shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>
           <div>
             <h2 className="text-2xl font-bold">Quản lý lịch học</h2>
-            <p className="text-orange-100 text-sm mt-0.5">Xếp lịch giảng dạy linh hoạt theo tiết</p>
+            <p className="text-[#152238]/70 text-sm mt-0.5">Xếp lịch giảng dạy linh hoạt theo tiết</p>
           </div>
         </div>
         <button onClick={() => { handleCloseModal(); setShowModal(true); }}
-          className="bg-white text-orange-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:scale-105"
+          className="bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:scale-105"
         ><Plus className="w-5 h-5"/> Xếp lịch học</button>
       </div>
 
       <div className="flex flex-col md:flex-row items-center gap-4">
         <div className="relative w-full md:flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
           <input type="text" placeholder="Tìm kiếm mã lớp học phần, tên môn..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:border-orange-500 text-sm font-medium"
+            className="w-full pl-12 pr-4 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl shadow-sm outline-none focus:border-[#F4C542] text-sm font-medium"
           />
         </div>
         {selectedSchedules.length > 0 && (
-          <button onClick={handleDeleteSelected} className="w-full md:w-auto shrink-0 bg-red-50 text-red-600 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 border border-red-200 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+          <button onClick={handleDeleteSelected} className="w-full md:w-auto shrink-0 bg-red-100 text-[#DC2626] px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 border border-red-200 hover:bg-[#EF4444]/100 hover:text-white transition-all shadow-sm">
             <Trash2 className="w-5 h-5" /> Xóa {selectedSchedules.length} mục đã chọn
           </button>
         )}
@@ -634,10 +634,10 @@ function ScheduleManagement() {
 
       <div className="space-y-6">
         {groupedSchedules.length > 0 ? groupedSchedules.map(([date, items]) => (
-          <div key={date} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="font-bold text-gray-800 text-sm md:text-base">▼ {getDayAndDateStr(date)}</h3>
-              <span className="bg-orange-50 text-orange-600 text-xs font-bold px-3 py-1 rounded-full border border-orange-100">
+          <div key={date} className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-[#F7F8FA] px-5 py-3 border-b border-[#E5E7EB] flex justify-between items-center">
+              <h3 className="font-bold text-[#1F2937] text-sm md:text-base">▼ {getDayAndDateStr(date)}</h3>
+              <span className="bg-[#F4C542]/20 text-[#B45309] text-xs font-bold px-3 py-1 rounded-full border border-[#FFF7D6]">
                 {items.length} buổi học
               </span>
             </div>
@@ -646,7 +646,7 @@ function ScheduleManagement() {
                 const p = parsePeriods(s.CaHoc);
                 const soTietHienThi = s.SoTiet || (p.start > 0 ? (p.end - p.start + 1) : '?');
                 return (
-                <div key={s.MaLichHoc} className="p-4 flex flex-col md:flex-row items-center gap-4 hover:bg-gray-50/50 transition-colors">
+                <div key={s.MaLichHoc} className="p-4 flex flex-col md:flex-row items-center gap-4 hover:bg-[#F7F8FA]/50 transition-colors">
                   <div className="flex items-center justify-center w-full md:w-auto md:pl-2">
                     <input 
                       type="checkbox" 
@@ -655,38 +655,38 @@ function ScheduleManagement() {
                         if (e.target.checked) setSelectedSchedules(prev => [...prev, s.MaLichHoc]);
                         else setSelectedSchedules(prev => prev.filter(id => id !== s.MaLichHoc));
                       }}
-                      className="w-5 h-5 text-orange-500 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
+                      className="w-5 h-5 text-[#F4C542] rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
                     />
                   </div>
                   <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 items-center w-full">
                     <div className="col-span-2 md:col-span-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Thời gian ({soTietHienThi} tiết)</span>
-                      <span className="font-black text-orange-700 bg-orange-50 px-3 py-1 rounded-lg text-xs border border-orange-100 inline-block">
+                      <span className="text-[10px] font-bold text-gray-300 uppercase block mb-1">Thời gian ({soTietHienThi} tiết)</span>
+                      <span className="font-black text-[#F4C542] bg-[#FFF7D6] px-3 py-1 rounded-lg text-xs border border-[#FFF7D6] inline-block">
                         {formatCaHocToDisplay(s.CaHoc, s.SoTiet, sysConfig.periods)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Phòng</span>
-                      <span className="font-bold text-gray-800 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-red-500"/> P.{s.PhongHoc}</span>
+                      <span className="text-[10px] font-bold text-gray-300 uppercase block mb-0.5">Phòng</span>
+                      <span className="font-bold text-[#1F2937] flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-[#EF4444]"/> P.{s.PhongHoc}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Môn học</span>
-                      <span className="font-semibold text-gray-800 text-sm line-clamp-1">{s.TenMonHoc}</span>
+                      <span className="text-[10px] font-bold text-gray-300 uppercase block mb-0.5">Môn học</span>
+                      <span className="font-semibold text-[#1F2937] text-sm line-clamp-1">{s.TenMonHoc}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Lớp học phần</span>
-                      <span className="font-mono text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">{s.MaLopHocPhan}</span>
+                      <span className="text-[10px] font-bold text-gray-300 uppercase block mb-0.5">Lớp học phần</span>
+                      <span className="font-mono text-xs font-bold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded border border-[#FFF7D6]">{s.MaLopHocPhan}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Giảng viên</span>
-                      <span className="font-medium text-gray-600 text-sm line-clamp-1">{s.TenGiangVien}</span>
+                      <span className="text-[10px] font-bold text-gray-300 uppercase block mb-0.5">Giảng viên</span>
+                      <span className="font-medium text-[#6B7280] text-sm line-clamp-1">{s.TenGiangVien}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
-                    <button onClick={() => handleEdit(s)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-orange-600 hover:border-orange-300 transition-colors">
+                  <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-[#E5E7EB]">
+                    <button onClick={() => handleEdit(s)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#FFFFFF] border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-[#F4C542] hover:border-orange-300 transition-colors">
                       <Edit className="w-3.5 h-3.5"/> Sửa
                     </button>
-                    <button onClick={() => handleDelete(s.MaLichHoc)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-red-600 hover:border-red-300 transition-colors">
+                    <button onClick={() => handleDelete(s.MaLichHoc)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#FFFFFF] border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-[#EF4444] hover:border-red-300 transition-colors">
                       <Trash2 className="w-3.5 h-3.5"/> Xóa
                     </button>
                   </div>
@@ -695,9 +695,9 @@ function ScheduleManagement() {
             </div>
           </div>
         )) : (
-          <div className="text-center py-16 bg-white border border-gray-200 rounded-xl shadow-sm">
+          <div className="text-center py-16 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl shadow-sm">
             <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium text-sm">Chưa có lịch học nào được xếp.</p>
+            <p className="text-[#6B7280] font-medium text-sm">Chưa có lịch học nào được xếp.</p>
           </div>
         )}
       </div>
@@ -707,14 +707,14 @@ function ScheduleManagement() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCloseModal}/>
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}
-              className="relative bg-white rounded-xl w-full max-w-[700px] shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative bg-[#FFFFFF] rounded-xl w-full max-w-[700px] shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5 text-orange-500"/>
+              <div className="px-6 py-4 border-b border-[#E5E7EB] flex justify-between items-center bg-[#F7F8FA]">
+                <h3 className="text-base font-bold text-[#1F2937] flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-[#F4C542]"/>
                   {editingSchedule ? 'Cập nhật lịch học' : 'Xếp lịch học mới'}
                 </h3>
-                <button onClick={handleCloseModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
+                <button onClick={handleCloseModal} className="p-1.5 hover:bg-gray-200 rounded-full text-[#6B7280] transition-colors">
                   <X className="w-5 h-5"/>
                 </button>
               </div>
@@ -723,15 +723,15 @@ function ScheduleManagement() {
                 <form id="schedule-form" onSubmit={handleSubmit} noValidate className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Lớp học phần <span className="text-red-500">*</span>
+                      Lớp học phần <span className="text-[#EF4444]">*</span>
                     </label>
                     <select value={formData.MaLopHocPhan}
                       onChange={e => handleFieldChange('MaLopHocPhan', e.target.value)}
                       disabled={!!editingSchedule}
                       className={`w-full p-2.5 border rounded-lg outline-none text-sm transition-all ${
                         editingSchedule
-                          ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed opacity-90'
-                          : `bg-white focus:border-orange-500 ${formErrors.MaLopHocPhan ? 'border-red-500' : 'border-gray-300'}`
+                          ? 'bg-gray-100 border-[#E5E7EB] text-[#6B7280] cursor-not-allowed opacity-90'
+                          : `bg-[#FFFFFF] focus:border-[#F4C542] ${formErrors.MaLopHocPhan ? 'border-red-500' : 'border-gray-300'}`
                       }`}
                     >
                       <option value="">-- Chọn lớp học phần --</option>
@@ -769,19 +769,19 @@ function ScheduleManagement() {
                         );
                       })}
                     </select>
-                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
+                    {formErrors.MaLopHocPhan && <p className="text-[#EF4444] text-xs mt-1">{formErrors.MaLopHocPhan}</p>}
 
                     {formData.MaLopHocPhan && selectedLHPInfo && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-3 p-4 bg-orange-50 border border-orange-100 rounded-xl shadow-sm overflow-hidden"
+                        className="mt-3 p-4 bg-[#FFF7D6] border border-[#FFF7D6] rounded-xl shadow-sm overflow-hidden"
                       >
                         <div className="flex items-center text-sm w-full gap-2">
-                          <BookOpen className="w-5 h-5 text-orange-500"/>
+                          <BookOpen className="w-5 h-5 text-[#F4C542]"/>
                           <span className="font-semibold text-gray-700">Tổng số tiết môn học:</span>
-                          <span className="text-orange-600 font-black text-lg ml-1">{selectedLHPInfo.tongTiet} tiết ({selectedLHPInfo.tc} tín chỉ)</span>
+                          <span className="text-[#F4C542] font-black text-lg ml-1">{selectedLHPInfo.tongTiet} tiết ({selectedLHPInfo.tc} tín chỉ)</span>
                         </div>
                         {selectedLHPInfo.hoanThanh && !editingSchedule && (
-                          <div className="mt-3 flex items-center gap-2 text-green-700 bg-green-100 border border-green-200 rounded-lg px-3 py-2 text-xs font-bold">
+                          <div className="mt-3 flex items-center gap-2 text-green-700 bg-[#22C55E]/20 border border-green-200 rounded-lg px-3 py-2 text-xs font-bold">
                             <CheckCircle2 className="w-4 h-4"/> Môn học này đã được xếp đủ số tiết quy định.
                           </div>
                         )}
@@ -789,7 +789,7 @@ function ScheduleManagement() {
                     )}
 
                     {editingSchedule && (
-                      <p className="text-xs text-orange-600 mt-1.5 font-semibold flex items-center gap-1">
+                      <p className="text-xs text-[#F4C542] mt-1.5 font-semibold flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5"/>
                         Không thể thay đổi lớp học phần khi đang cập nhật lịch đã xếp
                       </p>
@@ -797,103 +797,103 @@ function ScheduleManagement() {
                   </div>
 
                   {!editingSchedule && (
-                    <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                    <div className="flex bg-gray-100 p-1 rounded-lg border border-[#E5E7EB]">
                       <button type="button" onClick={() => setIsRecurring(true)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${isRecurring ? 'bg-orange-500 text-white shadow-sm border-orange-600' : 'text-gray-500 border-transparent'}`}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${isRecurring ? 'bg-[#F4C542] text-[#152238] shadow-sm border-[#F4C542]' : 'text-[#6B7280] border-transparent'}`}
                       ><Repeat className="w-3.5 h-3.5"/> Lặp định kỳ</button>
                       <button type="button" onClick={() => setIsRecurring(false)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${!isRecurring ? 'bg-orange-500 text-white shadow-sm border-orange-600' : 'text-gray-500 border-transparent'}`}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${!isRecurring ? 'bg-[#F4C542] text-[#152238] shadow-sm border-[#F4C542]' : 'text-[#6B7280] border-transparent'}`}
                       ><Clock className="w-3.5 h-3.5"/> Học bù (1 buổi)</button>
                     </div>
                   )}
 
-                  <div className="p-5 border border-gray-200 rounded-xl bg-gray-50/50 space-y-5">
+                  <div className="p-5 border border-[#E5E7EB] rounded-xl bg-[#F7F8FA]/50 space-y-5">
                     {/* KHỐI LẶP ĐỊNH KỲ */}
                     {isRecurring && !editingSchedule ? (
                       <>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tần suất học / Tuần <span className="text-red-500">*</span></label>
-                            <select value={formData.tanSuat} onChange={e => setFormData(p => ({ ...p, tanSuat: parseInt(e.target.value), thu2: '', tietBatDau2: '', soTiet2: '' }))} className="w-full p-2.5 bg-white border border-gray-300 rounded-lg outline-none text-sm font-bold text-gray-700">
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Tần suất học / Tuần <span className="text-[#EF4444]">*</span></label>
+                            <select value={formData.tanSuat} onChange={e => setFormData(p => ({ ...p, tanSuat: parseInt(e.target.value), thu2: '', tietBatDau2: '', soTiet2: '' }))} className="w-full p-2.5 bg-[#FFFFFF] border border-gray-300 rounded-lg outline-none text-sm font-bold text-gray-700">
                               {sysConfig.tanSuat.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
-                            <select value={formData.PhongHoc} onChange={e => handleFieldChange('PhongHoc', e.target.value)} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Phòng học <span className="text-[#EF4444]">*</span></label>
+                            <select value={formData.PhongHoc} onChange={e => handleFieldChange('PhongHoc', e.target.value)} className={`w-full p-2.5 bg-[#FFFFFF] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
                               <option value="">-- Chọn Phòng --</option>
                               {sysConfig.rooms.map(r => <option key={r} value={r}>Phòng {r}</option>)}
                             </select>
-                            {formErrors.PhongHoc && <p className="text-red-500 text-xs mt-1">{formErrors.PhongHoc}</p>}
+                            {formErrors.PhongHoc && <p className="text-[#EF4444] text-xs mt-1">{formErrors.PhongHoc}</p>}
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày bắt đầu học <span className="text-red-500">*</span></label>
-                            <input type="date" value={formData.NgayBatDau} onChange={e => handleFieldChange('NgayBatDau', e.target.value)} className={`w-full p-2.5 bg-white border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}/>
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Ngày bắt đầu học <span className="text-[#EF4444]">*</span></label>
+                            <input type="date" value={formData.NgayBatDau} onChange={e => handleFieldChange('NgayBatDau', e.target.value)} className={`w-full p-2.5 bg-[#FFFFFF] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}/>
                             {formErrors.NgayBatDau ? (
-                              <p className="text-red-500 text-[11px] mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.NgayBatDau}</p>
+                              <p className="text-[#EF4444] text-[11px] mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.NgayBatDau}</p>
                             ) : (formData.NgayBatDau && formData.thu1 && sysConfig.thuList.length > 0) ? (
-                              <p className="text-blue-600 text-[11px] mt-1.5 font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/> ✓ Học vào {sysConfig.thuList.find(t=>String(t.value) === String(formData.thu1))?.label} hàng tuần</p>
+                              <p className="text-[#3B82F6] text-[11px] mt-1.5 font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/> ✓ Học vào {sysConfig.thuList.find(t=>String(t.value) === String(formData.thu1))?.label} hàng tuần</p>
                             ) : null}
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Dự kiến kết thúc</label>
-                            <input type="text" value={previewSchedule.length > 0 ? getDayAndDateStr(getLocalYYYYMMDD(previewSchedule[previewSchedule.length - 1].date)) : ''} disabled placeholder="Hệ thống tự động tính toán..." className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed"/>
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Dự kiến kết thúc</label>
+                            <input type="text" value={previewSchedule.length > 0 ? getDayAndDateStr(getLocalYYYYMMDD(previewSchedule[previewSchedule.length - 1].date)) : ''} disabled placeholder="Hệ thống tự động tính toán..." className="w-full p-2.5 bg-gray-100 border border-[#E5E7EB] rounded-lg text-sm font-bold text-[#6B7280] cursor-not-allowed"/>
                           </div>
                         </div>
 
-                        <div className="p-4 border border-gray-200 rounded-lg bg-white space-y-3">
-                          <label className="block text-sm font-bold text-orange-600 uppercase border-b pb-2 mb-3">Buổi 1</label>
+                        <div className="p-4 border border-[#E5E7EB] rounded-lg bg-[#FFFFFF] space-y-3">
+                          <label className="block text-sm font-bold text-[#F4C542] uppercase border-b pb-2 mb-3">Buổi 1</label>
                           <div className="grid grid-cols-3 gap-3">
                             <div>
-                              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thứ học <span className="text-red-500">*</span></label>
-                              <select value={formData.thu1} onChange={e => handleFieldChange('thu1', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.thu1 ? 'border-red-500' : 'border-gray-300'}`}>
+                              <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Thứ học <span className="text-[#EF4444]">*</span></label>
+                              <select value={formData.thu1} onChange={e => handleFieldChange('thu1', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.thu1 ? 'border-red-500' : 'border-gray-300'}`}>
                                 <option value="">Chọn</option>
                                 {sysConfig.thuList.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tiết bắt đầu <span className="text-red-500">*</span></label>
-                              <select value={formData.tietBatDau1} onChange={e => handleFieldChange('tietBatDau1', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}>
+                              <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Tiết bắt đầu <span className="text-[#EF4444]">*</span></label>
+                              <select value={formData.tietBatDau1} onChange={e => handleFieldChange('tietBatDau1', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}>
                                 <option value="">Chọn Tiết</option>
                                 {Object.keys(sysConfig.periods).map(k => <option key={k} value={k}>Tiết {k} ({sysConfig.periods[k].start})</option>)}
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số tiết học <span className="text-red-500">*</span></label>
-                              <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}/>
+                              <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
+                              <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}/>
                             </div>
                           </div>
-                          {formErrors.buoi1 && <p className="text-red-500 text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.buoi1}</p>}
+                          {formErrors.buoi1 && <p className="text-[#EF4444] text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.buoi1}</p>}
                         </div>
 
                         {formData.tanSuat === 2 && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="p-4 border border-gray-200 rounded-lg bg-white space-y-3">
-                            <label className="block text-sm font-bold text-orange-600 uppercase border-b pb-2 mb-3">Buổi 2</label>
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="p-4 border border-[#E5E7EB] rounded-lg bg-[#FFFFFF] space-y-3">
+                            <label className="block text-sm font-bold text-[#F4C542] uppercase border-b pb-2 mb-3">Buổi 2</label>
                             <div className="grid grid-cols-3 gap-3">
                               <div>
-                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thứ học <span className="text-red-500">*</span></label>
-                                <select value={formData.thu2} onChange={e => handleFieldChange('thu2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.thu2 ? 'border-red-500' : 'border-gray-300'}`}>
+                                <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Thứ học <span className="text-[#EF4444]">*</span></label>
+                                <select value={formData.thu2} onChange={e => handleFieldChange('thu2', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.thu2 ? 'border-red-500' : 'border-gray-300'}`}>
                                   <option value="">Chọn</option>
                                   {sysConfig.thuList.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                        </select>
-                                {formErrors.thu2 && <p className="text-red-500 text-[10px] mt-1">{formErrors.thu2}</p>}
+                                {formErrors.thu2 && <p className="text-[#EF4444] text-[10px] mt-1">{formErrors.thu2}</p>}
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tiết bắt đầu <span className="text-red-500">*</span></label>
-                                <select value={formData.tietBatDau2} onChange={e => handleFieldChange('tietBatDau2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`}>
+                                <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Tiết bắt đầu <span className="text-[#EF4444]">*</span></label>
+                                <select value={formData.tietBatDau2} onChange={e => handleFieldChange('tietBatDau2', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`}>
                                   <option value="">Chọn Tiết</option>
                                   {Object.keys(sysConfig.periods).map(k => <option key={k} value={k}>Tiết {k} ({sysConfig.periods[k].start})</option>)}
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số tiết học <span className="text-red-500">*</span></label>
-                                <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet2} onChange={e => handleFieldChange('soTiet2', e.target.value)} className={`w-full p-2.5 bg-gray-50 border rounded-lg outline-none text-sm focus:border-orange-500 ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`}/>
+                                <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
+                                <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet2} onChange={e => handleFieldChange('soTiet2', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`}/>
                               </div>
                             </div>
-                            {formErrors.buoi2 && <p className="text-red-500 text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.buoi2}</p>}
+                            {formErrors.buoi2 && <p className="text-[#EF4444] text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.buoi2}</p>}
                           </motion.div>
                         )}
                       </>
@@ -902,36 +902,36 @@ function ScheduleManagement() {
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Ngày học <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Ngày học <span className="text-[#EF4444]">*</span></label>
                             <input type="date" value={formData.NgayHoc} onChange={e => handleFieldChange('NgayHoc', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.NgayHoc ? 'border-red-500' : 'border-gray-300'}`}/>
-                            {formErrors.NgayHoc && <p className="text-red-500 text-[11px] mt-1"><AlertCircle className="w-3 h-3 inline"/>{formErrors.NgayHoc}</p>}
+                            {formErrors.NgayHoc && <p className="text-[#EF4444] text-[11px] mt-1"><AlertCircle className="w-3 h-3 inline"/>{formErrors.NgayHoc}</p>}
                             {!formErrors.NgayHoc && formData.NgayHoc && (
-                               <p className="text-blue-600 text-[11px] mt-1.5 font-bold flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5"/> Lịch học: {getDayAndDateStr(formData.NgayHoc)}</p>
+                               <p className="text-[#3B82F6] text-[11px] mt-1.5 font-bold flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5"/> Lịch học: {getDayAndDateStr(formData.NgayHoc)}</p>
                             )}
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng học <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Phòng học <span className="text-[#EF4444]">*</span></label>
                             <select value={formData.PhongHoc} onChange={e => handleFieldChange('PhongHoc', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.PhongHoc ? 'border-red-500' : 'border-gray-300'}`}>
                               <option value="">-- Chọn Phòng --</option>
                               {sysConfig.rooms.map(r => <option key={r} value={r}>Phòng {r}</option>)}
                             </select>
-                            {formErrors.PhongHoc && <p className="text-red-500 text-[11px] mt-1">{formErrors.PhongHoc}</p>}
+                            {formErrors.PhongHoc && <p className="text-[#EF4444] text-[11px] mt-1">{formErrors.PhongHoc}</p>}
                           </div>
                         </div>
 
-                        <div className="p-4 border rounded-lg bg-white grid grid-cols-2 gap-4">
+                        <div className="p-4 border rounded-lg bg-[#FFFFFF] grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tiết bắt đầu <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Tiết bắt đầu <span className="text-[#EF4444]">*</span></label>
                             <select value={formData.tietBatDau1} onChange={e => handleFieldChange('tietBatDau1', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}>
                               <option value="">Chọn Tiết</option>
                               {Object.keys(sysConfig.periods).map(k => <option key={k} value={k}>Tiết {k} ({sysConfig.periods[k].start})</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số tiết học <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
                             <input type="number" min="2" max="5" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`}/>
                           </div>
-                          {formErrors.buoi1 && <div className="col-span-2 text-red-500 text-[11px] font-bold"><AlertCircle className="w-3 h-3 inline"/> {formErrors.buoi1}</div>}
+                          {formErrors.buoi1 && <div className="col-span-2 text-[#EF4444] text-[11px] font-bold"><AlertCircle className="w-3 h-3 inline"/> {formErrors.buoi1}</div>}
                         </div>
                       </div>
                     )}
@@ -939,13 +939,13 @@ function ScheduleManagement() {
                 </form>
               </div>
 
-              <div className="p-4 border-t bg-gray-50 flex gap-3 justify-end">
+              <div className="p-4 border-t bg-[#F7F8FA] flex gap-3 justify-end">
                 <button type="button" onClick={handleCloseModal} className="px-5 py-2 bg-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-300 text-gray-700">Hủy</button>
                 <button 
                   type="button" 
                   onClick={handleSubmit} 
                   disabled={!!selectedLHPInfo?.hoanThanh && !editingSchedule} 
-                  className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2 bg-[#F4C542] text-[#152238] rounded-lg text-sm font-bold hover:bg-[#F4C542]/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingSchedule ? 'Lưu thay đổi' : 'Xác nhận xếp lịch'}
                 </button>

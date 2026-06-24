@@ -91,11 +91,11 @@ function StudentTrainingPointsSkeleton() {
     <div className="max-w-7xl mx-auto space-y-6 relative animate-pulse pb-10">
       <div className="bg-slate-200 h-28 rounded-3xl" />
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 h-72 space-y-4">
+        <div className="xl:col-span-1 bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100 h-72 space-y-4">
           <div className="h-6 bg-slate-200 rounded w-1/2" />
           <div className="h-36 bg-slate-100 rounded-2xl animate-pulse" />
         </div>
-        <div className="xl:col-span-3 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+        <div className="xl:col-span-3 bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
           <div className="h-6 bg-slate-200 rounded w-1/4" />
           <div className="space-y-3">
             {[1, 2, 3, 4].map(i => (
@@ -432,8 +432,8 @@ function StudentTrainingPoints({ user }) {
 
   const getRatingColor = (score) => {
     if (score >= 90) return 'text-emerald-600';
-    if (score >= 80) return 'text-green-600';
-    if (score >= 65) return 'text-blue-600';
+    if (score >= 80) return 'text-[#22C55E]';
+    if (score >= 65) return 'text-[#3B82F6]';
     if (score >= 50) return 'text-amber-600';
     return 'text-rose-500';
   };
@@ -441,12 +441,12 @@ function StudentTrainingPoints({ user }) {
   const getXepLoaiBadge = (xepLoai) => {
     const colors = {
       'Xuất sắc': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-      'Tốt': 'bg-green-50 text-green-700 border border-green-200',
-      'Khá': 'bg-blue-50 text-blue-700 border border-blue-200',
+      'Tốt': 'bg-[#22C55E]/10 text-green-700 border border-green-200',
+      'Khá': 'bg-[#3B82F6]/10 text-blue-700 border border-blue-200',
       'Trung bình': 'bg-amber-50 text-amber-700 border border-amber-200',
       'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200'
     };
-    return colors[xepLoai] || 'bg-gray-50 text-gray-700 border border-gray-200';
+    return colors[xepLoai] || 'bg-[#F7F8FA] text-gray-700 border border-[#E5E7EB]';
   };
 
   if (loading) return <StudentTrainingPointsSkeleton />;
@@ -471,9 +471,9 @@ function StudentTrainingPoints({ user }) {
       />
 
       {/* HEADER */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 text-white shadow-xl flex items-center gap-5 relative overflow-hidden">
-        <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl"><Award className="w-10 h-10" /></div>
-        <div><h2 className="text-3xl font-black mb-1">Đánh giá rèn luyện</h2><p className="text-orange-100 font-medium">Khai báo tự đánh giá và theo dõi điểm rèn luyện</p></div>
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#F4C542] rounded-3xl p-8 text-[#152238] shadow-xl flex items-center gap-5 relative overflow-hidden">
+        <div className="p-4 bg-white/40 backdrop-blur-sm rounded-2xl"><Award className="w-10 h-10" /></div>
+        <div><h2 className="text-3xl font-black mb-1">Đánh giá rèn luyện</h2><p className="text-[#152238]/70 font-medium">Khai báo tự đánh giá và theo dõi điểm rèn luyện</p></div>
       </motion.div>
 
       {/* BANNER NHẮC NHỞ TỰ ĐÁNH GIÁ (REMINDERS) */}
@@ -515,9 +515,9 @@ function StudentTrainingPoints({ user }) {
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         
         {/* SIDEBAR: ĐỢT ĐÁNH GIÁ */}
-        <div className="xl:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 h-fit space-y-5">
+        <div className="xl:col-span-1 bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100 h-fit space-y-5">
           <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 border-b border-slate-50 pb-3">
-            <FileSignature className="w-5 h-5 text-orange-500" /> Đợt đánh giá
+            <FileSignature className="w-5 h-5 text-[#F4C542]" /> Đợt đánh giá
           </h3>
           <div className="space-y-4">
             {activePeriods.map((period) => {
@@ -537,7 +537,7 @@ function StudentTrainingPoints({ user }) {
                     {daysLeft !== null && (
                       <div className="mt-1.5 inline-block">
                         {daysLeft > 0 ? (
-                          <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-50 text-blue-600 border border-blue-100">
+                          <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-[#3B82F6]/10 text-[#3B82F6] border border-blue-100">
                             Còn {daysLeft} ngày
                           </span>
                         ) : daysLeft === 0 ? (
@@ -561,7 +561,7 @@ function StudentTrainingPoints({ user }) {
                     <button 
                       onClick={() => handleOpenNew(period.HocKy)} 
                       disabled={daysLeft !== null && daysLeft < 0}
-                      className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white font-bold py-3 rounded-xl text-sm shadow-md shadow-orange-200 transition-colors"
+                      className="w-full bg-[#F4C542] hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-[#152238] font-bold py-3 rounded-xl text-sm shadow-md shadow-[#F4C542]/30 transition-colors"
                     >
                       Khai báo ngay
                     </button>
@@ -576,7 +576,7 @@ function StudentTrainingPoints({ user }) {
         </div>
 
         {/* LỊCH SỬ RÈN LUYỆN */}
-        <div className="xl:col-span-3 bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="xl:col-span-3 bg-[#FFFFFF] rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h3 className="font-bold text-slate-800 text-lg">Lịch sử rèn luyện</h3>
           </div>
@@ -603,9 +603,9 @@ function StudentTrainingPoints({ user }) {
                   return (
                     <tr key={i} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-5 font-bold text-slate-700">{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</td>
-                      <td className="p-5 text-center font-bold text-blue-600"><span className="bg-blue-50 px-3 py-1 rounded-md">{p.DiemTuDanhGia}đ</span></td>
+                      <td className="p-5 text-center font-bold text-[#3B82F6]"><span className="bg-[#3B82F6]/10 px-3 py-1 rounded-md">{p.DiemTuDanhGia}đ</span></td>
                       <td className="p-5 text-center text-slate-500 font-semibold">{p.DiemKhoaDanhGia || '0'}đ</td>
-                      <td className="p-5 text-center font-black text-orange-600 text-lg">{p.TongDiem || p.DiemTuDanhGia}đ</td>
+                      <td className="p-5 text-center font-black text-[#F4C542] text-lg">{p.TongDiem || p.DiemTuDanhGia}đ</td>
                       <td className="p-5 text-center">
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getXepLoaiBadge(p.XepLoai)}`}>
                           {p.XepLoai || 'Chưa xếp'}
@@ -617,7 +617,7 @@ function StudentTrainingPoints({ user }) {
                             <CheckCircle2 className="w-3.5 h-3.5"/> Đã xác nhận
                           </span>
                         ) : (
-                          <span className="text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 w-fit font-bold text-xs">
+                          <span className="text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 w-fit font-bold text-xs">
                             <Clock className="w-3.5 h-3.5"/> Chờ duyệt
                           </span>
                         )}
@@ -627,7 +627,7 @@ function StudentTrainingPoints({ user }) {
                           {/* Nút Xem chi tiết */}
                           <button 
                             onClick={() => handleViewDetails(p)} 
-                            className="p-2 bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-lg shadow-sm"
+                            className="p-2 bg-[#FFFFFF] border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-lg shadow-sm"
                             title="Xem chi tiết phiếu"
                           >
                             <Eye className="w-4 h-4" />
@@ -637,7 +637,7 @@ function StudentTrainingPoints({ user }) {
                           {p.TrangThai !== 'Đã xác nhận' && activePeriods.some(ap => ap.HocKy === p.HocKy) && (
                             <button 
                               onClick={() => handleEdit(p)} 
-                              className="p-2 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-lg shadow-sm"
+                              className="p-2 bg-[#FFFFFF] border border-blue-200 text-[#3B82F6] hover:bg-[#3B82F6]/10 rounded-lg shadow-sm"
                               title="Sửa phiếu"
                             >
                               <Edit className="w-4 h-4" />
@@ -650,14 +650,14 @@ function StudentTrainingPoints({ user }) {
                               {!appealReq ? (
                                 <button
                                   onClick={() => handleOpenAppeal(p.HocKy)}
-                                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1"
+                                  className="px-3 py-1.5 bg-[#EF4444]/10 hover:bg-red-200 text-[#EF4444] border border-red-200 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1"
                                 >
                                   Khiếu nại
                                 </button>
                               ) : appealReq.TrangThai === 'Đã xử lý' ? (
                                 <button
                                   onClick={() => setViewFeedback(appealReq)}
-                                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1"
+                                  className="px-3 py-1.5 bg-[#3B82F6]/10 hover:bg-blue-100 text-[#3B82F6] border border-blue-200 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" /> Xem phản hồi
                                 </button>
@@ -689,7 +689,7 @@ function StudentTrainingPoints({ user }) {
         <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-[#FFFFFF] w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
               
               {/* Header Form */}
               <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center shrink-0">
@@ -707,7 +707,7 @@ function StudentTrainingPoints({ user }) {
 
               {/* Progress Bar & Real-time ratings (Chỉ hiện ở chế độ điền form) */}
               {!viewOnly && (
-                <div className="bg-blue-50/50 px-8 py-3 border-b border-slate-100 flex flex-wrap gap-4 items-center justify-between shrink-0">
+                <div className="bg-[#3B82F6]/10/50 px-8 py-3 border-b border-slate-100 flex flex-wrap gap-4 items-center justify-between shrink-0">
                   <div className="flex-1 min-w-[200px]">
                     <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
                       <span>Tiến trình hoàn thiện phiếu</span>
@@ -722,7 +722,7 @@ function StudentTrainingPoints({ user }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-400 uppercase">Xếp loại dự kiến:</span>
-                    <span className={`text-base font-black px-3 py-1 bg-white border border-slate-200 rounded-xl ${getRatingColor(currentTotalScore)}`}>
+                    <span className={`text-base font-black px-3 py-1 bg-[#FFFFFF] border border-slate-200 rounded-xl ${getRatingColor(currentTotalScore)}`}>
                       {getRealTimeRating(currentTotalScore)}
                     </span>
                   </div>
@@ -732,7 +732,7 @@ function StudentTrainingPoints({ user }) {
               {/* Form Content */}
               <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 custom-scrollbar">
                 {currentCriteria.map((section) => (
-                  <div key={section.id} className="border border-slate-200 rounded-3xl overflow-hidden bg-white shadow-sm">
+                  <div key={section.id} className="border border-slate-200 rounded-3xl overflow-hidden bg-[#FFFFFF] shadow-sm">
                     <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
                       <h3 className="font-black text-slate-800 text-base">{section.title}</h3>
                     </div>
@@ -751,15 +751,15 @@ function StudentTrainingPoints({ user }) {
                                     className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all ${
                                       viewOnly 
                                         ? isSelected 
-                                          ? 'border-blue-300 bg-blue-50/20 cursor-default' 
+                                          ? 'border-blue-300 bg-[#3B82F6]/10/20 cursor-default' 
                                           : 'border-slate-100 opacity-60 cursor-default'
                                         : isSelected 
-                                          ? 'border-blue-500 bg-blue-50/50 cursor-pointer' 
+                                          ? 'border-blue-500 bg-[#3B82F6]/10/50 cursor-pointer' 
                                           : 'border-slate-100 hover:bg-slate-50 cursor-pointer'
                                     }`}
                                   >
                                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-500' : 'border-slate-300'}`}>
-                                      {isSelected && <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />}
+                                      {isSelected && <div className="w-2.5 h-2.5 bg-[#3B82F6]/100 rounded-full" />}
                                     </div>
                                     <span className={`text-sm font-medium ${isSelected ? 'text-blue-700 font-bold' : 'text-slate-600'}`}>
                                       {opt.label}
@@ -783,15 +783,15 @@ function StudentTrainingPoints({ user }) {
                                           Tệp đính kèm ({formScores[item.id].Files.length}/3)
                                         </p>
                                         {formScores[item.id].Files.map((file, fileIndex) => (
-                                          <div key={fileIndex} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
-                                            <FileImage className="w-4 h-4 text-blue-500 shrink-0" />
+                                          <div key={fileIndex} className="flex items-center gap-2 p-2 bg-[#FFFFFF] rounded-lg border border-slate-200">
+                                            <FileImage className="w-4 h-4 text-[#3B82F6] shrink-0" />
                                             <span className="text-xs font-medium text-slate-700 truncate flex-1">
                                               {file.name}
                                             </span>
                                             {file.type.startsWith('image/') && (
                                               <button 
                                                 onClick={() => setPreviewImage(file.data)}
-                                                className="text-xs font-bold text-blue-600 hover:underline shrink-0"
+                                                className="text-xs font-bold text-[#3B82F6] hover:underline shrink-0"
                                               >
                                                 Xem ảnh
                                               </button>
@@ -823,7 +823,7 @@ function StudentTrainingPoints({ user }) {
                                 ) : (
                                   <div className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                      <label className={`flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-white border rounded-xl text-xs cursor-pointer transition-colors ${(formScores[item.id]?.Files || []).length >= 3 ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-200 hover:bg-slate-50'}`}>
+                                      <label className={`flex-1 flex items-center gap-2 px-3.5 py-2.5 bg-[#FFFFFF] border rounded-xl text-xs cursor-pointer transition-colors ${(formScores[item.id]?.Files || []).length >= 3 ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-slate-200 hover:bg-slate-50'}`}>
                                         <Upload className="w-4 h-4 text-slate-500" />
                                         <span className="font-medium text-slate-600">
                                           {(formScores[item.id]?.Files || []).length >= 3 
@@ -850,14 +850,14 @@ function StudentTrainingPoints({ user }) {
                                     {(formScores[item.id]?.Files || []).length > 0 && (
                                       <div className="space-y-2 mt-2">
                                         {formScores[item.id].Files.map((file, fileIndex) => (
-                                          <div key={fileIndex} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
-                                            <FileImage className="w-4 h-4 text-blue-500 shrink-0" />
+                                          <div key={fileIndex} className="flex items-center gap-2 p-2 bg-[#FFFFFF] rounded-lg border border-slate-200">
+                                            <FileImage className="w-4 h-4 text-[#3B82F6] shrink-0" />
                                             <span className="text-xs font-medium text-slate-700 truncate flex-1">
                                               {file.name}
                                             </span>
                                             <button
                                               onClick={() => handleRemoveFile(item.id, fileIndex)}
-                                              className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shrink-0"
+                                              className="p-1.5 bg-red-100 text-[#DC2626] rounded-lg hover:bg-red-200 transition-colors shrink-0"
                                               title="Xóa tệp này"
                                             >
                                               <Trash2 className="w-3.5 h-3.5" />
@@ -889,7 +889,7 @@ function StudentTrainingPoints({ user }) {
                             )}
                           </div>
                           <div className="md:w-32 flex items-center justify-center bg-slate-50 rounded-2xl p-4 border border-slate-100 shrink-0">
-                            <span className={`text-3xl font-black ${formScores[item.id] !== undefined ? 'text-blue-600' : 'text-slate-200'}`}>
+                            <span className={`text-3xl font-black ${formScores[item.id] !== undefined ? 'text-[#3B82F6]' : 'text-slate-200'}`}>
                               {formScores[item.id] !== undefined ? `+${formScores[item.id].point}` : '-'}
                             </span>
                           </div>
@@ -904,10 +904,10 @@ function StudentTrainingPoints({ user }) {
               <div className="bg-slate-50 border-t border-slate-200 px-8 py-5 flex justify-between items-center shrink-0">
                 <div className="flex flex-col">
                   <span className="text-slate-500 font-bold text-xs uppercase">Điểm tự đánh giá</span>
-                  <div className="text-4xl font-black text-blue-600">{currentTotalScore} <span className="text-xl text-slate-400">/ 100</span></div>
+                  <div className="text-4xl font-black text-[#3B82F6]">{currentTotalScore} <span className="text-xl text-slate-400">/ 100</span></div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 transition-colors">
+                  <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 bg-[#FFFFFF] border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 transition-colors">
                     {viewOnly ? 'Đóng' : 'Hủy'}
                   </button>
                   {!viewOnly && (
@@ -932,11 +932,11 @@ function StudentTrainingPoints({ user }) {
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
+              className="bg-[#FFFFFF] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
             >
               <div className="bg-red-600 p-5 flex justify-between items-center text-white">
                 <h3 className="text-lg font-bold flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> Khiếu nại kết quả rèn luyện</h3>
-                <button onClick={() => setIsAppealModalOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                <button onClick={() => setIsAppealModalOpen(false)} className="p-1 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-6 space-y-4">
                 <div>
@@ -952,13 +952,13 @@ function StudentTrainingPoints({ user }) {
                     value={appealReason}
                     onChange={e => { setAppealReason(e.target.value); setAppealError(''); }}
                     placeholder="Vui lòng ghi rõ lý do bạn khiếu nại (ví dụ: bị cộng thiếu điểm chuyên cần, chưa cộng hoạt động ngoại khóa đã nộp minh chứng...)"
-                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-red-400 focus:bg-white transition-all text-sm text-slate-700 placeholder-slate-400"
+                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-red-400 focus:bg-[#FFFFFF] transition-all text-sm text-slate-700 placeholder-slate-400"
                   />
-                  {appealError && <p className="text-red-500 text-xs mt-1.5 font-semibold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5"/> {appealError}</p>}
+                  {appealError && <p className="text-[#EF4444] text-xs mt-1.5 font-semibold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5"/> {appealError}</p>}
                 </div>
               </div>
               <div className="bg-slate-50 p-4 border-t border-slate-100 flex justify-end gap-3">
-                <button onClick={() => setIsAppealModalOpen(false)} className="px-5 py-2.5 font-semibold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-slate-100">Hủy</button>
+                <button onClick={() => setIsAppealModalOpen(false)} className="px-5 py-2.5 font-semibold text-slate-600 bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-slate-100">Hủy</button>
                 <button onClick={handleSendAppeal} className="px-6 py-2.5 font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md shadow-red-200 flex items-center gap-1.5">
                   <Send className="w-4 h-4" /> Gửi khiếu nại
                 </button>
@@ -978,11 +978,11 @@ function StudentTrainingPoints({ user }) {
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
+              className="bg-[#FFFFFF] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
             >
               <div className="bg-blue-600 p-5 flex justify-between items-center text-white">
                 <h3 className="text-lg font-bold flex items-center gap-2"><MessageSquare className="w-5 h-5"/> Kết quả phản hồi khiếu nại</h3>
-                <button onClick={() => setViewFeedback(null)} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                <button onClick={() => setViewFeedback(null)} className="p-1 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-6 space-y-4">
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-150">
@@ -990,7 +990,7 @@ function StudentTrainingPoints({ user }) {
                   <p className="text-sm text-slate-700 font-medium mt-1 leading-relaxed">{viewFeedback.NoiDung}</p>
                   <p className="text-[10px] text-slate-400 mt-2 font-medium">Gửi ngày: {new Date(viewFeedback.NgayGui).toLocaleString('vi-VN')}</p>
                 </div>
-                <div className="bg-green-50/50 rounded-2xl p-4 border border-green-150">
+                <div className="bg-[#22C55E]/10/50 rounded-2xl p-4 border border-green-150">
                   <p className="text-xs font-bold text-green-700 uppercase tracking-wider flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Phản hồi từ Ban cán sự / Admin:
                   </p>
@@ -1000,7 +1000,7 @@ function StudentTrainingPoints({ user }) {
                 </div>
               </div>
               <div className="bg-slate-50 p-4 border-t border-slate-100 flex justify-end">
-                <button onClick={() => setViewFeedback(null)} className="px-6 py-2.5 font-bold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-slate-100">Đóng</button>
+                <button onClick={() => setViewFeedback(null)} className="px-6 py-2.5 font-bold text-slate-600 bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-slate-100">Đóng</button>
               </div>
             </motion.div>
           </div>
@@ -1023,7 +1023,7 @@ function StudentTrainingPoints({ user }) {
               >
                 <button
                   onClick={() => setPreviewImage(null)}
-                  className="absolute -top-12 right-0 md:-right-12 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors"
+                  className="absolute -top-12 right-0 md:-right-12 p-2 bg-[#FFFFFF]/10 hover:bg-white/40 text-white rounded-full backdrop-blur-md transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>

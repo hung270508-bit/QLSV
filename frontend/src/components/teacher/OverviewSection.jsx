@@ -80,7 +80,7 @@ function OverviewSection({ user, setActiveMenu }) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh] text-orange-500">
+      <div className="flex flex-col items-center justify-center h-[70vh] text-[#F4C542]">
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
         <p className="font-medium text-lg">Đang tải dữ liệu tổng quan...</p>
       </div>
@@ -93,83 +93,63 @@ function OverviewSection({ user, setActiveMenu }) {
       {/* HEADER */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden"
+        className="bg-[#152238] rounded-3xl p-8 px-10 text-white shadow-sm border border-[#1e2f4c] relative overflow-hidden"
       >
-        <div className="relative z-10">
-          <h2 className="text-3xl font-bold mb-2">Tổng quan giảng dạy</h2>
-          <p className="text-orange-100 text-lg">Xem thông tin giảng dạy và thống kê nhanh</p>
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-extrabold mb-2 text-[#F4C542]">Xin chào, {user?.hoTen || 'Trần Văn Minh'}!</h2>
+          </div>
+          <div className="text-right">
+            <p className="text-5xl font-extrabold text-[#F4C542]">{data.todaySchedules.length}</p>
+            <p className="text-gray-300 font-bold uppercase tracking-widest text-sm mt-2">Ca dạy hôm nay</p>
+          </div>
         </div>
-        <TrendingUp className="absolute -right-4 -bottom-4 w-40 h-40 text-white opacity-10 transform -rotate-12" />
       </motion.div>
 
       {/* 4 CARDS THỐNG KÊ (CÓ THỂ CLICK ĐỂ CHUYỂN TRANG) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <motion.div 
-          whileHover={{ y: -5, scale: 1.02 }} whileTap={{ scale: 0.98 }}
           onClick={() => setActiveMenu && setActiveMenu('lichgiangday')}
-          className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-orange-200 transition-all flex items-center gap-5"
+          className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border-2 border-[#F4C542] cursor-pointer relative overflow-hidden flex flex-col items-center justify-center h-32"
         >
-          <div className="w-16 h-16 rounded-2xl bg-orange-100 flex items-center justify-center shrink-0">
-            <BookOpen className="w-8 h-8 text-orange-600" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Môn giảng dạy</p>
-            <h3 className="text-3xl font-black text-gray-800">{data.totalSubjects}</h3>
-          </div>
+          <h3 className="text-4xl font-extrabold mb-2 text-[#F59E0B]">{data.totalSubjects}</h3>
+          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide">Môn giảng dạy</p>
         </motion.div>
 
         <motion.div 
-          whileHover={{ y: -5, scale: 1.02 }} whileTap={{ scale: 0.98 }}
           onClick={() => setActiveMenu && setActiveMenu('sinhvien')}
-          className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-emerald-200 transition-all flex items-center gap-5"
+          className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] cursor-pointer relative overflow-hidden flex flex-col items-center justify-center h-32"
         >
-          <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
-            <Users className="w-8 h-8 text-emerald-600" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Sinh viên</p>
-            <h3 className="text-3xl font-black text-gray-800">{data.totalStudents}</h3>
-          </div>
+          <h3 className="text-4xl font-extrabold mb-2 text-black">{data.totalStudents}</h3>
+          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide">Tổng sinh viên</p>
         </motion.div>
 
         <motion.div 
-          whileHover={{ y: -5, scale: 1.02 }} whileTap={{ scale: 0.98 }}
           onClick={() => setActiveMenu && setActiveMenu('diemdanh')}
-          className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all flex items-center gap-5"
+          className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] cursor-pointer relative overflow-hidden flex flex-col items-center justify-center h-32"
         >
-          <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
-            <Calendar className="w-8 h-8 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Lịch hôm nay</p>
-            <h3 className="text-3xl font-black text-gray-800">{data.todaySchedules.length}</h3>
-          </div>
+          <h3 className="text-4xl font-extrabold mb-2 text-[#f97316]">{data.todaySchedules.length}</h3>
+          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide">Lịch hôm nay</p>
         </motion.div>
 
         <motion.div 
-          whileHover={{ y: -5, scale: 1.02 }} whileTap={{ scale: 0.98 }}
           onClick={() => setActiveMenu && setActiveMenu('lichgiangday')}
-          className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-purple-200 transition-all flex items-center gap-5"
+          className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] cursor-pointer relative overflow-hidden flex flex-col items-center justify-center h-32"
         >
-          <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-8 h-8 text-purple-600" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Tổng ca dạy</p>
-            <h3 className="text-3xl font-black text-gray-800">{data.totalSchedules}</h3>
-          </div>
+          <h3 className="text-4xl font-extrabold mb-2 text-black">{data.totalSchedules}</h3>
+          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide">Tổng ca dạy</p>
         </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* LỊCH DẠY HÔM NAY */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-orange-500" /> Lịch dạy hôm nay
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#FFFFFF] rounded-3xl shadow-sm border border-[#E5E7EB] overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-[#E5E7EB] flex justify-between items-center bg-[#F7F8FA]/50">
+            <h3 className="text-lg font-bold text-[#1F2937] flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#F59E0B]" /> Lịch dạy hôm nay
             </h3>
-            <span className="text-sm font-bold text-orange-600 bg-orange-100 px-3 py-1 rounded-lg">
+            <span className="text-sm font-bold text-black bg-[#F4C542] px-3 py-1 rounded-lg">
               {formatDate(new Date().toISOString())}
             </span>
           </div>
@@ -178,39 +158,39 @@ function OverviewSection({ user, setActiveMenu }) {
             {data.todaySchedules.length > 0 ? (
               <div className="space-y-4">
                 {data.todaySchedules.map((schedule, idx) => (
-                  <div key={idx} onClick={() => setActiveMenu && setActiveMenu('diemdanh')} className="border border-gray-100 rounded-2xl p-5 hover:border-orange-300 hover:shadow-md transition-all cursor-pointer group">
+                  <div key={idx} onClick={() => setActiveMenu && setActiveMenu('diemdanh')} className="border-l-4 border-[#F4C542] border-y border-r border-[#E5E7EB] rounded-r-2xl p-5 hover:border-[#E5E7EB] hover:shadow-md transition-all cursor-pointer group">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h4 className="font-bold text-gray-800 text-lg group-hover:text-orange-600 transition-colors">{schedule.TenMonHoc}</h4>
-                        <p className="text-sm text-gray-500 font-medium mt-1">Lớp: {schedule.TenLop} • Mã LHP: {schedule.MaLopHocPhan}</p>
+                        <h4 className="font-bold text-[#1F2937] text-lg group-hover:text-black transition-colors">{schedule.TenMonHoc}</h4>
+                        <p className="text-sm text-[#6B7280] font-medium mt-1">Lớp: {schedule.TenLop} • Mã LHP: {schedule.MaLopHocPhan}</p>
                       </div>
-                      <div className="bg-orange-50 text-orange-600 font-bold px-3 py-1.5 rounded-xl border border-orange-100 flex flex-col items-center shrink-0">
+                      <div className="bg-[#152238] text-[#F4C542] font-bold px-3 py-1.5 rounded-xl border border-[#1e2f4c] flex flex-col items-center shrink-0">
                         <span className="text-xs">Ca</span>
                         <span className="text-lg leading-none">{schedule.CaHoc || '-'}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm font-medium text-gray-600">
-                      <span className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg"><MapPin className="w-4 h-4 text-gray-400" /> Phòng: {schedule.PhongHoc || 'Chưa xếp'}</span>
+                    <div className="flex items-center gap-4 text-sm font-medium text-[#6B7280]">
+                      <span className="flex items-center gap-1.5 bg-[#F7F8FA] px-2.5 py-1 rounded-lg"><MapPin className="w-4 h-4 text-gray-300" /> Phòng: {schedule.PhongHoc || 'Chưa xếp'}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 py-10">
+              <div className="h-full flex flex-col items-center justify-center text-gray-300 py-10">
                 <Calendar className="w-16 h-16 mb-3 opacity-20" />
-                <p className="font-medium text-gray-500">Hôm nay bạn không có lịch dạy nào.</p>
+                <p className="font-medium text-[#6B7280]">Hôm nay bạn không có lịch dạy nào.</p>
               </div>
             )}
           </div>
         </motion.div>
 
         {/* DANH SÁCH LỚP GIẢNG DẠY */}
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-500" /> Lớp đang giảng dạy
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#FFFFFF] rounded-3xl shadow-sm border border-[#E5E7EB] overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-[#E5E7EB] flex justify-between items-center bg-[#F7F8FA]/50">
+            <h3 className="text-lg font-bold text-[#1F2937] flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-[#1F2937]" /> Lớp đang giảng dạy
             </h3>
-            <button onClick={() => setActiveMenu && setActiveMenu('lichgiangday')} className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors">
+            <button onClick={() => setActiveMenu && setActiveMenu('lichgiangday')} className="text-sm font-bold text-[#6B7280] hover:text-black flex items-center gap-1 transition-colors">
               Xem tất cả <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -219,24 +199,24 @@ function OverviewSection({ user, setActiveMenu }) {
             {data.courses.length > 0 ? (
               <div className="space-y-4">
                 {data.courses.slice(0, 5).map((course, idx) => (
-                  <div key={idx} onClick={() => setActiveMenu && setActiveMenu('sinhvien')} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-100 cursor-pointer group">
+                  <div key={idx} onClick={() => setActiveMenu && setActiveMenu('sinhvien')} className="flex items-center justify-between p-4 rounded-2xl bg-[#F7F8FA] hover:bg-[#F4C542]/10 transition-colors border border-transparent hover:border-[#F4C542]/30 cursor-pointer group">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-blue-500 font-bold shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-[#152238] shadow-sm flex items-center justify-center text-[#F4C542] font-bold shrink-0">
                         {course.TenMonHoc ? course.TenMonHoc.charAt(0) : 'M'}
                       </div>
                       <div>
-                        <h4 className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">{course.TenMonHoc}</h4>
-                        <p className="text-xs text-gray-500 font-medium mt-0.5">Mã LHP: {course.MaLopHocPhan} • Tín chỉ: {course.SoTinChi}</p>
+                        <h4 className="font-bold text-[#1F2937] group-hover:text-black transition-colors">{course.TenMonHoc}</h4>
+                        <p className="text-xs text-[#6B7280] font-medium mt-0.5">Mã LHP: {course.MaLopHocPhan} • Tín chỉ: {course.SoTinChi}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#F59E0B]" />
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 py-10">
+              <div className="h-full flex flex-col items-center justify-center text-gray-300 py-10">
                 <BookOpen className="w-16 h-16 mb-3 opacity-20" />
-                <p className="font-medium text-gray-500">Bạn chưa được phân công giảng dạy lớp nào.</p>
+                <p className="font-medium text-[#6B7280]">Bạn chưa được phân công giảng dạy lớp nào.</p>
               </div>
             )}
           </div>

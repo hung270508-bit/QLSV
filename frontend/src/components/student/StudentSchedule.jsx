@@ -181,7 +181,7 @@ function StudentSchedule({ user }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative">
+    <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden relative">
       
       {/* TOOLTIP HIỂN THỊ KHI HOVER */}
       <AnimatePresence>
@@ -191,17 +191,17 @@ function StudentSchedule({ user }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
-            className="fixed z-40 bg-white/95 backdrop-blur-md text-slate-800 text-sm p-4 rounded-2xl shadow-2xl border border-blue-200/80 pointer-events-none w-[260px]"
+            className="fixed z-40 bg-[#FFFFFF]/95 backdrop-blur-md text-slate-800 text-sm p-4 rounded-2xl shadow-2xl border border-blue-200/80 pointer-events-none w-[260px]"
             style={{ top: safePos.y, left: safePos.x }}
           >
             <div className="flex flex-col gap-3">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-blue-600 tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-[#3B82F6] tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]/100 animate-pulse"></span>
                   Lịch học sinh viên
                 </span>
-                <span className="text-[10px] font-mono bg-blue-50 px-2 py-0.5 rounded text-blue-600 border border-blue-100/50">
+                <span className="text-[10px] font-mono bg-[#3B82F6]/10 px-2 py-0.5 rounded text-[#3B82F6] border border-blue-100/50">
                   {tooltipData.maHP}
                 </span>
               </div>
@@ -216,22 +216,22 @@ function StudentSchedule({ user }) {
               {/* Grid Details */}
               <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 pt-1">
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-[#3B82F6] shrink-0" />
                   <span>Phòng: <strong className="text-slate-800 font-semibold">{tooltipData.phong}</strong></span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <Clock className="w-3.5 h-3.5 text-[#3B82F6] shrink-0" />
                   <span>
                     Tiết {tooltipData.tietBatDau} - {tooltipData.tietBatDau + tooltipData.soTiet - 1} ({tooltipData.soTiet} tiết)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Award className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <Award className="w-3.5 h-3.5 text-[#3B82F6] shrink-0" />
                   <span>Số tín chỉ: <strong className="text-slate-800 font-semibold">{tooltipData.stc}</strong></span>
                 </div>
                 {tooltipData.nhom && (
                   <div className="flex items-center gap-2">
-                    <Tag className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <Tag className="w-3.5 h-3.5 text-[#3B82F6] shrink-0" />
                     <span>Nhóm lớp: <strong className="text-slate-800 font-semibold">{tooltipData.nhom}</strong></span>
                   </div>
                 )}
@@ -249,7 +249,7 @@ function StudentSchedule({ user }) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+              className="bg-[#FFFFFF] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
             >
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex justify-between items-center">
                 <h3 className="text-white font-bold text-lg flex items-center gap-2">
@@ -257,40 +257,40 @@ function StudentSchedule({ user }) {
                 </h3>
                 <button 
                   onClick={() => setSelectedCourse(null)} 
-                  className="p-1 hover:bg-white/20 rounded-lg text-white transition-colors"
+                  className="p-1 hover:bg-white/40 rounded-lg text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="p-6 space-y-5">
-                <div className="flex flex-col gap-1 border-b border-gray-100 pb-4">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Môn học</span>
-                  <span className="text-xl font-bold text-gray-800 leading-snug">{selectedCourse.tenMon}</span>
+                <div className="flex flex-col gap-1 border-b border-[#E5E7EB] pb-4">
+                  <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Môn học</span>
+                  <span className="text-xl font-bold text-[#1F2937] leading-snug">{selectedCourse.tenMon}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <span className="text-xs text-gray-500 font-medium">Mã học phần</span>
-                    <div className="font-semibold text-gray-800 mt-1 font-mono text-sm">{selectedCourse.maHP}</div>
+                  <div className="bg-[#F7F8FA] p-4 rounded-xl border border-[#E5E7EB]">
+                    <span className="text-xs text-[#6B7280] font-medium">Mã học phần</span>
+                    <div className="font-semibold text-[#1F2937] mt-1 font-mono text-sm">{selectedCourse.maHP}</div>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <span className="text-xs text-gray-500 font-medium">Số tín chỉ</span>
-                    <div className="font-semibold text-blue-600 mt-1">{selectedCourse.stc} tín chỉ</div>
+                  <div className="bg-[#F7F8FA] p-4 rounded-xl border border-[#E5E7EB]">
+                    <span className="text-xs text-[#6B7280] font-medium">Số tín chỉ</span>
+                    <div className="font-semibold text-[#3B82F6] mt-1">{selectedCourse.stc} tín chỉ</div>
                   </div>
 
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <span className="text-xs text-gray-500 font-medium">Phòng học</span>
-                    <div className="font-semibold text-gray-800 mt-1 flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-orange-500" /> {selectedCourse.phong}
+                  <div className="bg-[#F7F8FA] p-4 rounded-xl border border-[#E5E7EB]">
+                    <span className="text-xs text-[#6B7280] font-medium">Phòng học</span>
+                    <div className="font-semibold text-[#1F2937] mt-1 flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-[#F4C542]" /> {selectedCourse.phong}
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <span className="text-xs text-gray-500 font-medium">Giờ học</span>
-                    <div className="font-semibold text-gray-800 mt-1 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-blue-500" />
+                  <div className="bg-[#F7F8FA] p-4 rounded-xl border border-[#E5E7EB]">
+                    <span className="text-xs text-[#6B7280] font-medium">Giờ học</span>
+                    <div className="font-semibold text-[#1F2937] mt-1 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-[#3B82F6]" />
                       Tiết {selectedCourse.tietBatDau} - {selectedCourse.tietBatDau + selectedCourse.soTiet - 1}
                     </div>
                   </div>
@@ -311,7 +311,7 @@ function StudentSchedule({ user }) {
       </AnimatePresence>
 
       {/* Top Controls */}
-      <div className="p-4 border-b border-gray-200 flex flex-col xl:flex-row items-center justify-between gap-4">
+      <div className="p-4 border-b border-[#E5E7EB] flex flex-col xl:flex-row items-center justify-between gap-4">
         
         <div className="flex items-center gap-6">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -319,33 +319,33 @@ function StudentSchedule({ user }) {
               type="radio" 
               checked={viewType === 'week'} 
               onChange={() => setViewType('week')}
-              className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300" 
+              className="w-5 h-5 text-[#3B82F6] focus:ring-blue-500 border-gray-300" 
             />
-            <span className={`font-medium ${viewType === 'week' ? 'text-blue-600' : 'text-gray-600'}`}>Xem TKB Tuần</span>
+            <span className={`font-medium ${viewType === 'week' ? 'text-[#3B82F6]' : 'text-[#6B7280]'}`}>Xem TKB Tuần</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
               type="radio" 
               checked={viewType === 'semester'} 
               onChange={() => setViewType('semester')}
-              className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300" 
+              className="w-5 h-5 text-[#3B82F6] focus:ring-blue-500 border-gray-300" 
             />
-            <span className={`font-medium ${viewType === 'semester' ? 'text-blue-600' : 'text-gray-600'}`}>Xem TKB Học Kỳ</span>
+            <span className={`font-medium ${viewType === 'semester' ? 'text-[#3B82F6]' : 'text-[#6B7280]'}`}>Xem TKB Học Kỳ</span>
           </label>
         </div>
 
         {viewType === 'week' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
-            <button onClick={currentWeek} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-sm">
+            <button onClick={currentWeek} className="px-4 py-2 bg-[#3B82F6]/100 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-sm">
               Tuần hiện tại
             </button>
-            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
-              <button onClick={prevWeek} className="p-1.5 hover:bg-gray-200 rounded-md transition-colors text-gray-600"><ChevronLeft className="w-5 h-5" /></button>
-              <div className="px-4 py-1 flex items-center gap-2 min-w-[240px] justify-center bg-white border border-gray-200 rounded-md shadow-sm">
-                <CalendarRange className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-1 bg-[#F7F8FA] border border-[#E5E7EB] rounded-lg p-1">
+              <button onClick={prevWeek} className="p-1.5 hover:bg-gray-200 rounded-md transition-colors text-[#6B7280]"><ChevronLeft className="w-5 h-5" /></button>
+              <div className="px-4 py-1 flex items-center gap-2 min-w-[240px] justify-center bg-[#FFFFFF] border border-[#E5E7EB] rounded-md shadow-sm">
+                <CalendarRange className="w-4 h-4 text-gray-300" />
                 <span className="text-sm font-medium text-gray-700">Tuần: {formatDate(weekDates[0])} - {formatDate(weekDates[6])}</span>
               </div>
-              <button onClick={nextWeek} className="p-1.5 hover:bg-gray-200 rounded-md transition-colors text-gray-600"><ChevronRight className="w-5 h-5" /></button>
+              <button onClick={nextWeek} className="p-1.5 hover:bg-gray-200 rounded-md transition-colors text-[#6B7280]"><ChevronRight className="w-5 h-5" /></button>
             </div>
           </motion.div>
         )}
@@ -360,11 +360,11 @@ function StudentSchedule({ user }) {
             <table className="w-full border-collapse min-w-[1000px]">
               <thead>
                 <tr>
-                  <th className="w-20 border border-gray-200 bg-white"></th>
+                  <th className="w-20 border border-[#E5E7EB] bg-[#FFFFFF]"></th>
                   {weekDates.map((date, index) => (
-                    <th key={index} className="border border-white bg-orange-500 text-white py-3 px-2 w-[14%] font-normal">
+                    <th key={index} className="border border-white bg-[#F4C542] text-[#152238] py-3 px-2 w-[14%] font-normal">
                       <div className="font-bold text-base mb-1">{index === 6 ? 'Chủ nhật' : `Thứ ${index + 2}`}</div>
-                      <div className="text-xs text-orange-100">{formatDate(date)}</div>
+                      <div className="text-xs text-[#152238]/70">{formatDate(date)}</div>
                     </th>
                   ))}
                 </tr>
@@ -372,7 +372,7 @@ function StudentSchedule({ user }) {
               <tbody>
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((tiet) => (
                   <tr key={tiet}>
-                    <td className="w-20 min-w-[80px] bg-orange-500 text-white font-bold text-center border border-gray-200">
+                    <td className="w-20 min-w-[80px] bg-[#F4C542] text-[#152238] font-bold text-center border border-[#E5E7EB]">
                       Tiết {tiet}
                     </td>
                     {[0, 1, 2, 3, 4, 5, 6].map((dayIdx) => {
@@ -389,18 +389,18 @@ function StudentSchedule({ user }) {
                             onMouseLeave={() => setTooltipData(null)}
                             // MỞ POPUP CUSTOM THAY VÌ ALERT
                             onClick={() => setSelectedCourse(cellData)}
-                            className="border border-gray-200 bg-[#FDE28A] p-3 align-top transition-colors cursor-pointer hover:brightness-95 shadow-sm relative group"
+                            className="border border-[#E5E7EB] bg-[#FDE28A] p-3 align-top transition-colors cursor-pointer hover:brightness-95 shadow-sm relative group"
                           >
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full">
-                              <span className="font-bold text-gray-800 text-sm mb-2 leading-relaxed">{cellData.tenMon}</span>
+                              <span className="font-bold text-[#1F2937] text-sm mb-2 leading-relaxed">{cellData.tenMon}</span>
                               <span className="flex items-center gap-1.5 text-gray-700 text-sm mt-auto font-medium">
-                                <Navigation className="w-3.5 h-3.5 text-gray-600" /> {cellData.phong}
+                                <Navigation className="w-3.5 h-3.5 text-[#6B7280]" /> {cellData.phong}
                               </span>
                             </motion.div>
                           </td>
                         );
                       }
-                      return <td key={dayIdx} className="border border-gray-200 h-14 bg-white transition-colors hover:bg-gray-50/50"></td>;
+                      return <td key={dayIdx} className="border border-[#E5E7EB] h-14 bg-[#FFFFFF] transition-colors hover:bg-[#F7F8FA]/50"></td>;
                     })}
                   </tr>
                 ))}
@@ -409,9 +409,9 @@ function StudentSchedule({ user }) {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center p-16 text-center">
-            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4"><BookOpen className="w-10 h-10 text-blue-300" /></div>
+            <div className="w-20 h-20 bg-[#3B82F6]/10 rounded-full flex items-center justify-center mb-4"><BookOpen className="w-10 h-10 text-blue-300" /></div>
             <h3 className="text-xl font-bold text-gray-700 mb-2">Trống lịch học</h3>
-            <p className="text-gray-500 max-w-md">Không có lịch học trong tuần này. Hãy tận hưởng thời gian nghỉ ngơi nhé!</p>
+            <p className="text-[#6B7280] max-w-md">Không có lịch học trong tuần này. Hãy tận hưởng thời gian nghỉ ngơi nhé!</p>
           </div>
         )
       )}
@@ -421,13 +421,13 @@ function StudentSchedule({ user }) {
       {/* KHU VỰC 2: XEM THEO HỌC KỲ (DẠNG DANH SÁCH) */}
       {/* ========================================= */}
       {viewType === 'semester' && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#FFFFFF]">
           
           {/* Tabs chuyển học kỳ */}
-          <div className="flex border-b border-gray-200 px-2 pt-2 overflow-x-auto custom-scrollbar">
+          <div className="flex border-b border-[#E5E7EB] px-2 pt-2 overflow-x-auto custom-scrollbar">
             <button 
               onClick={() => setActiveSemTab('all')}
-              className={`px-5 py-3 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeSemTab === 'all' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+              className={`px-5 py-3 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeSemTab === 'all' ? 'border-blue-600 text-[#3B82F6]' : 'border-transparent text-[#6B7280] hover:text-[#1F2937]'}`}
             >
               Tất cả
             </button>
@@ -435,7 +435,7 @@ function StudentSchedule({ user }) {
               <button 
                 key={hk}
                 onClick={() => setActiveSemTab(hk)}
-                className={`px-5 py-3 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeSemTab === hk ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                className={`px-5 py-3 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeSemTab === hk ? 'border-blue-600 text-[#3B82F6]' : 'border-transparent text-[#6B7280] hover:text-[#1F2937]'}`}
               >
                 {formatHocKyTitle(hk)}
               </button>
@@ -444,18 +444,18 @@ function StudentSchedule({ user }) {
 
           {/* Bảng dữ liệu Học kỳ */}
           <div className="overflow-x-auto p-4">
-            <table className="w-full text-left border-collapse border border-gray-200 min-w-[1000px]">
+            <table className="w-full text-left border-collapse border border-[#E5E7EB] min-w-[1000px]">
               <thead>
-                <tr className="bg-gray-50 text-gray-600 text-sm">
-                  <th className="p-3 border border-gray-200 font-semibold">Mã HP</th>
-                  <th className="p-3 border border-gray-200 font-semibold w-1/4">Môn học</th>
-                  <th className="p-3 border border-gray-200 font-semibold text-center">NH</th>
-                  <th className="p-3 border border-gray-200 font-semibold text-center">TH</th>
-                  <th className="p-3 border border-gray-200 font-semibold text-center">STC</th>
-                  <th className="p-3 border border-gray-200 font-semibold">Phòng</th>
-                  <th className="p-3 border border-gray-200 font-semibold text-center">Thứ</th>
-                  <th className="p-3 border border-gray-200 font-semibold text-center">Tiết BĐ</th>
-                  <th className="p-3 border border-gray-200 font-semibold">Thời gian học</th>
+                <tr className="bg-[#F7F8FA] text-[#6B7280] text-sm">
+                  <th className="p-3 border border-[#E5E7EB] font-semibold">Mã HP</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold w-1/4">Môn học</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold text-center">NH</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold text-center">TH</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold text-center">STC</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold">Phòng</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold text-center">Thứ</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold text-center">Tiết BĐ</th>
+                  <th className="p-3 border border-[#E5E7EB] font-semibold">Thời gian học</th>
                 </tr>
               </thead>
               <tbody>
@@ -463,7 +463,7 @@ function StudentSchedule({ user }) {
                   <React.Fragment key={hk}>
                     {/* Hàng Header Màu Xanh của từng Học Kỳ */}
                     <tr>
-                      <td colSpan="9" className="bg-orange-500 text-white font-bold px-4 py-2.5 text-sm">
+                      <td colSpan="9" className="bg-[#F4C542] text-[#152238] font-bold px-4 py-2.5 text-sm">
                         {formatHocKyTitle(hk)}
                       </td>
                     </tr>
@@ -474,10 +474,10 @@ function StudentSchedule({ user }) {
                         key={idx} 
                         // MỞ POPUP CUSTOM THAY VÌ ALERT
                         onClick={() => setSelectedCourse(course)}
-                        className="border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                        className="border-b border-[#E5E7EB] hover:bg-[#F7F8FA] transition-colors cursor-pointer"
                       >
                         <td className="p-3 text-sm text-gray-700 font-medium">{course.maHP}</td>
-                        <td className="p-3 text-sm font-semibold text-blue-600 hover:underline">{course.tenMon}</td>
+                        <td className="p-3 text-sm font-semibold text-[#3B82F6] hover:underline">{course.tenMon}</td>
                         <td className="p-3 text-sm text-gray-700 text-center">{course.nhom}</td>
                         <td className="p-3 text-sm text-gray-700 text-center">-</td> {/* TH để trống */}
                         <td className="p-3 text-sm text-gray-700 text-center">{course.stc}</td>
@@ -491,7 +491,7 @@ function StudentSchedule({ user }) {
                 ))}
                 
                 {Object.keys(semesterData).length === 0 && (
-                  <tr><td colSpan="9" className="p-8 text-center text-gray-500 italic">Không có dữ liệu lịch học</td></tr>
+                  <tr><td colSpan="9" className="p-8 text-center text-[#6B7280] italic">Không có dữ liệu lịch học</td></tr>
                 )}
               </tbody>
             </table>

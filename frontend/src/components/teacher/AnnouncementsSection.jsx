@@ -46,11 +46,11 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl flex items-center justify-between"
+        className="bg-[#F4C542] rounded-2xl p-8 shadow-xl flex items-center justify-between"
       >
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Thông báo</h2>
-          <p className="text-orange-100">Quản lý thông báo cho sinh viên</p>
+          <h2 className="text-2xl font-bold text-[#152238] mb-2">Thông báo</h2>
+          <p className="text-[#152238]/70">Quản lý thông báo cho sinh viên</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -59,7 +59,7 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
             setShowModal(true);
             setError('');
           }}
-          className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl shadow-lg transition-all"
+          className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl shadow-lg transition-all"
         >
           <Bell className="w-5 h-5" />
           Tạo thông báo
@@ -75,8 +75,8 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
           className="space-y-4"
         >
           <div className="flex items-center gap-2 mb-4">
-            <Shield className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-bold text-gray-800">Thông báo từ Admin</h3>
+            <Shield className="w-5 h-5 text-[#3B82F6]" />
+            <h3 className="text-lg font-bold text-[#1F2937]">Thông báo từ Admin</h3>
           </div>
           {adminAnnouncements.map((announcement, index) => (
             <motion.div
@@ -93,18 +93,18 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg font-bold text-gray-800">{announcement.TieuDe}</h3>
+                    <h3 className="text-lg font-bold text-[#1F2937]">{announcement.TieuDe}</h3>
                     <span className="px-2 py-1 bg-blue-200 text-blue-700 text-xs font-bold rounded-full">Admin</span>
                   </div>
-                  <p className="text-gray-600 mb-4">{announcement.NoiDung}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <p className="text-[#6B7280] mb-4">{announcement.NoiDung}</p>
+                  <div className="flex items-center gap-4 text-sm text-[#6B7280]">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       {new Date(announcement.NgayTao).toLocaleString('vi-VN')}
                     </div>
                     {announcement.TenLop && (
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">
+                        <span className="px-2 py-1 bg-blue-100 text-[#3B82F6] text-xs rounded-full">
                           Lớp {announcement.TenLop}
                         </span>
                       </div>
@@ -125,8 +125,8 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
         className="space-y-4"
       >
         <div className="flex items-center gap-2 mb-4">
-          <Megaphone className="w-5 h-5 text-orange-600" />
-          <h3 className="text-lg font-bold text-gray-800">Thông báo của bạn</h3>
+          <Megaphone className="w-5 h-5 text-[#F4C542]" />
+          <h3 className="text-lg font-bold text-[#1F2937]">Thông báo của bạn</h3>
         </div>
         {myAnnouncements.length > 0 ? (
           myAnnouncements.map((announcement, index) => (
@@ -136,16 +136,16 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2 }}
               whileHover={{ y: -2 }}
-              className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
+              className="bg-[#FFFFFF]/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-[#E5E7EB]/50"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200 flex-shrink-0">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#F4C542] to-[#F4C542]/90 rounded-2xl flex items-center justify-center shadow-lg shadow-[#F4C542]/30 flex-shrink-0">
                   <Megaphone className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-800 mb-2">{announcement.TieuDe}</h3>
-                  <p className="text-gray-600 mb-4">{announcement.NoiDung}</p>
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <h3 className="text-lg font-bold text-[#1F2937] mb-2">{announcement.TieuDe}</h3>
+                  <p className="text-[#6B7280] mb-4">{announcement.NoiDung}</p>
+                  <div className="flex items-center gap-2 text-sm text-gray-300">
                     <Calendar className="w-4 h-4" />
                     {new Date(announcement.NgayTao).toLocaleString('vi-VN')}
                   </div>
@@ -157,13 +157,13 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-gray-100/50"
+            className="bg-[#FFFFFF]/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-[#E5E7EB]/50"
           >
-            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+            <div className="flex flex-col items-center justify-center py-8 text-gray-300">
               <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <Bell className="w-10 h-10 text-gray-300" />
               </div>
-              <p className="text-lg font-medium text-gray-600">Chưa có thông báo nào</p>
+              <p className="text-lg font-medium text-[#6B7280]">Chưa có thông báo nào</p>
             </div>
           </motion.div>
         )}
@@ -182,17 +182,17 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.9, y: 20, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl"
+              className="bg-[#FFFFFF] rounded-3xl p-6 w-full max-w-2xl shadow-2xl"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">Tạo thông báo mới</h3>
+                <h3 className="text-2xl font-bold text-[#1F2937]">Tạo thông báo mới</h3>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowModal(false)}
                   className="p-2.5 hover:bg-gray-100 rounded-xl transition-all"
                 >
-                  <X className="w-6 h-6 text-gray-500" />
+                  <X className="w-6 h-6 text-[#6B7280]" />
                 </motion.button>
               </div>
 
@@ -201,9 +201,9 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3"
+                    className="bg-[#EF4444]/10 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3"
                   >
-                    <X className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <X className="w-5 h-5 text-[#EF4444] flex-shrink-0 mt-0.5" />
                     <p className="text-red-700 text-sm font-medium">{error}</p>
                   </motion.div>
                 )}
@@ -216,7 +216,7 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
                       setFormData({ ...formData, TieuDe: e.target.value });
                       setError('');
                     }}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all"
+                    className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-all"
                     required
                   />
                 </div>
@@ -228,7 +228,7 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
                       setFormData({ ...formData, NoiDung: e.target.value });
                       setError('');
                     }}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all h-32"
+                    className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-all h-32"
                     required
                   />
                 </div>
@@ -240,7 +240,7 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
                       setFormData({ ...formData, MaLop_Nhan: e.target.value });
                       setError('');
                     }}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-all"
+                    className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-all"
                     required
                   >
                     <option value="">-- Chọn lớp --</option>
@@ -260,7 +260,7 @@ function AnnouncementsSection({ announcements, user, onRefresh, classes }) {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-bold shadow-lg transition-all"
+                    className="flex-1 bg-[#F4C542] text-[#152238] py-3 rounded-xl font-bold shadow-lg transition-all"
                   >
                     Đăng thông báo
                   </motion.button>

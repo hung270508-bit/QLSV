@@ -1110,27 +1110,27 @@ function StudentManagement() {
 
         initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
 
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6"
+        className="bg-[#F4C542] rounded-3xl p-8 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6"
 
       >
 
         <div className="flex items-center gap-5 relative z-10">
 
-          <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-sm">
+          <div className="p-4 bg-white/40 rounded-2xl backdrop-blur-sm">
 
-            <Users className="w-10 h-10 text-white" />
+            <Users className="w-10 h-10 text-[#152238]" />
 
           </div>
 
           <div>
 
-            <h2 className="text-3xl font-bold text-white mb-1">
+            <h2 className="text-3xl font-bold text-[#152238] mb-1">
 
               Quản lý sinh viên
 
             </h2>
 
-            <p className="text-orange-100 text-lg">Thêm, sửa, xóa và xem chi tiết thông tin sinh viên</p>
+            <p className="text-[#152238]/70 text-lg">Thêm, sửa, xóa và xem chi tiết thông tin sinh viên</p>
 
           </div>
 
@@ -1146,7 +1146,7 @@ function StudentManagement() {
 
             onClick={handleExportStudents}
 
-            className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+            className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
 
           >
 
@@ -1164,7 +1164,7 @@ function StudentManagement() {
 
             onClick={() => setShowModal(true)}
 
-            className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
+            className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
 
           >
 
@@ -1184,13 +1184,13 @@ function StudentManagement() {
 
       {/* Search and Filters */}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] p-4">
 
         <div className="flex flex-col md:flex-row gap-4">
 
           <div className="relative flex-1">
 
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-300 w-5 h-5" />
 
             <input
 
@@ -1204,7 +1204,7 @@ function StudentManagement() {
 
               onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
 
-              className="w-full pl-11 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all text-gray-700 placeholder:font-semibold"
+              className="w-full pl-11 pr-10 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 transition-all text-gray-700 placeholder:font-semibold"
 
             />
 
@@ -1214,7 +1214,7 @@ function StudentManagement() {
 
                 onClick={handleClearSearch}
 
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-[#6B7280] transition-colors"
 
               >
 
@@ -1240,9 +1240,9 @@ function StudentManagement() {
 
                 hasActiveFilters 
 
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
+                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30' 
 
-                  : 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100'
+                  : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
 
               }`}
 
@@ -1254,7 +1254,7 @@ function StudentManagement() {
 
               {activeFilterCount > 0 && (
 
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-[#EF4444]/100 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
 
                   {activeFilterCount}
 
@@ -1274,7 +1274,7 @@ function StudentManagement() {
 
                 onClick={clearFilters}
 
-                className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-100"
+                className="px-5 py-2.5 bg-red-100 text-[#DC2626] rounded-xl font-medium hover:bg-red-200 transition-colors flex items-center gap-2 border border-red-200"
 
               >
 
@@ -1302,7 +1302,7 @@ function StudentManagement() {
 
             exit={{ opacity: 0, height: 0 }}
 
-            className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+            className="bg-[#FFF7D6]/50 border border-[#FFF7D6] rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
 
           >
 
@@ -1318,7 +1318,7 @@ function StudentManagement() {
 
                   onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
 
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
 
                 >
 
@@ -1348,7 +1348,7 @@ function StudentManagement() {
 
                   onChange={(e) => setDisplayFilters({ ...displayFilters, statusFilter: e.target.value })}
 
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
 
                 >
 
@@ -1376,7 +1376,7 @@ function StudentManagement() {
 
                 onClick={handleApplyFilters}
 
-                className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
+                className="flex-1 bg-[#F4C542] text-[#152238] py-2.5 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm"
 
               >
 
@@ -1412,7 +1412,7 @@ function StudentManagement() {
 
       {/* Table */}
 
-      <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
 
         <div className="overflow-x-auto">
 
@@ -1422,17 +1422,17 @@ function StudentManagement() {
 
               <tr>
 
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Sinh viên</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Sinh viên</th>
 
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Lớp</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Lớp</th>
 
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Giới tính</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Giới tính</th>
 
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Liên hệ</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Liên hệ</th>
 
-                <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Trạng thái</th>
 
-                <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Thao tác</th>
 
               </tr>
 
@@ -1454,7 +1454,7 @@ function StudentManagement() {
 
                     transition={{ delay: index * 0.05 }}
 
-                    className="border-b border-orange-50 hover:bg-orange-50/20 transition-colors cursor-pointer"
+                    className="border-b border-orange-50 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer"
 
                     onClick={() => handleViewDetails(student)}
 
@@ -1464,9 +1464,9 @@ function StudentManagement() {
 
                       <div className="flex flex-col">
 
-                        <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{capitalizeVietnameseName(student.HoTen)}</span>
+                        <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{capitalizeVietnameseName(student.HoTen)}</span>
 
-                        <span className="text-xs text-gray-400 font-mono mt-0.5 whitespace-nowrap">{student.MSSV}</span>
+                        <span className="text-xs text-gray-300 font-mono mt-0.5 whitespace-nowrap">{student.MSSV}</span>
 
                       </div>
 
@@ -1482,7 +1482,7 @@ function StudentManagement() {
 
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${student.GioiTinh === 'Nam'
 
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        ? 'bg-[#3B82F6]/10 text-blue-700 border border-blue-200'
 
                         : 'bg-pink-50 text-pink-700 border border-pink-200'
 
@@ -1500,7 +1500,7 @@ function StudentManagement() {
 
                         <span className="text-gray-700 whitespace-nowrap max-w-[180px] truncate" title={student.Email}>{student.Email || 'N/A'}</span>
 
-                        <span className="text-gray-400 whitespace-nowrap mt-0.5">{student.SoDienThoai || 'N/A'}</span>
+                        <span className="text-gray-300 whitespace-nowrap mt-0.5">{student.SoDienThoai || 'N/A'}</span>
 
                       </div>
 
@@ -1510,13 +1510,13 @@ function StudentManagement() {
 
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${student.TrangThai === 'Đang học'
 
-                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        ? 'bg-[#22C55E]/10 text-green-700 border border-green-200'
 
                         : student.TrangThai === 'Học lại'
 
                           ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
 
-                          : 'bg-red-50 text-red-700 border border-red-200'
+                          : 'bg-[#EF4444]/10 text-red-700 border border-red-200'
 
                         }`}>
 
@@ -1538,7 +1538,7 @@ function StudentManagement() {
 
                           onClick={() => handleEdit(student)}
 
-                          className="p-3 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm"
 
                           title="Chỉnh sửa"
 
@@ -1562,7 +1562,7 @@ function StudentManagement() {
 
                   <td colSpan="6" className="py-16">
 
-                    <div className="flex flex-col items-center justify-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center text-gray-300">
 
                       <Users className="w-16 h-16 mb-4 text-gray-300" />
 
@@ -1614,11 +1614,11 @@ function StudentManagement() {
 
               animate={{ opacity: 1, scale: 1 }}
 
-              className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="bg-[#FFFFFF] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
 
             >
 
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+              <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center flex-shrink-0">
 
                 <div className="text-white">
 
@@ -1630,7 +1630,7 @@ function StudentManagement() {
 
                   </h3>
 
-                  <p className="text-orange-100 text-sm mt-0.5">
+                  <p className="text-[#152238]/70 text-sm mt-0.5">
 
                     {editingStudent ? 'Chỉnh sửa hồ sơ sinh viên' : 'Tạo hồ sơ sinh viên và gán lớp'}
 
@@ -1638,7 +1638,7 @@ function StudentManagement() {
 
                 </div>
 
-                <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-lg text-white">
+                <button onClick={handleCloseModal} className="p-2 hover:bg-white/40 rounded-lg text-white">
 
                   <X className="w-5 h-5" />
 
@@ -1676,13 +1676,13 @@ function StudentManagement() {
 
                       }}
 
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.HoTen ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
                         }`}
 
                     />
 
-                    {errors.HoTen && <p className="text-red-500 text-sm mt-1">{errors.HoTen}</p>}
+                    {errors.HoTen && <p className="text-[#EF4444] text-sm mt-1">{errors.HoTen}</p>}
 
                   </div>
 
@@ -1706,13 +1706,13 @@ function StudentManagement() {
 
                       }}
 
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
                         }`}
 
                     />
 
-                    {errors.NgaySinh && <p className="text-red-500 text-sm mt-1">{errors.NgaySinh}</p>}
+                    {errors.NgaySinh && <p className="text-[#EF4444] text-sm mt-1">{errors.NgaySinh}</p>}
 
                   </div>
 
@@ -1732,9 +1732,9 @@ function StudentManagement() {
 
                       }}
 
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${
+                      className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${
 
-                        errors.GioiTinh ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                        errors.GioiTinh ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
                       }`}
 
@@ -1748,7 +1748,7 @@ function StudentManagement() {
 
                     </select>
 
-                    {errors.GioiTinh && <p className="text-red-500 text-sm mt-1">{errors.GioiTinh}</p>}
+                    {errors.GioiTinh && <p className="text-[#EF4444] text-sm mt-1">{errors.GioiTinh}</p>}
 
                   </div>
 
@@ -1770,13 +1770,13 @@ function StudentManagement() {
 
                       }}
 
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.Email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.Email ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
                         }`}
 
                     />
 
-                    {errors.Email && <p className="text-red-500 text-sm mt-1">{errors.Email}</p>}
+                    {errors.Email && <p className="text-[#EF4444] text-sm mt-1">{errors.Email}</p>}
 
                   </div>
 
@@ -1798,13 +1798,13 @@ function StudentManagement() {
 
                       }}
 
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                      className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.SoDienThoai ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
                         }`}
 
                     />
 
-                    {errors.SoDienThoai && <p className="text-red-500 text-sm mt-1">{errors.SoDienThoai}</p>}
+                    {errors.SoDienThoai && <p className="text-[#EF4444] text-sm mt-1">{errors.SoDienThoai}</p>}
 
                   </div>
 
@@ -1826,7 +1826,7 @@ function StudentManagement() {
 
                           placeholder="Năm bắt đầu"
 
-                          className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.startYear ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                          className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.startYear ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
 
                           maxLength={4}
 
@@ -1834,13 +1834,13 @@ function StudentManagement() {
 
                         {errors.startYear && (
 
-                          <p className="text-red-500 text-xs mt-1 font-medium">{errors.startYear}</p>
+                          <p className="text-[#EF4444] text-xs mt-1 font-medium">{errors.startYear}</p>
 
                         )}
 
                       </div>
 
-                      <span className="flex items-center text-gray-500 font-semibold">-</span>
+                      <span className="flex items-center text-[#6B7280] font-semibold">-</span>
 
                       <div className="flex-1">
 
@@ -1854,7 +1854,7 @@ function StudentManagement() {
 
                           placeholder="Năm kết thúc"
 
-                          className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-400 cursor-not-allowed focus:outline-none"
+                          className="w-full px-4 py-3 bg-gray-100 border-2 border-[#E5E7EB] rounded-xl text-gray-300 cursor-not-allowed focus:outline-none"
 
                           maxLength={4}
 
@@ -1862,7 +1862,7 @@ function StudentManagement() {
 
                         {errors.endYear && (
 
-                          <p className="text-red-500 text-xs mt-1 font-medium">{errors.endYear}</p>
+                          <p className="text-[#EF4444] text-xs mt-1 font-medium">{errors.endYear}</p>
 
                         )}
 
@@ -1884,7 +1884,7 @@ function StudentManagement() {
 
                         onChange={handleFacultyChange}
 
-                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors ${errors.selectedFaculty ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                        className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.selectedFaculty ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
                           }`}
 
@@ -1904,7 +1904,7 @@ function StudentManagement() {
 
                       </select>
 
-                      {errors.selectedFaculty && <p className="text-red-500 text-xs mt-1">{errors.selectedFaculty}</p>}
+                      {errors.selectedFaculty && <p className="text-[#EF4444] text-xs mt-1">{errors.selectedFaculty}</p>}
 
                     </div>
 
@@ -1926,7 +1926,7 @@ function StudentManagement() {
 
                         disabled={!selectedFaculty || !formData.startYear || !formData.endYear}
 
-                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'
+                        className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
                           }`}
 
@@ -1946,7 +1946,7 @@ function StudentManagement() {
 
                       </select>
 
-                      {errors.MaLop && <p className="text-red-500 text-sm mt-1">{errors.MaLop}</p>}
+                      {errors.MaLop && <p className="text-[#EF4444] text-sm mt-1">{errors.MaLop}</p>}
 
                     </div>
 
@@ -1964,7 +1964,7 @@ function StudentManagement() {
 
                         onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value })}
 
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                        className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors"
 
                       >
 
@@ -1990,13 +1990,13 @@ function StudentManagement() {
                       readOnly
                       placeholder="Chưa có mã thẻ"
                       value={formData.UID || ''}
-                      className="flex-1 px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-700 focus:outline-none"
+                      className="flex-1 px-4 py-3 bg-gray-100 border-2 border-[#E5E7EB] rounded-xl text-gray-700 focus:outline-none"
                     />
                     {formData.UID && (
                       <button
                         type="button"
                         onClick={handleClearUID}
-                        className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl shadow-md transition-colors"
+                        className="px-4 py-3 bg-[#EF4444]/100 hover:bg-red-600 text-white font-semibold rounded-xl shadow-md transition-colors"
                         title="Xóa mã"
                       >
                         Xóa mã
@@ -2009,7 +2009,7 @@ function StudentManagement() {
                       className={`px-6 py-3 font-semibold rounded-xl text-white transition-colors ${
                         isPollingUid 
                           ? 'bg-gray-400 cursor-not-allowed' 
-                          : 'bg-blue-500 hover:bg-blue-600 shadow-md'
+                          : 'bg-[#3B82F6]/100 hover:bg-blue-600 shadow-md'
                       }`}
                     >
                       {isPollingUid ? 'Đang chờ quẹt thẻ...' : 'Lấy mã UID'}
@@ -2037,7 +2037,7 @@ function StudentManagement() {
 
                     type="submit"
 
-                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg"
+                    className="flex-1 py-3 bg-[#F4C542] text-[#152238] font-semibold rounded-xl shadow-lg"
 
                   >
 
@@ -2077,19 +2077,19 @@ function StudentManagement() {
 
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
 
-              className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
+              className="bg-[#FFFFFF] rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col"
 
             >
 
               {/* Header */}
 
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6 flex-shrink-0">
+              <div className="bg-[#F4C542] px-8 py-6 flex-shrink-0">
 
                 <div className="flex items-start justify-between">
 
                   <div className="flex items-center gap-4">
 
-                    <div className="bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <div className="bg-[#FFFFFF]/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
 
                       {(studentDetails?.HoTen || selectedStudent.HoTen || 'SV')
 
@@ -2109,7 +2109,7 @@ function StudentManagement() {
 
                     <div>
 
-                      <span className="text-orange-100 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="text-[#152238]/70 text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5">
 
                         <GraduationCap className="w-4 h-4" />
 
@@ -2121,17 +2121,17 @@ function StudentManagement() {
 
                       <div className="flex flex-wrap items-center gap-2 mt-2">
 
-                        <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
+                        <span className="bg-white/40 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
 
                         {studentDetails?.TenLop && (
 
-                          <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenLop}</span>
+                          <span className="bg-white/40 text-white text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenLop}</span>
 
                         )}
 
                         {studentDetails?.TenKhoa && (
 
-                          <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenKhoa}</span>
+                          <span className="bg-white/40 text-white text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenKhoa}</span>
 
                         )}
 
@@ -2149,7 +2149,7 @@ function StudentManagement() {
 
                     onClick={handleCloseDetailModal}
 
-                    className="bg-white/20 hover:bg-white/30 rounded-xl p-2 transition-colors"
+                    className="bg-white/40 hover:bg-[#FFFFFF]/30 rounded-xl p-2 transition-colors"
 
                   >
 
@@ -2189,9 +2189,9 @@ function StudentManagement() {
 
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${detailTab === tab.id
 
-                          ? 'bg-white text-orange-600 shadow-md'
+                          ? 'bg-[#FFFFFF] text-[#F4C542] shadow-md'
 
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                          : 'text-white/70 hover:text-white hover:bg-[#FFFFFF]/10'
 
                           }`}
 
@@ -2241,13 +2241,13 @@ function StudentManagement() {
 
                         const colorMap = {
 
-                          blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
+                          blue: 'bg-[#3B82F6]/10 text-[#3B82F6] border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
 
-                          green: 'bg-green-50 text-green-600 border-green-100 hover:border-green-300 hover:bg-green-100/30',
+                          green: 'bg-[#22C55E]/10 text-[#22C55E] border-green-100 hover:border-green-300 hover:bg-[#22C55E]/20/30',
 
                           purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
 
-                          orange: 'bg-orange-50 text-orange-600 border-orange-100 hover:border-orange-300 hover:bg-orange-100/30',
+                          orange: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-orange-300 hover:bg-[#FFF7D6]/30',
 
                         };
 
@@ -2273,7 +2273,7 @@ function StudentManagement() {
 
                               <div className="text-3xl font-bold font-mono tracking-tight">{card.value}</div>
 
-                              <div className="p-2 bg-white rounded-xl shadow-sm">
+                              <div className="p-2 bg-[#FFFFFF] rounded-xl shadow-sm">
 
                                 <Icon className="w-5 h-5 opacity-90" />
 
@@ -2297,7 +2297,7 @@ function StudentManagement() {
 
                     <div>
 
-                      <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
+                      <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-3">Thông tin cá nhân</h4>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
@@ -2329,13 +2329,13 @@ function StudentManagement() {
 
                             whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
 
-                            className="flex items-center gap-4 bg-gray-50 border border-gray-100 rounded-2xl p-4 transition-all duration-300"
+                            className="flex items-center gap-4 bg-[#F7F8FA] border border-[#E5E7EB] rounded-2xl p-4 transition-all duration-300"
 
                           >
 
                             {item.icon && (
 
-                              <div className="bg-orange-100 rounded-xl p-2.5 text-orange-600 flex-shrink-0">
+                              <div className="bg-[#FFF7D6] rounded-xl p-2.5 text-[#F4C542] flex-shrink-0">
 
                                 <item.icon className="w-5 h-5" />
 
@@ -2345,9 +2345,9 @@ function StudentManagement() {
 
                             <div className="flex-1 min-w-0">
 
-                              <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{item.label}</div>
+                              <div className="text-xs text-gray-300 font-semibold uppercase tracking-wider">{item.label}</div>
 
-                              <div className="font-semibold text-gray-800 text-sm mt-0.5 truncate" title={item.value || ''}>
+                              <div className="font-semibold text-[#1F2937] text-sm mt-0.5 truncate" title={item.value || ''}>
 
                                 {item.value || '—'}
 
@@ -2393,13 +2393,13 @@ function StudentManagement() {
 
                           const colorMap = {
 
-                            blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
+                            blue: 'bg-[#3B82F6]/10 text-[#3B82F6] border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
 
-                            green: 'bg-green-50 text-green-600 border-green-100 hover:border-green-300 hover:bg-green-100/30',
+                            green: 'bg-[#22C55E]/10 text-[#22C55E] border-green-100 hover:border-green-300 hover:bg-[#22C55E]/20/30',
 
                             purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
 
-                            orange: 'bg-orange-50 text-orange-600 border-orange-100 hover:border-orange-300 hover:bg-orange-100/30',
+                            orange: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-orange-300 hover:bg-[#FFF7D6]/30',
 
                           };
 
@@ -2425,7 +2425,7 @@ function StudentManagement() {
 
                                 <div className="text-3xl font-bold font-mono tracking-tight">{card.value}</div>
 
-                                <div className="p-2 bg-white rounded-xl shadow-sm">
+                                <div className="p-2 bg-[#FFFFFF] rounded-xl shadow-sm">
 
                                   <Icon className="w-5 h-5 opacity-90" />
 
@@ -2445,7 +2445,7 @@ function StudentManagement() {
 
                     )}
 
-                    <div className="overflow-x-auto rounded-2xl border border-orange-100">
+                    <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
 
                       <table className="w-full">
 
@@ -2453,19 +2453,19 @@ function StudentManagement() {
 
                           <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
 
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Môn học</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Môn học</th>
 
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Học kỳ</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Học kỳ</th>
 
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">QT</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">QT</th>
 
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">GK</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">GK</th>
 
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">CK</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">CK</th>
 
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">TB</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">TB</th>
 
-                            <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Điểm chữ</th>
+                            <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Điểm chữ</th>
 
                           </tr>
 
@@ -2485,23 +2485,23 @@ function StudentManagement() {
 
                               transition={{ delay: index * 0.03 }}
 
-                              className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                              className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
 
                             >
 
-                              <td className="py-3.5 px-5 font-semibold text-gray-800 text-sm">{grade.TenMonHoc}</td>
+                              <td className="py-3.5 px-5 font-semibold text-[#1F2937] text-sm">{grade.TenMonHoc}</td>
 
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.HocKy}</td>
+                              <td className="py-3.5 px-5 text-sm text-[#6B7280]">{grade.HocKy}</td>
 
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemQuaTrinh || '-'}</td>
+                              <td className="py-3.5 px-5 text-sm text-[#6B7280]">{grade.DiemQuaTrinh || '-'}</td>
 
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemGiuaKy || '-'}</td>
+                              <td className="py-3.5 px-5 text-sm text-[#6B7280]">{grade.DiemGiuaKy || '-'}</td>
 
-                              <td className="py-3.5 px-5 text-sm text-gray-600">{grade.DiemCuoiKy || '-'}</td>
+                              <td className="py-3.5 px-5 text-sm text-[#6B7280]">{grade.DiemCuoiKy || '-'}</td>
 
-                              <td className="py-3.5 px-5 text-sm font-bold text-orange-600">{grade.DiemTB}</td>
+                              <td className="py-3.5 px-5 text-sm font-bold text-[#F4C542]">{grade.DiemTB}</td>
 
-                              <td className="py-3.5 px-5 text-sm font-semibold text-gray-800">{grade.DiemChu}</td>
+                              <td className="py-3.5 px-5 text-sm font-semibold text-[#1F2937]">{grade.DiemChu}</td>
 
                             </motion.tr>
 
@@ -2541,7 +2541,7 @@ function StudentManagement() {
 
                   <div>
 
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                    <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-4">
 
                       Lịch điểm danh ({studentAttendance.length} buổi)
 
@@ -2549,7 +2549,7 @@ function StudentManagement() {
 
                     {studentAttendance.length > 0 ? (
 
-                      <div className="overflow-x-auto rounded-2xl border border-orange-100">
+                      <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
 
                         <table className="w-full">
 
@@ -2557,11 +2557,11 @@ function StudentManagement() {
 
                             <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
 
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Ngày</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Ngày</th>
 
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Phòng</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Phòng</th>
 
-                              <th className="text-left py-3.5 px-5 text-xs font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
+                              <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Trạng thái</th>
 
                             </tr>
 
@@ -2581,23 +2581,23 @@ function StudentManagement() {
 
                                 transition={{ delay: index * 0.03 }}
 
-                                className="border-t border-gray-50 hover:bg-orange-50/40 transition-colors"
+                                className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
 
                               >
 
-                                <td className="py-3.5 px-5 text-sm text-gray-800">
+                                <td className="py-3.5 px-5 text-sm text-[#1F2937]">
 
                                   {new Date(att.NgayDiemDanh).toLocaleDateString('vi-VN')}
 
                                 </td>
 
-                                <td className="py-3.5 px-5 text-sm text-gray-600">{att.PhongHoc}</td>
+                                <td className="py-3.5 px-5 text-sm text-[#6B7280]">{att.PhongHoc}</td>
 
                                 <td className="py-3.5 px-5">
 
-                                  <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${att.TrangThai === 'Có mặt' ? 'bg-green-100 text-green-700' :
+                                  <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold ${att.TrangThai === 'Có mặt' ? 'bg-[#22C55E]/20 text-green-700' :
 
-                                    att.TrangThai === 'Vắng mặt' ? 'bg-red-100 text-red-700' :
+                                    att.TrangThai === 'Vắng mặt' ? 'bg-[#EF4444]/20 text-red-700' :
 
                                       'bg-yellow-100 text-yellow-700'
 
@@ -2621,7 +2621,7 @@ function StudentManagement() {
 
                     ) : (
 
-                      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                      <div className="flex flex-col items-center justify-center py-16 text-gray-300">
 
                         <CheckCircle className="w-14 h-14 mb-3 text-gray-200" />
 
@@ -2719,11 +2719,11 @@ const SCHEDULE_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Th
 
 const SCHEDULE_CA_SLOTS = {
 
-  '1': { label: 'Ca 1', time: 'Tiết 1–3', color: 'bg-orange-100 text-orange-700' },
+  '1': { label: 'Ca 1', time: 'Tiết 1–3', color: 'bg-[#F4C542]/20 text-[#B45309]' },
 
   '2': { label: 'Ca 2', time: 'Tiết 4–6', color: 'bg-amber-100 text-amber-700' },
 
-  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-orange-200 text-orange-800' },
+  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-orange-200 text-[#F4C542]' },
 
   '4': { label: 'Ca 4', time: 'Tiết 10–12', color: 'bg-amber-200 text-amber-800' },
 
@@ -2865,23 +2865,23 @@ function ScheduleSessionCard({ item, showTeacher, showHocKy }) {
 
   return (
 
-    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:border-orange-200 hover:shadow-md transition-all">
+    <div className="rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-sm hover:border-[#F4C542]/30 hover:shadow-md transition-all">
 
       <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
 
-        <h5 className="font-semibold text-gray-800 text-sm leading-snug">{item.TenMonHoc || '—'}</h5>
+        <h5 className="font-semibold text-[#1F2937] text-sm leading-snug">{item.TenMonHoc || '—'}</h5>
 
         <ScheduleCaBadge ca={item.CaHoc} />
 
       </div>
 
-      <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-2 text-xs text-[#6B7280]">
 
         {item.NgayFormatted && (
 
-          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-[#F7F8FA] px-2 py-1">
 
-            <Calendar className="w-3.5 h-3.5 text-orange-500" />
+            <Calendar className="w-3.5 h-3.5 text-[#F4C542]" />
 
             {item.NgayFormatted}
 
@@ -2891,9 +2891,9 @@ function ScheduleSessionCard({ item, showTeacher, showHocKy }) {
 
         {item.PhongHoc && (
 
-          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-[#F7F8FA] px-2 py-1">
 
-            <MapPin className="w-3.5 h-3.5 text-orange-500" />
+            <MapPin className="w-3.5 h-3.5 text-[#F4C542]" />
 
             {item.PhongHoc}
 
@@ -2903,9 +2903,9 @@ function ScheduleSessionCard({ item, showTeacher, showHocKy }) {
 
         {showTeacher && item.TenGiangVien && (
 
-          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-[#F7F8FA] px-2 py-1">
 
-            <UserCheck className="w-3.5 h-3.5 text-orange-500" />
+            <UserCheck className="w-3.5 h-3.5 text-[#F4C542]" />
 
             {item.TenGiangVien}
 
@@ -2915,7 +2915,7 @@ function ScheduleSessionCard({ item, showTeacher, showHocKy }) {
 
         {showHocKy && item.HocKy && (
 
-          <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 text-orange-700 px-2 py-1 font-medium">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-[#F4C542]/20 text-[#B45309] px-2 py-1 font-medium">
 
             <BookOpen className="w-3.5 h-3.5" />
 
@@ -2927,7 +2927,7 @@ function ScheduleSessionCard({ item, showTeacher, showHocKy }) {
 
         {item.MaLopHocPhan && (
 
-          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1 font-mono text-[11px]">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-[#F7F8FA] px-2 py-1 font-mono text-[11px]">
 
             {item.MaLopHocPhan}
 
@@ -2979,9 +2979,9 @@ function ScheduleDetailView({
 
       <div>
 
-        <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">{title}</h4>
+        <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-4">{title}</h4>
 
-        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-16 text-gray-300">
 
           <Calendar className="w-14 h-14 mb-3 text-gray-200" />
 
@@ -3003,11 +3003,11 @@ function ScheduleDetailView({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
 
-        <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{title}</h4>
+        <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider">{title}</h4>
 
         <div className="flex flex-wrap gap-2 text-xs">
 
-          <span className="rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-semibold">{stats.sessions} buổi</span>
+          <span className="rounded-full bg-[#F4C542]/20 text-[#B45309] px-3 py-1 font-semibold">{stats.sessions} buổi</span>
 
           <span className="rounded-full bg-blue-100 text-blue-700 px-3 py-1 font-semibold">{stats.subjects} môn</span>
 
@@ -3021,11 +3021,11 @@ function ScheduleDetailView({
 
           <section key={group.day}>
 
-            <div className="flex items-baseline justify-between gap-2 mb-3 border-b border-orange-100 pb-2">
+            <div className="flex items-baseline justify-between gap-2 mb-3 border-b border-[#FFF7D6] pb-2">
 
-              <p className="font-bold text-gray-800 text-sm">{group.day}</p>
+              <p className="font-bold text-[#1F2937] text-sm">{group.day}</p>
 
-              <p className="text-xs text-gray-500 shrink-0">{group.items.length} buổi</p>
+              <p className="text-xs text-[#6B7280] shrink-0">{group.items.length} buổi</p>
 
             </div>
 

@@ -316,17 +316,17 @@ function App() {
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-100"
+                  className="bg-[#FFFFFF] rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-100"
                 >
                   <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-10 text-center relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_white_0%,_transparent_100%)]"></div>
-                    <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 backdrop-blur-sm border border-white/30 shadow-inner">
+                    <div className="bg-white/40 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 backdrop-blur-sm border border-white/30 shadow-inner">
                       <ShieldAlert className="w-12 h-12 text-white" />
                     </div>
                     <h2 className="text-2xl font-black text-white relative z-10 tracking-wide">TÀI KHOẢN BỊ KHÓA</h2>
                   </div>
-                  <div className="p-8 text-center bg-white space-y-6">
-                    <div className="bg-red-50 text-red-700 p-5 rounded-2xl border border-red-100 text-sm font-semibold leading-relaxed shadow-sm">
+                  <div className="p-8 text-center bg-[#FFFFFF] space-y-6">
+                    <div className="bg-[#EF4444]/10 text-red-700 p-5 rounded-2xl border border-red-100 text-sm font-semibold leading-relaxed shadow-sm">
                       {lockedAccountInfo}
                     </div>
                     <button
@@ -401,17 +401,17 @@ function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-100"
+              className="bg-[#FFFFFF] rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-100"
             >
               <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-10 text-center relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_white_0%,_transparent_100%)]"></div>
-                <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 backdrop-blur-sm border border-white/30 shadow-inner">
+                <div className="bg-white/40 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 backdrop-blur-sm border border-white/30 shadow-inner">
                   <ShieldAlert className="w-12 h-12 text-white" />
                 </div>
                 <h2 className="text-2xl font-black text-white relative z-10 tracking-wide">TÀI KHOẢN BỊ KHÓA</h2>
               </div>
-              <div className="p-8 text-center bg-white space-y-6">
-                <div className="bg-red-50 text-red-700 p-5 rounded-2xl border border-red-100 text-sm font-semibold leading-relaxed shadow-sm">
+              <div className="p-8 text-center bg-[#FFFFFF] space-y-6">
+                <div className="bg-[#EF4444]/10 text-red-700 p-5 rounded-2xl border border-red-100 text-sm font-semibold leading-relaxed shadow-sm">
                   {lockedAccountInfo}
                 </div>
                 <button

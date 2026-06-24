@@ -21,28 +21,28 @@ export default function Toast({ show, message, type = 'success', onClose }) {
             initial={{ opacity: 0, y: -50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className={`fixed top-8 right-8 z-[100000] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 bg-white/95 backdrop-blur-md ${
-              type === 'success' ? 'border-green-500 text-gray-800' : 'border-red-500 text-gray-800'
+            className={`fixed top-8 right-8 z-[100000] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 bg-[#FFFFFF]/95 backdrop-blur-md ${
+              type === 'success' ? 'border-green-500 text-[#1F2937]' : 'border-red-500 text-[#1F2937]'
             }`}
           >
             {type === 'success' ? (
-              <div className="bg-green-100 p-2 rounded-full">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              <div className="bg-[#22C55E]/20 p-2 rounded-full">
+                <CheckCircle2 className="w-6 h-6 text-[#22C55E]" />
               </div>
             ) : (
-              <div className="bg-red-100 p-2 rounded-full">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+              <div className="bg-[#EF4444]/20 p-2 rounded-full">
+                <AlertCircle className="w-6 h-6 text-[#EF4444]" />
               </div>
             )}
             <div>
               <p className="font-bold text-sm">
                 {type === 'success' ? 'Thành công' : 'Thất bại'}
               </p>
-              <p className="text-gray-600 font-medium text-sm">{message}</p>
+              <p className="text-[#6B7280] font-medium text-sm">{message}</p>
             </div>
             <button
               onClick={onClose}
-              className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+              className="ml-4 text-gray-300 hover:text-[#6B7280] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

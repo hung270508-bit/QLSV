@@ -22,11 +22,11 @@ export default function ConfirmDialog({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center border border-slate-100"
+              className="bg-[#FFFFFF] rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center border border-slate-100"
             >
               <div
                 className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  type === 'danger' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'
+                  type === 'danger' ? 'bg-red-100 text-[#DC2626]' : 'bg-[#3B82F6]/10 text-[#3B82F6]'
                 }`}
               >
                 {type === 'danger' ? (

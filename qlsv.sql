@@ -759,16 +759,19 @@ DROP TABLE IF EXISTS `yeucau_hotro`;
 CREATE TABLE `yeucau_hotro` (
   `MaYeuCau` int NOT NULL AUTO_INCREMENT,
   `MSSV` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `LoaiYeuCau` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ChuDe` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `NoiDung` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `NgayGui` datetime DEFAULT NULL,
-  `TrangThai` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Đang xử lý',
-  `PhanHoi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `MaGiangVien` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `LoaiYeuCau` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ChuDe` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `NoiDung` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `NgayGui` datetime NOT NULL,
+  `TrangThai` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đang xử lý',
+  `PhanHoi` text COLLATE utf8mb4_unicode_ci,
   `NgayPhanHoi` datetime DEFAULT NULL,
   PRIMARY KEY (`MaYeuCau`),
   KEY `MSSV` (`MSSV`),
-  CONSTRAINT `yeucau_hotro_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE
+  KEY `MaGiangVien` (`MaGiangVien`),
+  CONSTRAINT `yeucau_hotro_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE,
+  CONSTRAINT `yeucau_hotro_ibfk_2` FOREIGN KEY (`MaGiangVien`) REFERENCES `giangvien` (`MaGiangVien`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

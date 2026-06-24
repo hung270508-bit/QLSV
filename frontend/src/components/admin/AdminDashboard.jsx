@@ -103,98 +103,99 @@ function AdminDashboard({ user, onLogout }) {
   const ActiveComponent = pageComponents[activeMenu] || DashboardOverview;
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30 flex overflow-hidden">
+    <div className="h-screen bg-[#F7F8FA] flex overflow-hidden">
       {/* Sidebar */}
       <motion.aside
         animate={{ width: sidebarOpen ? 288 : 0 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="bg-white border-r border-gray-200 overflow-hidden shrink-0 h-screen shadow-lg"
+        className="bg-[#152238] border-r border-[#1e2f4c] overflow-hidden shrink-0 h-screen shadow-lg z-20"
       >
         <div className="w-72 h-full flex flex-col">
           {/* Logo */}
-          <div className="p-6 border-b border-orange-50 shrink-0">
+          <div className="p-6 border-b border-[#1e2f4c] shrink-0">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
               className="flex items-center gap-3"
             >
-              <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-md shadow-orange-200 flex-shrink-0">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="w-11 h-11 bg-[#F4C542] rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                <GraduationCap className="w-6 h-6 text-black" />
               </div>
               <div>
-                <span className="text-xl font-bold text-gray-800 whitespace-nowrap block">QLSV</span>
-                <span className="text-xs text-orange-500 font-semibold whitespace-nowrap block tracking-wide">Admin Panel</span>
+                <span className="text-xl font-bold text-white whitespace-nowrap block">NhatTin University</span>
+                <span className="text-xs text-[#F4C542] font-bold whitespace-nowrap block tracking-widest uppercase">Admin Portal</span>
               </div>
             </motion.div>
           </div>
 
           {/* Menu Items */}
-          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-orange-200">
-            {menuItems.map((item, index) => {
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700">
+            <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-2 px-2">Menu chính</p>
+            {menuItems.slice(0, 9).map((item) => {
               const Icon = item.icon;
               const isActive = activeMenu === item.id;
               return (
-                <motion.button
+                <button
                   key={item.id}
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.03 }}
                   onClick={() => handleNavigate(item.id)}
-                  whileHover={{ x: isActive ? 0 : 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 relative overflow-hidden group ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${
                     isActive
-                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-200'
-                      : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+                      ? 'bg-[#F4C542] text-black shadow-md'
+                      : 'text-gray-300 hover:bg-[#1e2f4c] hover:text-[#F4C542]'
                   }`}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeMenuBg"
-                      className="absolute inset-0 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl"
-                      transition={{ duration: 0.25, ease: 'easeInOut' }}
-                      style={{ zIndex: -1 }}
-                    />
-                  )}
-                  <Icon className={`w-4.5 h-4.5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`} style={{ width: '1.1rem', height: '1.1rem' }} />
+                  <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
                   <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>
-                  {isActive && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70"
-                    />
-                  )}
-                </motion.button>
+                </button>
+              );
+            })}
+            
+            <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mt-6 mb-2 px-2">Hệ thống & Khác</p>
+            {menuItems.slice(9).map((item) => {
+              const Icon = item.icon;
+              const isActive = activeMenu === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavigate(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${
+                    isActive
+                      ? 'bg-[#F4C542] text-black shadow-md'
+                      : 'text-gray-300 hover:bg-[#1e2f4c] hover:text-[#F4C542]'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+                  <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>
+                </button>
               );
             })}
           </nav>
 
           {/* User Profile & Logout */}
-          <div className="p-4 border-t border-orange-50 flex-shrink-0 bg-gradient-to-b from-transparent to-orange-50/40">
+          <div className="p-4 border-t border-[#1e2f4c] flex-shrink-0">
             <div className="flex items-center justify-between gap-2">
               <motion.div
-                className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0 p-2 rounded-xl hover:bg-orange-50 transition-colors duration-200"
+                className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0 p-2 rounded-xl hover:bg-[#1e2f4c] transition-colors duration-200"
                 onClick={() => handleNavigate('taikhoan')}
                 whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0 group-hover:shadow-md group-hover:shadow-orange-200 transition-all duration-200">
-                  <UserCircle className="w-5 h-5 text-white" />
+                <div className="w-9 h-9 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0">
+                  AD
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-sm font-bold text-gray-800 truncate group-hover:text-orange-600 transition-colors duration-200">
-                    {user?.name || 'Admin'}
+                  <p className="text-sm font-bold text-white truncate group-hover:text-[#F4C542] transition-colors duration-200">
+                    {user?.name || 'Nguyễn Văn Admin'}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">Quản trị viên</p>
+                  <p className="text-xs text-gray-300 truncate">Quản trị viên hệ thống</p>
                 </div>
               </motion.div>
               <motion.button
                 onClick={handleLogoutWithHistory}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-2 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all duration-200 flex-shrink-0"
+                className="p-2 rounded-xl text-[#6B7280] hover:bg-[#EF4444]/10 hover:text-[#EF4444] transition-all duration-200 flex-shrink-0"
                 title="Đăng xuất"
               >
                 <LogOut className="w-4.5 h-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
@@ -205,20 +206,20 @@ function AdminDashboard({ user, onLogout }) {
       </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-transparent relative overflow-hidden">
+      <div className="flex-1 flex flex-col bg-transparent relative">
         {/* Toggle Button */}
         <div className="absolute top-1/2 -translate-y-1/2 left-0 z-50">
           <motion.button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="p-1.5 bg-white rounded-r-xl shadow-lg border border-gray-200 hover:border-orange-300 transition-colors duration-200"
+            className="p-1.5 bg-[#FFFFFF] rounded-r-xl shadow-lg border border-[#E5E7EB] hover:border-[#F4C542] transition-colors duration-200"
           >
             <motion.div
               animate={{ rotate: sidebarOpen ? 180 : 0 }}
               transition={{ duration: 0.25 }}
             >
-              <ChevronRight className="w-4 h-4 text-gray-500" />
+              <ChevronRight className="w-4 h-4 text-[#6B7280]" />
             </motion.div>
           </motion.button>
         </div>

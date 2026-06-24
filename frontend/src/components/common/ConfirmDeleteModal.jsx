@@ -20,13 +20,13 @@ export default function ConfirmDeleteModal({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl border border-gray-100"
+              className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl border border-[#E5E7EB]"
             >
-              <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-14 h-14 bg-red-100 text-[#DC2626] rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trash2 className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-black text-gray-800 mb-2">{title}</h3>
-              <p className="text-gray-600 text-sm mb-6 font-medium leading-relaxed">{message}</p>
+              <h3 className="text-lg font-black text-[#1F2937] mb-2">{title}</h3>
+              <p className="text-[#6B7280] text-sm mb-6 font-medium leading-relaxed">{message}</p>
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
@@ -36,7 +36,7 @@ export default function ConfirmDeleteModal({
                 </button>
                 <button
                   onClick={onConfirm}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm bg-red-500 text-white hover:bg-red-600"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm bg-[#EF4444]/100 text-white hover:bg-red-600"
                 >
                   Xác nhận xóa
                 </button>

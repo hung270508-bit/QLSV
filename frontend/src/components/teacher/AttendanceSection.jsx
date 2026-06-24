@@ -8,7 +8,7 @@ import {
 import axios from 'axios';
 
 const STATUS_OPTIONS = [
-  { value: 'Chưa điểm danh', label: 'Chưa điểm danh', color: 'text-gray-500 bg-gray-50 border-gray-200' },
+  { value: 'Chưa điểm danh', label: 'Chưa điểm danh', color: 'text-[#6B7280] bg-[#F7F8FA] border-[#E5E7EB]' },
   { value: 'Có mặt', label: 'Có mặt', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
   { value: 'Vắng mặt', label: 'Vắng mặt', color: 'text-rose-700 bg-rose-50 border-rose-200' }
 ];
@@ -317,7 +317,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
   const renderAvatar = (student) => {
     const initial = student.HoTen?.charAt(0).toUpperCase() || student.MSSV?.charAt(0);
     return (
-      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center text-lg font-bold shadow-sm">
+      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-orange-400 to-[#F4C542]/90 text-white flex items-center justify-center text-lg font-bold shadow-sm">
         {initial}
       </div>
     );
@@ -328,13 +328,13 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       {/* HEADER TABS */}
       <motion.div
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-        className="bg-white rounded-3xl shadow-sm p-4 relative overflow-hidden flex flex-col sm:flex-row items-center gap-4 border border-gray-100"
+        className="bg-[#FFFFFF] rounded-3xl shadow-sm p-4 relative overflow-hidden flex flex-col sm:flex-row items-center gap-4 border border-[#E5E7EB]"
       >
         <button
           onClick={() => { setActiveTab('today'); handleBack(); }}
           className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-bold transition-all ${activeTab === 'today'
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
-              : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
+              ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-[#F4C542]/30'
+              : 'text-[#6B7280] hover:bg-[#FFF7D6] hover:text-[#F4C542]'
             }`}
         >
           <ClipboardCheck className="w-5 h-5" />
@@ -343,8 +343,8 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
         <button
           onClick={() => { setActiveTab('history'); handleBack(); }}
           className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-bold transition-all ${activeTab === 'history'
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200'
-              : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
+              ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-[#F4C542]/30'
+              : 'text-[#6B7280] hover:bg-[#FFF7D6] hover:text-[#F4C542]'
             }`}
         >
           <History className="w-5 h-5" />
@@ -356,23 +356,23 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       {!selectedSchedule ? (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
-          className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8"
+          className="bg-[#FFFFFF] rounded-3xl shadow-sm border border-[#E5E7EB] p-8"
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 pb-6 border-b border-gray-100">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 pb-6 border-b border-[#E5E7EB]">
             <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-orange-600 font-bold mb-1">
+              <p className="text-sm uppercase tracking-[0.2em] text-[#F4C542] font-bold mb-1">
                 {activeTab === 'today' ? 'Lịch dạy hôm nay' : 'Lịch sử điểm danh'}
               </p>
-              <h3 className="text-2xl font-bold text-gray-800">
+              <h3 className="text-2xl font-bold text-[#1F2937]">
                 {activeTab === 'today'
                   ? (todaySchedules.length ? 'Các lớp của hôm nay' : 'Chưa có lịch dạy')
                   : 'Chọn lớp để xem lịch sử'}
               </h3>
             </div>
             {activeTab === 'today' && (
-              <div className="bg-orange-50 px-5 py-3 rounded-2xl flex items-center gap-3 border border-orange-100 shadow-inner">
-                <Calendar className="w-5 h-5 text-orange-500" />
-                <span className="font-bold text-orange-700 text-sm tracking-wide">{formatDate(today.toISOString())}</span>
+              <div className="bg-[#FFF7D6] px-5 py-3 rounded-2xl flex items-center gap-3 border border-[#FFF7D6] shadow-inner">
+                <Calendar className="w-5 h-5 text-[#F4C542]" />
+                <span className="font-bold text-[#F4C542] text-sm tracking-wide">{formatDate(today.toISOString())}</span>
               </div>
             )}
           </div>
@@ -387,32 +387,32 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                   if (activeTab === 'today') handleSelectSchedule(schedule);
                   else loadCourseHistoryDates(schedule);
                 }}
-                className="relative group bg-white text-left rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all overflow-hidden flex flex-col h-full"
+                className="relative group bg-[#FFFFFF] text-left rounded-3xl p-6 shadow-sm border border-[#E5E7EB] hover:shadow-xl hover:border-[#F4C542]/30 transition-all overflow-hidden flex flex-col h-full"
               >
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-orange-400 to-orange-600"></div>
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-orange-400 to-[#F4C542]/90"></div>
 
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
-                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold mb-3 uppercase tracking-wider">
+                    <span className="inline-block px-3 py-1 bg-gray-100 text-[#6B7280] rounded-lg text-xs font-bold mb-3 uppercase tracking-wider">
                       {schedule.MaLopHocPhan}
                     </span>
-                    <h4 className="text-xl font-bold text-gray-800 leading-tight group-hover:text-orange-600 transition-colors">
+                    <h4 className="text-xl font-bold text-[#1F2937] leading-tight group-hover:text-[#F4C542] transition-colors">
                       {schedule.TenMonHoc || schedule.MaMonHoc}
                     </h4>
                   </div>
-                  <div className="flex flex-col items-center justify-center bg-orange-50 w-12 h-12 rounded-2xl shrink-0 border border-orange-100">
+                  <div className="flex flex-col items-center justify-center bg-[#FFF7D6] w-12 h-12 rounded-2xl shrink-0 border border-[#FFF7D6]">
                     <span className="text-xs font-bold text-orange-400">Ca</span>
-                    <span className="text-lg font-black text-orange-600">{schedule.CaHoc || '-'}</span>
+                    <span className="text-lg font-black text-[#F4C542]">{schedule.CaHoc || '-'}</span>
                   </div>
                 </div>
 
-                <div className="mt-auto pt-4 border-t border-gray-50 flex items-center gap-4 text-sm text-gray-500 font-medium">
-                  <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                    <MapPin className="w-4 h-4 text-gray-400" />
+                <div className="mt-auto pt-4 border-t border-gray-50 flex items-center gap-4 text-sm text-[#6B7280] font-medium">
+                  <div className="flex items-center gap-1.5 bg-[#F7F8FA] px-3 py-1.5 rounded-lg">
+                    <MapPin className="w-4 h-4 text-gray-300" />
                     {schedule.PhongHoc || 'Chưa xếp'}
                   </div>
-                  <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                    <Users className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-1.5 bg-[#F7F8FA] px-3 py-1.5 rounded-lg">
+                    <Users className="w-4 h-4 text-gray-300" />
                     Lớp: {schedule.TenLop || schedule.MaLop}
                   </div>
                 </div>
@@ -422,11 +422,11 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
 
           {(activeTab === 'today' ? todaySchedules : uniqueCourses).length === 0 && (
             <div className="text-center py-16">
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 bg-[#F7F8FA] rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-10 h-10 text-gray-300" />
               </div>
               <h3 className="text-lg font-bold text-gray-700 mb-2">Trống</h3>
-              <p className="text-gray-500">Chưa có dữ liệu lịch dạy hoặc lịch sử.</p>
+              <p className="text-[#6B7280]">Chưa có dữ liệu lịch dạy hoặc lịch sử.</p>
             </div>
           )}
         </motion.div>
@@ -434,20 +434,20 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
         /* DANH SÁCH NGÀY TRONG LỊCH SỬ CỦA 1 LỚP */
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
-          className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8"
+          className="bg-[#FFFFFF] rounded-3xl shadow-sm border border-[#E5E7EB] p-8"
         >
-          <div className="flex items-center gap-4 mb-8 border-b border-gray-100 pb-6">
+          <div className="flex items-center gap-4 mb-8 border-b border-[#E5E7EB] pb-6">
             <button
               onClick={handleBack}
-              className="p-3 bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600 rounded-full transition-colors"
+              className="p-3 bg-gray-100 text-[#6B7280] hover:bg-[#FFF7D6] hover:text-[#F4C542] rounded-full transition-colors"
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
             <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-orange-600 font-bold mb-1">
+              <p className="text-sm uppercase tracking-[0.2em] text-[#F4C542] font-bold mb-1">
                 Lịch sử điểm danh
               </p>
-              <h3 className="text-2xl font-bold text-gray-800">
+              <h3 className="text-2xl font-bold text-[#1F2937]">
                 {selectedSchedule.TenMonHoc}
               </h3>
             </div>
@@ -458,14 +458,14 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
               <button
                 key={i}
                 onClick={() => handleSelectSchedule(selectedSchedule, item)}
-                className="p-5 border border-gray-200 rounded-2xl hover:border-orange-500 hover:shadow-md transition-all text-left flex items-center gap-4"
+                className="p-5 border border-[#E5E7EB] rounded-2xl hover:border-[#F4C542] hover:shadow-md transition-all text-left flex items-center gap-4"
               >
-                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-[#F4C542]/20 text-[#B45309] rounded-xl flex items-center justify-center">
                   <Calendar className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800 text-lg">{formatDate(item.Ngay)} (Lần {item.LanDiemDanh})</p>
-                  <p className="text-sm text-gray-500">Bấm để xem chi tiết</p>
+                  <p className="font-bold text-[#1F2937] text-lg">{formatDate(item.Ngay)} (Lần {item.LanDiemDanh})</p>
+                  <p className="text-sm text-[#6B7280]">Bấm để xem chi tiết</p>
                 </div>
               </button>
             ))}
@@ -474,7 +474,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
           {historyDates.length === 0 && (
             <div className="text-center py-16">
               <History className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Lớp này chưa có bản ghi điểm danh nào trong quá khứ.</p>
+              <p className="text-[#6B7280]">Lớp này chưa có bản ghi điểm danh nào trong quá khứ.</p>
             </div>
           )}
         </motion.div>
@@ -488,35 +488,35 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-gray-50 w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+              className="bg-[#F7F8FA] w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
             >
               {/* Modal Header */}
-              <div className="bg-white px-8 py-6 border-b border-gray-200 shrink-0">
+              <div className="bg-[#FFFFFF] px-8 py-6 border-b border-[#E5E7EB] shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <button
                       onClick={handleBack}
-                      className="p-3 bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600 rounded-full transition-colors"
+                      className="p-3 bg-gray-100 text-[#6B7280] hover:bg-[#FFF7D6] hover:text-[#F4C542] rounded-full transition-colors"
                     >
                       <ArrowLeft className="w-6 h-6" />
                     </button>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold tracking-wider">
+                        <span className="px-2.5 py-1 bg-[#F4C542]/20 text-[#B45309] rounded-lg text-xs font-bold tracking-wider">
                           MÃ LHP: {selectedSchedule.MaLopHocPhan}
                         </span>
-                        <span className="text-gray-500 text-sm font-medium flex items-center gap-1">
+                        <span className="text-[#6B7280] text-sm font-medium flex items-center gap-1">
                           <Calendar className="w-4 h-4" /> {formatDate(selectedHistoryDate ? selectedHistoryDate.Ngay : today.toISOString())} {selectedHistoryDate ? `(Lần ${selectedHistoryDate.LanDiemDanh})` : ''}
                         </span>
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-800">{selectedSchedule.TenMonHoc}</h3>
+                      <h3 className="text-2xl font-bold text-[#1F2937]">{selectedSchedule.TenMonHoc}</h3>
                     </div>
                   </div>
 
                   {/* Stats Mini Cards */}
                   <div className="hidden md:flex items-center gap-3 ml-4">
-                    <div className="bg-blue-50 px-4 py-2 rounded-xl text-center border border-blue-100">
-                      <p className="text-xs font-bold text-blue-600 uppercase">Tổng SV</p>
+                    <div className="bg-[#3B82F6]/10 px-4 py-2 rounded-xl text-center border border-blue-100">
+                      <p className="text-xs font-bold text-[#3B82F6] uppercase">Tổng SV</p>
                       <p className="text-xl font-black text-blue-800">{classStudents.length}</p>
                     </div>
                     <div className="bg-emerald-50 px-4 py-2 rounded-xl text-center border border-emerald-100">
@@ -541,11 +541,11 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                       const tG = attendanceTimes[student.MSSV]; // Giờ:Phút:Giây
 
                       return (
-                        <div key={student.MSSV} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow group relative">
+                        <div key={student.MSSV} className="bg-[#FFFFFF] rounded-2xl p-4 shadow-sm border border-[#E5E7EB] flex items-center gap-4 hover:shadow-md transition-shadow group relative">
                           {renderAvatar(student)}
                           <div className="flex-1 min-w-0">
-                            <p className="text-base font-bold text-gray-800 truncate">{student.HoTen}</p>
-                            <p className="text-xs text-gray-500 font-medium">MSSV: {student.MSSV}</p>
+                            <p className="text-base font-bold text-[#1F2937] truncate">{student.HoTen}</p>
+                            <p className="text-xs text-[#6B7280] font-medium">MSSV: {student.MSSV}</p>
                           </div>
                           <div className="shrink-0 flex flex-col items-end gap-1">
                             <select
@@ -555,7 +555,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                               style={{ backgroundImage: 'none' }}
                             >
                               {STATUS_OPTIONS.map(option => (
-                                <option key={option.value} value={option.value} className="text-gray-800 bg-white">
+                                <option key={option.value} value={option.value} className="text-[#1F2937] bg-[#FFFFFF]">
                                   {option.label}
                                 </option>
                               ))}
@@ -567,18 +567,18 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="text-center py-20 bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm">
                     <BookOpen className="w-16 h-16 text-gray-200 mx-auto mb-4" />
                     <h3 className="text-lg font-bold text-gray-700">Lớp học phần trống</h3>
-                    <p className="text-gray-500">Chưa có sinh viên nào đăng ký vào danh sách lớp này.</p>
+                    <p className="text-[#6B7280]">Chưa có sinh viên nào đăng ký vào danh sách lớp này.</p>
                   </div>
                 )}
               </div>
 
               {/* Footer Actions */}
-              <div className="bg-white p-6 border-t border-gray-200 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                  <AlertCircle className="w-5 h-5 text-orange-500" />
+              <div className="bg-[#FFFFFF] p-6 border-t border-[#E5E7EB] shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-[#6B7280]">
+                  <AlertCircle className="w-5 h-5 text-[#F4C542]" />
                   {activeTab === 'today'
                     ? 'Hệ thống tự động lưu thời gian khi bấm "Chốt sổ"'
                     : 'Chỉnh sửa lịch sử sẽ thay đổi kết quả điểm danh của sinh viên trong quá khứ.'}
@@ -606,7 +606,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                     <button
                       onClick={handleEarlyClose}
                       disabled={isSaving}
-                      className="px-8 py-3 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-orange-200 hover:from-orange-500 hover:to-orange-600 transition-all flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-70"
+                      className="px-8 py-3 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-[#F4C542]/30 hover:from-[#F4C542] hover:to-[#F4C542]/90 transition-all flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-70"
                     >
                       <Clock className="w-5 h-5 animate-pulse" />
                       {formatTime(timeRemaining)} - Chốt sổ sớm
@@ -617,7 +617,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                     <button
                       onClick={() => handleSaveAttendance(true)}
                       disabled={isSaving}
-                      className="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 hover:from-orange-600 hover:to-orange-700 transition-all w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-70"
+                      className="px-8 py-3 bg-[#F4C542] text-[#152238] font-bold rounded-xl shadow-lg shadow-[#F4C542]/30 hover:from-orange-600 hover:to-orange-700 transition-all w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-70"
                     >
                       {isSaving ? (
                         <>Đang lưu...</>

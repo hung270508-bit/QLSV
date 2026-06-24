@@ -59,11 +59,11 @@ const convertToGPA = (total10) => {
 
 const getLetterColor = (letter) => {
   if (!letter) return 'text-gray-300';
-  if (letter === 'A') return 'text-green-600';
-  if (letter.startsWith('B')) return 'text-blue-600';
+  if (letter === 'A') return 'text-[#22C55E]';
+  if (letter.startsWith('B')) return 'text-[#3B82F6]';
   if (letter.startsWith('C')) return 'text-yellow-600';
-  if (letter.startsWith('D')) return 'text-orange-500';
-  return 'text-red-600';
+  if (letter.startsWith('D')) return 'text-[#F4C542]';
+  return 'text-[#EF4444]';
 };
 
 const hasAnyScore = (cc, bt, gk, ck) =>
@@ -115,10 +115,10 @@ function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' })
         disabled={disabled}
         onWheel={e => e.target.blur()}
         className={`w-full px-3 py-2.5 border-2 rounded-xl focus:outline-none transition-colors text-sm font-semibold
-          ${disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed border-gray-100 text-gray-500' :
-            err ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-orange-500 text-gray-800'}`}
+          ${disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed border-[#E5E7EB] text-[#6B7280]' :
+            err ? 'border-red-500 bg-[#EF4444]/10' : 'bg-[#F7F8FA] border-[#E5E7EB] focus:border-[#F4C542] text-[#1F2937]'}`}
       />
-      {err && <p className="text-red-500 text-xs mt-1.5 font-bold">{err}</p>}
+      {err && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{err}</p>}
     </div>
   );
 }
@@ -165,9 +165,9 @@ function BulkScoreInput({ value, onChange, onError, disabled }) {
         disabled={disabled}
         onWheel={e => e.target.blur()}
         className={`w-16 text-center px-2 py-2 border-2 rounded-lg focus:outline-none text-sm transition-colors font-semibold
-          ${disabled ? 'bg-gray-100 border-transparent text-gray-400 cursor-not-allowed' : err ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-orange-500 bg-white text-gray-800'}`}
+          ${disabled ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed' : err ? 'border-red-500 bg-[#EF4444]/10' : 'border-[#E5E7EB] focus:border-[#F4C542] bg-[#FFFFFF] text-[#1F2937]'}`}
       />
-      {err && <span className="text-red-500 text-[10px] font-bold text-center leading-tight">{err}</span>}
+      {err && <span className="text-[#EF4444] text-[10px] font-bold text-center leading-tight">{err}</span>}
     </div>
   );
 }
@@ -179,15 +179,15 @@ function ConfigPanelAdmin({ tenLop, components, locked }) {
   const totalWeight = components.filter(c => c.enabled).reduce((s, c) => s + (parseInt(c.weight) || 0), 0);
 
   return (
-    <div className="border-2 rounded-2xl p-5 shadow-sm bg-gray-50 border-gray-200">
+    <div className="border-2 rounded-2xl p-5 shadow-sm bg-[#F7F8FA] border-[#E5E7EB]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Info className="w-5 h-5 text-blue-500" />
-          <span className="font-bold text-gray-800">
+          <Info className="w-5 h-5 text-[#3B82F6]" />
+          <span className="font-bold text-[#1F2937]">
             Cấu hình điểm do Giảng viên thiết lập — {tenLop}
           </span>
         </div>
-        <div className={`text-sm font-bold px-3 py-1 rounded-full ${locked ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+        <div className={`text-sm font-bold px-3 py-1 rounded-full ${locked ? 'bg-[#22C55E]/20 text-green-700' : 'bg-[#F4C542]/20 text-[#B45309]'}`}>
           Trạng thái: {locked ? 'Đã chốt cấu hình' : 'Giảng viên chưa chốt'}
         </div>
       </div>
@@ -195,12 +195,12 @@ function ConfigPanelAdmin({ tenLop, components, locked }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         {components.map(c => (
           <div key={c.key} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all
-            ${c.enabled ? 'border-gray-300 bg-white' : 'border-gray-100 bg-gray-100 opacity-60'}`}>
+            ${c.enabled ? 'border-gray-300 bg-[#FFFFFF]' : 'border-[#E5E7EB] bg-gray-100 opacity-60'}`}>
             <input type="checkbox" checked={c.enabled} disabled className="w-4 h-4 accent-gray-500 cursor-not-allowed" />
             <span className="text-sm font-bold text-gray-700">{c.label}</span>
             <div className="flex items-center gap-1 ml-auto">
-              <input type="number" value={c.enabled ? c.weight : ''} disabled placeholder="0" className="w-14 text-center px-2 py-1.5 border-2 rounded-lg text-sm font-bold bg-gray-100 border-transparent text-gray-500 cursor-not-allowed" />
-              <span className="text-sm font-bold text-gray-500">%</span>
+              <input type="number" value={c.enabled ? c.weight : ''} disabled placeholder="0" className="w-14 text-center px-2 py-1.5 border-2 rounded-lg text-sm font-bold bg-gray-100 border-transparent text-[#6B7280] cursor-not-allowed" />
+              <span className="text-sm font-bold text-[#6B7280]">%</span>
             </div>
           </div>
         ))}
@@ -208,9 +208,9 @@ function ConfigPanelAdmin({ tenLop, components, locked }) {
 
       <div className="flex items-center gap-4">
         <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
-          <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(totalWeight, 100)}%` }} />
+          <div className="h-full rounded-full bg-[#3B82F6]/100" style={{ width: `${Math.min(totalWeight, 100)}%` }} />
         </div>
-        <span className="text-sm font-bold text-gray-600">Tổng trọng số: {totalWeight}%</span>
+        <span className="text-sm font-bold text-[#6B7280]">Tổng trọng số: {totalWeight}%</span>
       </div>
     </div>
   );
@@ -594,57 +594,57 @@ function GradeManagement() {
   return (
     <div className="space-y-6 pb-12">
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
+        className="bg-[#F4C542] rounded-3xl p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-white/20 rounded-2xl"><GraduationCap className="w-8 h-8 text-white" /></div>
+          <div className="p-3 bg-white/40 rounded-2xl"><GraduationCap className="w-8 h-8 text-[#152238]" /></div>
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Quản lý điểm sinh viên</h2>
-            <p className="text-orange-100 text-sm font-medium">Hỗ trợ giảng viên thêm, sửa, xóa điểm toàn trường</p>
+            <h2 className="text-2xl font-bold text-[#152238] mb-1">Quản lý điểm sinh viên</h2>
+            <p className="text-[#152238]/70 text-sm font-medium">Hỗ trợ giảng viên thêm, sửa, xóa điểm toàn trường</p>
           </div>
         </div>
         <div className="flex gap-3">
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleOpenBulkModal} className="flex items-center gap-2 bg-purple-500 text-white px-5 py-3 rounded-xl shadow-lg font-bold"><FileText className="w-5 h-5" /> Nhập hàng loạt</motion.button>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleExport} className="flex items-center gap-2 bg-green-500 text-white px-5 py-3 rounded-xl shadow-lg font-bold"><Download className="w-5 h-5" /> Export</motion.button>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={openAddModal} className="flex items-center gap-2 bg-white text-orange-600 px-5 py-3 rounded-xl shadow-lg font-bold"><Plus className="w-5 h-5" /> Thêm điểm</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleExport} className="flex items-center gap-2 bg-[#22C55E]/100 text-white px-5 py-3 rounded-xl shadow-lg font-bold"><Download className="w-5 h-5" /> Export</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={openAddModal} className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-5 py-3 rounded-xl shadow-lg font-bold"><Plus className="w-5 h-5" /> Thêm điểm</motion.button>
         </div>
       </motion.div>
 
       <div className="space-y-3">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
             <input type="text"
               placeholder="Tìm theo mã lớp học phần, tên môn học..."
               value={displaySearchTerm} onChange={e => setDisplaySearchTerm(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') setSearchTerm(displaySearchTerm); }}
-              className="w-full pl-14 pr-12 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-orange-500 transition-all shadow-sm font-medium text-sm"
+              className="w-full pl-14 pr-12 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:border-[#F4C542] transition-all shadow-sm font-medium text-sm"
             />
             <button type="button" onClick={() => setShowFilters(v => !v)}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-orange-500' : 'text-gray-400'}`}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-[#F4C542]' : 'text-gray-300'}`}
             >
               <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>}
+              {activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-[#F4C542] text-[#152238] text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>}
             </button>
           </div>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm(displaySearchTerm)} className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg font-bold"><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
-          {hasActiveFilters && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={clearFilters} className="px-5 py-3 bg-red-100 text-red-600 rounded-xl font-bold hover:bg-red-200 flex items-center gap-2"><XCircle className="w-5 h-5" /> Xóa lọc</motion.button>}
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm(displaySearchTerm)} className="flex items-center gap-2 bg-[#F4C542] text-[#152238] px-6 py-3 rounded-xl shadow-lg font-bold"><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
+          {hasActiveFilters && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={clearFilters} className="px-5 py-3 bg-[#EF4444]/20 text-[#EF4444] rounded-xl font-bold hover:bg-red-200 flex items-center gap-2"><XCircle className="w-5 h-5" /> Xóa lọc</motion.button>}
         </div>
 
         <AnimatePresence>
           {showFilters && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 shadow-sm space-y-4">
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Khoa</label>
-                  <select value={displayFilters.khoaFilter} onChange={e => setDisplayFilters(p => ({ ...p, khoaFilter: e.target.value, sectionFilter: '' }))} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 font-medium text-sm">
+                  <select value={displayFilters.khoaFilter} onChange={e => setDisplayFilters(p => ({ ...p, khoaFilter: e.target.value, sectionFilter: '' }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
                     <option value="">Tất cả khoa</option>
                     {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Lớp học phần</label>
-                  <select value={displayFilters.sectionFilter} onChange={e => setDisplayFilters(p => ({ ...p, sectionFilter: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 font-medium text-sm">
+                  <select value={displayFilters.sectionFilter} onChange={e => setDisplayFilters(p => ({ ...p, sectionFilter: e.target.value }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
                     <option value="">Tất cả lớp học phần</option>
                     {courseSections.filter(cs => !displayFilters.khoaFilter || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase()).map(cs => (
                       <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>{cs.TenMonHoc} — {cs.MaLopHocPhan}</option>
@@ -678,51 +678,51 @@ function GradeManagement() {
             if (term && filteredStudents.length === 0) return null;
 
             return (
-              <div key={ta.MaLopHocPhan} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <button onClick={() => setConfigOpen(prev => ({ ...prev, [ta.MaLopHocPhan]: !isOpen }))} className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-orange-50/50 transition-colors group">
+              <div key={ta.MaLopHocPhan} className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <button onClick={() => setConfigOpen(prev => ({ ...prev, [ta.MaLopHocPhan]: !isOpen }))} className="w-full flex items-center justify-between px-6 py-4 bg-[#FFFFFF] hover:bg-[#FFF7D6]/50 transition-colors group">
                   <div className="flex items-center gap-4">
-                    <div className="p-2.5 bg-orange-50 text-orange-500 rounded-xl group-hover:scale-110 transition-transform"><GraduationCap className="w-6 h-6" /></div>
+                    <div className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl group-hover:scale-110 transition-transform"><GraduationCap className="w-6 h-6" /></div>
                     <div className="text-left">
-                      <p className="font-bold text-gray-800 text-base">{ta.TenMonHoc} <span className="text-gray-400 font-medium ml-1 text-sm">({ta.MaLopHocPhan})</span></p>
+                      <p className="font-bold text-[#1F2937] text-base">{ta.TenMonHoc} <span className="text-gray-300 font-medium ml-1 text-sm">({ta.MaLopHocPhan})</span></p>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {active.map(c => <span key={c.key} className="text-[11px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">{c.shortLabel}: {Number(c.weight)}%</span>)}
+                        {active.map(c => <span key={c.key} className="text-[11px] bg-gray-100 text-[#6B7280] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">{c.shortLabel}: {Number(c.weight)}%</span>)}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {isLocked && <span className="text-[11px] text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
-                    {!isLocked && <span className="text-[11px] text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
+                    {isLocked && <span className="text-[11px] text-green-700 bg-[#22C55E]/10 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
+                    {!isLocked && <span className="text-[11px] text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
                     <div className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                      {isOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                      {isOpen ? <ChevronUp className="w-5 h-5 text-gray-300" /> : <ChevronDown className="w-5 h-5 text-gray-300" />}
                     </div>
                   </div>
                 </button>
                 
                 <AnimatePresence>
                   {isOpen && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-100 bg-gray-50/30">
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[#E5E7EB] bg-[#F7F8FA]/30">
                       
                       <div className="p-6">
                         <ConfigPanelAdmin tenLop={ta.TenMonHoc} components={cfg} locked={isLocked} />
                       </div>
 
                       <div className="px-6 pb-6">
-                        <div className="flex items-center justify-between mb-4 bg-blue-50 px-4 py-3 rounded-xl border border-blue-100">
-                          <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-blue-500"/>Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
-                          <span className="text-sm text-blue-600 font-bold bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
+                        <div className="flex items-center justify-between mb-4 bg-[#3B82F6]/10 px-4 py-3 rounded-xl border border-blue-100">
+                          <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-[#3B82F6]"/>Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
+                          <span className="text-sm text-[#3B82F6] font-bold bg-[#FFFFFF] px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
                         </div>
                         
-                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
                           <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                              <thead className="bg-gray-50/80 border-b border-gray-200">
+                              <thead className="bg-[#F7F8FA]/80 border-b border-[#E5E7EB]">
                                 <tr>
-                                  <th className="py-4 px-5 text-xs font-black text-gray-500 uppercase tracking-wider">MSSV</th>
-                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider">Họ Tên</th>
-                                  {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-gray-500 uppercase tracking-wider text-center">{c.shortLabel}</th>)}
-                                  <th className="py-4 px-3 text-xs font-black text-gray-800 uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
-                                  <th className="py-4 px-3 text-xs font-black text-orange-600 uppercase tracking-wider text-center bg-orange-50/50">GPA</th>
-                                  <th className="py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Thao tác</th>
+                                  <th className="py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>
+                                  <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider">Họ Tên</th>
+                                  {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">{c.shortLabel}</th>)}
+                                  <th className="py-4 px-3 text-xs font-black text-[#1F2937] uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
+                                  <th className="py-4 px-3 text-xs font-black text-[#152238] uppercase tracking-wider text-center bg-[#FFF7D6]/50">GPA</th>
+                                  <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">Thao tác</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100">
@@ -732,32 +732,32 @@ function GradeManagement() {
                                   const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
                                   const gpa = hasGrade ? convertToGPA(t10) : null;
                                   return (
-                                    <tr key={stu.MSSV} className="hover:bg-blue-50/40 transition-colors group">
+                                    <tr key={stu.MSSV} className="hover:bg-[#3B82F6]/10/40 transition-colors group">
                                       <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
-                                      <td className="py-4 px-4 text-sm font-bold text-gray-900">{stu.HoTen}</td>
+                                      <td className="py-4 px-4 text-sm font-bold text-[#1F2937]">{stu.HoTen}</td>
                                       {active.map(c => {
                                         const isZero = !c.enabled || Number(c.weight) === 0;
                                         const val = grade && grade[c.key];
                                         const displayVal = isZero ? '0' : (hasGrade && val != null && val !== '' ? val : '—');
-                                        return <td key={c.key} className="py-4 px-3 text-sm text-center text-gray-600 font-medium">{displayVal}</td>;
+                                        return <td key={c.key} className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">{displayVal}</td>;
                                       })}
-                                      <td className="py-4 px-3 text-sm text-center font-black text-gray-800 bg-gray-50/50 group-hover:bg-transparent">{t10}</td>
-                                      <td className="py-4 px-3 text-sm text-center font-black text-orange-600 bg-orange-50/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
                                       <td className="py-3 px-4">
                                         <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                           {hasGrade ? (
                                             <>
-                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
-                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
+                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
+                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
                                             </>
                                           ) : (
-                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
+                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
                                           )}
                                         </div>
                                       </td>
                                     </tr>
                                   );
-                                }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-400 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
+                                }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-300 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
                               </tbody>
                             </table>
                           </div>
@@ -771,9 +771,9 @@ function GradeManagement() {
           })}
         </div>
       ) : (
-        <div className="text-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm">
+        <div className="text-center py-20 bg-[#FFFFFF] border border-[#E5E7EB] rounded-3xl shadow-sm">
           <Search className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-          <p className="font-semibold text-gray-500 text-lg">Không tìm thấy Lớp Học Phần nào khớp với bộ lọc.</p>
+          <p className="font-semibold text-[#6B7280] text-lg">Không tìm thấy Lớp Học Phần nào khớp với bộ lọc.</p>
         </div>
       )}
 
@@ -788,14 +788,14 @@ function GradeManagement() {
             <motion.div
               initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10"
+              className="bg-[#FFFFFF] rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative z-10"
             >
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-t-[2rem] px-8 py-6 flex items-center justify-between shrink-0">
+              <div className="bg-[#F4C542] rounded-t-[2rem] px-8 py-6 flex items-center justify-between shrink-0">
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-1">{editingGrade ? 'Cập nhật điểm' : 'Nhập điểm sinh viên'}</h3>
-                  <p className="text-orange-100 text-sm font-medium">Hệ thống sẽ tự động tính toán theo cấu hình lớp</p>
+                  <h3 className="text-2xl font-bold text-[#152238] mb-1">{editingGrade ? 'Cập nhật điểm' : 'Nhập điểm sinh viên'}</h3>
+                  <p className="text-[#152238]/70 text-sm font-medium">Hệ thống sẽ tự động tính toán theo cấu hình lớp</p>
                 </div>
-                <button onClick={closeFormModal} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                <button onClick={closeFormModal} className="p-2.5 bg-[#FFFFFF]/10 hover:bg-white/40 rounded-full transition-colors">
                   <X className="w-5 h-5 text-white" />
                 </button>
               </div>
@@ -803,7 +803,7 @@ function GradeManagement() {
               <form onSubmit={handleSubmit} className="p-8 space-y-7">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-[#EF4444]">*</span></label>
                     <select
                       value={formData.MaLopHocPhan} disabled={!!editingGrade || !!formData.MSSV}
                       onChange={e => {
@@ -811,8 +811,8 @@ function GradeManagement() {
                         if (formErrors.MaLopHocPhan) setFormErrors(p => ({ ...p, MaLopHocPhan: '' }));
                       }}
                       className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
-                        ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
-                          formErrors.MaLopHocPhan ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                        ${(editingGrade || formData.MSSV) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-[#E5E7EB]' :
+                          formErrors.MaLopHocPhan ? 'border-red-500 bg-[#EF4444]/10' : 'bg-[#FFFFFF] border-[#E5E7EB] focus:border-[#F4C542] text-[#1F2937]'}`}
                     >
                       <option value="">Chọn lớp học phần</option>
                       {(courseSections || []).map(ta => {
@@ -824,11 +824,11 @@ function GradeManagement() {
                         )
                       })}
                     </select>
-                    {formErrors.MaLopHocPhan && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
+                    {formErrors.MaLopHocPhan && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sinh viên <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sinh viên <span className="text-[#EF4444]">*</span></label>
                     <select
                       value={formData.MSSV} disabled={!formData.MaLopHocPhan || !!editingGrade}
                       onChange={e => {
@@ -836,8 +836,8 @@ function GradeManagement() {
                         if (formErrors.MSSV) setFormErrors(p => ({ ...p, MSSV: '' }));
                       }}
                       className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none text-sm font-bold transition-colors
-                        ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-100' :
-                          formErrors.MSSV ? 'border-red-500 bg-red-50' : 'bg-white border-gray-200 focus:border-orange-500 text-gray-800'}`}
+                        ${(!formData.MaLopHocPhan || !!editingGrade) ? 'opacity-60 cursor-not-allowed bg-gray-100 border-[#E5E7EB]' :
+                          formErrors.MSSV ? 'border-red-500 bg-[#EF4444]/10' : 'bg-[#FFFFFF] border-[#E5E7EB] focus:border-[#F4C542] text-[#1F2937]'}`}
                     >
                       <option value="">{formData.MaLopHocPhan ? 'Chọn sinh viên' : 'Chưa chọn lớp học phần'}</option>
                       {getStudentsForLHP(formData.MaLopHocPhan).map(s => {
@@ -850,18 +850,18 @@ function GradeManagement() {
                         );
                       })}
                     </select>
-                    {formErrors.MSSV && <p className="text-red-500 text-xs mt-1.5 font-bold">{formErrors.MSSV}</p>}
+                    {formErrors.MSSV && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{formErrors.MSSV}</p>}
                   </div>
                 </div>
 
-                <div className="bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
+                <div className="bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-2xl p-6">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                     {activeCfgModal.map(c => {
                       const isZero = !c.enabled || Number(c.weight) === 0;
                       return (
                         <div key={c.key}>
-                          <label className="block text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide">
-                            {c.label} {!isZero ? <span className="text-orange-500 text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-400 text-[11px] ml-0.5">(0%)</span>}
+                          <label className="block text-xs font-bold text-[#1F2937] mb-2 uppercase tracking-wide">
+                            {c.label} {!isZero ? <span className="text-[#F4C542] text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-300 text-[11px] ml-0.5">(0%)</span>}
                           </label>
                           <ScoreInput
                             value={isZero ? 0 : formData[c.key]}
@@ -877,25 +877,25 @@ function GradeManagement() {
                 </div>
 
                 {hasPreview && (
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-100 rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#FFF7D6] rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
                     <div>
-                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
-                      <p className="text-[2.5rem] leading-none font-black text-gray-800">{previewTotal}</p>
+                      <p className="text-xs text-[#F4C542] font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
+                      <p className="text-[2.5rem] leading-none font-black text-[#1F2937]">{previewTotal}</p>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                      <p className="text-xs text-orange-600 font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p>
+                      <p className="text-xs text-[#F4C542] font-bold uppercase mb-1 tracking-wider">Quy đổi Hệ 4 & Chữ</p>
                       <div className="flex items-baseline gap-2">
-                        <p className="text-[2rem] leading-none font-black text-orange-600">{previewGPA.gpa.toFixed(1)}</p>
-                        <p className="text-2xl font-black text-blue-600">({previewGPA.letter})</p>
+                        <p className="text-[2rem] leading-none font-black text-[#F4C542]">{previewGPA.gpa.toFixed(1)}</p>
+                        <p className="text-2xl font-black text-[#3B82F6]">({previewGPA.letter})</p>
                       </div>
-                      <p className="text-xs text-gray-500 font-bold mt-1.5 uppercase bg-white px-2 py-0.5 rounded-md border border-gray-200">{previewGPA.text}</p>
+                      <p className="text-xs text-[#6B7280] font-bold mt-1.5 uppercase bg-[#FFFFFF] px-2 py-0.5 rounded-md border border-[#E5E7EB]">{previewGPA.text}</p>
                     </div>
                   </div>
                 )}
 
                 <div className="flex gap-4 pt-2">
                   <button type="button" onClick={closeFormModal} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
-                  <button type="submit" disabled={Object.values(scoreInputErrors).some(Boolean)} className={`flex-1 py-4 rounded-xl font-bold text-base shadow-md transition-all ${Object.values(scoreInputErrors).some(Boolean) ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-none' : 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 border border-orange-600'}`}>{editingGrade ? 'Lưu thay đổi' : 'Xác nhận Thêm điểm'}</button>
+                  <button type="submit" disabled={Object.values(scoreInputErrors).some(Boolean)} className={`flex-1 py-4 rounded-xl font-bold text-base shadow-md transition-all ${Object.values(scoreInputErrors).some(Boolean) ? 'bg-gray-200 text-gray-300 cursor-not-allowed border-none' : 'bg-[#F4C542] text-[#152238] hover:bg-[#F4C542]/90 hover:shadow-lg hover:-translate-y-0.5 border border-[#F4C542]'}`}>{editingGrade ? 'Lưu thay đổi' : 'Xác nhận Thêm điểm'}</button>
                 </div>
               </form>
             </motion.div>
@@ -907,27 +907,27 @@ function GradeManagement() {
         {showBulkModal && (
           <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBulkModal(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }} className="bg-white rounded-[2rem] w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 flex flex-col">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }} className="bg-[#FFFFFF] rounded-[2rem] w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 flex flex-col">
               <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-t-[2rem] px-8 py-6 flex justify-between items-center shrink-0">
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-1">Nhập điểm hàng loạt</h3>
+                  <h3 className="text-2xl font-bold text-[#152238] mb-1">Nhập điểm hàng loạt</h3>
                   <p className="text-purple-100 text-sm font-medium">Chỉ cho phép nhập đối với Lớp học phần đã được Giảng viên chốt cấu hình</p>
                 </div>
-                <button onClick={() => setShowBulkModal(false)} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5 text-white" /></button>
+                <button onClick={() => setShowBulkModal(false)} className="p-2.5 bg-[#FFFFFF]/10 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5 text-white" /></button>
               </div>
 
               <div className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-6 bg-gray-50 border-2 border-gray-100 rounded-2xl p-6">
+                <div className="grid grid-cols-2 gap-6 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-2xl p-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Bộ lọc Khoa</label>
-                    <select value={bulkKhoa} onChange={e => { setBulkKhoa(e.target.value); setBulkSection(''); setBulkGrades([]); }} className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm">
+                    <select value={bulkKhoa} onChange={e => { setBulkKhoa(e.target.value); setBulkSection(''); setBulkGrades([]); }} className="w-full px-4 py-3.5 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm">
                       <option value="">Tất cả khoa</option>
                       {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-red-500">*</span></label>
-                    <select value={bulkSection} onChange={e => handleBulkSectionChange(e.target.value)} className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm text-gray-800">
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lớp học phần <span className="text-[#EF4444]">*</span></label>
+                    <select value={bulkSection} onChange={e => handleBulkSectionChange(e.target.value)} className="w-full px-4 py-3.5 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm text-[#1F2937]">
                       <option value="">Chọn lớp học phần</option>
                       {courseSections.filter(cs => !bulkKhoa || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === bulkKhoa.toUpperCase()).map(cs => {
                         const isLocked = lockedConfigs[cs.MaLopHocPhan];
@@ -938,21 +938,21 @@ function GradeManagement() {
                 </div>
 
                 {bulkGrades.length > 0 ? (
-                  <div className="border-2 border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="border-2 border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
                     <table className="w-full">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-[#F7F8FA]">
                         <tr>
-                          <th className="text-left py-4 px-5 text-xs font-black text-gray-500 uppercase tracking-wider">MSSV</th>
-                          <th className="text-left py-4 px-4 text-xs font-black text-gray-500 uppercase tracking-wider">Họ tên</th>
+                          <th className="text-left py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>
+                          <th className="text-left py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider">Họ tên</th>
                           {getActiveConfig(bulkSection).map(c => {
                              const isZero = !c.enabled || Number(c.weight) === 0;
                              return (
-                               <th key={c.key} className="text-center py-4 px-3 text-xs font-black text-gray-500 uppercase tracking-wider">
+                               <th key={c.key} className="text-center py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider">
                                  {c.shortLabel} <span className="text-[10px] text-purple-500">({!isZero ? c.weight+'%' : '0%'})</span>
                                </th>
                              );
                           })}
-                          <th className="text-center py-4 px-3 text-xs font-black text-gray-800 bg-gray-100 uppercase tracking-wider">Hệ 10</th>
+                          <th className="text-center py-4 px-3 text-xs font-black text-[#1F2937] bg-gray-100 uppercase tracking-wider">Hệ 10</th>
                           <th className="text-center py-4 px-3 text-xs font-black text-purple-600 bg-purple-50 uppercase tracking-wider">GPA</th>
                         </tr>
                       </thead>
@@ -964,12 +964,12 @@ function GradeManagement() {
                           const t10 = isScored && !hasRowErr ? calcTotal10(grade, cfg) : null;
                           const gpa = t10 ? convertToGPA(t10) : null;
                           return (
-                            <tr key={idx} className={`hover:bg-purple-50/30 transition-colors ${grade.alreadyExists ? 'bg-blue-50/20' : ''} ${hasRowErr ? 'bg-red-50/30' : ''}`}>
-                              <td className="py-3 px-5 text-sm font-bold text-gray-800">
+                            <tr key={idx} className={`hover:bg-purple-50/30 transition-colors ${grade.alreadyExists ? 'bg-[#3B82F6]/10/20' : ''} ${hasRowErr ? 'bg-[#EF4444]/10/30' : ''}`}>
+                              <td className="py-3 px-5 text-sm font-bold text-[#1F2937]">
                                 {grade.MSSV}
-                                {grade.alreadyExists && <span className="block mt-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">Cập nhật</span>}
+                                {grade.alreadyExists && <span className="block mt-1 text-[10px] text-[#3B82F6] font-bold uppercase tracking-wider">Cập nhật</span>}
                               </td>
-                              <td className="py-3 px-4 text-sm font-bold text-gray-900">{grade.HoTen}</td>
+                              <td className="py-3 px-4 text-sm font-bold text-[#1F2937]">{grade.HoTen}</td>
                               {cfg.map(c => {
                                 const isZero = !c.enabled || Number(c.weight) === 0;
                                 return (
@@ -983,7 +983,7 @@ function GradeManagement() {
                                   </td>
                                 );
                               })}
-                              <td className="py-3 px-3 text-center text-sm font-black text-gray-800 bg-gray-50/50">{t10 ?? <span className="text-gray-300">—</span>}</td>
+                              <td className="py-3 px-3 text-center text-sm font-black text-[#1F2937] bg-[#F7F8FA]/50">{t10 ?? <span className="text-gray-300">—</span>}</td>
                               <td className={`py-3 px-3 text-center text-sm font-black bg-purple-50/50 ${getLetterColor(gpa?.letter)}`}>{gpa?.letter ?? <span className="text-gray-300">—</span>}</td>
                             </tr>
                           );
@@ -991,7 +991,7 @@ function GradeManagement() {
                       </tbody>
                     </table>
                   </div>
-                ) : bulkSection ? <div className="py-20 text-center text-gray-400 font-semibold border-2 border-dashed border-gray-200 rounded-2xl">Không có sinh viên nào đăng ký lớp này</div> : null}
+                ) : bulkSection ? <div className="py-20 text-center text-gray-300 font-semibold border-2 border-dashed border-[#E5E7EB] rounded-2xl">Không có sinh viên nào đăng ký lớp này</div> : null}
 
                 <div className="flex gap-4 pt-2">
                   <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors text-base">Hủy bỏ</button>
@@ -1007,12 +1007,12 @@ function GradeManagement() {
         {submitConfirmModal.show && (
           <div className="fixed inset-0 flex items-center justify-center z-[10005] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false, isBulk: false })} />
-            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
-               <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
+            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
+               <div className="w-20 h-20 bg-[#3B82F6]/10 text-[#3B82F6] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
                  <Save className="w-10 h-10" />
                </div>
-               <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Xác nhận lưu điểm</h3>
-               <p className="text-gray-600 text-sm font-medium mb-7 px-2 leading-relaxed">
+               <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận lưu điểm</h3>
+               <p className="text-[#6B7280] text-sm font-medium mb-7 px-2 leading-relaxed">
                  Bạn có chắc chắn muốn lưu điểm {submitConfirmModal.isBulk ? 'cho toàn bộ lớp' : 'cho sinh viên này'} vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.
                </p>
                <div className="flex gap-3">
@@ -1032,20 +1032,20 @@ function GradeManagement() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDeleteCancel} />
             <motion.div
               initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10"
+              className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative z-10"
             >
-              <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-orange-100/50">
+              <div className="w-20 h-20 bg-[#F4C542]/20 text-[#B45309] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-[#FFF7D6]/50">
                 <AlertTriangle className="w-10 h-10" />
               </div>
-              <h3 className="text-2xl font-black text-gray-800 mb-2 tracking-tight">Xác nhận xóa điểm</h3>
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-7 space-y-1.5">
-                <p className="text-sm text-gray-500 font-medium">Xóa điểm của sinh viên:</p>
-                <p className="text-base font-black text-gray-800">{deleteModal.tenSinhVien}</p>
-                <p className="text-xs text-red-500 font-bold mt-2 pt-2 border-t border-gray-200">Dữ liệu xóa sẽ không thể khôi phục!</p>
+              <h3 className="text-2xl font-black text-[#1F2937] mb-2 tracking-tight">Xác nhận xóa điểm</h3>
+              <div className="bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl p-4 mb-7 space-y-1.5">
+                <p className="text-sm text-[#6B7280] font-medium">Xóa điểm của sinh viên:</p>
+                <p className="text-base font-black text-[#1F2937]">{deleteModal.tenSinhVien}</p>
+                <p className="text-xs text-[#EF4444] font-bold mt-2 pt-2 border-t border-[#E5E7EB]">Dữ liệu xóa sẽ không thể khôi phục!</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={handleDeleteCancel} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Hủy</button>
-                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-orange-500 text-white rounded-xl font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
+                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-[#F4C542] text-[#152238] rounded-xl font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
               </div>
             </motion.div>
           </div>

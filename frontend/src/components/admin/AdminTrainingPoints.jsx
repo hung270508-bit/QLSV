@@ -425,21 +425,21 @@ function AdminTrainingPoints() {
 
   const getScoreColor = (score) => {
     if (score >= 90) return 'text-emerald-600';
-    if (score >= 80) return 'text-green-600';
-    if (score >= 65) return 'text-blue-600';
+    if (score >= 80) return 'text-[#22C55E]';
+    if (score >= 65) return 'text-[#3B82F6]';
     if (score >= 50) return 'text-amber-600';
-    return 'text-red-500';
+    return 'text-[#EF4444]';
   };
 
   const getXepLoaiBadge = (xepLoai) => {
     const colors = {
       'Xuất sắc': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-      'Tốt': 'bg-green-50 text-green-700 border border-green-200',
-      'Khá': 'bg-blue-50 text-blue-700 border border-blue-200',
+      'Tốt': 'bg-[#22C55E]/10 text-green-700 border border-green-200',
+      'Khá': 'bg-[#3B82F6]/10 text-blue-700 border border-blue-200',
       'Trung bình': 'bg-amber-50 text-amber-700 border border-amber-200',
       'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200'
     };
-    return colors[xepLoai] || 'bg-gray-50 text-gray-700 border border-gray-200';
+    return colors[xepLoai] || 'bg-[#F7F8FA] text-gray-700 border border-[#E5E7EB]';
   };
 
   const diemSVHienTai = selectedRecord ? (parseInt(selectedRecord.DiemTuDanhGia) || 0) : 0;
@@ -494,29 +494,29 @@ function AdminTrainingPoints() {
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 shadow-lg relative overflow-hidden flex items-center gap-5"
+        className="bg-[#F4C542] rounded-3xl p-8 shadow-lg relative overflow-hidden flex items-center gap-5"
       >
-        <div className="p-4 bg-white/20 rounded-2xl relative z-10 backdrop-blur-sm">
-          <Award className="w-10 h-10 text-white" />
+        <div className="p-4 bg-white/40 rounded-2xl relative z-10 backdrop-blur-sm">
+          <Award className="w-10 h-10 text-[#152238]" />
         </div>
         <div className="relative z-10">
-          <h2 className="text-3xl font-bold text-white mb-1">Cổng Rèn luyện</h2>
-          <p className="text-orange-100 text-lg">Quản lý đợt mở và Xét duyệt điểm sinh viên</p>
+          <h2 className="text-3xl font-bold text-[#152238] mb-1">Cổng Rèn luyện</h2>
+          <p className="text-[#152238]/70 text-lg">Quản lý đợt mở và Xét duyệt điểm sinh viên</p>
         </div>
         <Award className="absolute -right-6 -bottom-6 w-48 h-48 text-white opacity-10 transform rotate-12" />
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 w-fit">
+      <div className="flex bg-[#FFFFFF] rounded-2xl p-1.5 shadow-sm border border-[#E5E7EB] w-fit">
         <button
           onClick={() => setActiveTab('periods')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'periods' ? 'bg-orange-100 text-orange-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'periods' ? 'bg-[#F4C542]/20 text-[#B45309] shadow-sm' : 'text-[#6B7280] hover:bg-[#F7F8FA]'}`}
         >
           <CalendarDays className="w-5 h-5" /> Quản lý Đợt đánh giá
         </button>
         <button
           onClick={() => setActiveTab('reviews')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'reviews' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'reviews' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-[#6B7280] hover:bg-[#F7F8FA]'}`}
         >
           <UserCheck className="w-5 h-5" /> Xét duyệt điểm SV
         </button>
@@ -530,24 +530,24 @@ function AdminTrainingPoints() {
         {activeTab === 'periods' && (
           <motion.div key="periods" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Danh sách các đợt đã thiết lập</h3>
+              <h3 className="text-xl font-bold text-[#1F2937]">Danh sách các đợt đã thiết lập</h3>
               <button
                 onClick={() => {
                   setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: [] });
                   setPeriodFormErrors({});
                   setIsPeriodModalOpen(true);
                 }}
-                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-5 rounded-xl transition-colors shadow-sm flex items-center gap-2"
+                className="bg-[#F4C542] hover:bg-[#F4C542]/90 text-[#152238] font-bold py-2.5 px-5 rounded-xl transition-colors shadow-sm flex items-center gap-2"
               >
                 <PlusCircle className="w-5 h-5" /> Mở đợt mới
               </button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-600 text-sm border-b border-gray-100">
+                    <tr className="bg-[#F7F8FA] text-[#6B7280] text-sm border-b border-[#E5E7EB]">
                       <th className="p-4 font-semibold w-16">ID</th>
                       <th className="p-4 font-semibold">Học kỳ / Năm học</th>
                       <th className="p-4 font-semibold">Thời gian mở</th>
@@ -557,21 +557,21 @@ function AdminTrainingPoints() {
                   </thead>
                   <tbody>
                     {currentPeriods.map(p => (
-                      <tr key={p.MaDotDanhGia} className="border-b border-gray-50 hover:bg-orange-50/20 transition-colors">
-                        <td className="p-4 font-bold text-gray-400">#{p.MaDotDanhGia}</td>
-                        <td className="p-4 font-bold text-gray-800">
+                      <tr key={p.MaDotDanhGia} className="border-b border-gray-50 hover:bg-[#FFF7D6]/20 transition-colors">
+                        <td className="p-4 font-bold text-gray-300">#{p.MaDotDanhGia}</td>
+                        <td className="p-4 font-bold text-[#1F2937]">
                           {p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}
                         </td>
-                        <td className="p-4 text-sm text-gray-600 font-medium">
-                          {formatDate(p.NgayBatDau)} <span className="mx-1 text-gray-400">→</span> {formatDate(p.NgayKetThuc)}
+                        <td className="p-4 text-sm text-[#6B7280] font-medium">
+                          {formatDate(p.NgayBatDau)} <span className="mx-1 text-gray-300">→</span> {formatDate(p.NgayKetThuc)}
                         </td>
                         <td className="p-4">
                           {p.TrangThai === 'Đang tự đánh giá' ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-[#22C55E]/10 text-green-700 border border-green-200">
                               <PlayCircle className="w-3.5 h-3.5" /> Đang mở cho SV
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 text-[#6B7280] border border-[#E5E7EB]">
                               <StopCircle className="w-3.5 h-3.5" /> Đã đóng
                             </span>
                           )}
@@ -579,7 +579,7 @@ function AdminTrainingPoints() {
                         <td className="p-4 text-center">
                           <button
                             onClick={() => handleTogglePeriodStatus(p.MaDotDanhGia, p.TrangThai)}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${p.TrangThai === 'Đang tự đánh giá' ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-600 hover:text-white' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-600 hover:text-white'}`}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${p.TrangThai === 'Đang tự đánh giá' ? 'bg-red-100 text-[#DC2626] border-red-200 hover:bg-red-600 hover:text-white' : 'bg-[#22C55E]/10 text-[#22C55E] border-green-200 hover:bg-green-600 hover:text-white'}`}
                           >
                             <Power className="w-3.5 h-3.5 inline mr-1" />
                             {p.TrangThai === 'Đang tự đánh giá' ? 'Đóng đợt này' : 'Mở lại đợt'}
@@ -587,7 +587,7 @@ function AdminTrainingPoints() {
                         </td>
                       </tr>
                     ))}
-                    {periods.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400 italic">Chưa có đợt đánh giá nào được tạo.</td></tr>}
+                    {periods.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-300 italic">Chưa có đợt đánh giá nào được tạo.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -613,38 +613,38 @@ function AdminTrainingPoints() {
 
             {/* THỐNG KÊ TỔNG QUAN (Summary Cards) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-2">
-              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                <div className="p-3 bg-blue-50 rounded-xl text-blue-600"><Users className="w-6 h-6" /></div>
+              <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-sm flex items-center gap-4">
+                <div className="p-3 bg-[#3B82F6]/10 rounded-xl text-[#3B82F6]"><Users className="w-6 h-6" /></div>
                 <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase">Tổng SV đã nộp</p>
-                  <p className="text-2xl font-black text-gray-800">{totalSubmitted}</p>
+                  <p className="text-xs font-bold text-gray-300 uppercase">Tổng SV đã nộp</p>
+                  <p className="text-2xl font-black text-[#1F2937]">{totalSubmitted}</p>
                 </div>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+              <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-sm flex items-center gap-4">
                 <div className="p-3 bg-amber-50 rounded-xl text-amber-600"><Clock className="w-6 h-6" /></div>
                 <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase">Đang chờ duyệt</p>
-                  <p className="text-2xl font-black text-gray-800">{totalPending}</p>
+                  <p className="text-xs font-bold text-gray-300 uppercase">Đang chờ duyệt</p>
+                  <p className="text-2xl font-black text-[#1F2937]">{totalPending}</p>
                 </div>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+              <div className="bg-[#FFFFFF] p-5 rounded-2xl border border-[#E5E7EB] shadow-sm flex items-center gap-4">
                 <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600"><CheckCircle2 className="w-6 h-6" /></div>
                 <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase">Đã xác nhận</p>
-                  <p className="text-2xl font-black text-gray-800">{totalApproved}</p>
+                  <p className="text-xs font-bold text-gray-300 uppercase">Đã xác nhận</p>
+                  <p className="text-2xl font-black text-[#1F2937]">{totalApproved}</p>
                 </div>
               </div>
             </div>
 
             {/* Bộ lọc & Tìm kiếm */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center justify-between">
+            <div className="bg-[#FFFFFF] p-4 rounded-2xl shadow-sm border border-[#E5E7EB] flex flex-wrap gap-3 items-center justify-between">
               <div className="flex flex-wrap gap-3 items-center flex-1">
-                <div className="flex items-center gap-2 text-gray-500 font-semibold text-sm">
+                <div className="flex items-center gap-2 text-[#6B7280] font-semibold text-sm">
                   <Filter className="w-4 h-4" /> Bộ lọc:
                 </div>
                 <select
                   value={filterHocKy} onChange={e => setFilterHocKy(e.target.value)}
-                  className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
                 >
                   <option value="All">Tất cả học kỳ</option>
                   {uniqueSemesters.map(hk => (
@@ -653,7 +653,7 @@ function AdminTrainingPoints() {
                 </select>
                 <select
                   value={filterTrangThai} onChange={e => setFilterTrangThai(e.target.value)}
-                  className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
                 >
                   <option value="All">Tất cả trạng thái</option>
                   <option value="Chờ lớp duyệt">Chờ duyệt</option>
@@ -665,7 +665,7 @@ function AdminTrainingPoints() {
                     setFilterKhoa(e.target.value);
                     setFilterLop('All');
                   }}
-                  className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
                 >
                   <option value="All">Tất cả khoa</option>
                   {faculties.map(k => (
@@ -675,7 +675,7 @@ function AdminTrainingPoints() {
                 <select
                   value={filterLop}
                   onChange={e => setFilterLop(e.target.value)}
-                  className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
                 >
                   <option value="All">Tất cả lớp</option>
                   {(filterKhoa === 'All' ? classes : classes.filter(c => c.MaKhoa === filterKhoa)).map(l => (
@@ -683,13 +683,13 @@ function AdminTrainingPoints() {
                   ))}
                 </select>
                 <div className="relative w-full max-w-[280px]">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Tìm theo MSSV / Họ tên..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all outline-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:bg-[#FFFFFF] transition-all outline-none"
                   />
                 </div>
               </div>
@@ -699,19 +699,19 @@ function AdminTrainingPoints() {
 
                 <button
                   onClick={handleOpenAllLogs}
-                  className="px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2"
+                  className="px-5 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] hover:bg-[#F7F8FA] text-gray-700 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2"
                 >
-                  <Clock className="w-4 h-4 text-orange-500" /> Nhật ký duyệt
+                  <Clock className="w-4 h-4 text-[#F4C542]" /> Nhật ký duyệt
                 </button>
               </div>
             </div>
 
             {/* Bảng dữ liệu Sinh viên */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left min-w-[950px]">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
+                    <tr className="bg-[#F7F8FA] border-b border-[#E5E7EB] text-[#6B7280] text-sm">
 
                       <th className="p-4 font-semibold w-1/4">Sinh viên</th>
                       <th className="p-4 font-semibold">Học kỳ</th>
@@ -726,16 +726,16 @@ function AdminTrainingPoints() {
                   <tbody>
                     {currentReviews.map((item) => {
                       return (
-                        <tr key={item.MaDanhGia} className="border-b border-gray-50 transition-colors hover:bg-blue-50/10">
+                        <tr key={item.MaDanhGia} className="border-b border-gray-50 transition-colors hover:bg-[#3B82F6]/10/10">
                           <td className="p-4">
-                            <p className="font-bold text-gray-800 leading-tight">{item.HoTen}</p>
-                            <p className="text-xs text-gray-500 font-medium mt-1">{item.MSSV} · Lớp: {item.MaLop}</p>
+                            <p className="font-bold text-[#1F2937] leading-tight">{item.HoTen}</p>
+                            <p className="text-xs text-[#6B7280] font-medium mt-1">{item.MSSV} · Lớp: {item.MaLop}</p>
                           </td>
-                          <td className="p-4 text-sm font-medium text-gray-600">
+                          <td className="p-4 text-sm font-medium text-[#6B7280]">
                             {item.HocKy.replace('HK', 'HK ').replace(/_/g, ' ')}
                           </td>
-                          <td className="p-4 text-center font-bold text-blue-600 bg-blue-50/20">{item.DiemTuDanhGia}</td>
-                          <td className="p-4 text-center font-bold text-gray-500">{item.DiemKhoaDanhGia || '0'}</td>
+                          <td className="p-4 text-center font-bold text-[#3B82F6] bg-[#3B82F6]/10/20">{item.DiemTuDanhGia}</td>
+                          <td className="p-4 text-center font-bold text-[#6B7280]">{item.DiemKhoaDanhGia || '0'}</td>
                           <td className="p-4 text-center">
                             <span className={`text-lg font-black ${getScoreColor(item.TongDiem || item.DiemTuDanhGia)}`}>
                               {item.TongDiem || item.DiemTuDanhGia}
@@ -760,7 +760,7 @@ function AdminTrainingPoints() {
                           <td className="p-4 text-center text-nowrap">
                             <button
                               onClick={() => handleOpenReviewModal(item)}
-                              className="px-4 py-2 bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm inline-flex items-center gap-1.5"
+                              className="px-4 py-2 bg-[#FFFFFF] border border-blue-200 text-[#3B82F6] hover:bg-blue-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm inline-flex items-center gap-1.5"
                             >
                               <Edit className="w-3.5 h-3.5" /> Duyệt
                             </button>
@@ -769,7 +769,7 @@ function AdminTrainingPoints() {
                       );
                     })}
                     {filteredData.length === 0 && (
-                      <tr><td colSpan={9} className="p-12 text-center text-gray-400 italic">Không tìm thấy phiếu đánh giá phù hợp.</td></tr>
+                      <tr><td colSpan={9} className="p-12 text-center text-gray-300 italic">Không tìm thấy phiếu đánh giá phù hợp.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -795,23 +795,23 @@ function AdminTrainingPoints() {
       <AnimatePresence>
         {isPeriodModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
-              <div className="bg-orange-500 p-5 flex justify-between items-center text-white shrink-0">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-[#FFFFFF] w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+              <div className="bg-[#F4C542] p-5 flex justify-between items-center text-[#152238] shrink-0">
                 <h3 className="text-lg font-bold flex items-center gap-2"><CalendarDays className="w-5 h-5" /> Thiết lập đợt đánh giá</h3>
-                <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); }} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); }} className="p-1 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
 
               {/* Tabs */}
-              <div className="flex border-b border-gray-200 bg-gray-50 shrink-0">
-                <button onClick={() => setPeriodModalTab('info')} className={`flex-1 py-3 font-bold text-sm border-b-2 transition-colors ${periodModalTab === 'info' ? 'border-orange-500 text-orange-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              <div className="flex border-b border-[#E5E7EB] bg-[#F7F8FA] shrink-0">
+                <button onClick={() => setPeriodModalTab('info')} className={`flex-1 py-3 font-bold text-sm border-b-2 transition-colors ${periodModalTab === 'info' ? 'border-[#F4C542] text-[#F4C542] bg-[#FFFFFF]' : 'border-transparent text-[#6B7280] hover:text-gray-700'}`}>
                   1. Thông tin chung
                 </button>
-                <button onClick={() => setPeriodModalTab('builder')} className={`flex-1 py-3 font-bold text-sm border-b-2 transition-colors flex items-center justify-center gap-2 ${periodModalTab === 'builder' ? 'border-orange-500 text-orange-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                <button onClick={() => setPeriodModalTab('builder')} className={`flex-1 py-3 font-bold text-sm border-b-2 transition-colors flex items-center justify-center gap-2 ${periodModalTab === 'builder' ? 'border-[#F4C542] text-[#F4C542] bg-[#FFFFFF]' : 'border-transparent text-[#6B7280] hover:text-gray-700'}`}>
                   2. Thiết kế bộ tiêu chí
                   {(() => {
                     let t = 0;
                     periodForm.CauTrucTieuChi?.forEach(s => s.items?.forEach(i => { t += Math.max(0, ...i.options.map(o => Number(o.point) || 0)); }));
-                    return <span className={`px-2 py-0.5 rounded text-xs text-white ${t === 100 ? 'bg-green-500' : 'bg-red-500'}`}>{t}/100</span>;
+                    return <span className={`px-2 py-0.5 rounded text-xs text-white ${t === 100 ? 'bg-[#22C55E]/100' : 'bg-[#EF4444]/100'}`}>{t}/100</span>;
                   })()}
                 </button>
               </div>
@@ -822,47 +822,47 @@ function AdminTrainingPoints() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Học kỳ</label>
-                        <select value={periodForm.HocKy} onChange={e => setPeriodForm({ ...periodForm, HocKy: e.target.value })} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700">
+                        <select value={periodForm.HocKy} onChange={e => setPeriodForm({ ...periodForm, HocKy: e.target.value })} className="w-full p-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl outline-none font-bold text-gray-700">
                           <option value="HK1">Học kỳ 1</option>
                           <option value="HK2">Học kỳ 2</option>
                           <option value="HK3">Học kỳ 3</option>
                         </select>
-                        <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Chọn học kỳ áp dụng cho đợt đánh giá này.</p>
+                        <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Chọn học kỳ áp dụng cho đợt đánh giá này.</p>
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Năm học (Niên khóa)</label>
-                        <input type="text" value={periodForm.NamHoc} readOnly disabled className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl outline-none font-bold text-gray-500 cursor-not-allowed" />
-                        <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Niên khóa tự động tính theo năm hiện tại.</p>
+                        <input type="text" value={periodForm.NamHoc} readOnly disabled className="w-full p-3 bg-gray-100 border border-[#E5E7EB] rounded-xl outline-none font-bold text-[#6B7280] cursor-not-allowed" />
+                        <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Niên khóa tự động tính theo năm hiện tại.</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu <span className="text-red-500">*</span></label>
-                        <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} min={minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu <span className="text-[#EF4444]">*</span></label>
+                        <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} min={minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-[#FFFFFF] border rounded-xl outline-none text-sm text-[#6B7280] disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
                         {periodFormErrors.NgayBatDau ? (
-                          <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayBatDau}</p>
+                          <p className="text-[#EF4444] text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayBatDau}</p>
                         ) : (
-                          <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Mặc định là ngày hôm nay, không thể chọn quá khứ.</p>
+                          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Mặc định là ngày hôm nay, không thể chọn quá khứ.</p>
                         )}
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc <span className="text-red-500">*</span></label>
-                        <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} min={periodForm.NgayBatDau || minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-500 focus:border-red-500' : 'border-gray-200'}`} />
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc <span className="text-[#EF4444]">*</span></label>
+                        <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} min={periodForm.NgayBatDau || minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-[#FFFFFF] border rounded-xl outline-none text-sm text-[#6B7280] disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
                         {periodFormErrors.NgayKetThuc ? (
-                          <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayKetThuc}</p>
+                          <p className="text-[#EF4444] text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayKetThuc}</p>
                         ) : (
-                          <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Phải sau hoặc bằng Ngày bắt đầu.</p>
+                          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Phải sau hoặc bằng Ngày bắt đầu.</p>
                         )}
                       </div>
                     </div>
-                    {nienKhoaRange && <p className="text-[11px] text-gray-400 -mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Khoảng thời gian hợp lệ đến tối đa {nienKhoaRange.end}-12-31</p>}
+                    {nienKhoaRange && <p className="text-[11px] text-gray-300 -mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Khoảng thời gian hợp lệ đến tối đa {nienKhoaRange.end}-12-31</p>}
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Trạng thái khởi tạo</label>
-                      <select value={periodForm.TrangThai} onChange={e => setPeriodForm({ ...periodForm, TrangThai: e.target.value })} className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none text-sm font-bold text-green-600">
+                      <select value={periodForm.TrangThai} onChange={e => setPeriodForm({ ...periodForm, TrangThai: e.target.value })} className="w-full p-3 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl outline-none text-sm font-bold text-[#22C55E]">
                         <option value="Đang tự đánh giá">Mở cho phép Sinh viên làm bài ngay</option>
                         <option value="Đã đóng đợt">Đóng (Lưu nháp)</option>
                       </select>
-                      <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Trạng thái ban đầu sau khi tạo xong đợt này.</p>
+                      <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Trạng thái ban đầu sau khi tạo xong đợt này.</p>
                     </div>
                   </div>
                 )}
@@ -870,15 +870,15 @@ function AdminTrainingPoints() {
                 {periodModalTab === 'builder' && (
                   <div className="space-y-6">
                     <div className="flex justify-between items-center mb-4">
-                      <p className="text-sm text-gray-600 font-medium">Bạn có thể tự thiết kế bộ tiêu chí động riêng cho đợt này.</p>
-                      <button onClick={() => setPeriodForm({ ...periodForm, CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) })} className="text-xs font-bold bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg hover:bg-orange-200 transition-colors">
+                      <p className="text-sm text-[#6B7280] font-medium">Bạn có thể tự thiết kế bộ tiêu chí động riêng cho đợt này.</p>
+                      <button onClick={() => setPeriodForm({ ...periodForm, CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) })} className="text-xs font-bold bg-[#F4C542]/20 text-[#B45309] px-3 py-1.5 rounded-lg hover:bg-orange-200 transition-colors">
                         Dùng mẫu mặc định
                       </button>
                     </div>
 
                     {periodForm.CauTrucTieuChi?.map((sec, secIdx) => (
-                      <div key={sec.id} className="border border-gray-200 rounded-xl bg-gray-50 overflow-hidden">
-                        <div className="bg-gray-200/50 p-3 flex justify-between items-center border-b border-gray-200">
+                      <div key={sec.id} className="border border-[#E5E7EB] rounded-xl bg-[#F7F8FA] overflow-hidden">
+                        <div className="bg-gray-200/50 p-3 flex justify-between items-center border-b border-[#E5E7EB]">
                           <input
                             type="text"
                             value={sec.title}
@@ -887,19 +887,19 @@ function AdminTrainingPoints() {
                               newCriteria[secIdx].title = e.target.value;
                               setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                             }}
-                            className="font-bold text-gray-700 bg-transparent border-none outline-none w-full focus:bg-white focus:ring-2 focus:ring-orange-200 rounded px-2 py-1"
+                            className="font-bold text-gray-700 bg-transparent border-none outline-none w-full focus:bg-[#FFFFFF] focus:ring-2 focus:ring-orange-200 rounded px-2 py-1"
                             placeholder="Nhập tên nhóm tiêu chí..."
                           />
                           <button onClick={() => {
                             const newCriteria = [...periodForm.CauTrucTieuChi];
                             newCriteria.splice(secIdx, 1);
                             setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                          }} className="text-red-400 hover:text-red-600 p-1 ml-2"><X className="w-4 h-4" /></button>
+                          }} className="text-red-400 hover:text-[#EF4444] p-1 ml-2"><X className="w-4 h-4" /></button>
                         </div>
 
                         <div className="p-4 space-y-4">
                           {sec.items.map((item, itemIdx) => (
-                            <div key={item.id} className="bg-white border border-gray-100 p-3 rounded-lg shadow-sm">
+                            <div key={item.id} className="bg-[#FFFFFF] border border-[#E5E7EB] p-3 rounded-lg shadow-sm">
                               <div className="flex gap-2 items-start mb-3">
                                 <input
                                   type="text"
@@ -909,7 +909,7 @@ function AdminTrainingPoints() {
                                     newCriteria[secIdx].items[itemIdx].id = e.target.value;
                                     setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                   }}
-                                  className="w-16 text-xs font-bold text-center border border-gray-200 rounded p-1.5 bg-gray-50 focus:bg-white outline-none"
+                                  className="w-16 text-xs font-bold text-center border border-[#E5E7EB] rounded p-1.5 bg-[#F7F8FA] focus:bg-[#FFFFFF] outline-none"
                                   placeholder="Mã"
                                 />
                                 <input
@@ -920,14 +920,14 @@ function AdminTrainingPoints() {
                                     newCriteria[secIdx].items[itemIdx].label = e.target.value;
                                     setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                   }}
-                                  className="flex-1 text-sm font-semibold border border-gray-200 rounded p-1.5 focus:bg-white focus:ring-1 focus:ring-orange-300 outline-none"
+                                  className="flex-1 text-sm font-semibold border border-[#E5E7EB] rounded p-1.5 focus:bg-[#FFFFFF] focus:ring-1 focus:ring-orange-300 outline-none"
                                   placeholder="Nội dung tiêu chí..."
                                 />
                                 <button onClick={() => {
                                   const newCriteria = [...periodForm.CauTrucTieuChi];
                                   newCriteria[secIdx].items.splice(itemIdx, 1);
                                   setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                }} className="text-red-400 hover:text-red-600 p-1"><X className="w-4 h-4" /></button>
+                                }} className="text-red-400 hover:text-[#EF4444] p-1"><X className="w-4 h-4" /></button>
                               </div>
 
                               <div className="pl-8 space-y-2">
@@ -942,7 +942,7 @@ function AdminTrainingPoints() {
                                         newCriteria[secIdx].items[itemIdx].options[optIdx].label = e.target.value;
                                         setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                       }}
-                                      className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:bg-white focus:border-orange-300 outline-none"
+                                      className="flex-1 text-xs border border-[#E5E7EB] rounded px-2 py-1 focus:bg-[#FFFFFF] focus:border-orange-300 outline-none"
                                       placeholder="Mô tả mức điểm..."
                                     />
                                     <input
@@ -953,21 +953,21 @@ function AdminTrainingPoints() {
                                         newCriteria[secIdx].items[itemIdx].options[optIdx].point = Number(e.target.value);
                                         setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                       }}
-                                      className="w-16 text-xs text-center border border-gray-200 rounded px-2 py-1 font-bold text-orange-600 focus:bg-white focus:border-orange-300 outline-none"
+                                      className="w-16 text-xs text-center border border-[#E5E7EB] rounded px-2 py-1 font-bold text-[#F4C542] focus:bg-[#FFFFFF] focus:border-orange-300 outline-none"
                                       placeholder="Điểm"
                                     />
                                     <button onClick={() => {
                                       const newCriteria = [...periodForm.CauTrucTieuChi];
                                       newCriteria[secIdx].items[itemIdx].options.splice(optIdx, 1);
                                       setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                    }} className="text-gray-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                                    }} className="text-gray-300 hover:text-[#EF4444]"><X className="w-3 h-3" /></button>
                                   </div>
                                 ))}
                                 <button onClick={() => {
                                   const newCriteria = [...periodForm.CauTrucTieuChi];
                                   newCriteria[secIdx].items[itemIdx].options.push({ label: 'Mức điểm mới', point: 0 });
                                   setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                }} className="text-xs text-blue-500 font-bold flex items-center gap-1 hover:text-blue-700 mt-1"><PlusCircle className="w-3 h-3" /> Thêm...</button>
+                                }} className="text-xs text-[#3B82F6] font-bold flex items-center gap-1 hover:text-blue-700 mt-1"><PlusCircle className="w-3 h-3" /> Thêm...</button>
                               </div>
                             </div>
                           ))}
@@ -980,7 +980,7 @@ function AdminTrainingPoints() {
                               options: [{ label: 'Đạt (+10đ)', point: 10 }, { label: 'Không đạt (+0đ)', point: 0 }]
                             });
                             setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                          }} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100 hover:border-gray-400 transition-colors flex items-center justify-center gap-2">
+                          }} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm font-bold text-[#6B7280] hover:bg-gray-100 hover:border-gray-400 transition-colors flex items-center justify-center gap-2">
                             <PlusCircle className="w-4 h-4" /> Thêm tiêu chí con
                           </button>
                         </div>
@@ -995,15 +995,15 @@ function AdminTrainingPoints() {
                         items: []
                       });
                       setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                    }} className="w-full py-3 bg-orange-50 text-orange-600 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-colors flex items-center justify-center gap-2">
+                    }} className="w-full py-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl font-bold border border-[#F4C542]/30 hover:bg-[#FFF7D6] transition-colors flex items-center justify-center gap-2">
                       <PlusCircle className="w-5 h-5" /> Thêm nhóm tiêu chí
                     </button>
                   </div>
                 )}
               </div>
 
-              <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
-                <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); setPeriodFormErrors({}); }} className="px-5 py-2.5 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Hủy</button>
+              <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end gap-3 shrink-0">
+                <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); setPeriodFormErrors({}); }} className="px-5 py-2.5 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Hủy</button>
                 {periodModalTab === 'info' ? (
                   <button onClick={() => {
                     if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc || periodForm.NgayBatDau > periodForm.NgayKetThuc || periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
@@ -1015,7 +1015,7 @@ function AdminTrainingPoints() {
                     Tiếp theo (Thiết kế tiêu chí)
                   </button>
                 ) : (
-                  <button onClick={triggerCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-2">
+                  <button onClick={triggerCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-[#F4C542] rounded-xl hover:bg-orange-700 shadow-md shadow-[#F4C542]/30 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5" /> Xác nhận tạo đợt
                   </button>
                 )}
@@ -1035,32 +1035,32 @@ function AdminTrainingPoints() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]"
+              className="bg-[#FFFFFF] w-full max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]"
             >
               {/* Header Modal */}
               <div className="bg-blue-600 p-5 flex justify-between items-center text-white shrink-0">
                 <h3 className="text-lg font-bold flex items-center gap-2"><UserCheck className="w-5 h-5" /> Xét duyệt điểm rèn luyện</h3>
-                <button onClick={() => { setSelectedRecord(null); setReviewErrors({}); }} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                <button onClick={() => { setSelectedRecord(null); setReviewErrors({}); }} className="p-1.5 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
 
               {/* Body Modal */}
               <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto">
                 {/* Cột Trái: Thông tin xét duyệt & Timeline (5 cols) */}
-                <div className="lg:col-span-5 space-y-5 border-r border-gray-100 lg:pr-6">
-                  <div className="text-center bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <h4 className="font-bold text-gray-800 text-lg leading-tight">{selectedRecord.HoTen}</h4>
-                    <p className="text-xs text-gray-500 font-medium mt-1">{selectedRecord.MSSV} · Lớp: {selectedRecord.MaLop}</p>
-                    <span className="mt-2 inline-block px-3 py-1 bg-white border border-gray-200 text-gray-600 font-bold rounded-lg text-xs">
+                <div className="lg:col-span-5 space-y-5 border-r border-[#E5E7EB] lg:pr-6">
+                  <div className="text-center bg-[#F7F8FA] rounded-2xl p-4 border border-[#E5E7EB]">
+                    <h4 className="font-bold text-[#1F2937] text-lg leading-tight">{selectedRecord.HoTen}</h4>
+                    <p className="text-xs text-[#6B7280] font-medium mt-1">{selectedRecord.MSSV} · Lớp: {selectedRecord.MaLop}</p>
+                    <span className="mt-2 inline-block px-3 py-1 bg-[#FFFFFF] border border-[#E5E7EB] text-[#6B7280] font-bold rounded-lg text-xs">
                       {selectedRecord.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}
                     </span>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                  <div className="bg-[#3B82F6]/10 border border-blue-100 rounded-xl p-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-blue-800">SV tự đánh giá:</span>
-                      <span className="text-2xl font-black text-blue-600">{selectedRecord.DiemTuDanhGia}đ</span>
+                      <span className="text-2xl font-black text-[#3B82F6]">{selectedRecord.DiemTuDanhGia}đ</span>
                     </div>
-                    <p className="text-[10px] text-blue-600 mt-2 italic flex gap-1 items-start">
+                    <p className="text-[10px] text-[#3B82F6] mt-2 italic flex gap-1 items-start">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                       Chỉ được phép cộng tối đa {100 - selectedRecord.DiemTuDanhGia} điểm để tổng không vượt 100.
                     </p>
@@ -1074,9 +1074,9 @@ function AdminTrainingPoints() {
                       max={100 - selectedRecord.DiemTuDanhGia}
                       value={diemKhoa}
                       onChange={e => setDiemKhoa(e.target.value)}
-                      className={`w-full p-3 bg-white border ${reviewErrors.diemKhoa ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-400'} rounded-xl outline-none text-2xl font-black text-center transition-colors`}
+                      className={`w-full p-3 bg-[#FFFFFF] border ${reviewErrors.diemKhoa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-blue-400'} rounded-xl outline-none text-2xl font-black text-center transition-colors`}
                     />
-                    {reviewErrors.diemKhoa && <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {reviewErrors.diemKhoa}</p>}
+                    {reviewErrors.diemKhoa && <p className="text-[#EF4444] text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {reviewErrors.diemKhoa}</p>}
                   </div>
 
                   <div>
@@ -1084,33 +1084,33 @@ function AdminTrainingPoints() {
                     <select
                       value={trangThaiDuyet}
                       onChange={e => setTrangThaiDuyet(e.target.value)}
-                      className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-blue-400 text-sm font-bold text-gray-700 transition-colors"
+                      className="w-full p-3 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl outline-none focus:border-blue-400 text-sm font-bold text-gray-700 transition-colors"
                     >
                       <option value="Chờ lớp duyệt">Lưu nháp (Chờ duyệt)</option>
                       <option value="Đã xác nhận">Đã xác nhận (Chốt sổ)</option>
                     </select>
                   </div>
 
-                  <motion.div key={tongDiemPreview} initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-2 text-gray-600 text-sm font-bold"><Calculator className="w-5 h-5 text-blue-500" /> TỔNG ĐIỂM DỰ KIẾN:</div>
+                  <motion.div key={tongDiemPreview} initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                    <div className="flex items-center gap-2 text-[#6B7280] text-sm font-bold"><Calculator className="w-5 h-5 text-[#3B82F6]" /> TỔNG ĐIỂM DỰ KIẾN:</div>
                     <span className={`text-4xl font-black ${getScoreColor(tongDiemPreview)}`}>{tongDiemPreview}đ</span>
                   </motion.div>
 
                   {/* Lịch sử phê duyệt (Timeline) */}
-                  <div className="pt-4 border-t border-gray-100">
-                    <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Nhật ký phê duyệt</h5>
+                  <div className="pt-4 border-t border-[#E5E7EB]">
+                    <h5 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">Nhật ký phê duyệt</h5>
                     <div className="space-y-3 max-h-[140px] overflow-y-auto pr-2 custom-scrollbar">
                       {recordLogs.map((log) => (
                         <div key={log.MaLog} className="flex gap-2.5 items-start text-xs border-b border-gray-50 pb-2">
-                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 shrink-0" />
+                          <div className="w-1.5 h-1.5 bg-[#3B82F6]/100 rounded-full mt-1.5 shrink-0" />
                           <div className="flex-1">
                             <p className="font-semibold text-gray-700 leading-tight">{log.HanhDong}</p>
-                            <p className="text-[10px] text-gray-400 mt-1">{new Date(log.ThoiGian).toLocaleString('vi-VN')} · {log.NguoiDuyet}</p>
+                            <p className="text-[10px] text-gray-300 mt-1">{new Date(log.ThoiGian).toLocaleString('vi-VN')} · {log.NguoiDuyet}</p>
                           </div>
                         </div>
                       ))}
                       {recordLogs.length === 0 && (
-                        <p className="text-[11px] text-gray-400 italic">Chưa có nhật ký phê duyệt.</p>
+                        <p className="text-[11px] text-gray-300 italic">Chưa có nhật ký phê duyệt.</p>
                       )}
                     </div>
                   </div>
@@ -1118,19 +1118,19 @@ function AdminTrainingPoints() {
 
                 {/* Cột Phải: Breakdown chi tiết tự chấm của SV (7 cols) */}
                 <div className="lg:col-span-7 flex flex-col min-h-[300px]">
-                  <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4 text-blue-500" /> Chi tiết phiếu tự đánh giá
+                  <h5 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4 text-[#3B82F6]" /> Chi tiết phiếu tự đánh giá
                   </h5>
                   {loadingDetails ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
-                      <PlayCircle className="w-8 h-8 animate-spin text-blue-500" />
+                    <div className="flex-1 flex flex-col items-center justify-center text-gray-300 gap-2">
+                      <PlayCircle className="w-8 h-8 animate-spin text-[#3B82F6]" />
                       <span className="text-xs font-bold">Đang tải dữ liệu tự chấm...</span>
                     </div>
                   ) : (
                     <div className="flex-1 overflow-y-auto pr-2 max-h-[500px] space-y-4 custom-scrollbar">
                       {(selectedRecord?.CauTrucTieuChi || DEFAULT_CRITERIA).map(sec => (
-                        <div key={sec.id} className="border border-gray-150 rounded-xl overflow-hidden bg-white shadow-sm">
-                          <div className="bg-gray-50 px-4 py-2 border-b border-gray-150">
+                        <div key={sec.id} className="border border-gray-150 rounded-xl overflow-hidden bg-[#FFFFFF] shadow-sm">
+                          <div className="bg-[#F7F8FA] px-4 py-2 border-b border-gray-150">
                             <span className="text-xs font-bold text-gray-700">{sec.title}</span>
                           </div>
                           <div className="divide-y divide-gray-100">
@@ -1141,11 +1141,11 @@ function AdminTrainingPoints() {
                                   <div className="flex-1 space-y-1">
                                     <p className="text-xs font-semibold text-gray-700 leading-normal">{item.label}</p>
                                     {sel !== undefined ? (
-                                      <p className="text-xs text-blue-600 bg-blue-50/50 border border-blue-100 rounded-lg p-2 font-medium leading-relaxed">
+                                      <p className="text-xs text-[#3B82F6] bg-[#3B82F6]/10/50 border border-blue-100 rounded-lg p-2 font-medium leading-relaxed">
                                         Lựa chọn: {item.options[sel.index]?.label || 'Chưa xác định'}
                                       </p>
                                     ) : (
-                                      <p className="text-xs text-red-500 italic bg-red-50 rounded-lg p-2 font-medium">
+                                      <p className="text-xs text-[#EF4444] italic bg-[#EF4444]/10 rounded-lg p-2 font-medium">
                                         Không tích chọn mục này
                                       </p>
                                     )}
@@ -1153,17 +1153,17 @@ function AdminTrainingPoints() {
                                       <div className="mt-2 pl-1 space-y-2">
                                         {sel.Files && sel.Files.length > 0 && (
                                           <div className="space-y-2">
-                                            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                                            <p className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider">
                                               Tệp đính kèm ({sel.Files.length}/3)
                                             </p>
                                             {sel.Files.map((file, fileIndex) => (
-                                              <div key={fileIndex} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                                              <div key={fileIndex} className="flex items-center gap-2 p-2 bg-[#3B82F6]/10 rounded-lg border border-blue-100">
                                                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                                                  <FileImage className="w-4 h-4 text-blue-600" />
+                                                  <FileImage className="w-4 h-4 text-[#3B82F6]" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                   <p className="text-[11px] font-bold text-blue-800 truncate">{file.name}</p>
-                                                  <p className="text-[10px] text-blue-600">{(file.data.length * 3 / 4 / 1024).toFixed(1)} KB</p>
+                                                  <p className="text-[10px] text-[#3B82F6]">{(file.data.length * 3 / 4 / 1024).toFixed(1)} KB</p>
                                                 </div>
                                                 {file.type.startsWith('image/') && (
                                                   <button
@@ -1196,7 +1196,7 @@ function AdminTrainingPoints() {
                                       </div>
                                     )}
                                   </div>
-                                  <div className="shrink-0 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 font-bold text-xs text-gray-600">
+                                  <div className="shrink-0 bg-[#F7F8FA] px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] font-bold text-xs text-[#6B7280]">
                                     {sel !== undefined ? `+${sel.diem}đ` : '0đ'}
                                   </div>
                                 </div>
@@ -1211,8 +1211,8 @@ function AdminTrainingPoints() {
               </div>
 
               {/* Footer Modal */}
-              <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
-                <button onClick={() => setSelectedRecord(null)} className="px-5 py-2.5 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Hủy</button>
+              <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end gap-3 shrink-0">
+                <button onClick={() => setSelectedRecord(null)} className="px-5 py-2.5 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Hủy</button>
                 <button onClick={handleSubmitReview} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Chốt điểm</button>
               </div>
             </motion.div>
@@ -1230,30 +1230,30 @@ function AdminTrainingPoints() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              className="bg-[#FFFFFF] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
             >
-              <div className="bg-orange-500 p-5 flex justify-between items-center text-white shrink-0">
+              <div className="bg-[#F4C542] p-5 flex justify-between items-center text-[#152238] shrink-0">
                 <h3 className="text-lg font-bold flex items-center gap-2"><Clock className="w-5 h-5" /> Nhật ký phê duyệt điểm rèn luyện</h3>
-                <button onClick={() => setIsAllLogsModalOpen(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                <button onClick={() => setIsAllLogsModalOpen(false)} className="p-1.5 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-6 flex flex-col flex-1 overflow-hidden space-y-4">
                 {/* Thanh tìm kiếm nhật ký */}
                 <div className="relative shrink-0">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Tìm theo MSSV, Họ tên hoặc nội dung..."
                     value={allLogsSearch}
                     onChange={e => setAllLogsSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:bg-white transition-all outline-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:bg-[#FFFFFF] transition-all outline-none"
                   />
                 </div>
 
                 {/* Danh sách nhật ký */}
                 <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
                   {loadingAllLogs ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-gray-400 gap-2">
-                      <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                    <div className="flex flex-col items-center justify-center py-10 text-gray-300 gap-2">
+                      <Loader2 className="w-8 h-8 animate-spin text-[#F4C542]" />
                       <span className="text-xs font-bold">Đang tải nhật ký...</span>
                     </div>
                   ) : (
@@ -1270,20 +1270,20 @@ function AdminTrainingPoints() {
                           );
                         })
                         .map(log => (
-                          <div key={log.MaLog} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-orange-50/15 transition-colors flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                          <div key={log.MaLog} className="p-4 bg-[#F7F8FA] rounded-2xl border border-[#E5E7EB] hover:bg-[#FFF7D6]/15 transition-colors flex gap-4 items-start">
+                            <div className="w-8 h-8 rounded-full bg-[#F4C542]/20 text-[#B45309] flex items-center justify-center shrink-0">
                               <UserCheck className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
-                                <span className="font-bold text-gray-800 text-sm">{log.HoTen} <span className="text-gray-400 font-medium">({log.MSSV})</span></span>
-                                <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-500">
+                                <span className="font-bold text-[#1F2937] text-sm">{log.HoTen} <span className="text-gray-300 font-medium">({log.MSSV})</span></span>
+                                <span className="text-[10px] font-bold bg-[#FFFFFF] px-2 py-0.5 rounded border border-[#E5E7EB] text-[#6B7280]">
                                   {log.HocKy.replace('HK', 'HK ').replace(/_/g, ' ')}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-600 font-medium leading-relaxed">{log.HanhDong}</p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-2 font-medium">
-                                <span>Người duyệt: <strong className="text-gray-500">{log.NguoiDuyet}</strong></span>
+                              <p className="text-sm text-[#6B7280] font-medium leading-relaxed">{log.HanhDong}</p>
+                              <div className="flex items-center gap-1.5 text-[10px] text-gray-300 mt-2 font-medium">
+                                <span>Người duyệt: <strong className="text-[#6B7280]">{log.NguoiDuyet}</strong></span>
                                 <span>•</span>
                                 <span>{new Date(log.ThoiGian).toLocaleString('vi-VN')}</span>
                               </div>
@@ -1291,14 +1291,14 @@ function AdminTrainingPoints() {
                           </div>
                         ))}
                       {allLogs.length === 0 && (
-                        <p className="text-center py-10 text-gray-400 italic text-sm">Chưa có nhật ký phê duyệt nào.</p>
+                        <p className="text-center py-10 text-gray-300 italic text-sm">Chưa có nhật ký phê duyệt nào.</p>
                       )}
                     </>
                   )}
                 </div>
               </div>
-              <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end shrink-0">
-                <button onClick={() => { setIsAllLogsModalOpen(false); setAllLogsSearch(''); }} className="px-6 py-2.5 font-bold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Đóng</button>
+              <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end shrink-0">
+                <button onClick={() => { setIsAllLogsModalOpen(false); setAllLogsSearch(''); }} className="px-6 py-2.5 font-bold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Đóng</button>
               </div>
             </motion.div>
           </div>
@@ -1319,7 +1319,7 @@ function AdminTrainingPoints() {
             >
               <button
                 onClick={() => setPreviewImage(null)}
-                className="absolute -top-12 right-0 md:-right-12 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors"
+                className="absolute -top-12 right-0 md:-right-12 p-2 bg-[#FFFFFF]/10 hover:bg-white/40 text-white rounded-full backdrop-blur-md transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>

@@ -32,11 +32,11 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
 
   const typeConfig = {
     success: {
-      bg: 'bg-green-500',
+      bg: 'bg-[#22C55E]/100',
       icon: CheckCircle
     },
     error: {
-      bg: 'bg-red-500',
+      bg: 'bg-[#EF4444]/100',
       icon: XCircle
     },
     warning: {
@@ -44,7 +44,7 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
       icon: AlertCircle
     },
     info: {
-      bg: 'bg-blue-500',
+      bg: 'bg-[#3B82F6]/100',
       icon: Info
     }
   };
@@ -63,20 +63,20 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
             className={`fixed top-8 right-8 z-[100000] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 ${
               isSuccess 
-                ? 'bg-white border-green-500 text-gray-800' 
-                : 'bg-white border-red-500 text-gray-800'
+                ? 'bg-[#FFFFFF] border-green-500 text-[#1F2937]' 
+                : 'bg-[#FFFFFF] border-red-500 text-[#1F2937]'
             }`}
           >
             {isSuccess ? (
-              <div className="bg-green-100 p-2 rounded-full"><CheckCircle className="w-6 h-6 text-green-600" /></div>
+              <div className="bg-[#22C55E]/20 p-2 rounded-full"><CheckCircle className="w-6 h-6 text-[#22C55E]" /></div>
             ) : (
-              <div className="bg-red-100 p-2 rounded-full"><Icon className="w-6 h-6 text-red-600" /></div>
+              <div className="bg-[#EF4444]/20 p-2 rounded-full"><Icon className="w-6 h-6 text-[#EF4444]" /></div>
             )}
             <div>
               <p className="font-bold text-sm">{isSuccess ? 'Thành công' : 'Thất bại'}</p>
-              <p className="text-gray-600 font-medium text-sm">{message}</p>
+              <p className="text-[#6B7280] font-medium text-sm">{message}</p>
             </div>
-            <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600">
+            <button onClick={onClose} className="ml-4 text-gray-300 hover:text-[#6B7280]">
               <X className="w-5 h-5" />
             </button>
           </motion.div>
@@ -127,15 +127,15 @@ export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xá
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-md shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="bg-orange-100 rounded-full p-3">
-                  <AlertCircle className="w-6 h-6 text-orange-600" />
+                <div className="bg-[#FFF7D6] rounded-full p-3">
+                  <AlertCircle className="w-6 h-6 text-[#F4C542]" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+                <h3 className="text-xl font-bold text-[#1F2937]">{title}</h3>
               </div>
-              <p className="text-gray-600 mb-6">{message}</p>
+              <p className="text-[#6B7280] mb-6">{message}</p>
               <div className="flex gap-3">
                 <motion.button
                   whileHover={countdown === 0 ? { scale: 1.05 } : {}}
@@ -147,7 +147,7 @@ export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xá
                   className={`flex-1 py-3 rounded-xl font-semibold shadow-lg transition-all flex items-center justify-center gap-2 ${
                     countdown > 0 
                       ? 'bg-orange-300 text-white cursor-not-allowed'
-                      : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
+                      : 'bg-[#F4C542] text-white'
                   }`}
                 >
                   {countdown > 0 ? `Chờ ${countdown}s` : 'Xác nhận'}
@@ -187,15 +187,15 @@ export const SuccessDialog = ({ show, message, onClose, title = 'Thông báo' })
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-md shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="bg-green-100 rounded-full p-3">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="bg-[#22C55E]/20 rounded-full p-3">
+                  <CheckCircle className="w-6 h-6 text-[#22C55E]" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+                <h3 className="text-xl font-bold text-[#1F2937]">{title}</h3>
               </div>
-              <p className="text-gray-600 mb-6">{message}</p>
+              <p className="text-[#6B7280] mb-6">{message}</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -230,15 +230,15 @@ export const ErrorDialog = ({ show, message, onClose, title = 'Lỗi' }) => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-md shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="bg-red-100 rounded-full p-3">
-                  <XCircle className="w-6 h-6 text-red-600" />
+                <div className="bg-[#EF4444]/20 rounded-full p-3">
+                  <XCircle className="w-6 h-6 text-[#EF4444]" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+                <h3 className="text-xl font-bold text-[#1F2937]">{title}</h3>
               </div>
-              <p className="text-gray-600 mb-6">{message}</p>
+              <p className="text-[#6B7280] mb-6">{message}</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -273,15 +273,15 @@ export const InfoDialog = ({ show, message, onClose, title = 'Thông tin' }) => 
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-md shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-blue-100 rounded-full p-3">
-                  <Info className="w-6 h-6 text-blue-600" />
+                  <Info className="w-6 h-6 text-[#3B82F6]" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+                <h3 className="text-xl font-bold text-[#1F2937]">{title}</h3>
               </div>
-              <p className="text-gray-600 mb-6">{message}</p>
+              <p className="text-[#6B7280] mb-6">{message}</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

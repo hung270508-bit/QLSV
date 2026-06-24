@@ -8,7 +8,7 @@ import ModalPortal from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
 
 const getPasswordStrength = (pwd) => {
-  if (!pwd) return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-400' };
+  if (!pwd) return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-300' };
   let score = 0;
 
   if (pwd.length >= 8) score++;
@@ -23,15 +23,15 @@ const getPasswordStrength = (pwd) => {
   switch (score) {
     case 0:
     case 1:
-      return { score, label: 'Yếu', color: 'bg-red-500', textClass: 'text-red-500' };
+      return { score, label: 'Yếu', color: 'bg-[#EF4444]/100', textClass: 'text-[#EF4444]' };
     case 2:
-      return { score, label: 'Trung bình', color: 'bg-orange-500', textClass: 'text-orange-500' };
+      return { score, label: 'Trung bình', color: 'bg-[#F4C542]', textClass: 'text-[#F4C542]' };
     case 3:
-      return { score, label: 'Mạnh', color: 'bg-blue-500', textClass: 'text-blue-500' };
+      return { score, label: 'Mạnh', color: 'bg-[#3B82F6]/100', textClass: 'text-[#3B82F6]' };
     case 4:
-      return { score, label: 'Rất mạnh', color: 'bg-green-500', textClass: 'text-green-500' };
+      return { score, label: 'Rất mạnh', color: 'bg-[#22C55E]/100', textClass: 'text-[#22C55E]' };
     default:
-      return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-400' };
+      return { score: 0, label: '', color: 'bg-gray-200', textClass: 'text-gray-300' };
   }
 };
 
@@ -259,10 +259,10 @@ function UserAccountManagement() {
 
   const getRoleColor = (maQuyen) => {
     switch (maQuyen) {
-      case 1: return 'bg-red-100 text-red-600';
-      case 2: return 'bg-blue-100 text-blue-600';
-      case 3: return 'bg-green-100 text-green-600';
-      default: return 'bg-gray-100 text-gray-600';
+      case 1: return 'bg-[#EF4444]/20 text-[#EF4444]';
+      case 2: return 'bg-blue-100 text-[#3B82F6]';
+      case 3: return 'bg-[#22C55E]/20 text-[#22C55E]';
+      default: return 'bg-gray-100 text-[#6B7280]';
     }
   };
 
@@ -281,7 +281,7 @@ function UserAccountManagement() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className={`fixed top-8 right-8 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 z-[100] ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+              className={`fixed top-8 right-8 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 z-[100] ${notification.type === 'success' ? 'bg-[#22C55E]/100 text-white' : 'bg-[#EF4444]/100 text-white'
                 }`}
             >
               {notification.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
@@ -291,35 +291,35 @@ function UserAccountManagement() {
         </AnimatePresence>
 
         {/* Header Section (Loại bỏ nút Thêm, bổ sung ghi chú tự động) */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 shadow-xl">
+        <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl">
           <div className="flex items-center justify-between">
-            <div className="text-white">
+            <div className="text-[#152238]">
               <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
                 <Lock className="w-8 h-8" />
                 Quản lý tài khoản
               </h2>
-              <p className="text-orange-100 text-lg">Tài khoản được tạo tự động khi thêm mới sinh viên hoặc giảng viên.</p>
+              <p className="text-[#152238]/70 text-lg">Tài khoản được tạo tự động khi thêm mới sinh viên hoặc giảng viên.</p>
             </div>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-300 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Tìm kiếm tài khoản..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
-                className="w-full pl-11 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all text-gray-700 placeholder:font-semibold"
+                className="w-full pl-11 pr-10 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 transition-all text-gray-700 placeholder:font-semibold"
               />
               {searchTerm && (
                 <button
                   onClick={handleClearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-[#6B7280] transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -332,14 +332,14 @@ function UserAccountManagement() {
                 onClick={() => setShowFilters(!showFilters)}
                 className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
                   hasActiveFilters 
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
-                    : 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100'
+                    ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30' 
+                    : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
                 }`}
               >
                 <Filter className="w-4 h-4" />
                 Bộ lọc
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-[#EF4444]/100 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {activeFilterCount}
                   </span>
                 )}
@@ -349,7 +349,7 @@ function UserAccountManagement() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={clearFilters}
-                  className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-100"
+                  className="px-5 py-2.5 bg-red-100 text-[#DC2626] rounded-xl font-medium hover:bg-red-200 transition-colors flex items-center gap-2 border border-red-200"
                 >
                   <XCircle className="w-4 h-4" />
                   Xóa lọc
@@ -363,7 +363,7 @@ function UserAccountManagement() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+              className="bg-[#FFF7D6]/50 border border-[#FFF7D6] rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -371,7 +371,7 @@ function UserAccountManagement() {
                   <select
                     value={displayFilters.sortBy}
                     onChange={(e) => setDisplayFilters({ ...displayFilters, sortBy: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                    className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
                   >
                     <option value="default">Mặc định...</option>
                     <option value="asc">Tài khoản: A-Z</option>
@@ -383,7 +383,7 @@ function UserAccountManagement() {
                   <select
                     value={displayFilters.roleFilter}
                     onChange={(e) => setDisplayFilters({ ...displayFilters, roleFilter: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors text-gray-700"
+                    className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
                   >
                     <option value="">Tất cả quyền</option>
                     {roles.map((role) => (
@@ -399,7 +399,7 @@ function UserAccountManagement() {
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                   onClick={handleApplyFilters}
-                  className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm"
+                  className="flex-1 bg-[#F4C542] text-[#152238] py-2.5 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm"
                 >
                   Áp dụng bộ lọc
                 </motion.button>
@@ -417,16 +417,16 @@ function UserAccountManagement() {
         </div>
 
         {/* Table (Loại bỏ nút Xóa, nút Thao tác giữ cố định) */}
-        <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
+        <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
                 <tr>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Tài khoản</th>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Quyền</th>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Ngày tạo</th>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Trạng thái</th>
-                  <th className="text-center py-5 px-6 text-sm font-bold text-orange-700 uppercase tracking-wider">Thao tác</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Tài khoản</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Quyền</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Ngày tạo</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Trạng thái</th>
+                  <th className="text-center py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,18 +441,18 @@ function UserAccountManagement() {
                       className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
                     >
                       <td className="py-5 px-6">
-                        <span className="font-bold text-gray-800 text-sm">{user.TaiKhoan}</span>
+                        <span className="font-bold text-[#1F2937] text-sm">{user.TaiKhoan}</span>
                       </td>
                       <td className="py-5 px-6 text-sm">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getRoleColor(user.MaQuyen)}`}>
                           {user.TenQuyen || 'N/A'}
                         </span>
                       </td>
-                      <td className="py-5 px-6 text-sm font-medium text-gray-600">
+                      <td className="py-5 px-6 text-sm font-medium text-[#6B7280]">
                         {user.NgayTao ? new Date(user.NgayTao).toLocaleDateString('vi-VN') : 'N/A'}
                       </td>
                       <td className="py-5 px-6 text-sm">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'bg-[#22C55E]/20 text-[#22C55E]'}`}>
                           {user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'Đã khóa' : 'Hoạt động'}
                         </span>
                       </td>
@@ -462,7 +462,7 @@ function UserAccountManagement() {
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={(e) => { e.stopPropagation(); handleEdit(user); }}
-                            className="p-2.5 bg-orange-100 text-orange-600 rounded-xl hover:bg-orange-200 transition-colors shadow-sm"
+                            className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-colors shadow-sm"
                             title="Cập nhật tài khoản"
                           >
                             <Edit className="w-4 h-4" />
@@ -472,7 +472,7 @@ function UserAccountManagement() {
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}
-                              className={`p-2.5 rounded-xl transition-colors shadow-sm ${user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+                              className={`p-2.5 rounded-xl transition-colors shadow-sm ${user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? 'bg-[#22C55E]/20 text-[#22C55E] hover:bg-green-200' : 'bg-[#EF4444]/20 text-[#EF4444] hover:bg-red-200'}`}
                               title={user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? "Mở khóa tài khoản" : "Khóa tài khoản"}
                             >
                               {user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
@@ -484,7 +484,7 @@ function UserAccountManagement() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="py-16 text-center text-gray-500 font-semibold">
+                    <td colSpan="5" className="py-16 text-center text-[#6B7280] font-semibold">
                       Không tìm thấy tài khoản nào phù hợp
                     </td>
                   </tr>
@@ -514,32 +514,32 @@ function UserAccountManagement() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
+                className="bg-[#FFFFFF] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
               >
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center flex-shrink-0">
                   <div className="text-white">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                       <Lock className="w-5 h-5" />
                       Cập nhật tài khoản
                     </h3>
-                    <p className="text-orange-100 text-sm mt-0.5">Đặt lại mật khẩu truy cập hệ thống</p>
+                    <p className="text-[#152238]/70 text-sm mt-0.5">Đặt lại mật khẩu truy cập hệ thống</p>
                   </div>
-                  <button onClick={handleCloseForm} className="p-2 hover:bg-white/20 rounded-lg text-white transition-colors">
+                  <button onClick={handleCloseForm} className="p-2 hover:bg-white/40 rounded-lg text-white transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} noValidate className="p-6 space-y-6">
                   {/* Account Name Readonly */}
-                  <div className="bg-orange-50 border border-orange-100 rounded-xl px-5 py-4 text-sm flex justify-between items-center">
-                    <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Tài khoản thao tác:</span>
-                    <span className="font-mono font-black text-orange-700 text-lg">{editingUser.TaiKhoan}</span>
+                  <div className="bg-[#FFF7D6] border border-[#FFF7D6] rounded-xl px-5 py-4 text-sm flex justify-between items-center">
+                    <span className="text-[#6B7280] font-bold uppercase tracking-wider text-xs">Tài khoản thao tác:</span>
+                    <span className="font-mono font-black text-[#F4C542] text-lg">{editingUser.TaiKhoan}</span>
                   </div>
 
                   {/* Password Input (Hidden for admin) */}
                   {editingUser.TaiKhoan?.toLowerCase() !== 'admin' && (
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Mật khẩu mới <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Mật khẩu mới <span className="text-[#EF4444]">*</span></label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
@@ -553,7 +553,7 @@ function UserAccountManagement() {
                               setFormErrors({ ...formErrors, password: '' });
                             }
                           }}
-                          className={`w-full px-4 py-3.5 pr-12 bg-gray-50 border-2 rounded-xl focus:border-orange-500 outline-none transition-colors font-medium text-sm ${formErrors.password ? 'border-red-500 focus:bg-red-50' : 'border-gray-200 focus:bg-white'
+                          className={`w-full px-4 py-3.5 pr-12 bg-[#F7F8FA] border-2 rounded-xl focus:border-[#F4C542] outline-none transition-colors font-medium text-sm ${formErrors.password ? 'border-red-500 focus:bg-[#EF4444]/10' : 'border-[#E5E7EB] focus:bg-[#FFFFFF]'
                             }`}
                           placeholder="Mật khẩu từ 5 - 20 ký tự: chữ hoa, thường, số, ký tự đặc biệt"
                         />
@@ -562,13 +562,13 @@ function UserAccountManagement() {
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-200 rounded-lg transition-colors"
                         >
-                          {showPassword ? <EyeOff className="w-5 h-5 text-gray-500" /> : <Eye className="w-5 h-5 text-gray-500" />}
+                          {showPassword ? <EyeOff className="w-5 h-5 text-[#6B7280]" /> : <Eye className="w-5 h-5 text-[#6B7280]" />}
                         </button>
                       </div>
                       {formData.password && (
                         <div className="mt-2.5 space-y-1.5">
                           <div className="flex justify-between items-center text-xs">
-                            <span className="text-gray-500 font-medium">Độ mạnh mật khẩu:</span>
+                            <span className="text-[#6B7280] font-medium">Độ mạnh mật khẩu:</span>
                             <span className={`font-bold transition-colors duration-300 ${getPasswordStrength(formData.password).textClass}`}>
                               {getPasswordStrength(formData.password).label}
                             </span>
@@ -587,7 +587,7 @@ function UserAccountManagement() {
                         </div>
                       )}
                       {formErrors.password && (
-                        <p className="text-red-500 text-xs mt-1.5 font-semibold flex items-center gap-1">
+                        <p className="text-[#EF4444] text-xs mt-1.5 font-semibold flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />
                           {formErrors.password}
                         </p>
@@ -603,7 +603,7 @@ function UserAccountManagement() {
                     <select
                       disabled
                       value={formData.MaQuyen}
-                      className="w-full px-4 py-3.5 bg-gray-100 border-2 border-gray-200 rounded-xl outline-none text-gray-500 font-bold cursor-not-allowed text-sm"
+                      className="w-full px-4 py-3.5 bg-gray-100 border-2 border-[#E5E7EB] rounded-xl outline-none text-[#6B7280] font-bold cursor-not-allowed text-sm"
                     >
                       {roles.map((role) => (
                         <option key={role.MaQuyen} value={role.MaQuyen}>
@@ -611,18 +611,18 @@ function UserAccountManagement() {
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-orange-600 mt-2 flex items-center gap-1.5 font-semibold">
+                    <p className="text-xs text-[#F4C542] mt-2 flex items-center gap-1.5 font-semibold">
                       <AlertCircle className="w-4 h-4 shrink-0" />
                       Quyền tài khoản được quản lý tự động và không thể thay đổi tại đây.
                     </p>
                   </div>
 
-                  <div className="flex gap-3 pt-4 border-t border-gray-100">
+                  <div className="flex gap-3 pt-4 border-t border-[#E5E7EB]">
                     {editingUser.TaiKhoan?.toLowerCase() === 'admin' ? (
                       <button
                         type="button"
                         onClick={handleCloseForm}
-                        className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                        className="flex-1 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] text-gray-700 font-bold rounded-xl hover:bg-[#F7F8FA] transition-colors"
                       >
                         Đóng
                       </button>
@@ -631,13 +631,13 @@ function UserAccountManagement() {
                         <button
                           type="button"
                           onClick={handleCloseForm}
-                          className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                          className="flex-1 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] text-gray-700 font-bold rounded-xl hover:bg-[#F7F8FA] transition-colors"
                         >
                           Hủy
                         </button>
                         <button
                           type="submit"
-                          className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg transition-all"
+                          className="flex-1 py-3 bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all"
                         >
                           Lưu thay đổi
                         </button>
@@ -660,13 +660,13 @@ function UserAccountManagement() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl border border-gray-100"
+                className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl border border-[#E5E7EB]"
               >
-                <div className="w-14 h-14 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-14 h-14 bg-[#F4C542]/20 text-[#B45309] rounded-full flex items-center justify-center mx-auto mb-4">
                   <AlertCircle className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-black text-gray-800 mb-2">{confirmDialog.title}</h3>
-                <p className="text-gray-600 text-sm mb-6 font-medium leading-relaxed">{confirmDialog.message}</p>
+                <h3 className="text-lg font-black text-[#1F2937] mb-2">{confirmDialog.title}</h3>
+                <p className="text-[#6B7280] text-sm mb-6 font-medium leading-relaxed">{confirmDialog.message}</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
@@ -676,7 +676,7 @@ function UserAccountManagement() {
                   </button>
                   <button
                     onClick={confirmDialog.action}
-                    className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm"
+                    className="flex-1 py-2.5 bg-[#F4C542] text-[#152238] rounded-xl text-sm font-bold hover:bg-[#F4C542]/90 transition-colors shadow-sm"
                   >
                     Đồng ý
                   </button>
@@ -696,28 +696,28 @@ function UserAccountManagement() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
+                className="bg-[#FFFFFF] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
               >
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center flex-shrink-0">
                   <div className="text-white">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                       <Eye className="w-5 h-5" />
                       Chi tiết tài khoản
                     </h3>
                   </div>
-                  <button onClick={() => setViewingUser(null)} className="p-2 hover:bg-white/20 rounded-lg text-white transition-colors">
+                  <button onClick={() => setViewingUser(null)} className="p-2 hover:bg-white/40 rounded-lg text-white transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <div className="p-6 space-y-4">
                   <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                    <div className="col-span-1 text-sm font-bold text-gray-500">Tài khoản:</div>
-                    <div className="col-span-2 text-sm font-bold text-gray-800">{viewingUser.TaiKhoan}</div>
+                    <div className="col-span-1 text-sm font-bold text-[#6B7280]">Tài khoản:</div>
+                    <div className="col-span-2 text-sm font-bold text-[#1F2937]">{viewingUser.TaiKhoan}</div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                    <div className="col-span-1 text-sm font-bold text-gray-500">Quyền:</div>
+                    <div className="col-span-1 text-sm font-bold text-[#6B7280]">Quyền:</div>
                     <div className="col-span-2 text-sm font-bold">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${getRoleColor(viewingUser.MaQuyen)}`}>
                         {viewingUser.TenQuyen || 'N/A'}
@@ -726,16 +726,16 @@ function UserAccountManagement() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                    <div className="col-span-1 text-sm font-bold text-gray-500">Ngày tạo:</div>
-                    <div className="col-span-2 text-sm font-medium text-gray-800">
+                    <div className="col-span-1 text-sm font-bold text-[#6B7280]">Ngày tạo:</div>
+                    <div className="col-span-2 text-sm font-medium text-[#1F2937]">
                       {viewingUser.NgayTao ? new Date(viewingUser.NgayTao).toLocaleDateString('vi-VN') : 'N/A'}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                    <div className="col-span-1 text-sm font-bold text-gray-500">Trạng thái:</div>
+                    <div className="col-span-1 text-sm font-bold text-[#6B7280]">Trạng thái:</div>
                     <div className="col-span-2 text-sm font-bold">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${viewingUser.TrangThai === 0 || viewingUser.TrangThai === false || viewingUser.TrangThai === 'Bị khóa' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${viewingUser.TrangThai === 0 || viewingUser.TrangThai === false || viewingUser.TrangThai === 'Bị khóa' ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'bg-[#22C55E]/20 text-[#22C55E]'}`}>
                         {viewingUser.TrangThai === 0 || viewingUser.TrangThai === false || viewingUser.TrangThai === 'Bị khóa' ? 'Bị khóa' : 'Hoạt động'}
                       </span>
                     </div>
@@ -744,30 +744,30 @@ function UserAccountManagement() {
                   {viewingUser.MaQuyen === 3 && (
                     <>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Họ tên SV:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenSinhVien || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Họ tên SV:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.TenSinhVien || 'Chưa cập nhật'}</div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Lớp:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenLop || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Lớp:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.TenLop || 'Chưa cập nhật'}</div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Giới tính:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.GioiTinhSV || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Giới tính:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.GioiTinhSV || 'Chưa cập nhật'}</div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Ngày sinh:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Ngày sinh:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">
                           {viewingUser.NgaySinhSV ? new Date(viewingUser.NgaySinhSV).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Email:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.EmailSV || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Email:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.EmailSV || 'Chưa cập nhật'}</div>
                       </div>
                       <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Số điện thoại:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.SDTSV || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Số điện thoại:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.SDTSV || 'Chưa cập nhật'}</div>
                       </div>
                     </>
                   )}
@@ -775,29 +775,29 @@ function UserAccountManagement() {
                   {viewingUser.MaQuyen === 2 && (
                     <>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Họ tên GV:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenGiangVien || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Họ tên GV:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.TenGiangVien || 'Chưa cập nhật'}</div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Khoa:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.TenKhoa || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Khoa:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.TenKhoa || 'Chưa cập nhật'}</div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Email:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.EmailGV || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Email:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.EmailGV || 'Chưa cập nhật'}</div>
                       </div>
                       <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-1 text-sm font-bold text-gray-500">Số điện thoại:</div>
-                        <div className="col-span-2 text-sm font-medium text-gray-800">{viewingUser.SDTGV || 'Chưa cập nhật'}</div>
+                        <div className="col-span-1 text-sm font-bold text-[#6B7280]">Số điện thoại:</div>
+                        <div className="col-span-2 text-sm font-medium text-[#1F2937]">{viewingUser.SDTGV || 'Chưa cập nhật'}</div>
                       </div>
                     </>
                   )}
                 </div>
 
-                <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <div className="p-4 border-t border-[#E5E7EB] bg-[#F7F8FA] flex justify-end">
                   <button
                     onClick={() => setViewingUser(null)}
-                    className="px-6 py-2.5 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors"
+                    className="px-6 py-2.5 bg-[#FFFFFF] border-2 border-[#E5E7EB] text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors"
                   >
                     Đóng
                   </button>

@@ -92,18 +92,18 @@ function StudentCourseRegistration({ user }) {
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ show: false, message: '', type: 'success' })} />
       <ConfirmDialog show={confirmDialog.show} title={confirmDialog.title} message={confirmDialog.message} onConfirm={confirmDialog.action} onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })} />
 
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl p-8 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#F4C542] rounded-3xl p-8 text-[#152238] shadow-xl shadow-orange-500/20 relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-5">
-          <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl"><BookPlus className="w-10 h-10" /></div>
-          <div><h2 className="text-3xl font-black mb-1">Đăng ký môn học</h2><p className="text-orange-100 font-medium">Học kỳ hiện tại - Danh sách lớp học phần đang mở</p></div>
+          <div className="p-4 bg-white/40 backdrop-blur-sm rounded-2xl"><BookPlus className="w-10 h-10" /></div>
+          <div><h2 className="text-3xl font-black mb-1">Đăng ký môn học</h2><p className="text-[#152238]/70 font-medium">Học kỳ hiện tại - Danh sách lớp học phần đang mở</p></div>
         </div>
       </motion.div>
 
       {/* TIẾN TRÌNH ĐĂNG KÝ VÀ NÚT CHỐT LƯU */}
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+      <div className="bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 border-b border-slate-100 pb-4">
           <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            <Clock className="w-5 h-5 text-orange-500" /> Tiến trình đăng ký ({displayList.length} môn)
+            <Clock className="w-5 h-5 text-[#F4C542]" /> Tiến trình đăng ký ({displayList.length} môn)
           </h3>
           {cart.length > 0 && (
             <button onClick={handleFinalize} className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/30 flex items-center gap-2 transition-all hover:scale-105 animate-pulse">
@@ -120,13 +120,13 @@ function StudentCourseRegistration({ user }) {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {displayList.map((c, i) => (
-                <tr key={i} className={`hover:bg-slate-50/80 transition-colors ${c.isLocal ? 'bg-orange-50/30' : ''}`}>
-                  <td className="p-4 font-bold text-blue-600">{c.MaLopHocPhan}</td>
+                <tr key={i} className={`hover:bg-slate-50/80 transition-colors ${c.isLocal ? 'bg-[#FFF7D6]/30' : ''}`}>
+                  <td className="p-4 font-bold text-[#3B82F6]">{c.MaLopHocPhan}</td>
                   <td className="p-4 font-bold text-slate-700">{c.TenMonHoc}</td>
                   <td className="p-4 text-center font-bold text-slate-600">{c.SoTinChi}</td>
                   <td className="p-4">
                     {c.isLocal 
-                      ? <span className="text-orange-500 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><AlertCircle className="w-3.5 h-3.5"/> Tạm lưu</span>
+                      ? <span className="text-[#F4C542] bg-[#FFF7D6] border border-[#FFF7D6] px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><AlertCircle className="w-3.5 h-3.5"/> Tạm lưu</span>
                       : <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><CheckCircle2 className="w-3.5 h-3.5"/> Đã duyệt</span>
                     }
                   </td>
@@ -135,7 +135,7 @@ function StudentCourseRegistration({ user }) {
                       onClick={() => c.isLocal ? handleRemoveFromCart(c.MaLopHocPhan) : null} 
                       disabled={!c.isLocal} 
                       title={c.isLocal ? "Xóa khỏi danh sách tạm" : "Đã vào CSDL, không thể xóa"}
-                      className={`p-2.5 rounded-lg transition-all mx-auto shadow-sm flex items-center justify-center ${c.isLocal ? 'bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'}`}
+                      className={`p-2.5 rounded-lg transition-all mx-auto shadow-sm flex items-center justify-center ${c.isLocal ? 'bg-[#FFFFFF] border border-red-200 text-[#EF4444] hover:bg-[#EF4444]/100 hover:text-white' : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
                       <Trash2 className="w-4 h-4"/>
                     </button>
@@ -148,8 +148,8 @@ function StudentCourseRegistration({ user }) {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <h3 className="font-bold text-slate-800 text-lg mb-5 border-b border-slate-100 pb-4 flex items-center gap-2"><BookPlus className="w-5 h-5 text-blue-500" /> Danh sách lớp học phần đang mở</h3>
+      <div className="bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100">
+        <h3 className="font-bold text-slate-800 text-lg mb-5 border-b border-slate-100 pb-4 flex items-center gap-2"><BookPlus className="w-5 h-5 text-[#3B82F6]" /> Danh sách lớp học phần đang mở</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse min-w-[900px]">
             <thead>
@@ -177,19 +177,19 @@ function StudentCourseRegistration({ user }) {
                     <td className="p-4 font-bold text-slate-700 bg-slate-50/30">{c.MaLopHocPhan}</td>
                     <td className="p-4">
                       <div className="font-bold text-slate-800 text-sm mb-1.5">{c.TenMonHoc}</div>
-                      {(c.DiemCu === null || c.DiemCu === undefined) ? <span className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span> : parseFloat(c.DiemCu) < 1.0 ? <span className="bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại (F)</span> : <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học cải thiện ({parseFloat(c.DiemCu).toFixed(2)})</span>}
+                      {(c.DiemCu === null || c.DiemCu === undefined) ? <span className="bg-[#3B82F6]/10 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span> : parseFloat(c.DiemCu) < 1.0 ? <span className="bg-[#EF4444]/10 text-red-700 border border-red-200 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại (F)</span> : <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học cải thiện ({parseFloat(c.DiemCu).toFixed(2)})</span>}
                     </td>
                     <td className="p-4">
                       {c.NgayBatDau ? (
                         <div className="space-y-2 text-xs text-slate-600 font-medium">
-                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><CalendarDays className="w-3 h-3" /></div>{formatDate(c.NgayBatDau)} <span className="text-slate-400">→</span> {formatDate(c.NgayKetThuc)}</div>
-                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-orange-600"><MapPin className="w-3 h-3" /></div>Phòng: {c.PhongHoc} | {tietStr}</div>
+                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6]"><CalendarDays className="w-3 h-3" /></div>{formatDate(c.NgayBatDau)} <span className="text-slate-400">→</span> {formatDate(c.NgayKetThuc)}</div>
+                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-[#FFF7D6] flex items-center justify-center text-[#F4C542]"><MapPin className="w-3 h-3" /></div>Phòng: {c.PhongHoc} | {tietStr}</div>
                         </div>
                       ) : <span className="text-slate-400 italic text-xs">Đang cập nhật lịch...</span>}
                     </td>
                     <td className="p-4 text-center font-bold text-slate-700">{c.SoTinChi}</td>
                     <td className="p-4 font-semibold text-slate-700">{c.TenGiangVien || 'Chưa xếp'}</td>
-                    <td className="p-4 text-center"><span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isFull ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{c.DaDangKy} / {c.SoLuongToiDa || 40}</span></td>
+                    <td className="p-4 text-center"><span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isFull ? 'bg-red-100 text-[#DC2626] border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{c.DaDangKy} / {c.SoLuongToiDa || 40}</span></td>
                     <td className="p-4 text-center">
                       <button onClick={() => handleAddToCart(c)} disabled={isFull || isInCart} className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs mx-auto shadow-sm transition-all ${(isFull || isInCart) ? 'bg-slate-100 text-slate-400 cursor-not-allowed border' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:scale-105 shadow-blue-500/30'}`}>
                         {isInCart ? 'Đã Chọn' : isFull ? 'Lớp đầy' : <><Plus className="w-4 h-4"/> Chọn</>}

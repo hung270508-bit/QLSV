@@ -71,7 +71,7 @@ const AutoUpdate = () => {
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
         >
           {/* Glassmorphism Background Overlay */}
-          <div className="absolute inset-0 bg-white/70 backdrop-blur-md" />
+          <div className="absolute inset-0 bg-[#FFFFFF]/70 backdrop-blur-md" />
           
           {/* Animated Gradient Background Blob */}
           <motion.div 
@@ -104,21 +104,21 @@ const AutoUpdate = () => {
             initial={{ y: 50, opacity: 0, scale: 0.9 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2, type: "spring", bounce: 0.4 }}
-            className="relative z-10 flex w-[90%] max-w-sm flex-col items-center rounded-3xl border border-white/60 bg-white/70 p-10 text-center shadow-2xl shadow-orange-100/50 backdrop-blur-xl"
+            className="relative z-10 flex w-[90%] max-w-sm flex-col items-center rounded-3xl border border-white/60 bg-[#FFFFFF]/70 p-10 text-center shadow-2xl shadow-orange-100/50 backdrop-blur-xl"
           >
             {/* Pulsing Icon */}
             <div className="relative mb-8 flex items-center justify-center">
               <motion.div 
                 animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute h-24 w-24 rounded-full bg-orange-100/60"
+                className="absolute h-24 w-24 rounded-full bg-[#FFF7D6]/60"
               />
               <motion.div 
                 animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
                 className="absolute h-20 w-20 rounded-full bg-amber-100/60"
               />
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 shadow-[0_0_30px_rgba(249,115,22,0.4)]">
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-[#F4C542] to-amber-500 shadow-[0_0_30px_rgba(249,115,22,0.4)]">
                 <svg className="h-8 w-8 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -150,7 +150,7 @@ const AutoUpdate = () => {
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
                 transition={{ duration: 2.5, ease: "linear" }}
-                className="h-full bg-gradient-to-r from-orange-500 to-amber-400"
+                className="h-full bg-gradient-to-r from-[#F4C542] to-amber-400"
               />
             </div>
           </motion.div>

@@ -72,7 +72,7 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring" }}
-        className="flex flex-col items-center justify-center h-[70vh] text-orange-500"
+        className="flex flex-col items-center justify-center h-[70vh] text-[#F4C542]"
       >
         <Loader2 className="w-12 h-12 animate-spin mb-4" />
         <p className="font-medium text-lg">Đang tải hồ sơ giảng viên...</p>
@@ -97,21 +97,21 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 200 }}
-          className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg"
+          className="bg-[#F4C542] rounded-2xl p-6 sm:p-8 text-[#152238] shadow-lg"
         >
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-24 h-24 bg-white rounded-full p-2 shadow-lg flex-shrink-0">
-              <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center">
-                <UserCircle className="w-16 h-16 text-orange-500" />
+            <div className="w-24 h-24 bg-[#FFFFFF] rounded-full p-2 shadow-lg flex-shrink-0">
+              <div className="w-full h-full bg-gradient-to-br from-[#FFF7D6] to-[#FFF7D6] rounded-full flex items-center justify-center">
+                <UserCircle className="w-16 h-16 text-[#F4C542]" />
               </div>
             </div>
             <div className="text-center sm:text-left">
               <h2 className="text-2xl sm:text-3xl font-bold mb-1">{fallbackProfile.HoTen}</h2>
-              <p className="text-orange-100 text-base font-medium flex items-center justify-center sm:justify-start gap-2">
+              <p className="text-[#152238]/70 text-base font-medium flex items-center justify-center sm:justify-start gap-2">
                 <Briefcase className="w-4 h-4" /> Mã GV: {fallbackProfile.MaGiangVien}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
-                <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
+                <span className="px-3 py-1 bg-white/40 rounded-full text-sm font-medium">
                   {fallbackProfile.TenKhoa}
                 </span>
               </div>
@@ -124,31 +124,31 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: 0.1, type: "spring" }}
-            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
+            className="bg-[#FFFFFF] rounded-xl p-5 shadow-sm border border-[#E5E7EB]"
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <h3 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
+              <div className="w-8 h-8 bg-[#3B82F6]/100 rounded-lg flex items-center justify-center">
                 <Mail className="w-4 h-4 text-white" />
               </div>
               Thông tin liên hệ
             </h3>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                <div className="w-10 h-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center flex-shrink-0 text-[#3B82F6]">
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Email công vụ</p>
-                  <p className="text-gray-800 font-semibold">{fallbackProfile.Email}</p>
+                  <p className="text-xs font-medium text-[#6B7280]">Email công vụ</p>
+                  <p className="text-[#1F2937] font-semibold">{fallbackProfile.Email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 text-green-600">
+                <div className="w-10 h-10 rounded-lg bg-[#22C55E]/10 flex items-center justify-center flex-shrink-0 text-[#22C55E]">
                   <Phone className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Số điện thoại</p>
-                  <p className="text-gray-800 font-semibold">{fallbackProfile.SoDienThoai}</p>
+                  <p className="text-xs font-medium text-[#6B7280]">Số điện thoại</p>
+                  <p className="text-[#1F2937] font-semibold">{fallbackProfile.SoDienThoai}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -156,8 +156,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Ngày sinh</p>
-                  <p className="text-gray-800 font-semibold">
+                  <p className="text-xs font-medium text-[#6B7280]">Ngày sinh</p>
+                  <p className="text-[#1F2937] font-semibold">
                     {fallbackProfile.NgaySinh ? new Date(fallbackProfile.NgaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
                   </p>
                 </div>
@@ -167,8 +167,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                   <User className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Giới tính</p>
-                  <p className="text-gray-800 font-semibold">{fallbackProfile.GioiTinh}</p>
+                  <p className="text-xs font-medium text-[#6B7280]">Giới tính</p>
+                  <p className="text-[#1F2937] font-semibold">{fallbackProfile.GioiTinh}</p>
                 </div>
               </div>
             </div>
@@ -178,22 +178,22 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: 0.2, type: "spring" }}
-            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
+            className="bg-[#FFFFFF] rounded-xl p-5 shadow-sm border border-[#E5E7EB]"
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+            <h3 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
+              <div className="w-8 h-8 bg-[#F4C542] rounded-lg flex items-center justify-center">
                 <Building className="w-4 h-4 text-white" />
               </div>
               Thông tin công tác
             </h3>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0 text-orange-600">
+                <div className="w-10 h-10 rounded-lg bg-[#FFF7D6] flex items-center justify-center flex-shrink-0 text-[#F4C542]">
                   <Building className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Khoa</p>
-                  <p className="text-gray-800 font-semibold">{fallbackProfile.TenKhoa}</p>
+                  <p className="text-xs font-medium text-[#6B7280]">Khoa</p>
+                  <p className="text-[#1F2937] font-semibold">{fallbackProfile.TenKhoa}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -201,8 +201,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Chức vụ</p>
-                  <p className="text-gray-800 font-semibold">Giảng viên</p>
+                  <p className="text-xs font-medium text-[#6B7280]">Chức vụ</p>
+                  <p className="text-[#1F2937] font-semibold">Giảng viên</p>
                 </div>
               </div>
             </div>
@@ -220,22 +220,22 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
         initial={{ opacity: 0, y: 20 }} 
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg"
+        className="bg-[#F4C542] rounded-2xl p-6 sm:p-8 text-[#152238] shadow-lg"
       >
         <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="w-24 h-24 bg-white rounded-full p-2 shadow-lg flex-shrink-0">
-            <div className="w-full h-full bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center">
-              <UserCircle className="w-16 h-16 text-orange-500" />
+          <div className="w-24 h-24 bg-[#FFFFFF] rounded-full p-2 shadow-lg flex-shrink-0">
+            <div className="w-full h-full bg-gradient-to-br from-[#FFF7D6] to-[#FFF7D6] rounded-full flex items-center justify-center">
+              <UserCircle className="w-16 h-16 text-[#F4C542]" />
             </div>
           </div>
           
           <div className="text-center sm:text-left">
             <h2 className="text-2xl sm:text-3xl font-bold mb-1">{profile.HoTen}</h2>
-            <p className="text-orange-100 text-base font-medium flex items-center justify-center sm:justify-start gap-2">
+            <p className="text-[#152238]/70 text-base font-medium flex items-center justify-center sm:justify-start gap-2">
               <Briefcase className="w-4 h-4" /> Mã GV: {profile.MaGiangVien}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
-              <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
+              <span className="px-3 py-1 bg-white/40 rounded-full text-sm font-medium">
                 {profile.TenKhoa || 'Chưa cập nhật khoa'}
               </span>
             </div>
@@ -249,32 +249,32 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.1, type: "spring" }}
-          className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
+          className="bg-[#FFFFFF] rounded-xl p-5 shadow-sm border border-[#E5E7EB]"
         >
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+          <h3 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
+            <div className="w-8 h-8 bg-[#3B82F6]/100 rounded-lg flex items-center justify-center">
               <Mail className="w-4 h-4 text-white" />
             </div>
             Thông tin liên hệ
           </h3>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+              <div className="w-10 h-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center flex-shrink-0 text-[#3B82F6]">
                 <Mail className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500">Email công vụ</p>
-                <p className="text-gray-800 font-semibold">{profile.Email || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-[#6B7280]">Email công vụ</p>
+                <p className="text-[#1F2937] font-semibold">{profile.Email || 'Chưa cập nhật'}</p>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 text-green-600">
+              <div className="w-10 h-10 rounded-lg bg-[#22C55E]/10 flex items-center justify-center flex-shrink-0 text-[#22C55E]">
                 <Phone className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500">Số điện thoại</p>
-                <p className="text-gray-800 font-semibold">{profile.SoDienThoai || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-[#6B7280]">Số điện thoại</p>
+                <p className="text-[#1F2937] font-semibold">{profile.SoDienThoai || 'Chưa cập nhật'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -282,8 +282,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500">Ngày sinh</p>
-                <p className="text-gray-800 font-semibold">
+                <p className="text-xs font-medium text-[#6B7280]">Ngày sinh</p>
+                <p className="text-[#1F2937] font-semibold">
                   {profile.NgaySinh ? new Date(profile.NgaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
                 </p>
               </div>
@@ -293,8 +293,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 <User className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500">Giới tính</p>
-                <p className="text-gray-800 font-semibold">{profile.GioiTinh || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-[#6B7280]">Giới tính</p>
+                <p className="text-[#1F2937] font-semibold">{profile.GioiTinh || 'Chưa cập nhật'}</p>
               </div>
             </div>
           </div>
@@ -305,22 +305,22 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.2, type: "spring" }}
-          className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
+          className="bg-[#FFFFFF] rounded-xl p-5 shadow-sm border border-[#E5E7EB]"
         >
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+          <h3 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
+            <div className="w-8 h-8 bg-[#F4C542] rounded-lg flex items-center justify-center">
               <Building className="w-4 h-4 text-white" />
             </div>
             Thông tin công tác
           </h3>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0 text-orange-600">
+              <div className="w-10 h-10 rounded-lg bg-[#FFF7D6] flex items-center justify-center flex-shrink-0 text-[#F4C542]">
                 <Building className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500">Khoa</p>
-                <p className="text-gray-800 font-semibold">{profile.TenKhoa || 'Chưa cập nhật'}</p>
+                <p className="text-xs font-medium text-[#6B7280]">Khoa</p>
+                <p className="text-[#1F2937] font-semibold">{profile.TenKhoa || 'Chưa cập nhật'}</p>
               </div>
             </div>
 
@@ -329,8 +329,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 <Briefcase className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500">Chức vụ</p>
-                <p className="text-gray-800 font-semibold">Giảng viên</p>
+                <p className="text-xs font-medium text-[#6B7280]">Chức vụ</p>
+                <p className="text-[#1F2937] font-semibold">Giảng viên</p>
               </div>
             </div>
           </div>
@@ -342,10 +342,10 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, type: "spring" }}
-        className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
+        className="bg-[#FFFFFF] rounded-xl p-5 shadow-sm border border-[#E5E7EB]"
       >
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+        <h3 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
+          <div className="w-8 h-8 bg-[#F4C542] rounded-lg flex items-center justify-center">
             <Lock className="w-4 h-4 text-white" />
           </div>
           Mật Khẩu & Bảo Mật
@@ -353,11 +353,11 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
         <div className="text-center py-6">
           <button
             onClick={() => setShowForgotPassword(true)}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center gap-2 mx-auto text-sm"
+            className="bg-[#F4C542] hover:bg-[#F4C542]/90 text-[#152238] font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center gap-2 mx-auto text-sm"
           >
             <Lock className="w-4 h-4" /> Chỉnh sửa mật khẩu
           </button>
-          <p className="text-gray-500 text-sm mt-2">Nhấn vào để chỉnh sửa mật khẩu của bạn</p>
+          <p className="text-[#6B7280] text-sm mt-2">Nhấn vào để chỉnh sửa mật khẩu của bạn</p>
         </div>
       </motion.div>
 
@@ -375,9 +375,9 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden"
+                className="bg-[#FFFFFF] w-full max-w-md rounded-2xl shadow-xl overflow-hidden"
               >
-                <div className="bg-orange-500 p-4 text-white flex justify-between items-center">
+                <div className="bg-[#F4C542] p-4 text-[#152238] flex justify-between items-center">
                   <h3 className="text-lg font-bold flex items-center gap-2">
                     <Lock className="w-5 h-5" /> Đổi mật khẩu
                   </h3>
@@ -397,12 +397,12 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 <div className="p-6">
                   <form onSubmit={handlePasswordChange} className="space-y-4">
                       {passwordSuccess && (
-                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
+                        <div className="bg-[#22C55E]/10 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
                           Đổi mật khẩu thành công!
                         </div>
                       )}
                       {passwordErrors.general && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
+                        <div className="bg-[#EF4444]/10 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
                           {passwordErrors.general}
                         </div>
                       )}
@@ -413,18 +413,18 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                             type={showPasswords.current ? 'text' : 'password'}
                             value={passwordForm.currentPassword}
                             onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                            className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-orange-500 focus:ring-orange-500/20'}`}
+                            className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.currentPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-[#E5E7EB] focus:border-[#F4C542] focus:ring-[#F4C542]/20'}`}
                             placeholder="Nhập mật khẩu hiện tại"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#6B7280]"
                           >
                             {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
-                        {passwordErrors.currentPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.currentPassword}</p>}
+                        {passwordErrors.currentPassword && <p className="text-[#EF4444] text-xs mt-1">{passwordErrors.currentPassword}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu mới</label>
@@ -433,18 +433,18 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                             type={showPasswords.new ? 'text' : 'password'}
                             value={passwordForm.newPassword}
                             onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                            className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-orange-500 focus:ring-orange-500/20'}`}
+                            className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-[#E5E7EB] focus:border-[#F4C542] focus:ring-[#F4C542]/20'}`}
                             placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#6B7280]"
                           >
                             {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
-                        {passwordErrors.newPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.newPassword}</p>}
+                        {passwordErrors.newPassword && <p className="text-[#EF4444] text-xs mt-1">{passwordErrors.newPassword}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Xác nhận mật khẩu mới</label>
@@ -453,24 +453,24 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                             type={showPasswords.confirm ? 'text' : 'password'}
                             value={passwordForm.confirmPassword}
                             onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                            className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-orange-500 focus:ring-orange-500/20'}`}
+                            className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-[#E5E7EB] focus:border-[#F4C542] focus:ring-[#F4C542]/20'}`}
                             placeholder="Nhập lại mật khẩu mới"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#6B7280]"
                           >
                             {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
-                        {passwordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.confirmPassword}</p>}
+                        {passwordErrors.confirmPassword && <p className="text-[#EF4444] text-xs mt-1">{passwordErrors.confirmPassword}</p>}
                       </div>
                       <div className="pt-2">
                         <button
                           type="submit"
                           disabled={passwordSubmitting}
-                          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-md shadow-orange-200 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                          className="w-full bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-[#152238] font-semibold py-2.5 rounded-lg transition-all shadow-md shadow-[#F4C542]/30 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                         >
                           {passwordSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý...</> : <><Key className="w-4 h-4" /> Đổi mật khẩu</>}
                         </button>

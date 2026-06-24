@@ -20,7 +20,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-100 sm:px-6">
+    <div className="flex items-center justify-between px-4 py-3 bg-[#FFFFFF] border-t border-[#E5E7EB] sm:px-6">
       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
         <div>
           <p className="text-sm text-gray-700">
@@ -34,8 +34,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
               whileTap={{ scale: 0.95 }}
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
+              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-[#FFFFFF] text-sm font-medium ${
+                currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[#6B7280] hover:bg-[#F7F8FA]'
               }`}
             >
               <span className="sr-only">Previous</span>
@@ -48,12 +48,12 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => onPageChange(1)}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-[#FFFFFF] text-sm font-medium text-gray-700 hover:bg-[#F7F8FA]"
                 >
                   1
                 </motion.button>
                 {startPage > 2 && (
-                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-[#FFFFFF] text-sm font-medium text-gray-700">
                     ...
                   </span>
                 )}
@@ -69,8 +69,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
                 aria-current={currentPage === number ? 'page' : undefined}
                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                   currentPage === number
-                    ? 'z-10 bg-orange-50 border-orange-500 text-orange-600'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'z-10 bg-[#FFF7D6] border-[#F4C542] text-[#F4C542]'
+                    : 'bg-[#FFFFFF] border-gray-300 text-gray-700 hover:bg-[#F7F8FA]'
                 }`}
               >
                 {number}
@@ -80,7 +80,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
             {endPage < totalPages && (
               <>
                 {endPage < totalPages - 1 && (
-                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-[#FFFFFF] text-sm font-medium text-gray-700">
                     ...
                   </span>
                 )}
@@ -88,7 +88,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => onPageChange(totalPages)}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-[#FFFFFF] text-sm font-medium text-gray-700 hover:bg-[#F7F8FA]"
                 >
                   {totalPages}
                 </motion.button>
@@ -100,8 +100,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
               whileTap={{ scale: 0.95 }}
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
+              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-[#FFFFFF] text-sm font-medium ${
+                currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-[#6B7280] hover:bg-[#F7F8FA]'
               }`}
             >
               <span className="sr-only">Next</span>
@@ -114,8 +114,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-white ${
-            currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'
+          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-[#FFFFFF] ${
+            currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-[#F7F8FA]'
           }`}
         >
           Trước
@@ -124,8 +124,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-white ${
-            currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'
+          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-[#FFFFFF] ${
+            currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-[#F7F8FA]'
           }`}
         >
           Sau

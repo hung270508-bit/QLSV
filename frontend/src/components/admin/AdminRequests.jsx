@@ -13,13 +13,13 @@ import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 const statusConfig = {
   'Hoàn thành': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
   'Đã phản hồi': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
-  'Chờ xử lý': { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', Icon: AlertCircle },
+  'Chờ xử lý': { bg: 'bg-[#EF4444]/10', text: 'text-[#EF4444]', border: 'border-red-200', Icon: AlertCircle },
   'Đang xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
-  'Từ chối': { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200', Icon: X },
+  'Từ chối': { bg: 'bg-gray-100', text: 'text-[#6B7280]', border: 'border-[#E5E7EB]', Icon: X },
 };
 
 function StatusBadge({ status }) {
-  const cfg = statusConfig[status] || { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', Icon: AlertCircle };
+  const cfg = statusConfig[status] || { bg: 'bg-[#3B82F6]/10', text: 'text-blue-700', border: 'border-blue-200', Icon: AlertCircle };
   const { bg, text, border, Icon } = cfg;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${bg} ${text} ${border}`}>
@@ -178,14 +178,14 @@ function AdminRequests() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 shadow-lg shadow-blue-200/50 flex items-center gap-4"
+        className="bg-[#F4C542] rounded-2xl p-6 shadow-lg shadow-blue-200/50 flex items-center gap-4"
       >
-        <div className="p-3 bg-white/20 rounded-xl">
-          <MessageSquare className="w-7 h-7 text-white" />
+        <div className="p-3 bg-white/40 rounded-xl">
+          <MessageSquare className="w-7 h-7 text-[#152238]" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white">Quản lý Yêu cầu & Phản hồi</h2>
-          <p className="text-blue-100 text-sm mt-0.5">Tiếp nhận và xử lý kiến nghị từ Sinh viên / Giảng viên</p>
+          <h2 className="text-xl font-bold text-[#152238]">Quản lý Yêu cầu & Phản hồi</h2>
+          <p className="text-[#152238]/70 text-sm mt-0.5">Tiếp nhận và xử lý kiến nghị từ Sinh viên / Giảng viên</p>
         </div>
       </motion.div>
 
@@ -194,24 +194,24 @@ function AdminRequests() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, delay: 0.05 }}
-        className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center"
+        className="bg-[#FFFFFF] p-4 rounded-2xl shadow-sm border border-[#E5E7EB] flex flex-wrap gap-3 items-center"
       >
-        <div className="flex items-center gap-2 text-gray-500 font-semibold text-sm">
+        <div className="flex items-center gap-2 text-[#6B7280] font-semibold text-sm">
           <Filter className="w-4 h-4" /> Bộ lọc:
         </div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Tìm kiếm..."
-            className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-colors w-48"
+            className="pl-9 pr-4 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-colors w-48"
           />
         </div>
         <select
           value={filterRole}
           onChange={e => setFilterRole(e.target.value)}
-          className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+          className="px-3 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
         >
           <option value="All">Tất cả đối tượng</option>
           <option value="SinhVien">Sinh viên</option>
@@ -220,7 +220,7 @@ function AdminRequests() {
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+          className="px-3 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
         >
           <option value="All">Tất cả trạng thái</option>
           <option value="Đang xử lý">Đang xử lý</option>
@@ -233,12 +233,12 @@ function AdminRequests() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             onClick={() => setDeleteDialog({ show: true, requestId: 'bulk' })}
-            className="px-4 py-2 bg-red-50 border border-red-200 text-red-600 hover:bg-red-600 hover:text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm flex items-center gap-2"
+            className="px-4 py-2 bg-[#EF4444]/10 border border-red-200 text-[#EF4444] hover:bg-red-600 hover:text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm flex items-center gap-2"
           >
             <Trash2 className="w-4 h-4" /> Xóa {selectedRequests.size} mục
           </motion.button>
         )}
-        <span className="ml-auto text-sm text-gray-400">{filtered.length} kết quả</span>
+        <span className="ml-auto text-sm text-gray-300">{filtered.length} kết quả</span>
       </motion.div>
 
       {/* Table */}
@@ -246,13 +246,13 @@ function AdminRequests() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, delay: 0.1 }}
-        className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden"
       >
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-100">
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide w-12 text-center">
+              <tr className="bg-[#F7F8FA]/80 border-b border-[#E5E7EB]">
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide w-12 text-center">
                   <input
                     type="checkbox"
                     checked={filtered.length > 0 && selectedRequests.size === filtered.length}
@@ -263,16 +263,16 @@ function AdminRequests() {
                         setSelectedRequests(new Set());
                       }
                     }}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-gray-300 text-[#3B82F6] focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide w-14 text-center">ID</th>
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Người gửi</th>
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Loại / Chủ đề</th>
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Ngày gửi</th>
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Ngày phản hồi</th>
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide">Trạng thái</th>
-                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wide text-center">Thao tác</th>
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide w-14 text-center">ID</th>
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide">Người gửi</th>
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide">Loại / Chủ đề</th>
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide">Ngày gửi</th>
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide">Ngày phản hồi</th>
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide">Trạng thái</th>
+                <th className="p-4 text-xs font-bold text-[#6B7280] uppercase tracking-wide text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -283,7 +283,7 @@ function AdminRequests() {
                   variants={rowVariants}
                   initial="hidden"
                   animate="visible"
-                  className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors duration-150 cursor-pointer ${selectedRequests.has(req.MaYeuCau) ? 'bg-blue-50/50' : ''}`}
+                  className={`border-b border-gray-50 hover:bg-[#3B82F6]/10/30 transition-colors duration-150 cursor-pointer ${selectedRequests.has(req.MaYeuCau) ? 'bg-[#3B82F6]/10/50' : ''}`}
                   onClick={() => handleOpenModal(req, true)}
                 >
                   <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
@@ -299,24 +299,24 @@ function AdminRequests() {
                         }
                         setSelectedRequests(newSelected);
                       }}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="w-4 h-4 rounded border-gray-300 text-[#3B82F6] focus:ring-blue-500 cursor-pointer"
                     />
                   </td>
                   <td className="p-4 text-center">
-                    <span className="text-xs font-mono font-bold text-gray-400">#{req.MaYeuCau}</span>
+                    <span className="text-xs font-mono font-bold text-gray-300">#{req.MaYeuCau}</span>
                   </td>
                   <td className="p-4">
-                    <p className="font-semibold text-gray-800 text-sm">{req.TenNguoiGui || 'N/A'}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="font-semibold text-[#1F2937] text-sm">{req.TenNguoiGui || 'N/A'}</p>
+                    <p className="text-xs text-gray-300 mt-0.5">
                       {req.VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên'} · {req.NguoiGui}
                     </p>
                   </td>
                   <td className="p-4">
-                    <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-semibold mb-1">{req.LoaiYeuCau}</span>
-                    <p className="font-semibold text-gray-800 text-sm line-clamp-1 max-w-xs">{req.TieuDe}</p>
+                    <span className="inline-block px-2 py-0.5 bg-gray-100 text-[#6B7280] rounded text-xs font-semibold mb-1">{req.LoaiYeuCau}</span>
+                    <p className="font-semibold text-[#1F2937] text-sm line-clamp-1 max-w-xs">{req.TieuDe}</p>
                   </td>
-                  <td className="p-4 text-sm text-gray-500">{new Date(req.NgayGui).toLocaleDateString('vi-VN')}</td>
-                  <td className="p-4 text-sm text-gray-500">
+                  <td className="p-4 text-sm text-[#6B7280]">{new Date(req.NgayGui).toLocaleDateString('vi-VN')}</td>
+                  <td className="p-4 text-sm text-[#6B7280]">
                     {req.PhanHoi ? (req.NgayPhanHoi ? new Date(req.NgayPhanHoi).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN')) : '-'}
                   </td>
                   <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
@@ -327,7 +327,7 @@ function AdminRequests() {
                           whileHover={{ scale: 1.04 }}
                           whileTap={{ scale: 0.96 }}
                           onClick={() => handleOpenModal(req, false)}
-                          className="px-4 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
+                          className="px-4 py-1.5 bg-[#3B82F6]/10 border border-blue-200 text-[#3B82F6] hover:bg-blue-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
                         >
                           Xử lý
                         </motion.button>
@@ -336,7 +336,7 @@ function AdminRequests() {
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.96 }}
                         onClick={() => handleDelete(req.MaYeuCau)}
-                        className="p-1.5 bg-red-50 border border-red-200 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
+                        className="p-1.5 bg-[#EF4444]/10 border border-red-200 text-[#EF4444] hover:bg-red-600 hover:text-white rounded-lg font-semibold text-xs transition-all duration-200 shadow-sm"
                         title="Xóa"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -347,7 +347,7 @@ function AdminRequests() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-gray-400">
+                  <td colSpan={6} className="p-12 text-center text-gray-300">
                     <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                     <p className="font-medium">Không có yêu cầu nào</p>
                   </td>
@@ -383,9 +383,9 @@ function AdminRequests() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-[#FFFFFF] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-5 flex justify-between items-center text-white shrink-0">
+              <div className="bg-[#F4C542] p-5 flex justify-between items-center text-[#152238] shrink-0">
                 <h3 className="text-lg font-bold flex items-center gap-2">
                   <Reply className="w-5 h-5" /> Chi tiết yêu cầu #{selectedReq.MaYeuCau}
                 </h3>
@@ -393,44 +393,44 @@ function AdminRequests() {
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => { setSelectedReq(null); setReplyErrors({}); }}
-                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                  className="p-1.5 hover:bg-white/40 rounded-full transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </motion.button>
               </div>
 
               <div className="p-5 overflow-y-auto flex-1 space-y-4">
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex gap-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0 border border-gray-100">
-                    <User className="w-5 h-5 text-gray-400" />
+                <div className="bg-[#F7F8FA] p-4 rounded-xl border border-[#E5E7EB] flex gap-3">
+                  <div className="w-10 h-10 bg-[#FFFFFF] rounded-full flex items-center justify-center shadow-sm shrink-0 border border-[#E5E7EB]">
+                    <User className="w-5 h-5 text-gray-300" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-800">{selectedReq.TenNguoiGui}</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">Mã: {selectedReq.NguoiGui} · {selectedReq.VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên'}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{new Date(selectedReq.NgayGui).toLocaleString('vi-VN')}</p>
+                    <h4 className="font-bold text-[#1F2937]">{selectedReq.TenNguoiGui}</h4>
+                    <p className="text-xs text-[#6B7280] mt-0.5">Mã: {selectedReq.NguoiGui} · {selectedReq.VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên'}</p>
+                    <p className="text-xs text-gray-300 mt-0.5">{new Date(selectedReq.NgayGui).toLocaleString('vi-VN')}</p>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-semibold text-gray-700 text-sm mb-2">Thông tin yêu cầu:</h4>
-                  <div className="bg-orange-50/60 p-4 rounded-xl border border-orange-100 space-y-3">
+                  <div className="bg-[#FFF7D6]/60 p-4 rounded-xl border border-[#FFF7D6] space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-semibold text-gray-600">Loại yêu cầu:</span>
-                      <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded">{selectedReq.LoaiYeuCau}</span>
+                      <span className="text-xs font-semibold text-[#6B7280]">Loại yêu cầu:</span>
+                      <span className="text-xs font-bold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded">{selectedReq.LoaiYeuCau}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-semibold text-gray-600">Chủ đề:</span>
-                      <span className="text-xs font-semibold text-gray-800">{selectedReq.ChuDe || selectedReq.TieuDe}</span>
+                      <span className="text-xs font-semibold text-[#6B7280]">Chủ đề:</span>
+                      <span className="text-xs font-semibold text-[#1F2937]">{selectedReq.ChuDe || selectedReq.TieuDe}</span>
                     </div>
                     <div>
-                      <span className="text-xs font-semibold text-gray-600 block mb-1">Nội dung chi tiết:</span>
-                      <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed bg-white p-3 rounded-lg border border-orange-200">{selectedReq.NoiDung}</p>
+                      <span className="text-xs font-semibold text-[#6B7280] block mb-1">Nội dung chi tiết:</span>
+                      <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed bg-[#FFFFFF] p-3 rounded-lg border border-[#F4C542]/30">{selectedReq.NoiDung}</p>
                     </div>
                   </div>
                 </div>
 
                 {!isViewOnly && (
-                  <div className="border-t border-gray-100 pt-4 space-y-3">
+                  <div className="border-t border-[#E5E7EB] pt-4 space-y-3">
                     <h4 className="font-semibold text-gray-700 text-sm">Phản hồi:</h4>
                     <div>
                       <select
@@ -439,14 +439,14 @@ function AdminRequests() {
                           setUpdateStatus(e.target.value);
                           if (replyErrors.updateStatus) setReplyErrors(prev => ({ ...prev, updateStatus: '' }));
                         }}
-                        className={`w-full p-2.5 bg-white border rounded-xl outline-none text-sm font-medium text-gray-700 transition-colors ${replyErrors.updateStatus ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-blue-400'}`}
+                        className={`w-full p-2.5 bg-[#FFFFFF] border rounded-xl outline-none text-sm font-medium text-gray-700 transition-colors ${replyErrors.updateStatus ? 'border-red-400 focus:border-red-400' : 'border-[#E5E7EB] focus:border-blue-400'}`}
                       >
                         <option value="Đang xử lý">Đang xử lý</option>
                         <option value="Đã phản hồi">Đã phản hồi</option>
                         <option value="Từ chối">Từ chối</option>
                       </select>
                       {replyErrors.updateStatus && (
-                        <p className="text-red-500 text-xs mt-1">{replyErrors.updateStatus}</p>
+                        <p className="text-[#EF4444] text-xs mt-1">{replyErrors.updateStatus}</p>
                       )}
                     </div>
                     <div>
@@ -462,17 +462,17 @@ function AdminRequests() {
                             ? 'Nội dung phản hồi (bắt buộc)...'
                             : 'Nhập nội dung phản hồi...'
                         }
-                        className={`w-full p-3 bg-white border rounded-xl outline-none resize-none text-sm transition-colors ${replyErrors.replyText ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-blue-400'}`}
+                        className={`w-full p-3 bg-[#FFFFFF] border rounded-xl outline-none resize-none text-sm transition-colors ${replyErrors.replyText ? 'border-red-400 focus:border-red-400' : 'border-[#E5E7EB] focus:border-blue-400'}`}
                       />
                       <div className="flex items-center justify-between mt-1">
                         {replyErrors.replyText
-                          ? <p className="text-red-500 text-xs">{replyErrors.replyText}</p>
+                          ? <p className="text-[#EF4444] text-xs">{replyErrors.replyText}</p>
                           : <span />}
-                        <p className="text-xs text-gray-400">{replyText.length}/1000</p>
+                        <p className="text-xs text-gray-300">{replyText.length}/1000</p>
                       </div>
                     </div>
                     {replyErrors.general && (
-                      <p className="text-red-500 text-xs font-medium text-center bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                      <p className="text-[#EF4444] text-xs font-medium text-center bg-[#EF4444]/10 border border-red-200 rounded-xl px-3 py-2">
                         {replyErrors.general}
                       </p>
                     )}
@@ -480,11 +480,11 @@ function AdminRequests() {
                 )}
               </div>
 
-              <div className="bg-gray-50 p-4 border-t border-gray-100 shrink-0 flex justify-end gap-3">
+              <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] shrink-0 flex justify-end gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   onClick={() => { setSelectedReq(null); setReplyErrors({}); setIsViewOnly(false); }}
-                  className="px-5 py-2 font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-sm transition-colors"
+                  className="px-5 py-2 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA] text-sm transition-colors"
                 >
                   Đóng
                 </motion.button>
@@ -492,7 +492,7 @@ function AdminRequests() {
                   <motion.button
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     onClick={handleUpdate}
-                    className="px-6 py-2 font-bold text-white bg-orange-500 rounded-xl hover:bg-orange-600 shadow-md shadow-orange-200 flex items-center gap-2 text-sm transition-colors"
+                    className="px-6 py-2 font-bold text-white bg-[#F4C542] rounded-xl hover:bg-[#F4C542]/90 shadow-md shadow-[#F4C542]/30 flex items-center gap-2 text-sm transition-colors"
                   >
                     <Send className="w-4 h-4" /> Gửi phản hồi
                   </motion.button>
