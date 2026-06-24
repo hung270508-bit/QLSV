@@ -1395,7 +1395,10 @@ app.post('/api/teaching-assignments', (req, res) => {
         if (finalMaLop) {
             db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
                 if (!err && students.length > 0) {
-                    students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]); });
+                    students.forEach(sv => { 
+                        db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]); 
+                        db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Đã duyệt', NOW())", [sv.MSSV, maLHP, HocKy]);
+                    });
                 }
                 res.json({ success: true, message: 'Tạo Lớp HP và tự động lên danh sách thành công!' });
             });
@@ -1496,10 +1499,16 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
             AND lhp2.HocKy = lhp.HocKy 
             AND dk.TrangThai NOT IN ('Da huy', 'Tu choi')
         )
+        AND mh.MaKhoa = (
+          SELECT l.MaKhoa 
+          FROM sinhvien s 
+          JOIN lophoc l ON s.MaLop = l.MaLop 
+          WHERE s.MSSV = ?
+        )
       GROUP BY 
         lhp.MaLopHocPhan, lhp.HocKy, lhp.NamHoc, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, lhp.SoLuongToiDa, gv.HoTen
       ORDER BY mh.TenMonHoc, lhp.MaLopHocPhan
-    `, [mssv, mssv, mssv]);
+    `, [mssv, mssv, mssv, mssv]);
 
     const result = rows.map(r => ({
       ...r,
