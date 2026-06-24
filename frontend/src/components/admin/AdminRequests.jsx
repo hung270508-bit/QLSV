@@ -187,10 +187,6 @@ function AdminRequests() {
           <h2 className="text-xl font-bold text-white">Quản lý Yêu cầu & Phản hồi</h2>
           <p className="text-blue-100 text-sm mt-0.5">Tiếp nhận và xử lý kiến nghị từ Sinh viên / Giảng viên</p>
         </div>
-        <div className="ml-auto flex items-center gap-2 bg-white/20 rounded-xl px-4 py-2">
-          <span className="text-white font-bold text-lg">{requests.filter(r => r.TrangThai === 'Chờ xử lý').length}</span>
-          <span className="text-blue-100 text-sm">chờ xử lý</span>
-        </div>
       </motion.div>
 
       {/* Filters */}
