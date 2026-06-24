@@ -878,6 +878,13 @@ app.post('/api/students', async (req, res) => {
             );
         });
 
+        // Nếu lúc thêm sinh viên có quẹt thẻ, lưu luôn thẻ đó vào database
+        if (req.body.UID) {
+            await new Promise((resolve) => {
+                db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', [req.body.UID, MSSV], () => resolve());
+            });
+        }
+
         res.json({ success: true, message: 'Thêm sinh viên thành công!' });
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
@@ -1874,16 +1881,39 @@ app.get('/api/academic/transcript/:mssv', (req, res) => {
 app.post('/api/attendance', (req, res) => executeInsert('INSERT INTO diemdanh (MaLichHoc, MSSV, NgayDiemDanh, TrangThai) VALUES (?, ?, ?, ?)', [req.body.MaLichHoc, req.body.MSSV, req.body.NgayDiemDanh, req.body.TrangThai], res, 'Thành công', 'Lỗi'));
 app.put('/api/attendance/:id', (req, res) => executeUpdate('UPDATE diemdanh SET MaLichHoc=?, MSSV=?, NgayDiemDanh=?, TrangThai=? WHERE MaDiemDanh=?', [req.body.MaLichHoc, req.body.MSSV, req.body.NgayDiemDanh, req.body.TrangThai, req.params.id], res, 'Thành công', 'Lỗi'));
 app.delete('/api/attendance/:id', (req, res) => executeDelete('DELETE FROM diemdanh WHERE MaDiemDanh=?', [req.params.id], res, 'Thành công', 'Lỗi'));
-app.get('/api/attendance/course/:maLhp/date/:ngay', (req, res) => executeQuery('SELECT * FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ?', [req.params.maLhp, req.params.ngay], res, 'Lỗi!'));
-app.get('/api/attendance/course/:maLhp/history-dates', (req, res) => executeQuery("SELECT DISTINCT DATE_FORMAT(NgayDiemDanh, '%Y-%m-%d') as Ngay FROM diemdanh WHERE MaLopHocPhan = ? ORDER BY Ngay DESC", [req.params.maLhp], res, 'Lỗi lấy lịch sử!'));
-app.post('/api/attendance/course/:maLhp/date/:ngay', (req, res) => {
+app.get('/api/attendance/course/:maLhp/date/:ngay', async (req, res) => {
+    try {
+        const { maLhp, ngay } = req.params;
+        const lanDiemDanh = req.query.lan;
+        let targetLan = lanDiemDanh;
+        
+        if (!targetLan) {
+            const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [maLhp, ngay]);
+            targetLan = (lich.length > 0 && lich[0].LanDiemDanhHienTai > 0) ? lich[0].LanDiemDanhHienTai : 1;
+        }
+        
+        executeQuery('SELECT * FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ? AND LanDiemDanh = ?', [maLhp, ngay, targetLan], res, 'Lỗi!');
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+app.get('/api/attendance/course/:maLhp/history-dates', (req, res) => executeQuery("SELECT DISTINCT DATE_FORMAT(NgayDiemDanh, '%Y-%m-%d') as Ngay, LanDiemDanh FROM diemdanh WHERE MaLopHocPhan = ? ORDER BY Ngay DESC, LanDiemDanh DESC", [req.params.maLhp], res, 'Lỗi lấy lịch sử!'));
+app.post('/api/attendance/course/:maLhp/date/:ngay', async (req, res) => {
     const { maLhp, ngay } = req.params; const attendanceList = req.body.attendance;
+    const lanDiemDanh = req.query.lan;
     if (!Array.isArray(attendanceList) || attendanceList.length === 0) return res.status(400).json({ success: false });
-    db.query('DELETE FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ?', [maLhp, ngay], (err) => {
+    
+    let targetLan = lanDiemDanh;
+    if (!targetLan) {
+        const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [maLhp, ngay]);
+        targetLan = (lich.length > 0 && lich[0].LanDiemDanhHienTai > 0) ? lich[0].LanDiemDanhHienTai : 1;
+    }
+
+    db.query('DELETE FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ? AND LanDiemDanh = ?', [maLhp, ngay, targetLan], (err) => {
         if (err) return res.status(500).json({ success: false });
         let completed = 0;
         attendanceList.forEach((item) => {
-            db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [maLhp, item.MSSV, ngay, item.TrangThai], () => {
+            db.query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh, LanDiemDanh) VALUES (?, ?, ?, ?, NOW(), ?)', [maLhp, item.MSSV, ngay, item.TrangThai, targetLan], () => {
                 completed++; if (completed === attendanceList.length) res.json({ success: true, message: 'Lưu điểm danh thành công!' });
             });
         });
@@ -1930,11 +1960,15 @@ app.get('/api/attendance/course/:id/session/:date', async (req, res) => {
     try {
         const { id, date } = req.params;
         const [rows] = await db.promise().query(
-            'SELECT TrangThaiDiemDanh, ThoiGianMoDiemDanh FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
+            'SELECT TrangThaiDiemDanh, ThoiGianMoDiemDanh, TIMESTAMPDIFF(SECOND, ThoiGianMoDiemDanh, NOW()) AS ElapsedSeconds FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
             [id, date]
         );
-        if (rows.length === 0) return res.json({ status: 'PENDING', timeOpened: null });
-        res.json({ status: rows[0].TrangThaiDiemDanh || 'PENDING', timeOpened: rows[0].ThoiGianMoDiemDanh });
+        if (rows.length === 0) return res.json({ status: 'PENDING', timeOpened: null, elapsedSeconds: 0 });
+        res.json({ 
+            status: rows[0].TrangThaiDiemDanh || 'PENDING', 
+            timeOpened: rows[0].ThoiGianMoDiemDanh,
+            elapsedSeconds: rows[0].ElapsedSeconds || 0 
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
@@ -1944,9 +1978,18 @@ app.get('/api/attendance/course/:id/session/:date', async (req, res) => {
 app.post('/api/attendance/course/:id/open/:date', async (req, res) => {
     try {
         const { id, date } = req.params;
+        const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [id, date]);
+        let currentLan = (lich.length > 0 && lich[0].LanDiemDanhHienTai) ? lich[0].LanDiemDanhHienTai : 0;
+        
+        // Đảm bảo không trùng với LanDiemDanh đã có trong bảng diemdanh
+        const [maxDiemDanh] = await db.promise().query("SELECT MAX(LanDiemDanh) as maxLan FROM diemdanh WHERE MaLopHocPhan = ? AND NgayDiemDanh = ?", [id, date]);
+        const maxLan = maxDiemDanh[0]?.maxLan || 0;
+        
+        currentLan = Math.max(currentLan, maxLan) + 1;
+        
         await db.promise().query(
-            "UPDATE lichhoc SET TrangThaiDiemDanh = 'OPEN', ThoiGianMoDiemDanh = NOW() WHERE MaLopHocPhan = ? AND NgayHoc = ?",
-            [id, date]
+            "UPDATE lichhoc SET TrangThaiDiemDanh = 'OPEN', ThoiGianMoDiemDanh = NOW(), LanDiemDanhHienTai = ? WHERE MaLopHocPhan = ? AND NgayHoc = ?",
+            [currentLan, id, date]
         );
         res.json({ success: true, message: 'Đã mở điểm danh' });
     } catch (error) {
@@ -1963,31 +2006,30 @@ app.post('/api/attendance/course/:id/close/:date', async (req, res) => {
             [id, date]
         );
         
-        // Tự động đánh vắng những sinh viên chưa điểm danh
-        const [students] = await db.promise().query(
-            "SELECT the_sv.MSSV FROM the_sv JOIN lophocphan lhp ON the_sv.MSSV IN (SELECT MSSV FROM the_sv) WHERE lhp.MaLopHocPhan = ?"
-        );
-        
         // Lấy ds sv của lớp
         const [enrolled] = await db.promise().query(
-            "SELECT sv.MSSV FROM sinhvien sv JOIN lophoc lh ON sv.MaLop = lh.MaLop JOIN lophocphan lhp ON lh.MaLop = lhp.MaLop WHERE lhp.MaLopHocPhan = ?",
+            "SELECT DISTINCT MSSV FROM diem WHERE MaLopHocPhan = ?",
             [id]
         );
         
         if (enrolled.length > 0) {
             const mssvList = enrolled.map(s => s.MSSV);
+            
+            const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [id, date]);
+            const targetLan = (lich.length > 0 && lich[0].LanDiemDanhHienTai) ? lich[0].LanDiemDanhHienTai : 1;
+            
             // Tìm những sv đã có mặt
             const [attended] = await db.promise().query(
-                "SELECT MSSV FROM diemdanh WHERE MaLopHocPhan = ? AND NgayDiemDanh = ?",
-                [id, date]
+                "SELECT MSSV FROM diemdanh WHERE MaLopHocPhan = ? AND NgayDiemDanh = ? AND LanDiemDanh = ?",
+                [id, date, targetLan]
             );
             const attendedSet = new Set(attended.map(a => a.MSSV));
             
             for (let mssv of mssvList) {
                 if (!attendedSet.has(mssv)) {
                     await db.promise().query(
-                        "INSERT IGNORE INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, 'Vắng mặt', NOW())",
-                        [id, mssv, date]
+                        "INSERT IGNORE INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh, LanDiemDanh) VALUES (?, ?, ?, 'Vắng mặt', NOW(), ?)",
+                        [id, mssv, date, targetLan]
                     );
                 }
             }
@@ -2014,7 +2056,14 @@ app.post('/api/attendance/uid', async (req, res) => {
 
             db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)',
                 [uid, mssvDangKy], async (errReg) => {
-                    if (errReg) return res.status(500).json({ success: false, message: 'Lỗi ghi DB', error: errReg.message });
+                    if (errReg) {
+                        // Nếu sinh viên chưa tồn tại (lỗi khóa ngoại), vẫn cho phép thẻ được đọc lên web
+                        if (errReg.code === 'ER_NO_REFERENCED_ROW_2' || errReg.errno === 1452) {
+                            await db.promise().query('UPDATE rfid_state SET mode = ?, capturedUid = ? WHERE id = 1', ["REGISTER_DONE", uid]);
+                            return res.json({ success: true, action: "REGISTER_OK" });
+                        }
+                        return res.status(500).json({ success: false, message: 'Lỗi ghi DB', error: errReg.message });
+                    }
 
                     console.log(`[Thành công] Thẻ ${uid} đã gán cho SV ${mssvDangKy}`);
 
@@ -2030,6 +2079,7 @@ app.post('/api/attendance/uid', async (req, res) => {
             const { PhongHoc } = req.body;
             let targetTrangThai = 'PENDING';
             let phutDaQua = 0;
+            let targetLan = 1;
 
             const now = new Date();
             const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -2038,7 +2088,7 @@ app.post('/api/attendance/uid', async (req, res) => {
 
             if (PhongHoc && !targetLHP) {
                 const [lichhocRows] = await db.promise().query(
-                    'SELECT MaLopHocPhan, CaHoc, TrangThaiDiemDanh, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE NgayHoc = ? AND PhongHoc = ?',
+                    'SELECT MaLopHocPhan, CaHoc, TrangThaiDiemDanh, LanDiemDanhHienTai, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE NgayHoc = ? AND PhongHoc = ?',
                     [todayStr, PhongHoc]
                 );
 
@@ -2059,6 +2109,7 @@ app.post('/api/attendance/uid', async (req, res) => {
                                     targetLHP = lh.MaLopHocPhan;
                                     targetTrangThai = lh.TrangThaiDiemDanh;
                                     phutDaQua = lh.PhutDaQua;
+                                    targetLan = lh.LanDiemDanhHienTai || 1;
                                     break;
                                 }
                             }
@@ -2067,12 +2118,13 @@ app.post('/api/attendance/uid', async (req, res) => {
                 }
             } else if (targetLHP) {
                 const [lhRows] = await db.promise().query(
-                    'SELECT TrangThaiDiemDanh, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
+                    'SELECT TrangThaiDiemDanh, LanDiemDanhHienTai, TIMESTAMPDIFF(MINUTE, ThoiGianMoDiemDanh, NOW()) AS PhutDaQua FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ? LIMIT 1',
                     [targetLHP, todayStr]
                 );
                 if (lhRows.length > 0) {
                     targetTrangThai = lhRows[0].TrangThaiDiemDanh;
                     phutDaQua = lhRows[0].PhutDaQua;
+                    targetLan = lhRows[0].LanDiemDanhHienTai || 1;
                 }
             }
 
@@ -2102,13 +2154,13 @@ app.post('/api/attendance/uid', async (req, res) => {
                 const ngay = NgayDiemDanh || todayStr;
                 const trangthai = TrangThai || 'Có mặt';
 
-                const [checkResults] = await db.promise().query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? LIMIT 1', [targetLHP, MSSV, ngay]);
+                const [checkResults] = await db.promise().query('SELECT 1 FROM diemdanh WHERE MaLopHocPhan = ? AND MSSV = ? AND NgayDiemDanh = ? AND LanDiemDanh = ? LIMIT 1', [targetLHP, MSSV, ngay, targetLan]);
 
                 if (checkResults && checkResults.length > 0) {
                     return res.json({ success: true, action: "ATTENDANCE_OK", message: "Đã điểm danh từ trước", MSSV });
                 }
 
-                await db.promise().query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh) VALUES (?, ?, ?, ?, NOW())', [targetLHP, MSSV, ngay, trangthai]);
+                await db.promise().query('INSERT INTO diemdanh (MaLopHocPhan, MSSV, NgayDiemDanh, TrangThai, ThoiGianDiemDanh, LanDiemDanh) VALUES (?, ?, ?, ?, NOW(), ?)', [targetLHP, MSSV, ngay, trangthai, targetLan]);
 
                 return res.json({ success: true, action: "ATTENDANCE_OK", message: 'Đã ghi điểm danh', MSSV });
             } catch (err) {

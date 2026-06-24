@@ -64,9 +64,10 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
     return Array.from(map.values());
   }, [teachingSchedule]);
 
-  const fetchScheduleAttendance = async (maLopHocPhan, dateString) => {
+  const fetchScheduleAttendance = async (maLopHocPhan, dateString, lan = null) => {
     try {
-      const res = await axios.get(`${API_URL}/api/attendance/course/${maLopHocPhan}/date/${dateString}`);
+      const queryParams = lan ? `?lan=${lan}` : '';
+      const res = await axios.get(`${API_URL}/api/attendance/course/${maLopHocPhan}/date/${dateString}${queryParams}`);
       const records = Array.isArray(res.data) ? res.data : [];
       if (records.length > 0) {
         const restoredStatus = {};
@@ -87,12 +88,18 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       }
 
       const sessionRes = await axios.get(`${API_URL}/api/attendance/course/${maLopHocPhan}/session/${dateString}`);
-      const { status, timeOpened } = sessionRes.data;
+      const { status, timeOpened, elapsedSeconds } = sessionRes.data;
       setSessionState(status);
 
-      if (status === 'OPEN' && timeOpened && activeTab === 'today') {
-        const elapsed = (new Date().getTime() - new Date(timeOpened).getTime()) / 1000;
-        const remaining = 900 - Math.floor(elapsed);
+      if (status === 'OPEN' && activeTab === 'today') {
+        let remaining = 900;
+        if (elapsedSeconds !== undefined) {
+          remaining = 900 - elapsedSeconds;
+        } else if (timeOpened) {
+          const elapsed = (new Date().getTime() - new Date(timeOpened).getTime()) / 1000;
+          remaining = 900 - Math.floor(elapsed);
+        }
+        
         if (remaining <= 0) {
           handleCloseSession(maLopHocPhan, dateString);
           setIsTimeUp(true);
@@ -114,6 +121,16 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/open/${todayDate}`);
       setSessionState('OPEN');
       setTimeRemaining(900);
+      
+      // Reset danh sách về trạng thái chưa điểm danh
+      const initialStatus = {};
+      classStudents.forEach(student => {
+        initialStatus[student.MSSV] = 'Chưa điểm danh';
+      });
+      setAttendanceStatus(initialStatus);
+      setAttendanceTimes({});
+      manualEditsRef.current.clear();
+      setIsTimeUp(false);
     } catch (err) {
       alert("Lỗi khi mở điểm danh");
     }
@@ -172,8 +189,9 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       });
       setAttendanceStatus(initialStatus);
 
-      const targetDate = historyDate || new Date().toISOString().split('T')[0];
-      fetchScheduleAttendance(schedule.MaLopHocPhan, targetDate);
+      const targetDate = historyDate ? historyDate.Ngay : new Date().toISOString().split('T')[0];
+      const targetLan = historyDate ? historyDate.LanDiemDanh : null;
+      fetchScheduleAttendance(schedule.MaLopHocPhan, targetDate, targetLan);
 
     } catch (error) {
       console.error("Lỗi tải danh sách sinh viên:", error);
@@ -247,7 +265,9 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
 
     setIsSaving(true);
     try {
-      const targetDate = selectedHistoryDate || new Date().toISOString().split('T')[0];
+      const targetDate = selectedHistoryDate ? selectedHistoryDate.Ngay : new Date().toISOString().split('T')[0];
+      const targetLan = selectedHistoryDate ? selectedHistoryDate.LanDiemDanh : null;
+      const queryParams = targetLan ? `?lan=${targetLan}` : '';
 
       const attendanceData = classStudents
         .map(student => ({
@@ -257,7 +277,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
         .filter(p => p.TrangThai !== 'Chưa điểm danh');
 
       if (attendanceData.length > 0) {
-        await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${targetDate}`, {
+        await axios.post(`${API_URL}/api/attendance/course/${selectedSchedule.MaLopHocPhan}/date/${targetDate}${queryParams}`, {
           attendance: attendanceData
         });
       }
@@ -274,7 +294,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
       if (shouldCloseModal) {
         handleBack();
       } else {
-        fetchScheduleAttendance(selectedSchedule.MaLopHocPhan, targetDate);
+        fetchScheduleAttendance(selectedSchedule.MaLopHocPhan, targetDate, targetLan);
       }
     } catch (error) {
       console.error('Lỗi khi lưu điểm danh:', error);
@@ -437,14 +457,14 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
             {historyDates.map((item, i) => (
               <button
                 key={i}
-                onClick={() => handleSelectSchedule(selectedSchedule, item.Ngay)}
+                onClick={() => handleSelectSchedule(selectedSchedule, item)}
                 className="p-5 border border-gray-200 rounded-2xl hover:border-orange-500 hover:shadow-md transition-all text-left flex items-center gap-4"
               >
                 <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
                   <Calendar className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800 text-lg">{formatDate(item.Ngay)}</p>
+                  <p className="font-bold text-gray-800 text-lg">{formatDate(item.Ngay)} (Lần {item.LanDiemDanh})</p>
                   <p className="text-sm text-gray-500">Bấm để xem chi tiết</p>
                 </div>
               </button>
@@ -486,7 +506,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                           MÃ LHP: {selectedSchedule.MaLopHocPhan}
                         </span>
                         <span className="text-gray-500 text-sm font-medium flex items-center gap-1">
-                          <Calendar className="w-4 h-4" /> {formatDate(selectedHistoryDate || today.toISOString())}
+                          <Calendar className="w-4 h-4" /> {formatDate(selectedHistoryDate ? selectedHistoryDate.Ngay : today.toISOString())} {selectedHistoryDate ? `(Lần ${selectedHistoryDate.LanDiemDanh})` : ''}
                         </span>
                       </div>
                       <h3 className="text-2xl font-bold text-gray-800">{selectedSchedule.TenMonHoc}</h3>
@@ -540,12 +560,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                                 </option>
                               ))}
                             </select>
-                            {/* Hiển thị giờ quét thẻ nếu có mặt (chỉ ở tab Lịch sử) */}
-                            {status === 'Có mặt' && tG && activeTab === 'history' && (
-                              <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {tG}
-                              </div>
-                            )}
+                            {/* Đã gỡ bỏ hiển thị giờ quét thẻ theo yêu cầu */}
                           </div>
                         </div>
                       );
