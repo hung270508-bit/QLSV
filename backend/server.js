@@ -2198,16 +2198,7 @@ app.get('/api/attendance/percentage/:mssv', (req, res) => {
     });
 });
 
-// ==================== TÀI LIỆU, NỘP BÀI, THÔNG BÁO ====================
-app.get('/api/materials', (req, res) => executeQuery(`SELECT tl.*, lhp.MaGiangVien, lhp.MaMonHoc, lhp.HocKy, gv.HoTen as TenGiangVien, mh.TenMonHoc FROM tailieu_baitap tl LEFT JOIN phancong pc ON tl.MaPhanCong = pc.MaPhanCong LEFT JOIN lophocphan lhp ON pc.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc`, [], res, 'Lỗi!'));
-app.post('/api/materials', (req, res) => executeInsert('INSERT INTO tailieu_baitap (MaPhanCong, TieuDe, Loai, FileUrl, HanNop) VALUES (?, ?, ?, ?, ?)', [req.body.MaPhanCong || req.body.MaLopHocPhan, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop], res, 'Thêm thành công', 'Lỗi'));
-app.put('/api/materials/:id', (req, res) => executeUpdate('UPDATE tailieu_baitap SET MaPhanCong=?, TieuDe=?, Loai=?, FileUrl=?, HanNop=? WHERE MaTaiLieu=?', [req.body.MaPhanCong || req.body.MaLopHocPhan, req.body.TieuDe, req.body.Loai, req.body.FileUrl, req.body.HanNop, req.params.id], res, 'Cập nhật thành công', 'Lỗi'));
-app.delete('/api/materials/:id', (req, res) => executeDelete('DELETE FROM tailieu_baitap WHERE MaTaiLieu=?', [req.params.id], res, 'Xóa thành công', 'Lỗi'));
-
-app.get('/api/submissions', (req, res) => executeQuery(`SELECT nb.*, s.HoTen as TenSinhVien, tl.TieuDe, tl.Loai FROM nopbai nb LEFT JOIN sinhvien s ON nb.MSSV = s.MSSV LEFT JOIN tailieu_baitap tl ON nb.MaTaiLieu = tl.MaTaiLieu`, [], res, 'Lỗi!'));
-app.post('/api/submissions', (req, res) => executeInsert('INSERT INTO nopbai (MaTaiLieu, MSSV, FileUrl, Diem) VALUES (?, ?, ?, ?)', [req.body.MaTaiLieu, req.body.MSSV, req.body.FileUrl, req.body.Diem], res, 'Nộp bài thành công', 'Lỗi'));
-app.put('/api/submissions/:id', (req, res) => executeUpdate('UPDATE nopbai SET MaTaiLieu=?, MSSV=?, FileUrl=?, Diem=? WHERE MaNopBai=?', [req.body.MaTaiLieu, req.body.MSSV, req.body.FileUrl, req.body.Diem, req.params.id], res, 'Cập nhật thành công', 'Lỗi'));
-app.delete('/api/submissions/:id', (req, res) => executeDelete('DELETE FROM nopbai WHERE MaNopBai=?', [req.params.id], res, 'Xóa thành công', 'Lỗi'));
+// ==================== THÔNG BÁO ====================
 
 app.get('/api/announcements', (req, res) => executeQuery(`SELECT tb.*, u.TaiKhoan as NguoiTaoTen, l.TenLop FROM thongbao tb LEFT JOIN users u ON tb.NguoiTao = u.TaiKhoan LEFT JOIN lophoc l ON tb.MaLop_Nhan = l.MaLop ORDER BY tb.NgayTao DESC`, [], res, 'Lỗi!'));
 app.post('/api/announcements', (req, res) => executeInsert('INSERT INTO thongbao (TieuDe, NoiDung, NguoiTao, MaLop_Nhan) VALUES (?, ?, ?, ?)', [req.body.TieuDe, req.body.NoiDung, req.body.NguoiTao, req.body.MaLop_Nhan], res, 'Thêm thông báo thành công', 'Lỗi'));
@@ -2321,8 +2312,20 @@ app.get('/api/admin/training-points/:id/logs', (req, res) => {
 
 app.get('/api/admin/support-requests', (req, res) => {
     const query = `
-        SELECT y.*, y.MSSV as NguoiGui, 'SinhVien' as VaiTro, y.ChuDe as TieuDe, 
-        (SELECT HoTen FROM sinhvien WHERE MSSV = y.MSSV) as TenNguoiGui 
+        SELECT y.*, 
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN y.MSSV
+            ELSE y.MaGiangVien
+        END as NguoiGui,
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN 'SinhVien'
+            ELSE 'GiangVien'
+        END as VaiTro,
+        y.ChuDe as TieuDe,
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN (SELECT HoTen FROM sinhvien WHERE MSSV = y.MSSV)
+            ELSE (SELECT HoTen FROM giangvien WHERE MaGiangVien = y.MaGiangVien)
+        END as TenNguoiGui
         FROM yeucau_hotro y ORDER BY y.NgayGui DESC
     `;
     executeQuery(query, [], res, 'Lỗi lấy yêu cầu!');
@@ -2431,6 +2434,18 @@ app.post('/api/support', (req, res) => {
     const { MSSV, LoaiYeuCau, ChuDe, NoiDung } = req.body;
     const query = "INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Đang xử lý')";
     executeInsert(query, [MSSV, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
+});
+
+// ==================== [GIẢNG VIÊN] YÊU CẦU & HỖ TRỢ ====================
+app.get('/api/support/teacher/:maGV', (req, res) => {
+    const query = 'SELECT * FROM yeucau_hotro WHERE MaGiangVien = ? ORDER BY NgayGui DESC';
+    executeQuery(query, [req.params.maGV], res, 'Lỗi lấy danh sách yêu cầu!');
+});
+
+app.post('/api/support/teacher', (req, res) => {
+    const { MaGiangVien, LoaiYeuCau, ChuDe, NoiDung } = req.body;
+    const query = "INSERT INTO yeucau_hotro (MaGiangVien, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Đang xử lý')";
+    executeInsert(query, [MaGiangVien, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 
 //=============================================================================

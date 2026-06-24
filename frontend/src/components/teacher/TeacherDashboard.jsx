@@ -6,13 +6,12 @@ import {
   Users,
   Calendar,
   ClipboardCheck,
-  FileText,
   Bell,
   LogOut,
   ChevronRight,
   Award,
-  Upload,
-  UserCircle
+  UserCircle,
+  HelpCircle
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -21,19 +20,19 @@ import OverviewSection from './OverviewSection';
 import StudentsSection from './StudentsSection';
 import GradesSection from './GradesSection';
 import AttendanceSection from './AttendanceSection';
-import MaterialsSection from './MaterialsSection';
 import ScheduleSection from './ScheduleSection';
 import AnnouncementsSection from './AnnouncementsSection';
+import TeacherSupport from './TeacherSupport';
 
 const menuItems = [
   { id: 'tongquan', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'sinhvien', label: 'Sinh viên', icon: Users },
   { id: 'quanlydiem', label: 'Quản lý điểm', icon: BookOpen },
   { id: 'diemdanh', label: 'Điểm danh', icon: ClipboardCheck },
-  { id: 'tailieu', label: 'Tài liệu', icon: FileText },
   { id: 'lichgiangday', label: 'Lịch giảng dạy', icon: Calendar },
   { id: 'hoso', label: 'Hồ sơ cá nhân', icon: UserCircle },
   { id: 'thongbao', label: 'Thông báo', icon: Bell },
+  { id: 'hotro', label: 'Yêu cầu - Hỗ trợ', icon: HelpCircle },
 ];
 
 function TeacherDashboard({ user, onLogout }) {
@@ -118,14 +117,14 @@ function TeacherDashboard({ user, onLogout }) {
         return <GradesSection grades={grades} teachingAssignments={teachingAssignments} students={students} user={user} onRefresh={fetchTeacherData} />;
       case 'diemdanh':
         return <AttendanceSection teachingSchedule={teachingSchedule} students={students} />;
-      case 'tailieu':
-        return <MaterialsSection teachingAssignments={teachingAssignments} />;
       case 'lichgiangday':
         return <ScheduleSection teachingSchedule={teachingSchedule} teachingAssignments={teachingAssignments} user={user} />;
       case 'hoso':
         return <TeacherProfileManagement user={user} onLogout={onLogout} profile={profile} loading={loadingProfile} />;
       case 'thongbao':
         return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} classes={teachingAssignments} />;
+      case 'hotro':
+        return <TeacherSupport user={user} profile={profile} />;
       default:
         return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={setActiveMenu} />;
     }
