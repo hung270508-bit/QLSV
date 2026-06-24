@@ -234,6 +234,17 @@ app.post('/api/login', (req, res) => {
         loginAttempts[username].attempts += 1;
         const attempts = loginAttempts[username].attempts;
 
+        if (attempts >= 25) {
+            db.query("UPDATE users SET TrangThai = 'Bị khóa' WHERE TaiKhoan = ?", [username], (err) => {
+                if (err) console.error("Lỗi khóa tài khoản vĩnh viễn:", err);
+            });
+            delete loginAttempts[username];
+            return res.status(403).json({
+                success: false,
+                message: 'Tài khoản của bạn đã bị khóa vĩnh viễn do nhập sai quá nhiều lần. Vui lòng liên hệ quản trị viên.'
+            });
+        }
+
         if (attempts % 5 === 0) {
             const multiplier = attempts / 5;
             const lockoutMinutes = 5 * multiplier;
@@ -280,7 +291,7 @@ app.post('/api/login', (req, res) => {
 
                 if (passwordMatch) {
                     // Check if account is locked
-                    if (user.UserTrangThai === 0) {
+                    if (user.UserTrangThai === 0 || user.UserTrangThai === 'Bị khóa') {
                         return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa! Vui lòng liên hệ quản trị viên.' });
                     }
 
