@@ -94,9 +94,21 @@ function StudentProfile({ profile, loading }) {
 
       errors.newPassword = 'Vui lòng nhập mật khẩu mới';
 
-    } else if (passwordForm.newPassword.length < 6) {
+    } else if (passwordForm.newPassword.includes(' ')) {
 
-      errors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+      errors.newPassword = 'Mật khẩu không được chứa khoảng trắng';
+
+    } else if (passwordForm.newPassword.length < 5) {
+
+      errors.newPassword = 'Mật khẩu mới phải có ít nhất 5 ký tự';
+
+    } else if (passwordForm.newPassword.length > 8) {
+
+      errors.newPassword = 'Mật khẩu mới không được vượt quá 8 ký tự';
+
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(passwordForm.newPassword)) {
+
+      errors.newPassword = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt';
 
     } else if (passwordForm.newPassword === passwordForm.currentPassword) {
 
@@ -579,7 +591,7 @@ function StudentProfile({ profile, loading }) {
 
                           value={passwordForm.newPassword}
 
-                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value.replace(/\s/g, '') })}
 
                           className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-[#E5E7EB] focus:border-[#F4C542] focus:ring-[#F4C542]/20'}`}
 

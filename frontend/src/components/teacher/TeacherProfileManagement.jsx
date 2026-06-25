@@ -28,8 +28,17 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
     if (!passwordForm.newPassword) {
       newErrors.newPassword = 'Vui lòng nhập mật khẩu mới';
       hasError = true;
-    } else if (passwordForm.newPassword.length < 6) {
-      newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+    } else if (passwordForm.newPassword.includes(' ')) {
+      newErrors.newPassword = 'Mật khẩu không được chứa khoảng trắng';
+      hasError = true;
+    } else if (passwordForm.newPassword.length < 5) {
+      newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 5 ký tự';
+      hasError = true;
+    } else if (passwordForm.newPassword.length > 8) {
+      newErrors.newPassword = 'Mật khẩu mới không được vượt quá 8 ký tự';
+      hasError = true;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(passwordForm.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt';
       hasError = true;
     } else if (passwordForm.newPassword === passwordForm.currentPassword) {
       newErrors.newPassword = 'Mật khẩu mới không được trùng với mật khẩu hiện tại';
@@ -435,7 +444,7 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                           <input
                             type={showPasswords.new ? 'text' : 'password'}
                             value={passwordForm.newPassword}
-                            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value.replace(/\s/g, '') })}
                             className={`w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 text-sm ${passwordErrors.newPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-[#E5E7EB] focus:border-[#F4C542] focus:ring-[#F4C542]/20'}`}
                             placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
                           />
