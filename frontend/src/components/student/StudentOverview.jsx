@@ -63,6 +63,13 @@ function StudentOverview({ user, setActiveMenu }) {
   const [chartData, setChartData] = useState([]);
   const [thisWeekClasses, setThisWeekClasses] = useState(0);
 
+  // States dữ liệu thực
+  const [trainingPoints, setTrainingPoints] = useState(0);
+  const [todayClasses, setTodayClasses] = useState([]);
+  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
+  const [recentGrades, setRecentGrades] = useState([]);
+  const [recentRequests, setRecentRequests] = useState([]);
+
   useEffect(() => {
     fetchDashboardData();
   }, [user]);
@@ -70,14 +77,25 @@ function StudentOverview({ user, setActiveMenu }) {
   async function fetchDashboardData() {
     try {
       setLoading(true);
-      const [gradesRes, scheduleRes] = await Promise.all([
+      const [gradesRes, scheduleRes, pointsRes, announcementsRes, supportRes] = await Promise.all([
         axios.get(`${API_URL}/api/grades/student/${user?.username}`),
-        // Đã giữ nguyên API mới của bạn:
-        axios.get(`${API_URL}/api/students/${user.id}/schedule`)
+        axios.get(`${API_URL}/api/students/${user.id}/schedule`),
+        axios.get(`${API_URL}/api/training-points/student/${user?.username}`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/api/announcements/student/${user?.username}`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/api/support/student/${user?.username}`).catch(() => ({ data: [] }))
       ]);
 
       const grades = gradesRes.data;
       const schedules = scheduleRes.data;
+      const pointsData = pointsRes.data || [];
+      const announcementsData = announcementsRes.data || [];
+      const supportData = supportRes.data || [];
+
+      setRecentRequests(supportData.slice(0, 2));
+      setRecentAnnouncements(announcementsData.slice(0, 3));
+      
+      const latestPoint = pointsData.length > 0 ? (parseInt(pointsData[0].TongDiem) || 0) : 0;
+      setTrainingPoints(latestPoint);
 
       // THUẬT TOÁN LỌC TRÙNG LẶP: Lọc bỏ các lịch học bị nhân bản do bấm Lưu nhiều lần
       // THUẬT TOÁN LỌC TRÙNG LẶP CHUẨN: Lọc theo Ngày Học và Ca Học
@@ -85,6 +103,9 @@ function StudentOverview({ user, setActiveMenu }) {
 
       // 1. TÍNH TOÁN DỮ LIỆU ĐIỂM & BIỂU ĐỒ
       const isGraded = (diemChu) => diemChu && diemChu.trim() !== '' && diemChu !== '-';
+
+      const validGrades = grades.filter(g => isGraded(g.DiemChu));
+      setRecentGrades([...validGrades].reverse().slice(0, 4));
 
       const groupedGrades = {};
       grades.forEach(g => {
@@ -167,6 +188,22 @@ function StudentOverview({ user, setActiveMenu }) {
 
       setThisWeekClasses(classesInWeek.length);
 
+      const todayDate = new Date();
+      todayDate.setHours(0,0,0,0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23,59,59,999);
+      
+      const classesToday = uniqueSchedules.filter(item => {
+        const classDate = new Date(item.NgayHoc);
+        return classDate >= todayDate && classDate <= todayEnd;
+      });
+      classesToday.sort((a,b) => {
+        const caA = String(a.CaHoc || '').includes('Sáng') ? 1 : String(a.CaHoc || '').includes('Chiều') ? 2 : 3;
+        const caB = String(b.CaHoc || '').includes('Sáng') ? 1 : String(b.CaHoc || '').includes('Chiều') ? 2 : 3;
+        return caA - caB;
+      });
+      setTodayClasses(classesToday);
+
     } catch (error) {
       console.error('Lỗi khi tải dữ liệu tổng quan:', error);
     } finally {
@@ -196,24 +233,24 @@ function StudentOverview({ user, setActiveMenu }) {
 
       {/* 4 Thẻ Thống Kê Nhanh */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border-2 border-[#F4C542] relative overflow-hidden flex flex-col items-center justify-center">
+        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border-2 border-[#F4C542] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-[#F4C542]/5 transition-colors">
           <h3 className="text-3xl font-extrabold mb-1 text-[#F59E0B]">{stats.currentGPA}</h3>
           <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">GPA tích lũy</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center">
+        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
           <h3 className="text-3xl font-extrabold mb-1 text-black">{stats.tongTinChi}</h3>
           <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">Tín chỉ tích lũy</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center">
-          <h3 className="text-3xl font-extrabold mb-1 text-[#f97316]">82</h3>
+        <motion.div onClick={() => setActiveMenu('renluyen')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+          <h3 className="text-3xl font-extrabold mb-1 text-[#f97316]">{trainingPoints || 0}</h3>
           <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">Điểm rèn luyện</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center">
-          <h3 className="text-3xl font-extrabold mb-1 text-black">6</h3>
-          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">Môn học kỳ này</p>
+        <motion.div onClick={() => setActiveMenu('lichhoc')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+          <h3 className="text-3xl font-extrabold mb-1 text-black">{thisWeekClasses || 0}</h3>
+          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">Lớp học tuần này</p>
         </motion.div>
       </div>
 
@@ -222,60 +259,40 @@ function StudentOverview({ user, setActiveMenu }) {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm border border-[#F4C542]/50">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-[#1F2937]">Lịch học hôm nay</h3>
-              <span className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Xem TKB</span>
+              <span onClick={() => setActiveMenu('lichhoc')} className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Xem TKB</span>
             </div>
             <div className="space-y-4">
-              <div className="flex items-start gap-4 border-l-2 border-[#F59E0B] pl-4">
-                <div className="flex-1">
-                  <h4 className="font-bold text-[#1F2937]">Giải tích 2</h4>
-                  <p className="text-xs text-gray-300 mt-0.5">07:00 - 09:15 - Phòng A201 - GV Nguyễn A</p>
+              {todayClasses.length > 0 ? todayClasses.map((c, i) => (
+                <div key={i} className={`flex items-start gap-4 border-l-2 pl-4 ${i === 0 ? 'border-[#F59E0B]' : 'border-[#152238]'}`}>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-[#1F2937]">{c.TenMonHoc}</h4>
+                    <p className="text-xs text-gray-300 mt-0.5">{c.ThoiGian} - Phòng {c.PhongHoc} - GV {c.TenGiangVien}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${i === 0 ? 'bg-[#F4C542] text-black' : 'bg-[#152238] text-[#F4C542]'}`}>{c.CaHoc}</span>
                 </div>
-                <span className="bg-[#F4C542] text-black text-[10px] font-bold px-2 py-1 rounded-full">Sắp tới</span>
-              </div>
-              <div className="flex items-start gap-4 border-l-2 border-[#152238] pl-4">
-                <div className="flex-1">
-                  <h4 className="font-bold text-[#1F2937]">Cơ sở dữ liệu</h4>
-                  <p className="text-xs text-gray-300 mt-0.5">09:30 - 11:45 - Phòng B305 - GV Trần B</p>
-                </div>
-                <span className="bg-[#152238] text-[#F4C542] text-[10px] font-bold px-2 py-1 rounded-full">Tiếp theo</span>
-              </div>
-              <div className="flex items-start gap-4 border-l-2 border-[#F4C542]/30 pl-4 opacity-50">
-                <div className="flex-1">
-                  <h4 className="font-bold text-[#1F2937]">Mạng máy tính</h4>
-                  <p className="text-xs text-gray-300 mt-0.5">13:00 - 15:15 - Phòng C102 - GV Lê C</p>
-                </div>
-                <span className="bg-gray-100 text-[#6B7280] text-[10px] font-bold px-2 py-1 rounded-full">Chiều</span>
-              </div>
+              )) : (
+                <p className="text-sm text-gray-400 font-medium">Hôm nay không có lịch học.</p>
+              )}
             </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm border border-[#E5E7EB]">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-[#1F2937]">Thông báo mới</h3>
-              <span className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Tất cả (3)</span>
+              <span onClick={() => setActiveMenu('thongbao')} className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Tất cả ({recentAnnouncements.length})</span>
             </div>
             <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#F59E0B] shrink-0"></div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#1F2937]">Hạn đăng ký học phần HK2 còn 3 ngày</h4>
-                  <p className="text-xs text-gray-300">Quan trọng - 2 giờ trước</p>
+              {recentAnnouncements.length > 0 ? recentAnnouncements.map((a, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${i === 0 ? 'bg-[#F59E0B]' : i === 1 ? 'bg-[#152238]' : 'bg-gray-200'}`}></div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-bold text-[#1F2937] truncate">{a.TieuDe}</h4>
+                    <p className="text-xs text-gray-400 mt-0.5">{a.NoiDung ? a.NoiDung.substring(0, 40) + '...' : ''} - {new Date(a.NgayDang || a.NgayTao).toLocaleDateString('vi-VN')}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#152238] shrink-0"></div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#1F2937]">Điểm môn Giải tích đã được công bố</h4>
-                  <p className="text-xs text-gray-300">Kết quả - Hôm qua</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#fefce8] border border-[#F4C542] shrink-0"></div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#1F2937]">Yêu cầu xác nhận sinh viên đã duyệt</h4>
-                  <p className="text-xs text-gray-300">Xong - 3 ngày trước</p>
-                </div>
-              </div>
+              )) : (
+                <p className="text-sm text-gray-400 font-medium">Không có thông báo mới.</p>
+              )}
             </div>
           </motion.div>
         </div>
@@ -284,82 +301,54 @@ function StudentOverview({ user, setActiveMenu }) {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm border border-[#E5E7EB]">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-[#1F2937]">Kết quả gần nhất</h3>
-              <span className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Xem toàn bộ</span>
+              <span onClick={() => setActiveMenu('xemdiem')} className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Xem toàn bộ</span>
             </div>
             <div className="space-y-4">
-              <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#F59E0B] shrink-0"></div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1F2937]">Giải tích 1</h4>
-                    <p className="text-xs text-gray-300">3 tín chỉ</p>
+              {recentGrades.length > 0 ? recentGrades.map((g, i) => (
+                <div key={i} className="flex justify-between items-center border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg shrink-0 ${i % 2 === 0 ? 'bg-[#F59E0B]' : 'bg-[#152238]'}`}></div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#1F2937]">{g.TenMonHoc}</h4>
+                      <p className="text-xs text-gray-400 mt-0.5">{g.SoTinChi} tín chỉ - HK {g.HocKy}</p>
+                    </div>
                   </div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                    g.DiemChu === 'A' || g.DiemChu === 'A+' ? 'bg-[#F4C542] text-black' :
+                    g.DiemChu === 'F' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-700'
+                  }`}>{g.DiemChu}</div>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-[#F59E0B] flex items-center justify-center text-white font-bold text-sm">A</div>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#152238] shrink-0"></div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1F2937]">Lập trình C</h4>
-                    <p className="text-xs text-gray-300">3 tín chỉ</p>
-                  </div>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-[#F4C542] flex items-center justify-center text-black font-bold text-sm">A</div>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#4b5563] shrink-0"></div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1F2937]">Kiến trúc máy tính</h4>
-                    <p className="text-xs text-gray-300">2 tín chỉ</p>
-                  </div>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm">B+</div>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#F59E0B] shrink-0"></div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1F2937]">Mạng máy tính</h4>
-                    <p className="text-xs text-gray-300">3 tín chỉ</p>
-                  </div>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-[#F4C542] flex items-center justify-center text-black font-bold text-sm">A+</div>
-              </div>
+              )) : (
+                <p className="text-sm text-gray-400 font-medium">Chưa có kết quả.</p>
+              )}
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm border border-[#E5E7EB] flex flex-col h-[280px]">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="bg-[#FFFFFF] p-6 rounded-2xl shadow-sm border border-[#E5E7EB]">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-[#1F2937]">Yêu cầu của tôi</h3>
-              <span className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Xem tất cả</span>
+              <span onClick={() => setActiveMenu('hotro')} className="text-xs text-[#6B7280] font-semibold cursor-pointer hover:text-[#1F2937]">Xem tất cả</span>
             </div>
-            <div className="space-y-4 flex-1">
-              <div className="flex items-start justify-between border border-[#E5E7EB] rounded-xl p-3 bg-[#F7F8FA]/50">
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E]/100 mt-1.5"></div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1F2937]">Xác nhận sinh viên đang học</h4>
-                    <p className="text-xs text-gray-300 mt-0.5">Xong - 3 ngày trước</p>
+            <div className="space-y-4">
+              {recentRequests.length > 0 ? recentRequests.map((r, i) => (
+                <div key={i} className="flex items-start gap-3 border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                  <div className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${r.TrangThai === 'Đã giải quyết' ? 'bg-green-500' : 'bg-[#F59E0B]'}`}></div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-[#1F2937]">{r.LoaiYeuCau}</h4>
+                    <p className="text-xs text-gray-400 mt-0.5">{r.TrangThai} - {new Date(r.NgayGui || r.NgayTao).toLocaleDateString('vi-VN')}</p>
                   </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
+                    r.TrangThai === 'Đã giải quyết' ? 'bg-green-100 text-green-700' : 'bg-[#FFF7D6] text-[#F59E0B]'
+                  }`}>{r.TrangThai}</span>
                 </div>
-                <span className="bg-[#22C55E]/20 text-green-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-green-200">Xong</span>
-              </div>
-              <div className="flex items-start justify-between border border-[#E5E7EB] rounded-xl p-3 bg-[#F7F8FA]/50">
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] mt-1.5"></div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1F2937]">Phúc khảo điểm CSDL</h4>
-                    <p className="text-xs text-gray-300 mt-0.5">Đang xử lý - Hôm qua</p>
-                  </div>
-                </div>
-                <span className="bg-[#fefce8] text-[#F59E0B] text-[10px] font-bold px-2 py-1 rounded-lg border border-[#F4C542]">Đang xử lý</span>
-              </div>
+              )) : (
+                <p className="text-sm text-gray-400 font-medium">Chưa có yêu cầu nào.</p>
+              )}
+              
+              <button onClick={() => setActiveMenu('hotro')} className="w-full mt-2 bg-[#F4C542] hover:bg-[#F59E0B] text-black font-bold py-2 rounded-xl text-sm transition-colors shadow-sm">
+                Tạo yêu cầu mới
+              </button>
             </div>
-            <button className="w-full mt-4 py-2.5 bg-[#F59E0B] hover:bg-[#F4C542] text-black font-bold rounded-xl transition-colors">
-              Tạo yêu cầu mới
-            </button>
           </motion.div>
         </div>
 

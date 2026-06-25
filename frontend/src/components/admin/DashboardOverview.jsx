@@ -204,9 +204,6 @@ function DashboardOverview({ onNavigate }) {
         >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
-                <Activity className="w-5 h-5" />
-              </div>
               <div>
                 <h3 className="text-sm font-bold text-[#1F2937]">Thống kê theo khoa</h3>
                 <p className="text-xs text-gray-400">Top 5 khoa nhiều sinh viên nhất</p>

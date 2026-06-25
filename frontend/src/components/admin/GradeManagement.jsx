@@ -89,10 +89,18 @@ function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' })
 
   const handle = (e) => {
     let raw = e.target.value;
-    if (raw.includes('-')) return; 
+    raw = raw.replace(',', '.');
+
+    if (raw !== '' && !/^\d*\.?\d*$/.test(raw)) {
+      setLocalVal(raw);
+      setE('Chỉ nhập số');
+      onChange('');
+      return;
+    }
 
     setLocalVal(raw);
     if (raw === '') { setE(''); onChange(''); return; }
+    
     const n = parseFloat(raw);
     if (isNaN(n))  { setE('Không hợp lệ'); return; }
     if (n < 0)     { setE('Không được âm'); return; }
@@ -107,7 +115,7 @@ function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' })
   return (
     <div>
       <input
-        type="number" step="0.1" min="0" max="10"
+        type="text" inputMode="decimal"
         placeholder={placeholder}
         value={localVal}
         onChange={handle}
@@ -139,10 +147,18 @@ function BulkScoreInput({ value, onChange, onError, disabled }) {
 
   const handle = (e) => {
     let raw = e.target.value;
-    if (raw.includes('-')) return;
+    raw = raw.replace(',', '.');
+
+    if (raw !== '' && !/^\d*\.?\d*$/.test(raw)) {
+      setLocalVal(raw);
+      setE('Chỉ nhập số');
+      onChange('');
+      return;
+    }
 
     setLocalVal(raw);
     if (raw === '') { setE(''); onChange(''); return; }
+    
     const n = parseFloat(raw);
     if (isNaN(n))  { setE('Không hợp lệ'); return; }
     if (n < 0)     { setE('Điểm âm'); return; }
@@ -157,7 +173,7 @@ function BulkScoreInput({ value, onChange, onError, disabled }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <input
-        type="number" step="0.1" min="0" max="10"
+        type="text" inputMode="decimal"
         placeholder="—"
         value={localVal}
         onChange={handle}
@@ -225,6 +241,7 @@ function GradeManagement() {
   const [courseSections, setCourseSections] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [configOpen, setConfigOpen] = useState({}); 
@@ -265,18 +282,20 @@ function GradeManagement() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [gradesRes, studentsRes, sectionsRes, facultiesRes, enrollmentsRes] = await Promise.all([
+      const [gradesRes, studentsRes, sectionsRes, facultiesRes, enrollmentsRes, schedulesRes] = await Promise.all([
         axios.get(`${API_URL}/api/grades`),
         axios.get(`${API_URL}/api/students`),
         axios.get(`${API_URL}/api/course-sections`),
         axios.get(`${API_URL}/api/faculties`),
-        axios.get(`${API_URL}/api/enrollments/all`).catch(() => ({ data: [] }))
+        axios.get(`${API_URL}/api/enrollments/all`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/api/schedules`).catch(() => ({ data: [] }))
       ]);
       setGrades(gradesRes.data);
       setStudents(studentsRes.data);
       setCourseSections(sectionsRes.data);
       setFaculties(facultiesRes.data);
       setEnrollments(enrollmentsRes.data);
+      setSchedules(schedulesRes.data);
       
       const configs = {};
       const active = {};
@@ -665,6 +684,7 @@ function GradeManagement() {
             const cfg = classConfigs[ta.MaLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
             const isLocked = lockedConfigs[ta.MaLopHocPhan];
             const active = getActiveConfig(ta.MaLopHocPhan).filter(c => c.enabled);
+            const hasSchedule = (schedules || []).some(s => s.MaLopHocPhan === ta.MaLopHocPhan);
             
             const studentsWithGrades = getStudentsForLHP(ta.MaLopHocPhan).map(s => {
               const grade = grades.find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === ta.MaLopHocPhan);
@@ -703,8 +723,16 @@ function GradeManagement() {
                   {isOpen && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[#E5E7EB] bg-[#F7F8FA]/30">
                       
-                      <div className="p-6">
-                        <ConfigPanelAdmin tenLop={ta.TenMonHoc} components={cfg} locked={isLocked} />
+                      {!hasSchedule ? (
+                        <div className="p-8 text-center bg-[#FEF2F2]">
+                          <AlertTriangle className="w-12 h-12 text-[#EF4444] mx-auto mb-3" />
+                          <h4 className="text-[#991B1B] font-bold text-lg mb-1">Chưa có lịch giảng dạy</h4>
+                          <p className="text-[#B91C1C] text-sm">Lớp học phần này chưa được xếp lịch. Vui lòng thiết lập lịch giảng dạy trước khi cấu hình và nhập điểm.</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="p-6">
+                            <ConfigPanelAdmin tenLop={ta.TenMonHoc} components={cfg} locked={isLocked} />
                       </div>
 
                       <div className="px-6 pb-6">
@@ -730,8 +758,9 @@ function GradeManagement() {
                                 {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
                                   const grade = stu.grade;
                                   const hasGrade = !!grade;
-                                  const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
-                                  const gpa = hasGrade ? convertToGPA(t10) : null;
+                                  const hasAnyScore = grade && active.some(c => grade[c.key] != null && grade[c.key] !== '');
+                                  const t10 = hasAnyScore ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
+                                  const gpa = hasAnyScore ? convertToGPA(t10) : null;
                                   return (
                                     <tr key={stu.MSSV} className="hover:bg-[#3B82F6]/10/40 transition-colors group">
                                       <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
@@ -739,11 +768,11 @@ function GradeManagement() {
                                       {active.map(c => {
                                         const isZero = !c.enabled || Number(c.weight) === 0;
                                         const val = grade && grade[c.key];
-                                        const displayVal = isZero ? '0' : (hasGrade && val != null && val !== '' ? val : '—');
+                                        const displayVal = isZero ? '—' : (hasGrade && val != null && val !== '' ? val : '—');
                                         return <td key={c.key} className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">{displayVal}</td>;
                                       })}
                                       <td className="py-4 px-3 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10}</td>
-                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasAnyScore ? gpa.gpa.toFixed(1) : '—'}</td>
                                       <td className="py-3 px-4">
                                         <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                           {hasGrade ? (
@@ -764,6 +793,8 @@ function GradeManagement() {
                           </div>
                         </div>
                       </div>
+                        </>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -818,11 +849,12 @@ function GradeManagement() {
                       <option value="">Chọn lớp học phần</option>
                       {(courseSections || []).map(ta => {
                         const isLocked = lockedConfigs[ta.MaLopHocPhan];
+                        const hasSched = (schedules || []).some(s => s.MaLopHocPhan === ta.MaLopHocPhan);
                         return (
-                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked}>
-                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!isLocked ? '(Chưa chốt cấu hình)' : ''}
+                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked || !hasSched}>
+                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isLocked ? '(Chưa chốt cấu hình)' : '')}
                           </option>
-                        )
+                        );
                       })}
                     </select>
                     {formErrors.MaLopHocPhan && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}
@@ -865,9 +897,9 @@ function GradeManagement() {
                             {c.label} {!isZero ? <span className="text-[#F4C542] text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-300 text-[11px] ml-0.5">(0%)</span>}
                           </label>
                           <ScoreInput
-                            value={isZero ? 0 : formData[c.key]}
+                            value={isZero ? '' : formData[c.key]}
                             disabled={isZero}
-                            placeholder={!isZero ? '0.0' : '0'}
+                            placeholder={!isZero ? '0.0' : '—'}
                             onChange={val => setFormData(prev => ({ ...prev, [c.key]: val }))}
                             onError={hasErr => setScoreInputErrors(prev => ({ ...prev, [c.key]: hasErr }))}
                           />
@@ -932,7 +964,8 @@ function GradeManagement() {
                       <option value="">Chọn lớp học phần</option>
                       {courseSections.filter(cs => !bulkKhoa || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === bulkKhoa.toUpperCase()).map(cs => {
                         const isLocked = lockedConfigs[cs.MaLopHocPhan];
-                        return <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan} disabled={!isLocked}>{cs.TenMonHoc} — {cs.MaLopHocPhan} {!isLocked ? '(Giảng viên chưa chốt)' : ''}</option>
+                        const hasSched = (schedules || []).some(s => s.MaLopHocPhan === cs.MaLopHocPhan);
+                        return <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan} disabled={!isLocked || !hasSched}>{cs.TenMonHoc} — {cs.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isLocked ? '(Giảng viên chưa chốt)' : '')}</option>
                       })}
                     </select>
                   </div>
@@ -976,7 +1009,7 @@ function GradeManagement() {
                                 return (
                                   <td key={c.key} className="py-2 px-3 text-center align-middle">
                                     <BulkScoreInput
-                                      value={isZero ? 0 : grade[c.key]}
+                                      value={isZero ? '' : grade[c.key]}
                                       disabled={isZero}
                                       onChange={val => handleBulkFieldChange(idx, c.key, val, false)}
                                       onError={hasErr => handleBulkFieldChange(idx, c.key, grade[c.key], hasErr)}

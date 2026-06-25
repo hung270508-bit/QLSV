@@ -891,16 +891,16 @@ function TeacherManagement() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-3 mb-1">
-                    <div className="bg-white/40 rounded-xl p-2">
-                      <UserCheck className="w-6 h-6 text-white" />
+                    <div className="bg-[#FFFFFF]/30 rounded-xl p-2">
+                      <UserCheck className="w-6 h-6 text-[#152238]" />
                     </div>
                     <span className="text-[#152238]/70 text-sm font-medium uppercase tracking-widest">Chi tiết giảng viên</span>
                   </div>
-                  <h2 className="text-2xl font-bold text-white mt-2">{teacherDetails?.HoTen || selectedTeacher.HoTen}</h2>
+                  <h2 className="text-2xl font-bold text-[#152238] mt-2">{teacherDetails?.HoTen || selectedTeacher.HoTen}</h2>
                   <div className="flex items-center gap-4 mt-2">
-                    <span className="bg-white/40 text-white text-sm px-3 py-1 rounded-full font-mono">{teacherDetails?.MaGiangVien || selectedTeacher.MaGiangVien}</span>
+                    <span className="bg-[#FFFFFF]/30 text-[#152238] text-sm px-3 py-1 rounded-full font-mono">{teacherDetails?.MaGiangVien || selectedTeacher.MaGiangVien}</span>
                     {teacherDetails?.TenKhoa && (
-                      <span className="bg-white/40 text-white text-sm px-3 py-1 rounded-full">{teacherDetails.TenKhoa}</span>
+                      <span className="bg-[#FFFFFF]/30 text-[#152238] text-sm px-3 py-1 rounded-full">{teacherDetails.TenKhoa}</span>
                     )}
                   </div>
                 </div>
@@ -908,9 +908,9 @@ function TeacherManagement() {
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={handleCloseDetailModal}
-                  className="bg-white/40 hover:bg-[#FFFFFF]/30 rounded-xl p-2 transition-colors"
+                  className="bg-[#FFFFFF]/30 hover:bg-[#FFFFFF]/50 rounded-xl p-2 transition-colors"
                 >
-                  <X className="w-5 h-5 text-white" />
+                  <X className="w-5 h-5 text-[#152238]" />
                 </motion.button>
               </div>
 

@@ -197,15 +197,15 @@ function StudentsSection({ students, teachingAssignments, grades }) {
             >
               <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white/40 rounded-full flex items-center justify-center text-white font-bold text-xl backdrop-blur-md uppercase">
+                  <div className="w-12 h-12 bg-[#FFFFFF]/30 rounded-full flex items-center justify-center text-[#152238] font-bold text-xl backdrop-blur-md uppercase">
                     {(selectedStudent.HoTen || 'S').charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-lg">{selectedStudent.HoTen || 'Chưa cập nhật tên'}</h3>
+                    <h3 className="text-[#152238] font-bold text-lg">{selectedStudent.HoTen || 'Chưa cập nhật tên'}</h3>
                     <p className="text-[#152238]/70 text-sm">{selectedStudent.MSSV} • Lớp: {selectedStudent.TenLop || selectedStudent.MaLop || 'Chưa xếp lớp'}</p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedStudent(null)} className="text-white hover:bg-white/40 p-2 rounded-full transition-colors">
+                <button onClick={() => setSelectedStudent(null)} className="text-[#152238] hover:bg-[#FFFFFF]/30 p-2 rounded-full transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -255,35 +255,63 @@ function StudentsSection({ students, teachingAssignments, grades }) {
                 {activeTab === 'grades' && (
                   <div>
                     {grades && grades.filter(g => g.MSSV === selectedStudent.MSSV).length > 0 ? (
-                      <div className="space-y-4">
-                        {grades.filter(g => g.MSSV === selectedStudent.MSSV).map((g, idx) => (
-                          <div key={idx} className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                            <div className="bg-[#F7F8FA]/80 px-4 py-3 border-b border-[#E5E7EB]">
-                              <p className="font-bold text-[#1F2937]">{g.TenMonHoc || 'Môn học'} <span className="text-xs font-semibold text-[#6B7280] bg-[#FFFFFF] px-2 py-0.5 rounded-full border border-[#E5E7EB] ml-2">{g.MaLopHocPhan}</span></p>
-                            </div>
-                            <div className="grid grid-cols-4 gap-0 text-sm divide-x divide-gray-100">
-                              <div className="p-3 text-center">
-                                <p className="text-xs text-[#6B7280] font-bold mb-1">Điểm CC</p>
-                                <p className="font-bold text-gray-700">{g.DiemChuyenCan !== null && g.DiemChuyenCan !== undefined ? g.DiemChuyenCan : '-'}</p>
-                              </div>
-                              <div className="p-3 text-center">
-                                <p className="text-xs text-[#6B7280] font-bold mb-1">Điểm GK</p>
-                                <p className="font-bold text-gray-700">{g.DiemGiuaKy !== null && g.DiemGiuaKy !== undefined ? g.DiemGiuaKy : '-'}</p>
-                              </div>
-                              <div className="p-3 text-center">
-                                <p className="text-xs text-[#6B7280] font-bold mb-1">Điểm CK</p>
-                                <p className="font-bold text-gray-700">{g.DiemCuoiKy !== null && g.DiemCuoiKy !== undefined ? g.DiemCuoiKy : '-'}</p>
-                              </div>
-                              <div className="bg-[#FFF7D6]/50 p-3 text-center relative overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-br from-[#FFF7D6]/50 to-transparent"></div>
-                                <div className="relative z-10">
-                                  <p className="text-[10px] text-[#F4C542] font-bold uppercase mb-1">Tổng kết</p>
-                                  <p className="font-black text-lg text-[#F4C542] leading-none">{g.DiemTongKet !== null && g.DiemTongKet !== undefined ? g.DiemTongKet : '-'}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                            <thead className="bg-[#F7F8FA]/80 border-b border-[#E5E7EB]">
+                              <tr>
+                                <th className="py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">Môn học</th>
+                                <th className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">CC</th>
+                                <th className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">BT</th>
+                                <th className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">GK</th>
+                                <th className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">CK</th>
+                                <th className="py-4 px-4 text-xs font-black text-[#1F2937] uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
+                                <th className="py-4 px-4 text-xs font-black text-[#152238] uppercase tracking-wider text-center bg-[#FFF7D6]/50">GPA</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {grades.filter(g => g.MSSV === selectedStudent.MSSV).map((g, idx) => {
+                                const hasScore = g.DiemChuyenCan != null || g.DiemBaiTap != null || g.DiemGiuaKy != null || g.DiemCuoiKy != null;
+                                let t10 = null;
+                                if (g.DiemTongKet !== null && g.DiemTongKet !== undefined) t10 = parseFloat(g.DiemTongKet);
+                                else if (g.DiemTong !== null && g.DiemTong !== undefined) t10 = parseFloat(g.DiemTong);
+                                else if (hasScore) {
+                                  const cc = parseFloat(g.DiemChuyenCan) || 0;
+                                  const bt = parseFloat(g.DiemBaiTap) || 0;
+                                  const gk = parseFloat(g.DiemGiuaKy) || 0;
+                                  const ck = parseFloat(g.DiemCuoiKy) || 0;
+                                  t10 = cc * 0.1 + bt * 0.2 + gk * 0.2 + ck * 0.5;
+                                }
+
+                                let gpaStr = '—';
+                                if (t10 !== null) {
+                                  if (t10 >= 8.5) gpaStr = '4.0';
+                                  else if (t10 >= 8.0) gpaStr = '3.5';
+                                  else if (t10 >= 7.0) gpaStr = '3.0';
+                                  else if (t10 >= 6.5) gpaStr = '2.5';
+                                  else if (t10 >= 5.5) gpaStr = '2.0';
+                                  else if (t10 >= 5.0) gpaStr = '1.5';
+                                  else if (t10 >= 4.0) gpaStr = '1.0';
+                                  else gpaStr = '0.0';
+                                }
+                                return (
+                                  <tr key={idx} className="hover:bg-[#3B82F6]/10 transition-colors group">
+                                    <td className="py-4 px-5">
+                                      <p className="text-sm font-bold text-[#1F2937]">{g.TenMonHoc || 'Môn học'}</p>
+                                      <p className="text-xs text-[#6B7280] mt-0.5">{g.MaLopHocPhan}</p>
+                                    </td>
+                                    <td className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">{g.DiemChuyenCan !== null && g.DiemChuyenCan !== undefined ? g.DiemChuyenCan : '—'}</td>
+                                    <td className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">{g.DiemBaiTap !== null && g.DiemBaiTap !== undefined ? g.DiemBaiTap : '—'}</td>
+                                    <td className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">{g.DiemGiuaKy !== null && g.DiemGiuaKy !== undefined ? g.DiemGiuaKy : '—'}</td>
+                                    <td className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">{g.DiemCuoiKy !== null && g.DiemCuoiKy !== undefined ? g.DiemCuoiKy : '—'}</td>
+                                    <td className="py-4 px-4 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10 !== null ? t10.toFixed(2) : '—'}</td>
+                                    <td className="py-4 px-4 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{gpaStr}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-16">

@@ -100,7 +100,7 @@ function StudentDashboard({ user, onLogout }) {
       >
         <div className="h-full flex flex-col">
           <div className="p-6 border-b border-[#1e2f4c] shrink-0">
-            <div className="flex items-center gap-3">
+            <div onClick={() => setActiveMenu('dashboard')} className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="w-11 h-11 bg-[#F4C542] rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
                 <GraduationCap className="w-6 h-6 text-black" />
               </div>
