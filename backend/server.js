@@ -1073,8 +1073,18 @@ app.put('/api/students/:mssv', async (req, res) => {
                 } else {
                     db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?)', [data.UID, req.params.mssv], (err) => {
                         if (err) {
-                            if (err.code === 'ER_DUP_ENTRY') reject(new Error(`Thẻ UID ${data.UID} đã được sử dụng bởi người khác.`));
-                            else reject(err);
+                            if (err.code === 'ER_DUP_ENTRY') {
+                                // Kiểm tra xem đã được gán cho chính sinh viên này chưa
+                                db.query('SELECT MSSV FROM the_sv WHERE uid = ?', [data.UID], (checkErr, results) => {
+                                    if (!checkErr && results.length > 0 && results[0].MSSV === req.params.mssv) {
+                                        resolve(); // Đã gán cho đúng sinh viên này -> Bỏ qua lỗi
+                                    } else {
+                                        reject(new Error(`Thẻ UID ${data.UID} đã được sử dụng bởi người khác.`));
+                                    }
+                                });
+                            } else {
+                                reject(err);
+                            }
                         } else resolve();
                     });
                 }
