@@ -140,18 +140,17 @@ function AdminDashboard({ user, onLogout }) {
                 <button
                   key={item.id}
                   onClick={() => handleNavigate(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${
-                    isActive
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${isActive
                       ? 'bg-[#F4C542] text-black shadow-md'
                       : 'text-gray-300 hover:bg-[#1e2f4c] hover:text-[#F4C542]'
-                  }`}
+                    }`}
                 >
                   <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
                   <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>
                 </button>
               );
             })}
-            
+
             <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mt-6 mb-2 px-2">Hệ thống & Khác</p>
             {menuItems.slice(9).map((item) => {
               const Icon = item.icon;
@@ -160,11 +159,10 @@ function AdminDashboard({ user, onLogout }) {
                 <button
                   key={item.id}
                   onClick={() => handleNavigate(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${
-                    isActive
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${isActive
                       ? 'bg-[#F4C542] text-black shadow-md'
                       : 'text-gray-300 hover:bg-[#1e2f4c] hover:text-[#F4C542]'
-                  }`}
+                    }`}
                 >
                   <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
                   <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>

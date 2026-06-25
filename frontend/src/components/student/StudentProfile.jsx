@@ -17,11 +17,9 @@ import axios from 'axios';
 import API_URL from '../../api';
 
 import ModalPortal from '../common/ModalPortal';
+import { handleAvatarUpload } from '../../utils/avatarUpload';
 
-
-
-function StudentProfile({ profile, loading }) {
-
+function StudentProfile({ profile, loading, user }) {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   const [passwordErrors, setPasswordErrors] = useState({});
@@ -198,15 +196,18 @@ function StudentProfile({ profile, loading }) {
         <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8">
 
           {/* Avatar Mặc định */}
-
-          <div className="w-32 h-32 bg-[#FFFFFF] rounded-full p-2 shadow-xl flex-shrink-0">
-
+          <div className="w-32 h-32 bg-[#FFFFFF] rounded-full p-2 shadow-xl flex-shrink-0 relative group">
             <div className="w-full h-full bg-[#FFF7D6] rounded-full flex items-center justify-center overflow-hidden border-4 border-orange-50">
-
-              <UserCircle className="w-24 h-24 text-orange-400 mt-4" />
-
+                {user?.Avatar ? (
+                   <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                   <UserCircle className="w-24 h-24 text-orange-400 mt-4" />
+                )}
             </div>
-
+            <div className="absolute inset-2 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                 <span className="text-xs text-white font-medium">Đổi ảnh</span>
+                 <input type="file" accept="image/*" onChange={(e) => handleAvatarUpload(e, user, API_URL)} className="absolute inset-0 opacity-0 cursor-pointer" title="Đổi ảnh đại diện" />
+            </div>
           </div>
 
           

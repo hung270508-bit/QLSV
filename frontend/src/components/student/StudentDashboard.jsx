@@ -73,7 +73,7 @@ function StudentDashboard({ user, onLogout }) {
       case 'dashboard':
         return <StudentOverview user={user} setActiveMenu={setActiveMenu} />;
       case 'hoso':
-        return <StudentProfile profile={profile} loading={loadingProfile} />;
+        return <StudentProfile profile={profile} loading={loadingProfile} user={user} />;
       case 'lichhoc':
         return <StudentSchedule user={user} />;
       case 'xemdiem':
@@ -159,8 +159,12 @@ function StudentDashboard({ user, onLogout }) {
                 className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0"
                 onClick={() => setActiveMenu('hoso')}
               >
-                <div className="w-10 h-10 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-                  NH
+                <div className="w-10 h-10 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-200">
+                  {user?.Avatar ? (
+                    <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>SV</span>
+                  )}
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-white truncate group-hover:text-[#F4C542] transition-colors">

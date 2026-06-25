@@ -196,8 +196,12 @@ function TeacherDashboard({ user, onLogout }) {
                 className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0"
                 onClick={() => setActiveMenu('hoso')}
               >
-                <div className="w-10 h-10 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-                  TM
+                <div className="w-10 h-10 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-200">
+                  {user?.Avatar ? (
+                    <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>TM</span>
+                  )}
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-white truncate group-hover:text-[#F4C542] transition-colors">

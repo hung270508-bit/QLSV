@@ -300,7 +300,7 @@ app.post('/api/login', (req, res) => {
     };
 
     const query = `
-        SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen, u.TrangThai as UserTrangThai,
+        SELECT u.TaiKhoan, u.password, u.MaQuyen, p.TenQuyen, u.TrangThai as UserTrangThai, u.Avatar,
                s.HoTen as TenSinhVien, s.NgaySinh, s.GioiTinh, s.Email as EmailSV, s.SoDienThoai as SDTSV, s.MaLop,
                g.HoTen as TenGiangVien, g.Email as EmailGV, g.SoDienThoai as SDTGV, g.MaKhoa,
                l.TenLop, k.TenKhoa
@@ -339,7 +339,7 @@ app.post('/api/login', (req, res) => {
                     }
 
                     let roleString = user.MaQuyen === 1 ? 'admin' : (user.MaQuyen === 2 ? 'teacher' : 'student');
-                    const userResponse = { id: user.TaiKhoan, username: user.TaiKhoan, role: roleString, tenQuyen: user.TenQuyen };
+                    const userResponse = { id: user.TaiKhoan, username: user.TaiKhoan, role: roleString, tenQuyen: user.TenQuyen, Avatar: user.Avatar };
 
                     if (user.MaQuyen === 3) {
                         Object.assign(userResponse, { hoTen: user.TenSinhVien, ngaySinh: user.NgaySinh, gioiTinh: user.GioiTinh, email: user.EmailSV, soDienThoai: user.SDTSV, maLop: user.MaLop, tenLop: user.TenLop });
@@ -482,6 +482,18 @@ app.use((req, res, next) => {
 // Verify token endpoint
 app.get('/api/verify-token', verifyToken, (req, res) => {
     res.json({ success: true, user: req.user });
+});
+
+// Avatar update endpoint
+app.post('/api/users/avatar', verifyToken, (req, res) => {
+    const { avatarBase64 } = req.body;
+    const username = req.user.username;
+    if (!avatarBase64) return res.status(400).json({ success: false, message: 'Thiếu dữ liệu ảnh!' });
+
+    db.query('UPDATE users SET Avatar = ? WHERE TaiKhoan = ?', [avatarBase64, username], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi máy chủ', error: err.message });
+        res.json({ success: true, message: 'Cập nhật ảnh đại diện thành công!', avatar: avatarBase64 });
+    });
 });
 
 // Change password endpoint
