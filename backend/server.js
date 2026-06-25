@@ -54,6 +54,7 @@ const db = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
+    timezone: '+07:00', // Đảm bảo Node.js hiểu DB đang chạy ở múi giờ VN
     waitForConnections: true,
     // Tránh lỗi "Too many connections" trên Vercel Serverless bằng cách giới hạn pool rất nhỏ
     connectionLimit: isVercel ? 2 : 10,
@@ -61,6 +62,11 @@ const db = mysql.createPool({
     ssl: {
         rejectUnauthorized: false
     }
+});
+
+// Ép tất cả các luồng kết nối MySQL phải sử dụng múi giờ Việt Nam
+db.on('connection', function (connection) {
+    connection.query("SET time_zone = '+07:00'");
 });
 
 // Kiểm tra kết nối DB
@@ -2221,12 +2227,52 @@ app.post('/api/rfid', (req, res) => {
         res.json({ success: true, message: 'Đã lưu mapping' });
     });
 });
-app.get('/api/attendance/student/:mssv', (req, res) => executeQuery(`SELECT dd.*, dd.NgayDiemDanh as NgayHoc, (SELECT mh.TenMonHoc FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as TenMonHoc, (SELECT PhongHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as PhongHoc, (SELECT CaHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as CaHoc FROM diemdanh dd WHERE dd.MSSV = ? ORDER BY dd.NgayDiemDanh DESC`, [req.params.mssv], res, 'Lỗi!'));
+app.get('/api/attendance/student/:mssv', (req, res) => {
+    const query = `
+        SELECT dd.*, dd.NgayDiemDanh as NgayHoc, 
+               (SELECT mh.TenMonHoc FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as TenMonHoc, 
+               (SELECT PhongHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as PhongHoc, 
+               (SELECT CaHoc FROM lichhoc lh WHERE lh.MaLopHocPhan = dd.MaLopHocPhan LIMIT 1) as CaHoc 
+        FROM diemdanh dd 
+        INNER JOIN (
+            SELECT MaLopHocPhan, NgayDiemDanh, MAX(LanDiemDanh) as MaxLan 
+            FROM diemdanh 
+            WHERE MSSV = ? 
+            GROUP BY MaLopHocPhan, NgayDiemDanh
+        ) latest ON dd.MaLopHocPhan = latest.MaLopHocPhan 
+                 AND dd.NgayDiemDanh = latest.NgayDiemDanh 
+                 AND dd.LanDiemDanh = latest.MaxLan 
+        WHERE dd.MSSV = ? 
+        ORDER BY dd.NgayDiemDanh DESC
+    `;
+    executeQuery(query, [req.params.mssv, req.params.mssv], res, 'Lỗi!');
+});
 app.get('/api/attendance/percentage/:mssv', (req, res) => {
-    db.query('SELECT TrangThai FROM diemdanh WHERE MSSV = ?', [req.params.mssv], (err, results) => {
+    const query = `
+        SELECT d.TrangThai 
+        FROM diemdanh d
+        INNER JOIN (
+            SELECT MaLopHocPhan, NgayDiemDanh, MAX(LanDiemDanh) as MaxLan
+            FROM diemdanh
+            WHERE MSSV = ?
+            GROUP BY MaLopHocPhan, NgayDiemDanh
+        ) latest ON d.MaLopHocPhan = latest.MaLopHocPhan 
+                 AND d.NgayDiemDanh = latest.NgayDiemDanh 
+                 AND d.LanDiemDanh = latest.MaxLan
+        WHERE d.MSSV = ?
+    `;
+
+    db.query(query, [req.params.mssv, req.params.mssv], (err, results) => {
         if (err) return res.status(500).json({ success: false });
         const present = results.filter(r => r.TrangThai === 'Có mặt').length;
-        res.json({ success: true, totalSessions: results.length, present, absent: results.filter(r => r.TrangThai === 'Vắng mặt').length, excused: results.filter(r => r.TrangThai === 'Có phép').length, percentage: results.length > 0 ? parseFloat(((present / results.length) * 100).toFixed(2)) : 0 });
+        res.json({ 
+            success: true, 
+            totalSessions: results.length, 
+            present, 
+            absent: results.filter(r => r.TrangThai === 'Vắng mặt').length, 
+            excused: results.filter(r => r.TrangThai === 'Có phép').length, 
+            percentage: results.length > 0 ? parseFloat(((present / results.length) * 100).toFixed(2)) : 0 
+        });
     });
 });
 
