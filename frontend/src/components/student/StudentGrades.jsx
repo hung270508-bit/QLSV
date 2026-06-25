@@ -99,16 +99,16 @@ function StudentGrades({ user }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-[#1F2937]">Kết quả học tập</h2>
-          <p className="text-[#6B7280]">Chi tiết bảng điểm và tiến độ học tập tích lũy</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1F2937]">Kết quả học tập</h2>
+          <p className="text-sm text-[#6B7280]">Chi tiết bảng điểm và tiến độ học tập tích lũy</p>
         </div>
       </div>
 
       {/* Thẻ Thống kê Tổng quan (Tích lũy toàn khóa) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 mb-4 sm:mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-br from-[#F4C542] to-[#F4C542]/90 rounded-2xl p-6 text-white shadow-lg shadow-[#F4C542]/30 flex items-center justify-between"
@@ -156,8 +156,29 @@ function StudentGrades({ user }) {
                 </h3>
               </div>
 
-              {/* Bảng điểm môn học */}
-              <div className="overflow-x-auto">
+              {/* Mobile: card list */}
+              <div className="block sm:hidden divide-y divide-gray-50">
+                {semesterGrades.map((grade) => (
+                  <div key={grade.MaDiem} className="px-4 py-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-bold text-[#1F2937] flex-1 mr-2">{grade.TenMonHoc}</p>
+                      <span className={`shrink-0 inline-block px-2.5 py-0.5 rounded-lg font-bold text-sm ${
+                        grade.DiemChu === 'F' ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'bg-[#22C55E]/20 text-[#22C55E]'
+                      }`}>{grade.DiemChu || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-[#6B7280] flex-wrap">
+                      <span>{grade.SoTinChi || 0} TC</span>
+                      <span>CC: {grade.DiemChuyenCan || '-'}</span>
+                      <span>GK: {grade.DiemGiuaKy || '-'}</span>
+                      <span>CK: {grade.DiemCuoiKy || '-'}</span>
+                      <span className="font-bold text-[#1F2937]">TB: {grade.DiemTong || '-'}</span>
+                      <span className="font-bold text-[#F4C542]">GPA: {grade.DiemGPA || '-'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: full table */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-[#FFFFFF] border-b border-[#E5E7EB]">
                     <tr>
@@ -188,9 +209,7 @@ function StudentGrades({ user }) {
                         <td className="py-3 px-6 text-sm text-center">
                           <span className={`inline-block px-3 py-1 rounded-lg font-bold text-sm ${
                             grade.DiemChu === 'F' ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'bg-[#22C55E]/20 text-[#22C55E]'
-                          }`}>
-                            {grade.DiemChu || '-'}
-                          </span>
+                          }`}>{grade.DiemChu || '-'}</span>
                         </td>
                       </tr>
                     ))}

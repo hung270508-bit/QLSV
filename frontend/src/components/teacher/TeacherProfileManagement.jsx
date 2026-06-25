@@ -105,12 +105,12 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
       GioiTinh: user?.gioiTinh || 'Chưa cập nhật'
     };
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 200 }}
-          className="bg-[#F4C542] rounded-2xl p-6 sm:p-8 text-[#152238] shadow-lg"
+          className="bg-[#F4C542] rounded-2xl p-5 sm:p-6 md:p-8 text-[#152238] shadow-lg"
         >
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="w-24 h-24 bg-[#FFFFFF] rounded-full p-2 shadow-lg flex-shrink-0 relative group">

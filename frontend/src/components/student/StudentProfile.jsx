@@ -189,11 +189,10 @@ function StudentProfile({ profile, loading, user }) {
 
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
 
-        className="bg-[#F4C542] rounded-3xl p-8 sm:p-10 text-[#152238] shadow-lg relative overflow-hidden"
-
+        className="bg-[#F4C542] rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 text-[#152238] shadow-lg relative overflow-hidden"
       >
 
-        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8">
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
 
           {/* Avatar Mặc định */}
           <div className="w-32 h-32 bg-[#FFFFFF] rounded-full p-2 shadow-xl flex-shrink-0 relative group">
@@ -213,8 +212,7 @@ function StudentProfile({ profile, loading, user }) {
           
 
           <div className="text-center sm:text-left">
-
-            <h2 className="text-3xl sm:text-4xl font-bold mb-2">{profile.HoTen}</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">{profile.HoTen}</h2>
 
             <p className="text-[#152238]/70 text-lg font-medium flex items-center justify-center sm:justify-start gap-2">
 
@@ -252,7 +250,7 @@ function StudentProfile({ profile, loading, user }) {
 
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
         {/* Cột 1: Thông tin liên hệ */}
 

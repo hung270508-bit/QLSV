@@ -6,8 +6,8 @@ import axios from 'axios';
 import API_URL from '../../api';
 
 function StudentSchedule({ user }) {
-  const [viewType, setViewType] = useState('week'); 
-  const [currentDate, setCurrentDate] = useState(new Date()); 
+  const [viewType, setViewType] = useState('week');
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [allSchedules, setAllSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,12 +25,12 @@ function StudentSchedule({ user }) {
       try {
         setLoading(true);
         const response = await axios.get(`${API_URL}/api/students/${user?.username || user?.id}/schedule`);
-        
+
         const formattedData = response.data.map(item => {
-         // Ưu tiên lấy trực tiếp số tiết từ API nếu có
+          // Ưu tiên lấy trực tiếp số tiết từ API nếu có
           let tietBatDau = item.TietBatDau ? parseInt(item.TietBatDau) : 1;
           let soTiet = item.SoTiet ? parseInt(item.SoTiet) : 3;
-          
+
           // Nếu API trả về dạng chuỗi CaHoc (VD: "1-3", "4-6")
           if (!item.TietBatDau && item.CaHoc) {
             const match = String(item.CaHoc).trim().match(/(\d+)\s*-\s*(\d+)/);
@@ -39,7 +39,7 @@ function StudentSchedule({ user }) {
               soTiet = parseInt(match[2]) - parseInt(match[1]) + 1;
             } else {
               // Fallback cho trường hợp lưu là dạng số ca "1", "2", "3"
-              const caStr = String(item.CaHoc).replace(/\D/g, ''); 
+              const caStr = String(item.CaHoc).replace(/\D/g, '');
               if (caStr === '1') { tietBatDau = 1; soTiet = 3; }
               else if (caStr === '2') { tietBatDau = 4; soTiet = 3; }
               else if (caStr === '3') { tietBatDau = 7; soTiet = 3; }
@@ -59,7 +59,7 @@ function StudentSchedule({ user }) {
             thuStr: thu === 8 ? 'CN' : `${thu}`,
             tietBatDau: tietBatDau,
             soTiet: soTiet,
-            hocKy: item.HocKy || 'HK2_2025_2026', 
+            hocKy: item.HocKy || 'HK2_2025_2026',
             stc: item.SoTinChi || 3,
             nhom: item.MaLop ? item.MaLop.slice(-2) : '01'
           };
@@ -84,8 +84,8 @@ function StudentSchedule({ user }) {
         Object.keys(semMap).forEach(hk => {
           finalSemData[hk] = Object.values(semMap[hk]).map(course => {
             const sortedDates = course.dates.sort((a, b) => a - b);
-            const startDate = sortedDates[0].toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
-            const endDate = sortedDates[sortedDates.length - 1].toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
+            const startDate = sortedDates[0].toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const endDate = sortedDates[sortedDates.length - 1].toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
             return {
               ...course,
               thoiGianHoc: `${startDate} - ${endDate}`
@@ -112,7 +112,7 @@ function StudentSchedule({ user }) {
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(d.setDate(diff));
-    
+
     const week = [];
     for (let i = 0; i < 7; i++) {
       const nextDay = new Date(monday);
@@ -145,7 +145,7 @@ function StudentSchedule({ user }) {
   allSchedules.forEach(item => {
     const dayIdx = weekDates.findIndex(date => isSameDate(date, item.ngayHoc));
     if (dayIdx !== -1) {
-      const startRow = item.tietBatDau - 1; 
+      const startRow = item.tietBatDau - 1;
       if (startRow >= 0 && startRow < 12) {
         matrix[startRow][dayIdx] = item;
         hasScheduleThisWeek = true;
@@ -182,11 +182,11 @@ function StudentSchedule({ user }) {
 
   return (
     <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden relative">
-      
+
       {/* TOOLTIP HIỂN THỊ KHI HOVER */}
       <AnimatePresence>
         {tooltipData && viewType === 'week' && !selectedCourse && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -205,7 +205,7 @@ function StudentSchedule({ user }) {
                   {tooltipData.maHP}
                 </span>
               </div>
-              
+
               {/* Title */}
               <div>
                 <h4 className="text-sm font-bold text-slate-800 leading-tight">
@@ -255,8 +255,8 @@ function StudentSchedule({ user }) {
                 <h3 className="text-white font-bold text-lg flex items-center gap-2">
                   <Info className="w-5 h-5" /> Chi tiết học phần
                 </h3>
-                <button 
-                  onClick={() => setSelectedCourse(null)} 
+                <button
+                  onClick={() => setSelectedCourse(null)}
                   className="p-1 hover:bg-white/40 rounded-lg text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -274,7 +274,7 @@ function StudentSchedule({ user }) {
                     <span className="text-xs text-[#6B7280] font-medium">Mã học phần</span>
                     <div className="font-semibold text-[#1F2937] mt-1 font-mono text-sm">{selectedCourse.maHP}</div>
                   </div>
-                  
+
                   <div className="bg-[#F7F8FA] p-4 rounded-xl border border-[#E5E7EB]">
                     <span className="text-xs text-[#6B7280] font-medium">Số tín chỉ</span>
                     <div className="font-semibold text-[#3B82F6] mt-1">{selectedCourse.stc} tín chỉ</div>
@@ -297,8 +297,8 @@ function StudentSchedule({ user }) {
                 </div>
 
                 <div className="pt-2">
-                  <button 
-                    onClick={() => setSelectedCourse(null)} 
+                  <button
+                    onClick={() => setSelectedCourse(null)}
                     className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
                   >
                     Đóng
@@ -312,23 +312,23 @@ function StudentSchedule({ user }) {
 
       {/* Top Controls */}
       <div className="p-4 border-b border-[#E5E7EB] flex flex-col xl:flex-row items-center justify-between gap-4">
-        
+
         <div className="flex items-center gap-6">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="radio" 
-              checked={viewType === 'week'} 
+            <input
+              type="radio"
+              checked={viewType === 'week'}
               onChange={() => setViewType('week')}
-              className="w-5 h-5 text-[#3B82F6] focus:ring-blue-500 border-gray-300" 
+              className="w-5 h-5 text-[#3B82F6] focus:ring-blue-500 border-gray-300"
             />
             <span className={`font-medium ${viewType === 'week' ? 'text-[#3B82F6]' : 'text-[#6B7280]'}`}>Xem TKB Tuần</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="radio" 
-              checked={viewType === 'semester'} 
+            <input
+              type="radio"
+              checked={viewType === 'semester'}
               onChange={() => setViewType('semester')}
-              className="w-5 h-5 text-[#3B82F6] focus:ring-blue-500 border-gray-300" 
+              className="w-5 h-5 text-[#3B82F6] focus:ring-blue-500 border-gray-300"
             />
             <span className={`font-medium ${viewType === 'semester' ? 'text-[#3B82F6]' : 'text-[#6B7280]'}`}>Xem TKB Học Kỳ</span>
           </label>
@@ -381,9 +381,9 @@ function StudentSchedule({ user }) {
 
                       if (cellData) {
                         return (
-                          <td 
-                            key={dayIdx} 
-                            rowSpan={cellData.soTiet} 
+                          <td
+                            key={dayIdx}
+                            rowSpan={cellData.soTiet}
                             onMouseEnter={(e) => { setTooltipData(cellData); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
                             onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
                             onMouseLeave={() => setTooltipData(null)}
@@ -422,17 +422,17 @@ function StudentSchedule({ user }) {
       {/* ========================================= */}
       {viewType === 'semester' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#FFFFFF]">
-          
+
           {/* Tabs chuyển học kỳ */}
           <div className="flex border-b border-[#E5E7EB] px-2 pt-2 overflow-x-auto custom-scrollbar">
-            <button 
+            <button
               onClick={() => setActiveSemTab('all')}
               className={`px-5 py-3 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeSemTab === 'all' ? 'border-blue-600 text-[#3B82F6]' : 'border-transparent text-[#6B7280] hover:text-[#1F2937]'}`}
             >
               Tất cả
             </button>
             {Object.keys(semesterData).sort().map(hk => (
-              <button 
+              <button
                 key={hk}
                 onClick={() => setActiveSemTab(hk)}
                 className={`px-5 py-3 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeSemTab === hk ? 'border-blue-600 text-[#3B82F6]' : 'border-transparent text-[#6B7280] hover:text-[#1F2937]'}`}
@@ -467,11 +467,11 @@ function StudentSchedule({ user }) {
                         {formatHocKyTitle(hk)}
                       </td>
                     </tr>
-                    
+
                     {/* Danh sách các môn học */}
                     {semesterData[hk].map((course, idx) => (
-                      <tr 
-                        key={idx} 
+                      <tr
+                        key={idx}
                         // MỞ POPUP CUSTOM THAY VÌ ALERT
                         onClick={() => setSelectedCourse(course)}
                         className="border-b border-[#E5E7EB] hover:bg-[#F7F8FA] transition-colors cursor-pointer"
@@ -489,7 +489,7 @@ function StudentSchedule({ user }) {
                     ))}
                   </React.Fragment>
                 ))}
-                
+
                 {Object.keys(semesterData).length === 0 && (
                   <tr><td colSpan="9" className="p-8 text-center text-[#6B7280] italic">Không có dữ liệu lịch học</td></tr>
                 )}

@@ -266,7 +266,7 @@ function StudentOverview({ user, setActiveMenu }) {
                 <div key={i} className={`flex items-start gap-4 border-l-2 pl-4 ${i === 0 ? 'border-[#F59E0B]' : 'border-[#152238]'}`}>
                   <div className="flex-1">
                     <h4 className="font-bold text-[#1F2937]">{c.TenMonHoc}</h4>
-                    <p className="text-xs text-gray-300 mt-0.5">{c.ThoiGian} - Phòng {c.PhongHoc} - GV {c.TenGiangVien}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">{c.ThoiGian} - Phòng {c.PhongHoc} - GV {c.TenGiangVien}</p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${i === 0 ? 'bg-[#F4C542] text-black' : 'bg-[#152238] text-[#F4C542]'}`}>{c.CaHoc}</span>
                 </div>

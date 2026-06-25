@@ -63,17 +63,17 @@ const StatCard = ({ stat, index, onNavigate }) => {
       variants={scaleIn}
       initial="hidden"
       animate="show"
-      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.97 }}
       onClick={() => onNavigate?.(stat.menuId)}
-      className="relative bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] overflow-hidden cursor-pointer group"
+      className="relative bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] overflow-hidden cursor-pointer group"
     >
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${stat.bgColor}`}>
-        <Icon className={`w-6 h-6 ${stat.iconColor}`} />
+      <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-4 ${stat.bgColor}`}>
+        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.iconColor}`} />
       </div>
 
-      <p className="text-3xl font-extrabold text-[#1F2937] tracking-tight">{stat.value}</p>
-      <p className="text-sm text-gray-300 font-medium mt-1">{stat.title}</p>
+      <p className="text-xl sm:text-3xl font-extrabold text-[#1F2937] tracking-tight">{stat.value}</p>
+      <p className="text-xs text-gray-300 font-medium mt-0.5 sm:mt-1 leading-tight">{stat.title}</p>
     </motion.div>
   );
 };
@@ -183,13 +183,13 @@ function DashboardOverview({ onNavigate }) {
             <div className="absolute top-0 right-0 w-64 h-64 bg-black rounded-full -translate-y-1/2 translate-x-1/2" />
           </div>
           <div className="relative z-10">
-            <h2 className="text-2xl font-extrabold text-black mb-1 tracking-tight">NhatTin University — Tổng quan hệ thống</h2>
+            <h2 className="text-base sm:text-xl md:text-2xl font-extrabold text-black mb-1 tracking-tight">NhatTin University — Tổng quan hệ thống</h2>
           </div>
         </div>
       </motion.div>
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {statCards.map((stat, i) => (
           <StatCard key={stat.title} stat={stat} index={i} onNavigate={onNavigate} />
         ))}
@@ -355,7 +355,20 @@ function DashboardOverview({ onNavigate }) {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <table className="w-full">
+              {/* Mobile: card list */}
+              <div className="block sm:hidden">
+                {students.length > 0 ? students.slice(0, 10).map((student, i) => (
+                  <div key={student.MSSV} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors">
+                    <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0">{student.MSSV}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-700 truncate">{student.HoTen}</p>
+                      <p className="text-xs text-[#6B7280]">{student.TenLop || '—'} · {student.GioiTinh || '—'}</p>
+                    </div>
+                  </div>
+                )) : <p className="py-8 text-center text-gray-300 text-sm">Chưa có sinh viên nào</p>}
+              </div>
+              {/* Desktop: table */}
+              <table className="hidden sm:table w-full">
                 <thead>
                   <tr className="border-b border-gray-50">
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">MSSV</th>
@@ -367,23 +380,13 @@ function DashboardOverview({ onNavigate }) {
                 <tbody>
                   {students.length > 0 ? (
                     students.slice(0, 10).map((student, i) => (
-                      <motion.tr
-                        key={student.MSSV}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150"
-                      >
-                        <td className="py-3.5 px-6">
-                          <span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg">{student.MSSV}</span>
-                        </td>
+                      <motion.tr key={student.MSSV} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150">
+                        <td className="py-3.5 px-6"><span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg">{student.MSSV}</span></td>
                         <td className="py-3.5 px-6 text-sm font-semibold text-gray-700">{student.HoTen}</td>
                         <td className="py-3.5 px-6 text-sm text-[#6B7280]">{student.TenLop || '—'}</td>
                         <td className="py-3.5 px-6">
-                          <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${student.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-[#3B82F6]' : 'bg-pink-50 text-pink-600'
-                            }`}>
-                            {student.GioiTinh || '—'}
-                          </span>
+                          <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${student.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-[#3B82F6]' : 'bg-pink-50 text-pink-600'}`}>{student.GioiTinh || '—'}</span>
                         </td>
                       </motion.tr>
                     ))
@@ -401,7 +404,20 @@ function DashboardOverview({ onNavigate }) {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <table className="w-full">
+              {/* Mobile: card list */}
+              <div className="block sm:hidden">
+                {teachers.length > 0 ? teachers.slice(0, 10).map((teacher, i) => (
+                  <div key={teacher.MaGiangVien} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors">
+                    <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0">{teacher.MaGiangVien}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-700 truncate">{teacher.HoTen}</p>
+                      <p className="text-xs text-[#6B7280] truncate">{teacher.TenKhoa || '—'} · {teacher.Email || '—'}</p>
+                    </div>
+                  </div>
+                )) : <p className="py-8 text-center text-gray-300 text-sm">Chưa có giảng viên nào</p>}
+              </div>
+              {/* Desktop: table */}
+              <table className="hidden sm:table w-full">
                 <thead>
                   <tr className="border-b border-gray-50">
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Mã GV</th>
@@ -413,21 +429,12 @@ function DashboardOverview({ onNavigate }) {
                 <tbody>
                   {teachers.length > 0 ? (
                     teachers.slice(0, 10).map((teacher, i) => (
-                      <motion.tr
-                        key={teacher.MaGiangVien}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150"
-                      >
-                        <td className="py-3.5 px-6">
-                          <span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg">{teacher.MaGiangVien}</span>
-                        </td>
+                      <motion.tr key={teacher.MaGiangVien} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150">
+                        <td className="py-3.5 px-6"><span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg">{teacher.MaGiangVien}</span></td>
                         <td className="py-3.5 px-6 text-sm font-semibold text-gray-700">{teacher.HoTen}</td>
                         <td className="py-3.5 px-6">
-                          <span className="text-xs bg-[#F4C542]/20 text-[#B45309] px-2.5 py-1 rounded-full font-semibold border border-[#FFF7D6]">
-                            {teacher.TenKhoa || '—'}
-                          </span>
+                          <span className="text-xs bg-[#F4C542]/20 text-[#B45309] px-2.5 py-1 rounded-full font-semibold border border-[#FFF7D6]">{teacher.TenKhoa || '—'}</span>
                         </td>
                         <td className="py-3.5 px-6 text-sm text-[#6B7280]">{teacher.Email || '—'}</td>
                       </motion.tr>

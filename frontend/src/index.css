@@ -17,9 +17,29 @@ body {
   font-weight: 500;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
 /* Thêm hiệu ứng khử mờ, làm nét chữ */
 * {
   text-rendering: optimizeLegibility;
+  /* Smooth scroll & touch */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS safe area padding for bottom nav */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Prevent table overflow break on mobile */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+}
+
+/* Prevent text size jump on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
 }
