@@ -186,7 +186,7 @@ function AdminDashboard({ user, onLogout }) {
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-white truncate group-hover:text-[#F4C542] transition-colors duration-200">
-                    {user?.name || 'Nguyễn Văn Admin'}
+                    {user?.name || 'ADMIN'}
                   </p>
                   <p className="text-xs text-gray-300 truncate">Quản trị viên hệ thống</p>
                 </div>

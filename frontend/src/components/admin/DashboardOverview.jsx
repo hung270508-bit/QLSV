@@ -202,16 +202,20 @@ function DashboardOverview({ onNavigate }) {
         <motion.div variants={fadeUp} custom={1}
           className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB]"
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
+                <Activity className="w-5 h-5" />
+              </div>
               <div>
-                <h3 className="text-sm font-bold text-[#1F2937]">Sinh viên theo khoa</h3>
-                <p className="text-xs text-gray-300">Phân bố HK1/2025-2026</p>
+                <h3 className="text-sm font-bold text-[#1F2937]">Thống kê theo khoa</h3>
+                <p className="text-xs text-gray-400">Top 5 khoa nhiều sinh viên nhất</p>
               </div>
             </div>
-            <div className="flex gap-2 text-[11px]">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-[#F4C542]" /> Năm nay</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-[#152238]" /> Năm trước</span>
+            <div className="flex gap-4 text-xs font-medium text-gray-500">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#F4C542]" /> Sinh viên</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#152238]" /> Giảng viên</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#8697A6]" /> Lớp học</span>
             </div>
           </div>
 
@@ -229,7 +233,9 @@ function DashboardOverview({ onNavigate }) {
                 />
                 <YAxis tick={false} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(28,28,30,0.04)' }} />
-                <Bar dataKey="sinhVien" fill="#F4C542" name="Sinh viên" isAnimationActive={true} animationDuration={800} />
+                <Bar dataKey="lopHoc" stackId="a" fill="#8697A6" name="Lớp học" isAnimationActive={true} animationDuration={800} barSize={40} />
+                <Bar dataKey="giangVien" stackId="a" fill="#152238" name="Giảng viên" isAnimationActive={true} animationDuration={800} />
+                <Bar dataKey="sinhVien" stackId="a" fill="#F4C542" name="Sinh viên" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={800} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -241,8 +247,8 @@ function DashboardOverview({ onNavigate }) {
         >
           <div className="flex items-center gap-3 mb-5">
             <div>
-              <h3 className="text-sm font-bold text-[#1F2937]">Tỷ lệ phân bổ</h3>
-              <p className="text-xs text-gray-300">Top 4 khoa lớn nhất</p>
+              <h3 className="text-sm font-bold text-[#1F2937]">Sinh viên theo khoa</h3>
+
             </div>
           </div>
 
