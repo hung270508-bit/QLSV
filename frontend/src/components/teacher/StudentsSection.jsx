@@ -329,8 +329,8 @@ function StudentsSection({ students, teachingAssignments, grades }) {
                         <p className="text-sm font-medium">Đang tải dữ liệu điểm danh...</p>
                       </div>
                     ) : studentAttendance && studentAttendance.length > 0 ? (
-                      <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] shadow-sm">
-                        <table className="w-full text-sm text-left">
+                      <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] shadow-sm">
+                        <table className="w-full min-w-[500px] text-sm text-left">
                           <thead className="bg-[#F7F8FA] text-[#6B7280] font-medium border-b border-[#E5E7EB]">
                             <tr>
                               <th className="px-4 py-3">Ngày học</th>

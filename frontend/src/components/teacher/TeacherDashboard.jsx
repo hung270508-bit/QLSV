@@ -233,7 +233,7 @@ function TeacherDashboard({ user, onLogout }) {
           </div>
         )}
 
-        <main className={`flex-1 ${isMobile ? 'p-3 pb-20' : 'p-6'} overflow-y-auto transition-all duration-300 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+        <main className={`flex-1 ${isMobile ? 'p-3 pb-20 overflow-x-hidden' : 'p-6'} overflow-y-auto transition-all duration-300 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           style={{ transitionDelay: mounted ? '300ms' : '0ms' }}>
           <div className="h-full">{renderContent()}</div>
         </main>

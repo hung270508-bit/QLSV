@@ -285,7 +285,7 @@ function AdminDashboard({ user, onLogout }) {
         )}
 
         {/* Content Area */}
-        <main className={`flex-1 ${isMobile ? 'p-3 pb-20' : 'p-6'} overflow-y-auto`}>
+        <main className={`flex-1 ${isMobile ? 'p-3 pb-20 overflow-x-hidden' : 'p-6'} overflow-y-auto`}>
           <AnimatePresence mode="wait">
             <motion.div key={activeMenu} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.22, ease: 'easeOut' }} className="h-full">

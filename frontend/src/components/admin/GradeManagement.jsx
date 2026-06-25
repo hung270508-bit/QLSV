@@ -976,8 +976,8 @@ function GradeManagement() {
                 </div>
 
                 {bulkGrades.length > 0 ? (
-                  <div className="border-2 border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
-                    <table className="w-full">
+                  <div className="border-2 border-[#E5E7EB] rounded-2xl overflow-x-auto shadow-sm">
+                    <table className="w-full min-w-[800px]">
                       <thead className="bg-[#F7F8FA]">
                         <tr>
                           <th className="text-left py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>

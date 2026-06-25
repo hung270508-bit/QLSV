@@ -219,38 +219,38 @@ function StudentOverview({ user, setActiveMenu }) {
     <div className="space-y-6 max-w-7xl mx-auto">
 
       {/* Header Bar */}
-      <div className="relative bg-[#152238] p-6 px-8 rounded-2xl shadow-sm border border-[#1e2f4c] overflow-hidden flex items-center justify-between">
-        <div className="relative z-10">
-          <h2 className="text-2xl font-extrabold text-[#F4C542] flex items-center gap-2 mb-1 tracking-tight">
+      <div className="relative bg-[#152238] p-5 sm:p-6 px-6 sm:px-8 rounded-2xl shadow-sm border border-[#1e2f4c] overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative z-10 w-full sm:w-auto">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#F4C542] flex items-center gap-2 mb-1 tracking-tight break-words">
             Xin chào, {user?.hoTen || 'Sinh Viên'}!
           </h2>
         </div>
-        <div className="relative z-10 text-right">
-          <p className="text-4xl font-extrabold text-[#F4C542]">{stats.currentGPA}</p>
-          <p className="text-sm text-gray-300 font-medium tracking-wide uppercase mt-1">GPA tích lũy</p>
+        <div className="relative z-10 text-left sm:text-right">
+          <p className="text-3xl sm:text-4xl font-extrabold text-[#F4C542]">{stats.currentGPA}</p>
+          <p className="text-xs sm:text-sm text-gray-300 font-medium tracking-wide uppercase mt-1">GPA tích lũy</p>
         </div>
       </div>
 
       {/* 4 Thẻ Thống Kê Nhanh */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border-2 border-[#F4C542] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-[#F4C542]/5 transition-colors">
-          <h3 className="text-3xl font-extrabold mb-1 text-[#F59E0B]">{stats.currentGPA}</h3>
-          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">GPA tích lũy</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border-2 border-[#F4C542] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-[#F4C542]/5 transition-colors">
+          <h3 className="text-2xl sm:text-3xl font-extrabold mb-1 text-[#F59E0B]">{stats.currentGPA}</h3>
+          <p className="text-[#6B7280] font-bold text-[10px] sm:text-xs uppercase tracking-wide mt-1 text-center">GPA tích lũy</p>
         </motion.div>
 
-        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
-          <h3 className="text-3xl font-extrabold mb-1 text-black">{stats.tongTinChi}</h3>
-          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">Tín chỉ tích lũy</p>
+        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+          <h3 className="text-2xl sm:text-3xl font-extrabold mb-1 text-black">{stats.tongTinChi}</h3>
+          <p className="text-[#6B7280] font-bold text-[10px] sm:text-xs uppercase tracking-wide mt-1 text-center">Tín chỉ tích lũy</p>
         </motion.div>
 
-        <motion.div onClick={() => setActiveMenu('renluyen')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
-          <h3 className="text-3xl font-extrabold mb-1 text-[#f97316]">{trainingPoints || 0}</h3>
-          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">Điểm rèn luyện</p>
+        <motion.div onClick={() => setActiveMenu('renluyen')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+          <h3 className="text-2xl sm:text-3xl font-extrabold mb-1 text-[#f97316]">{trainingPoints || 0}</h3>
+          <p className="text-[#6B7280] font-bold text-[10px] sm:text-xs uppercase tracking-wide mt-1 text-center">Điểm rèn luyện</p>
         </motion.div>
 
-        <motion.div onClick={() => setActiveMenu('lichhoc')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-[#FFFFFF] rounded-2xl p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
-          <h3 className="text-3xl font-extrabold mb-1 text-black">{thisWeekClasses || 0}</h3>
-          <p className="text-[#6B7280] font-bold text-xs uppercase tracking-wide mt-1">Lớp học tuần này</p>
+        <motion.div onClick={() => setActiveMenu('lichhoc')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+          <h3 className="text-2xl sm:text-3xl font-extrabold mb-1 text-black">{thisWeekClasses || 0}</h3>
+          <p className="text-[#6B7280] font-bold text-[10px] sm:text-xs uppercase tracking-wide mt-1 text-center">Lớp học tuần này</p>
         </motion.div>
       </div>
 
