@@ -2104,7 +2104,16 @@ app.post('/api/attendance/uid', async (req, res) => {
                 [uid, mssvDangKy], async (errReg) => {
                     if (errReg) {
                         if (errReg.code === 'ER_DUP_ENTRY') {
-                            return res.status(400).json({ success: false, message: 'Thẻ này đã có chủ, vui lòng dùng thẻ khác' });
+                            return new Promise((resolve) => {
+                                db.query('SELECT MSSV FROM the_sv WHERE uid = ?', [uid], async (checkErr, results) => {
+                                    if (!checkErr && results.length > 0 && results[0].MSSV === mssvDangKy) {
+                                        await db.promise().query('UPDATE rfid_state SET mode = ?, capturedUid = ? WHERE id = 1', ["REGISTER_DONE", uid]);
+                                        res.json({ success: true, action: "REGISTER_OK" });
+                                    } else {
+                                        res.status(400).json({ success: false, message: 'Thẻ này đã có chủ, vui lòng dùng thẻ khác' });
+                                    }
+                                });
+                            });
                         }
                         // Nếu sinh viên chưa tồn tại (lỗi khóa ngoại), vẫn cho phép thẻ được đọc lên web
                         if (errReg.code === 'ER_NO_REFERENCED_ROW_2' || errReg.errno === 1452) {
@@ -2235,7 +2244,14 @@ app.post('/api/rfid', (req, res) => {
     if (!uid || !MSSV) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MSSV' });
     db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?)', [uid, MSSV], (err) => {
         if (err) {
-            if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Thẻ này đã được gán cho người khác' });
+            if (err.code === 'ER_DUP_ENTRY') {
+                return db.query('SELECT MSSV FROM the_sv WHERE uid = ?', [uid], (checkErr, results) => {
+                    if (!checkErr && results.length > 0 && results[0].MSSV === MSSV) {
+                        return res.json({ success: true, message: 'Đã lưu mapping' });
+                    }
+                    return res.status(400).json({ success: false, message: 'Thẻ này đã được gán cho người khác' });
+                });
+            }
             return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
         }
         res.json({ success: true, message: 'Đã lưu mapping' });
