@@ -117,7 +117,8 @@ function AdminDashboard({ user, onLogout }) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="flex items-center gap-3"
+              onClick={() => setActiveMenu('dashboard')}
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
             >
               <div className="w-11 h-11 bg-[#F4C542] rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
                 <GraduationCap className="w-6 h-6 text-black" />

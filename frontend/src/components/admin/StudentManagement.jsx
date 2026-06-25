@@ -2121,21 +2121,21 @@ function StudentManagement() {
 
                       </span>
 
-                      <h2 className="text-2xl font-bold text-white mt-1">{capitalizeVietnameseName(studentDetails?.HoTen || selectedStudent.HoTen)}</h2>
+                      <h2 className="text-2xl font-bold text-[#152238] mt-1">{capitalizeVietnameseName(studentDetails?.HoTen || selectedStudent.HoTen)}</h2>
 
                       <div className="flex flex-wrap items-center gap-2 mt-2">
 
-                        <span className="bg-white/40 text-white text-xs px-2.5 py-1 rounded-full font-mono font-medium">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
+                        <span className="bg-[#FFFFFF]/30 text-[#152238] text-xs px-2.5 py-1 rounded-full font-mono font-medium">{studentDetails?.MSSV || selectedStudent.MSSV}</span>
 
                         {studentDetails?.TenLop && (
 
-                          <span className="bg-white/40 text-white text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenLop}</span>
+                          <span className="bg-[#FFFFFF]/30 text-[#152238] text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenLop}</span>
 
                         )}
 
                         {studentDetails?.TenKhoa && (
 
-                          <span className="bg-white/40 text-white text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenKhoa}</span>
+                          <span className="bg-[#FFFFFF]/30 text-[#152238] text-xs px-2.5 py-1 rounded-full font-medium">{studentDetails.TenKhoa}</span>
 
                         )}
 
@@ -2153,11 +2153,11 @@ function StudentManagement() {
 
                     onClick={handleCloseDetailModal}
 
-                    className="bg-white/40 hover:bg-[#FFFFFF]/30 rounded-xl p-2 transition-colors"
+                    className="bg-[#FFFFFF]/30 hover:bg-[#FFFFFF]/50 rounded-xl p-2 transition-colors"
 
                   >
 
-                    <X className="w-5 h-5 text-white" />
+                    <X className="w-5 h-5 text-[#152238]" />
 
                   </motion.button>
 
@@ -2195,7 +2195,7 @@ function StudentManagement() {
 
                           ? 'bg-[#FFFFFF] text-[#F4C542] shadow-md'
 
-                          : 'text-white/70 hover:text-white hover:bg-[#FFFFFF]/10'
+                          : 'text-[#152238]/70 hover:text-[#152238] hover:bg-[#FFFFFF]/20'
 
                           }`}
 

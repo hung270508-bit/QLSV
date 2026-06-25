@@ -225,7 +225,7 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
 // ================================================================
 // MAIN COMPONENT TEACHER
 // ================================================================
-function GradesSection({ grades, teachingAssignments, students, user, onRefresh }) {
+function GradesSection({ grades, teachingAssignments, teachingSchedule, students, user, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
   const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
@@ -477,6 +477,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
             const cfg    = classConfigs[ta.MaLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
             const isLocked = lockedConfigs[ta.MaLopHocPhan];
             const active = getActiveConfig(ta.MaLopHocPhan).filter(c => c.enabled);
+            const hasSchedule = (teachingSchedule || []).some(s => s.MaLopHocPhan === ta.MaLopHocPhan);
             
             const studentsWithGrades = getStudentsForLHP(ta.MaLopHocPhan).map(s => {
               const grade = (grades || []).find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === ta.MaLopHocPhan);
@@ -522,8 +523,16 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                   {isOpen && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[#E5E7EB] bg-[#F7F8FA]/30">
                       
-                      <div className="p-6">
-                        <ConfigPanel
+                      {!hasSchedule ? (
+                        <div className="p-8 text-center bg-[#FEF2F2]">
+                          <AlertTriangle className="w-12 h-12 text-[#EF4444] mx-auto mb-3" />
+                          <h4 className="text-[#991B1B] font-bold text-lg mb-1">Chưa có lịch giảng dạy</h4>
+                          <p className="text-[#B91C1C] text-sm">Lớp học phần này chưa được xếp lịch. Vui lòng thiết lập lịch giảng dạy trước khi cấu hình và nhập điểm.</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="p-6">
+                            <ConfigPanel
                           maLopHocPhan={ta.MaLopHocPhan}
                           tenLop={ta.TenMonHoc}
                           components={cfg}
@@ -556,8 +565,9 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                                 {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
                                   const grade = stu.grade;
                                   const hasGrade = !!grade;
-                                  const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
-                                  const gpa = hasGrade ? convertToGPA(t10) : null;
+                                  const hasAnyScore = grade && active.some(c => grade[c.key] != null && grade[c.key] !== '');
+                                  const t10 = hasAnyScore ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
+                                  const gpa = hasAnyScore ? convertToGPA(t10) : null;
                                   return (
                                     <tr key={stu.MSSV} className="hover:bg-[#3B82F6]/10/40 transition-colors group">
                                       <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
@@ -565,7 +575,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                                       {active.map(c => {
                                         const isZero = !c.enabled || Number(c.weight) === 0;
                                         const val = grade && grade[c.key];
-                                        const displayVal = isZero ? '0' : (hasGrade && val != null && val !== '' ? val : '—');
+                                        const displayVal = isZero ? '—' : (hasGrade && val != null && val !== '' ? val : '—');
                                         return (
                                           <td key={c.key} className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">
                                             {displayVal}
@@ -573,7 +583,7 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                                         );
                                       })}
                                       <td className="py-4 px-3 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10}</td>
-                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>
+                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasAnyScore ? gpa.gpa.toFixed(1) : '—'}</td>
                                       <td className="py-3 px-4">
                                         <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                           {hasGrade ? (
@@ -594,6 +604,8 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                           </div>
                         </div>
                       </div>
+                        </>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -645,9 +657,10 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                       <option value="">Chọn lớp học phần</option>
                       {(teachingAssignments || []).map(ta => {
                         const isLocked = lockedConfigs[ta.MaLopHocPhan];
+                        const hasSched = (teachingSchedule || []).some(s => s.MaLopHocPhan === ta.MaLopHocPhan);
                         return (
-                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked}>
-                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!isLocked ? '(Chưa chốt cấu hình)' : ''}
+                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked || !hasSched}>
+                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isLocked ? '(Chưa chốt cấu hình)' : '')}
                           </option>
                         )
                       })}
@@ -692,9 +705,9 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
                             {c.label} {!isZero ? <span className="text-[#F4C542] text-[11px] ml-0.5 font-black">({c.weight}%)</span> : <span className="text-gray-300 text-[11px] ml-0.5">(0%)</span>}
                           </label>
                           <ScoreInput
-                            value={isZero ? 0 : formData[c.key]}
+                            value={isZero ? '' : formData[c.key]}
                             disabled={isZero}
-                            placeholder={!isZero ? '0.0' : '0'}
+                            placeholder={!isZero ? '0.0' : '—'}
                             onChange={val => setFormData(prev => ({ ...prev, [c.key]: val }))}
                             onError={hasErr => setScoreInputErrors(prev => ({ ...prev, [c.key]: hasErr }))}
                           />

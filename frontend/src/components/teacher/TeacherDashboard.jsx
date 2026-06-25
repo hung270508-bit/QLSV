@@ -114,7 +114,7 @@ function TeacherDashboard({ user, onLogout }) {
       case 'sinhvien':
         return <StudentsSection students={students} teachingAssignments={teachingAssignments} grades={grades} />;
       case 'quanlydiem':
-        return <GradesSection grades={grades} teachingAssignments={teachingAssignments} students={students} user={user} onRefresh={fetchTeacherData} />;
+        return <GradesSection grades={grades} teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} onRefresh={fetchTeacherData} />;
       case 'diemdanh':
         return <AttendanceSection teachingSchedule={teachingSchedule} students={students} />;
       case 'lichgiangday':
@@ -137,7 +137,7 @@ function TeacherDashboard({ user, onLogout }) {
       >
         <div className="h-full flex flex-col">
           <div className="p-6 border-b border-[#1e2f4c] shrink-0">
-            <div className="flex items-center gap-3">
+            <div onClick={() => setActiveMenu('tongquan')} className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="w-11 h-11 bg-[#F4C542] rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
                 <Award className="w-6 h-6 text-black" />
               </div>
