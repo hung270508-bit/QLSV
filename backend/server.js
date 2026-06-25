@@ -918,8 +918,13 @@ app.post('/api/students', async (req, res) => {
 
         // Nếu lúc thêm sinh viên có quẹt thẻ, lưu luôn thẻ đó vào database
         if (req.body.UID) {
-            await new Promise((resolve) => {
-                db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', [req.body.UID, MSSV], () => resolve());
+            await new Promise((resolve, reject) => {
+                db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?)', [req.body.UID, MSSV], (err) => {
+                    if (err) {
+                        if (err.code === 'ER_DUP_ENTRY') reject(new Error(`Thẻ UID ${req.body.UID} đã được sử dụng bởi người khác.`));
+                        else reject(err);
+                    } else resolve();
+                });
             });
         }
 
@@ -1066,8 +1071,11 @@ app.put('/api/students/:mssv', async (req, res) => {
                         if (err) reject(err); else resolve();
                     });
                 } else {
-                    db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE uid = VALUES(uid)', [data.UID, req.params.mssv], (err) => {
-                        if (err) reject(err); else resolve();
+                    db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?)', [data.UID, req.params.mssv], (err) => {
+                        if (err) {
+                            if (err.code === 'ER_DUP_ENTRY') reject(new Error(`Thẻ UID ${data.UID} đã được sử dụng bởi người khác.`));
+                            else reject(err);
+                        } else resolve();
                     });
                 }
             });
@@ -2092,9 +2100,12 @@ app.post('/api/attendance/uid', async (req, res) => {
         if (rfidState.mode === "REGISTER") {
             const mssvDangKy = rfidState.targetMSSV;
 
-            db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)',
+            db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?)',
                 [uid, mssvDangKy], async (errReg) => {
                     if (errReg) {
+                        if (errReg.code === 'ER_DUP_ENTRY') {
+                            return res.status(400).json({ success: false, message: 'Thẻ này đã có chủ, vui lòng dùng thẻ khác' });
+                        }
                         // Nếu sinh viên chưa tồn tại (lỗi khóa ngoại), vẫn cho phép thẻ được đọc lên web
                         if (errReg.code === 'ER_NO_REFERENCED_ROW_2' || errReg.errno === 1452) {
                             await db.promise().query('UPDATE rfid_state SET mode = ?, capturedUid = ? WHERE id = 1', ["REGISTER_DONE", uid]);
@@ -2222,8 +2233,11 @@ app.get('/api/rfid/:uid', (req, res) => {
 app.post('/api/rfid', (req, res) => {
     const { uid, MSSV } = req.body;
     if (!uid || !MSSV) return res.status(400).json({ success: false, message: 'Thiếu uid hoặc MSSV' });
-    db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?) ON DUPLICATE KEY UPDATE MSSV = VALUES(MSSV)', [uid, MSSV], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+    db.query('INSERT INTO the_sv (uid, MSSV) VALUES (?, ?)', [uid, MSSV], (err) => {
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Thẻ này đã được gán cho người khác' });
+            return res.status(500).json({ success: false, message: 'Lỗi DB', error: err.message });
+        }
         res.json({ success: true, message: 'Đã lưu mapping' });
     });
 });
