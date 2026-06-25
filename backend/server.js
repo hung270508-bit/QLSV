@@ -130,6 +130,16 @@ db.getConnection((err, connection) => {
         }
     });
 
+    // Tự động thêm cột LanDiemDanh vào bảng diemdanh nếu chưa có
+    connection.query("SHOW COLUMNS FROM diemdanh LIKE 'LanDiemDanh'", (err, results) => {
+        if (!err && results.length === 0) {
+            connection.query("ALTER TABLE diemdanh ADD COLUMN LanDiemDanh INT DEFAULT 1", (errAlter) => {
+                if (errAlter) console.error("Lỗi thêm cột LanDiemDanh:", errAlter);
+                else console.log("Đã tự động thêm cột LanDiemDanh vào bảng diemdanh.");
+            });
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
