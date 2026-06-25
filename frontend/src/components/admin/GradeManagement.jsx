@@ -692,11 +692,16 @@ function GradeManagement() {
             });
 
             const term = searchTerm.toLowerCase();
-            const filteredStudents = studentsWithGrades.filter(s => 
-              !term || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+            const matchClass = term && (
+                ta.TenMonHoc?.toLowerCase().includes(term) ||
+                ta.MaLopHocPhan?.toLowerCase().includes(term)
             );
 
-            if (term && filteredStudents.length === 0) return null;
+            const filteredStudents = studentsWithGrades.filter(s => 
+              !term || matchClass || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+            );
+
+            if (term && !matchClass && filteredStudents.length === 0) return null;
 
             return (
               <div key={ta.MaLopHocPhan} className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -758,9 +763,8 @@ function GradeManagement() {
                                 {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
                                   const grade = stu.grade;
                                   const hasGrade = !!grade;
-                                  const hasAnyScore = grade && active.some(c => grade[c.key] != null && grade[c.key] !== '');
-                                  const t10 = hasAnyScore ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
-                                  const gpa = hasAnyScore ? convertToGPA(t10) : null;
+                                  const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
+                                  const gpa = hasGrade ? convertToGPA(t10) : null;
                                   return (
                                     <tr key={stu.MSSV} className="hover:bg-[#3B82F6]/10/40 transition-colors group">
                                       <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
@@ -772,8 +776,7 @@ function GradeManagement() {
                                         return <td key={c.key} className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">{displayVal}</td>;
                                       })}
                                       <td className="py-4 px-3 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10}</td>
-                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasAnyScore ? gpa.gpa.toFixed(1) : '—'}</td>
-                                      <td className="py-3 px-4">
+ <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>                                      <td className="py-3 px-4">
                                         <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                           {hasGrade ? (
                                             <>

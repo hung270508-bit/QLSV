@@ -16,23 +16,23 @@ const getLockKey = (maLopHocPhan) => `grade_config_locked_${maLopHocPhan}`;
 
 const DEFAULT_COMPONENTS = [
   { key: 'DiemChuyenCan', label: 'Chuyên cần', shortLabel: 'CC', weight: 10, enabled: true },
-  { key: 'DiemBaiTap',    label: 'Bài tập',    shortLabel: 'BT', weight: 20, enabled: true },
-  { key: 'DiemGiuaKy',   label: 'Giữa kỳ',    shortLabel: 'GK', weight: 20, enabled: true },
-  { key: 'DiemCuoiKy',   label: 'Cuối kỳ',    shortLabel: 'CK', weight: 50, enabled: true },
+  { key: 'DiemBaiTap', label: 'Bài tập', shortLabel: 'BT', weight: 20, enabled: true },
+  { key: 'DiemGiuaKy', label: 'Giữa kỳ', shortLabel: 'GK', weight: 20, enabled: true },
+  { key: 'DiemCuoiKy', label: 'Cuối kỳ', shortLabel: 'CK', weight: 50, enabled: true },
 ];
 
 const loadConfig = (maLopHocPhan) => {
   try {
     const saved = localStorage.getItem(getConfigKey(maLopHocPhan));
     if (saved) return JSON.parse(saved);
-  } catch (_) {}
+  } catch (_) { }
   return DEFAULT_COMPONENTS.map(c => ({ ...c }));
 };
 
 const saveConfig = (maLopHocPhan, components) => {
   try {
     localStorage.setItem(getConfigKey(maLopHocPhan), JSON.stringify(components));
-  } catch (_) {}
+  } catch (_) { }
 };
 
 // ================================================================
@@ -43,7 +43,7 @@ const calcTotal10 = (formData, components) => {
   if (active.length === 0) return '0.00';
   const total = active.reduce((sum, c) => {
     let val = parseFloat(formData[c.key]);
-    if (isNaN(val) || val < 0) val = 0; 
+    if (isNaN(val) || val < 0) val = 0;
     return sum + (val * (Number(c.weight) / 100));
   }, 0);
   return total.toFixed(2);
@@ -51,16 +51,16 @@ const calcTotal10 = (formData, components) => {
 
 const convertToGPA = (total10) => {
   const t = parseFloat(total10);
-  if (isNaN(t)) return { gpa: 0.0, letter: 'F', text: 'Chưa có điểm' }; 
-  if (t >= 8.5) return { gpa: 4.0, letter: 'A',  text: 'Xuất sắc' };
+  if (isNaN(t)) return { gpa: 0.0, letter: 'F', text: 'Chưa có điểm' };
+  if (t >= 8.5) return { gpa: 4.0, letter: 'A', text: 'Xuất sắc' };
   if (t >= 7.8) return { gpa: 3.7, letter: 'B+', text: 'Giỏi' };
-  if (t >= 7.0) return { gpa: 3.5, letter: 'B',  text: 'Khá giỏi' };
+  if (t >= 7.0) return { gpa: 3.5, letter: 'B', text: 'Khá giỏi' };
   if (t >= 6.3) return { gpa: 3.0, letter: 'C+', text: 'Khá' };
-  if (t >= 5.5) return { gpa: 2.5, letter: 'C',  text: 'Trung bình khá' };
+  if (t >= 5.5) return { gpa: 2.5, letter: 'C', text: 'Trung bình khá' };
   if (t >= 4.8) return { gpa: 2.0, letter: 'D+', text: 'Trung bình' };
-  if (t >= 4.0) return { gpa: 1.5, letter: 'D',  text: 'Yếu' };
+  if (t >= 4.0) return { gpa: 1.5, letter: 'D', text: 'Yếu' };
   if (t >= 3.0) return { gpa: 1.0, letter: 'F+', text: 'Kém' };
-  return { gpa: 0.0, letter: 'F',  text: 'Không đạt' };
+  return { gpa: 0.0, letter: 'F', text: 'Không đạt' };
 };
 
 const getLetterColor = (letter) => {
@@ -85,20 +85,20 @@ function ScoreInput({ value, onChange, onError, disabled, placeholder = '—' })
     } else if (value !== localVal) {
       setLocalVal(value ?? '');
     }
-  }, [value]); 
+  }, [value]);
 
   const setE = (msg) => { setErr(msg); onError && onError(!!msg); };
 
   const handle = (e) => {
     let raw = e.target.value;
-    if (raw.includes('-')) return; 
+    if (raw.includes('-')) return;
 
     setLocalVal(raw);
     if (raw === '') { setE(''); onChange(''); return; }
     const n = parseFloat(raw);
-    if (isNaN(n))  { setE('Không hợp lệ'); return; }
-    if (n < 0)     { setE('Không được âm'); return; }
-    if (n > 10)    { setE('Tối đa 10'); return; }
+    if (isNaN(n)) { setE('Không hợp lệ'); return; }
+    if (n < 0) { setE('Không được âm'); return; }
+    if (n > 10) { setE('Tối đa 10'); return; }
     setE(''); onChange(raw);
   };
 
@@ -141,10 +141,10 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
 
   const setWeight = (key, val) => {
     if (locked) return;
-    if (val.includes('-')) return; 
+    if (val.includes('-')) return;
 
     let n = parseInt(val, 10);
-    if (isNaN(n) || n < 0) n = 0; 
+    if (isNaN(n) || n < 0) n = 0;
     if (n > 100) n = 100;
     const next = components.map(c => c.key === key ? { ...c, weight: n } : c);
     onChange(next);
@@ -229,14 +229,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
   const [searchTerm, setSearchTerm] = useState('');
   const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
   const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
-  
+
   const [configConfirm, setConfigConfirm] = useState({ show: false, maLopHocPhan: null, checked: false });
   const [submitConfirmModal, setSubmitConfirmModal] = useState({ show: false, payload: null, isEdit: false });
 
-  const [configOpen, setConfigOpen] = useState({}); 
+  const [configOpen, setConfigOpen] = useState({});
   const [classConfigs, setClassConfigs] = useState({});
   const [activeConfigs, setActiveConfigs] = useState({});
-  const [lockedConfigs, setLockedConfigs] = useState({}); 
+  const [lockedConfigs, setLockedConfigs] = useState({});
 
   const [showModal, setShowModal] = useState(false);
   const [editingGrade, setEditingGrade] = useState(null);
@@ -282,22 +282,22 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
   const executeSaveConfig = () => {
     const { maLopHocPhan } = configConfirm;
     if (!maLopHocPhan) return;
-    
+
     const cfg = classConfigs[maLopHocPhan];
     saveConfig(maLopHocPhan, cfg);
     localStorage.setItem(getLockKey(maLopHocPhan), 'true');
-    
+
     setActiveConfigs(prev => ({ ...prev, [maLopHocPhan]: cfg }));
     setLockedConfigs(prev => ({ ...prev, [maLopHocPhan]: true }));
     setConfigConfirm({ show: false, maLopHocPhan: null, checked: false });
-    
+
     showNotification('success', 'Đã chốt cấu hình điểm vĩnh viễn!');
   };
 
   const closeModal = () => {
-    setShowModal(false); 
-    setEditingGrade(null); 
-    setFormErrors({}); 
+    setShowModal(false);
+    setEditingGrade(null);
+    setFormErrors({});
     setScoreInputErrors({});
   };
 
@@ -339,35 +339,35 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
 
     if (Object.values(scoreInputErrors).some(Boolean)) return;
     const errors = {};
-    if (!formData.MSSV)          errors.MSSV = 'Vui lòng chọn sinh viên';
-    if (!formData.MaLopHocPhan)  errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
+    if (!formData.MSSV) errors.MSSV = 'Vui lòng chọn sinh viên';
+    if (!formData.MaLopHocPhan) errors.MaLopHocPhan = 'Vui lòng chọn lớp học phần';
     if (Object.keys(errors).length) { setFormErrors(errors); return; }
 
     if (!lockedConfigs[formData.MaLopHocPhan]) {
-        showNotification('error', 'Vui lòng chốt cấu hình điểm trước khi lưu điểm!');
-        return;
+      showNotification('error', 'Vui lòng chốt cấu hình điểm trước khi lưu điểm!');
+      return;
     }
 
     const cfg = getActiveConfig(formData.MaLopHocPhan);
-    const ta  = (teachingAssignments || []).find(a => a.MaLopHocPhan === formData.MaLopHocPhan);
-    const t10  = calcTotal10(formData, cfg);
-    const gpa  = convertToGPA(t10);
+    const ta = (teachingAssignments || []).find(a => a.MaLopHocPhan === formData.MaLopHocPhan);
+    const t10 = calcTotal10(formData, cfg);
+    const gpa = convertToGPA(t10);
 
     const weights = {};
     cfg.forEach(c => { if (c.enabled) weights[`TrongSo_${c.shortLabel}`] = Number(c.weight) / 100; });
 
     const getPayloadValue = (key) => {
       const comp = cfg.find(c => c.key === key);
-      if (!comp || !comp.enabled || Number(comp.weight) === 0) return null; 
+      if (!comp || !comp.enabled || Number(comp.weight) === 0) return null;
       return formData[key] !== '' && formData[key] != null ? formData[key] : null;
     };
 
     const payload = {
       MSSV: formData.MSSV, MaLopHocPhan: formData.MaLopHocPhan, HocKy: ta?.HocKy || formData.HocKy || '',
       DiemChuyenCan: getPayloadValue('DiemChuyenCan'),
-      DiemBaiTap:    getPayloadValue('DiemBaiTap'),
-      DiemGiuaKy:    getPayloadValue('DiemGiuaKy'),
-      DiemCuoiKy:    getPayloadValue('DiemCuoiKy'),
+      DiemBaiTap: getPayloadValue('DiemBaiTap'),
+      DiemGiuaKy: getPayloadValue('DiemGiuaKy'),
+      DiemCuoiKy: getPayloadValue('DiemCuoiKy'),
       DiemTong: t10, DiemGPA: gpa.gpa, DiemChu: gpa.letter, XepLoai: gpa.text,
       ...weights,
     };
@@ -378,29 +378,29 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
   const executeSubmitGrade = async () => {
     const { payload, isEdit } = submitConfirmModal;
     try {
-        if (isEdit) {
-          await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
-          showNotification('success', 'Cập nhật điểm thành công!');
+      if (isEdit) {
+        await axios.put(`${API_URL}/api/grades/${editingGrade.MaDiem}`, payload);
+        showNotification('success', 'Cập nhật điểm thành công!');
+      } else {
+        const existing = (grades || []).find(g => g.MSSV === payload.MSSV && g.MaLopHocPhan === payload.MaLopHocPhan);
+        if (existing?.MaDiem) {
+          await axios.put(`${API_URL}/api/grades/${existing.MaDiem}`, payload);
         } else {
-          const existing = (grades || []).find(g => g.MSSV === payload.MSSV && g.MaLopHocPhan === payload.MaLopHocPhan);
-          if (existing?.MaDiem) {
-            await axios.put(`${API_URL}/api/grades/${existing.MaDiem}`, payload);
-          } else {
-            await axios.post(`${API_URL}/api/grades`, payload);
-          }
-          showNotification('success', 'Thêm điểm thành công!');
+          await axios.post(`${API_URL}/api/grades`, payload);
         }
-        onRefresh && onRefresh();
-        closeModal();
-        setSubmitConfirmModal({ show: false, payload: null, isEdit: false });
-      } catch (err) {
-        setSubmitConfirmModal({ show: false, payload: null, isEdit: false });
-        showNotification('error', err.response?.data?.message || 'Lỗi khi lưu điểm!');
+        showNotification('success', 'Thêm điểm thành công!');
       }
+      onRefresh && onRefresh();
+      closeModal();
+      setSubmitConfirmModal({ show: false, payload: null, isEdit: false });
+    } catch (err) {
+      setSubmitConfirmModal({ show: false, payload: null, isEdit: false });
+      showNotification('error', err.response?.data?.message || 'Lỗi khi lưu điểm!');
+    }
   };
 
   const handleDeleteCancel = () => setDeleteModal({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
-  
+
   const handleDeleteConfirm = async () => {
     try {
       await axios.delete(`${API_URL}/api/grades/${deleteModal.maDiem}`);
@@ -416,26 +416,26 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     if (!maLopHocPhan) return [];
     const ta = (teachingAssignments || []).find(cs => cs.MaLopHocPhan === maLopHocPhan);
     const map = new Map();
-    
+
     if (ta && ta.MaLop) {
       (students || []).filter(s => s.MaLop === ta.MaLop).forEach(s => map.set(s.MSSV, { ...s }));
     }
-    
+
     (grades || []).filter(g => g.MaLopHocPhan === maLopHocPhan).forEach(g => {
       if (!map.has(g.MSSV)) {
-         const stuInfo = (students || []).find(s => s.MSSV === g.MSSV);
-         map.set(g.MSSV, { MSSV: g.MSSV, HoTen: stuInfo?.HoTen || g.TenSinhVien || 'Sinh viên' });
+        const stuInfo = (students || []).find(s => s.MSSV === g.MSSV);
+        map.set(g.MSSV, { MSSV: g.MSSV, HoTen: stuInfo?.HoTen || g.TenSinhVien || 'Sinh viên' });
       }
     });
-    
+
     return Array.from(map.values()).sort((a, b) => a.MSSV.localeCompare(b.MSSV));
   }, [teachingAssignments, students, grades]);
 
   // ĐÃ FIX: Biến hasPreview đúng tên
   const activeCfgForm = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
   const previewTotal = calcTotal10(formData, activeCfgForm);
-  const previewGPA   = convertToGPA(previewTotal);
-  const hasPreview   = activeCfgForm.some(c => c.enabled && Number(c.weight) > 0 && formData[c.key] !== '' && formData[c.key] != null);
+  const previewGPA = convertToGPA(previewTotal);
+  const hasPreview = activeCfgForm.some(c => c.enabled && Number(c.weight) > 0 && formData[c.key] !== '' && formData[c.key] != null);
 
   return (
     <div className="space-y-6">
@@ -474,22 +474,27 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
         <div className="space-y-4 pb-12">
           {(teachingAssignments || []).map(ta => {
             const isOpen = configOpen[ta.MaLopHocPhan];
-            const cfg    = classConfigs[ta.MaLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
+            const cfg = classConfigs[ta.MaLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
             const isLocked = lockedConfigs[ta.MaLopHocPhan];
             const active = getActiveConfig(ta.MaLopHocPhan).filter(c => c.enabled);
             const hasSchedule = (teachingSchedule || []).some(s => s.MaLopHocPhan === ta.MaLopHocPhan);
-            
+
             const studentsWithGrades = getStudentsForLHP(ta.MaLopHocPhan).map(s => {
               const grade = (grades || []).find(g => g.MSSV === s.MSSV && g.MaLopHocPhan === ta.MaLopHocPhan);
               return { ...s, grade };
             });
 
             const term = searchTerm.toLowerCase();
-            const filteredStudents = studentsWithGrades.filter(s => 
-              !term || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+            const matchClass = term && (
+              ta.TenMonHoc?.toLowerCase().includes(term) ||
+              ta.MaLopHocPhan?.toLowerCase().includes(term)
             );
 
-            if (term && filteredStudents.length === 0) return null;
+            const filteredStudents = studentsWithGrades.filter(s =>
+              !term || matchClass || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+            );
+
+            if (term && !matchClass && filteredStudents.length === 0) return null;
 
             return (
               <div key={ta.MaLopHocPhan} className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -518,11 +523,11 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                     </div>
                   </div>
                 </button>
-                
+
                 <AnimatePresence>
                   {isOpen && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[#E5E7EB] bg-[#F7F8FA]/30">
-                      
+
                       {!hasSchedule ? (
                         <div className="p-8 text-center bg-[#FEF2F2]">
                           <AlertTriangle className="w-12 h-12 text-[#EF4444] mx-auto mb-3" />
@@ -533,77 +538,75 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                         <>
                           <div className="p-6">
                             <ConfigPanel
-                          maLopHocPhan={ta.MaLopHocPhan}
-                          tenLop={ta.TenMonHoc}
-                          components={cfg}
-                          locked={isLocked}
-                          onChange={(next) => handleConfigChange(ta.MaLopHocPhan, next)}
-                          onSaveRequest={() => handleRequestSaveConfig(ta.MaLopHocPhan)}
-                        />
-                      </div>
-
-                      <div className="px-6 pb-6">
-                        <div className="flex items-center justify-between mb-4 bg-[#3B82F6]/10 px-4 py-3 rounded-xl border border-blue-100">
-                          <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-[#3B82F6]"/>Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
-                          <span className="text-sm text-[#3B82F6] font-bold bg-[#FFFFFF] px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
-                        </div>
-                        
-                        <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                              <thead className="bg-[#F7F8FA]/80 border-b border-[#E5E7EB]">
-                                <tr>
-                                  <th className="py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>
-                                  <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider">Họ Tên</th>
-                                  {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">{c.shortLabel}</th>)}
-                                  <th className="py-4 px-3 text-xs font-black text-[#1F2937] uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
-                                  <th className="py-4 px-3 text-xs font-black text-[#152238] uppercase tracking-wider text-center bg-[#FFF7D6]/50">GPA</th>
-                                  <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">Thao tác</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
-                                  const grade = stu.grade;
-                                  const hasGrade = !!grade;
-                                  const hasAnyScore = grade && active.some(c => grade[c.key] != null && grade[c.key] !== '');
-                                  const t10 = hasAnyScore ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
-                                  const gpa = hasAnyScore ? convertToGPA(t10) : null;
-                                  return (
-                                    <tr key={stu.MSSV} className="hover:bg-[#3B82F6]/10/40 transition-colors group">
-                                      <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
-                                      <td className="py-4 px-4 text-sm font-bold text-[#1F2937]">{stu.HoTen}</td>
-                                      {active.map(c => {
-                                        const isZero = !c.enabled || Number(c.weight) === 0;
-                                        const val = grade && grade[c.key];
-                                        const displayVal = isZero ? '—' : (hasGrade && val != null && val !== '' ? val : '—');
-                                        return (
-                                          <td key={c.key} className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">
-                                            {displayVal}
-                                          </td>
-                                        );
-                                      })}
-                                      <td className="py-4 px-3 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10}</td>
-                                      <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasAnyScore ? gpa.gpa.toFixed(1) : '—'}</td>
-                                      <td className="py-3 px-4">
-                                        <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                                          {hasGrade ? (
-                                            <>
-                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
-                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
-                                            </>
-                                          ) : (
-                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-300 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
-                              </tbody>
-                            </table>
+                              maLopHocPhan={ta.MaLopHocPhan}
+                              tenLop={ta.TenMonHoc}
+                              components={cfg}
+                              locked={isLocked}
+                              onChange={(next) => handleConfigChange(ta.MaLopHocPhan, next)}
+                              onSaveRequest={() => handleRequestSaveConfig(ta.MaLopHocPhan)}
+                            />
                           </div>
-                        </div>
-                      </div>
+
+                          <div className="px-6 pb-6">
+                            <div className="flex items-center justify-between mb-4 bg-[#3B82F6]/10 px-4 py-3 rounded-xl border border-blue-100">
+                              <h4 className="font-bold text-blue-800 flex items-center gap-2"><Users className="w-5 h-5 text-[#3B82F6]" />Danh sách điểm sinh viên lớp {ta.TenLop}</h4>
+                              <span className="text-sm text-[#3B82F6] font-bold bg-[#FFFFFF] px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
+                            </div>
+
+                            <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                  <thead className="bg-[#F7F8FA]/80 border-b border-[#E5E7EB]">
+                                    <tr>
+                                      <th className="py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>
+                                      <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider">Họ Tên</th>
+                                      {active.map(c => <th key={c.key} className="py-4 px-3 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">{c.shortLabel}</th>)}
+                                      <th className="py-4 px-3 text-xs font-black text-[#1F2937] uppercase tracking-wider text-center bg-gray-100/50">Hệ 10</th>
+                                      <th className="py-4 px-3 text-xs font-black text-[#152238] uppercase tracking-wider text-center bg-[#FFF7D6]/50">GPA</th>
+                                      <th className="py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider text-center">Thao tác</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100">
+                                    {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
+                                      const grade = stu.grade;
+                                      const hasGrade = !!grade;
+                                      const t10 = hasGrade ? (grade.DiemTong || calcTotal10(grade, active)) : '—';
+                                      const gpa = hasGrade ? convertToGPA(t10) : null;
+                                      return (
+                                        <tr key={stu.MSSV} className="hover:bg-[#3B82F6]/10/40 transition-colors group">
+                                          <td className="py-4 px-5 text-sm font-bold text-gray-700">{stu.MSSV}</td>
+                                          <td className="py-4 px-4 text-sm font-bold text-[#1F2937]">{stu.HoTen}</td>
+                                          {active.map(c => {
+                                            const isZero = !c.enabled || Number(c.weight) === 0;
+                                            const val = grade && grade[c.key];
+                                            const displayVal = isZero ? '—' : (hasGrade && val != null && val !== '' ? val : '—');
+                                            return (
+                                              <td key={c.key} className="py-4 px-3 text-sm text-center text-[#6B7280] font-medium">
+                                                {displayVal}
+                                              </td>
+                                            );
+                                          })}
+                                          <td className="py-4 px-3 text-sm text-center font-black text-[#1F2937] bg-[#F7F8FA]/50 group-hover:bg-transparent">{t10}</td>
+                                          <td className="py-4 px-3 text-sm text-center font-black text-[#F4C542] bg-[#FFF7D6]/50 group-hover:bg-transparent">{hasGrade ? gpa.gpa.toFixed(1) : '—'}</td>                                      <td className="py-3 px-4">
+                                            <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                              {hasGrade ? (
+                                                <>
+                                                  <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5" /> Sửa</button>
+                                                  <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                                                </>
+                                              ) : (
+                                                <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5" /> Nhập</button>
+                                              )}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    }) : <tr><td colSpan={active.length + 5} className="py-8 text-center text-sm text-gray-300 font-medium">Lớp này chưa có sinh viên đăng ký</td></tr>}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
                         </>
                       )}
                     </motion.div>
@@ -750,19 +753,19 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
           <div className="fixed inset-0 flex items-center justify-center z-[10005] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false })} />
             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
-               <div className="w-20 h-20 bg-[#3B82F6]/10 text-[#3B82F6] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
-                 <Save className="w-10 h-10" />
-               </div>
-               <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận lưu điểm</h3>
-               <p className="text-[#6B7280] text-sm font-medium mb-7 px-2 leading-relaxed">
-                 Bạn có chắc chắn muốn lưu điểm cho sinh viên này vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.
-               </p>
-               <div className="flex gap-3">
-                 <button onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Kiểm tra lại</button>
-                 <button onClick={executeSubmitGrade} className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 hover:shadow-blue-500/25 transition-all">
-                   Đồng ý lưu
-                 </button>
-               </div>
+              <div className="w-20 h-20 bg-[#3B82F6]/10 text-[#3B82F6] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-blue-100/50 shadow-inner">
+                <Save className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận lưu điểm</h3>
+              <p className="text-[#6B7280] text-sm font-medium mb-7 px-2 leading-relaxed">
+                Bạn có chắc chắn muốn lưu điểm cho sinh viên này vào hệ thống? Dữ liệu điểm sẽ được cập nhật ngay lập tức.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Kiểm tra lại</button>
+                <button onClick={executeSubmitGrade} className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 hover:shadow-blue-500/25 transition-all">
+                  Đồng ý lưu
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
@@ -772,41 +775,41 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
       <AnimatePresence>
         {configConfirm.show && (
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
-             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} />
-             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
-                <div className="w-20 h-20 bg-red-100 text-[#DC2626] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-red-200/50 shadow-inner">
-                  <Lock className="w-10 h-10" />
-                </div>
-                <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận chốt cấu hình</h3>
-                <p className="text-[#6B7280] text-sm font-medium mb-6 px-2 leading-relaxed">
-                  Trọng số điểm của môn học này sẽ được áp dụng cho toàn bộ sinh viên trong danh sách.
-                </p>
-                
-                <label className="flex items-start gap-3 bg-[#EF4444]/10/50 hover:bg-[#EF4444]/10 p-4 rounded-xl border-2 border-red-200 text-left cursor-pointer mb-7 transition-colors group">
-                  <div className="pt-0.5">
-                    <input 
-                      type="checkbox" 
-                      className="w-5 h-5 accent-red-600 rounded cursor-pointer"
-                      checked={configConfirm.checked}
-                      onChange={e => setConfigConfirm(prev => ({ ...prev, checked: e.target.checked }))}
-                    />
-                  </div>
-                  <span className="text-sm font-bold text-red-800 leading-tight">
-                    Tôi hiểu rằng sau khi bấm chốt, cấu hình sẽ bị KHÓA VĨNH VIỄN và tuyệt đối KHÔNG THỂ thay đổi được nữa.
-                  </span>
-                </label>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} />
+            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
+              <div className="w-20 h-20 bg-red-100 text-[#DC2626] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-red-200/50 shadow-inner">
+                <Lock className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận chốt cấu hình</h3>
+              <p className="text-[#6B7280] text-sm font-medium mb-6 px-2 leading-relaxed">
+                Trọng số điểm của môn học này sẽ được áp dụng cho toàn bộ sinh viên trong danh sách.
+              </p>
 
-                <div className="flex gap-3">
-                  <button onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Quay lại</button>
-                  <button 
-                    disabled={!configConfirm.checked} 
-                    onClick={executeSaveConfig} 
-                    className={`flex-1 py-3.5 rounded-xl font-bold shadow-md transition-all ${!configConfirm.checked ? 'bg-gray-200 text-gray-300 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-red-500/25'}`}
-                  >
-                    Chốt vĩnh viễn
-                  </button>
+              <label className="flex items-start gap-3 bg-[#EF4444]/10/50 hover:bg-[#EF4444]/10 p-4 rounded-xl border-2 border-red-200 text-left cursor-pointer mb-7 transition-colors group">
+                <div className="pt-0.5">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 accent-red-600 rounded cursor-pointer"
+                    checked={configConfirm.checked}
+                    onChange={e => setConfigConfirm(prev => ({ ...prev, checked: e.target.checked }))}
+                  />
                 </div>
-             </motion.div>
+                <span className="text-sm font-bold text-red-800 leading-tight">
+                  Tôi hiểu rằng sau khi bấm chốt, cấu hình sẽ bị KHÓA VĨNH VIỄN và tuyệt đối KHÔNG THỂ thay đổi được nữa.
+                </span>
+              </label>
+
+              <div className="flex gap-3">
+                <button onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Quay lại</button>
+                <button
+                  disabled={!configConfirm.checked}
+                  onClick={executeSaveConfig}
+                  className={`flex-1 py-3.5 rounded-xl font-bold shadow-md transition-all ${!configConfirm.checked ? 'bg-gray-200 text-gray-300 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-red-500/25'}`}
+                >
+                  Chốt vĩnh viễn
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
