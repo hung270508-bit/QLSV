@@ -138,6 +138,10 @@ function StudentManagement() {
                         await axios.post(`${API_BASE}/rfid/reset-status`);
                         setToast({ show: true, message: 'Đã lấy mã thẻ thành công!', type: 'success' });
                     }
+                } else if (data.mode === 'REGISTER' && data.capturedUid === 'ERROR:DUPLICATE') {
+                    // Web hiển thị lỗi trùng thẻ và reset lại trạng thái chờ để quẹt thẻ khác
+                    setToast({ show: true, message: 'UID đã được sử dụng bởi người khác!', type: 'error' });
+                    await axios.post(`${API_BASE}/rfid/activate-register`, { mssv: studentMssv });
                 }
             } catch (error) {
                 console.error("Lỗi poll:", error);

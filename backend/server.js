@@ -2120,6 +2120,7 @@ app.post('/api/attendance/uid', async (req, res) => {
                                         await db.promise().query('UPDATE rfid_state SET mode = ?, capturedUid = ? WHERE id = 1', ["REGISTER_DONE", uid]);
                                         res.json({ success: true, action: "REGISTER_OK" });
                                     } else {
+                                        await db.promise().query('UPDATE rfid_state SET capturedUid = ? WHERE id = 1', ["ERROR:DUPLICATE"]);
                                         res.status(400).json({ success: false, message: 'Thẻ này đã có chủ, vui lòng dùng thẻ khác' });
                                     }
                                 });
