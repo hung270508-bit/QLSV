@@ -1,19 +1,25 @@
+const fs = require('fs');
 const { execSync } = require('child_process');
-const envs = {
-  DB_HOST: 'mysql-d508c3a-hung270508-ae5d.h.aivencloud.com',
-  DB_USER: 'avnadmin',
-  DB_PASSWORD: 'AVNS_tlxTooyMoOQJira1gwy',
-  DB_NAME: 'defaultdb',
-  DB_PORT: '18628'
-};
 
-for (const [key, value] of Object.entries(envs)) {
-  console.log(`Adding ${key}...`);
-  try {
-    execSync(`npx vercel env rm ${key} production -y`);
-  } catch (e) {}
-  execSync(`npx vercel env add ${key} production`, {
-    input: value
-  });
-  console.log(`Added ${key}`);
+const envFile = fs.readFileSync('backend/.env', 'utf8');
+const lines = envFile.split('\n');
+
+for (const line of lines) {
+    if (line.trim() && !line.startsWith('#')) {
+        const [key, ...values] = line.split('=');
+        if (key && values.length > 0) {
+            const value = values.join('=').trim().replace(/['"]/g, '');
+            console.log(`Adding ${key} to Vercel...`);
+            try {
+                execSync(`echo ${value} | npx vercel env rm ${key} production --yes`, { stdio: 'ignore' });
+            } catch (e) {}
+            try {
+                execSync(`echo ${value} | npx vercel env add ${key} production`, { stdio: 'pipe' });
+                console.log(`Successfully added ${key}`);
+            } catch (e) {
+                console.log(`Failed to add ${key}`);
+            }
+        }
+    }
 }
+console.log('Done syncing env vars!');
