@@ -10,14 +10,18 @@ for (const line of lines) {
         if (key && values.length > 0) {
             const value = values.join('=').trim().replace(/['"]/g, '');
             console.log(`Adding ${key} to Vercel...`);
+            
             try {
-                execSync(`echo ${value} | npx vercel env rm ${key} production --yes`, { stdio: 'ignore' });
+                execSync(`npx vercel env rm ${key} production --yes --cwd d:\\QLSV`, { stdio: 'ignore' });
             } catch (e) {}
+            
             try {
-                execSync(`echo ${value} | npx vercel env add ${key} production`, { stdio: 'pipe' });
+                fs.writeFileSync(`temp_${key}.txt`, value, 'utf8');
+                execSync(`cmd.exe /c "npx vercel env add ${key} production --cwd d:\\QLSV < temp_${key}.txt"`, { stdio: 'inherit' });
+                fs.unlinkSync(`temp_${key}.txt`);
                 console.log(`Successfully added ${key}`);
             } catch (e) {
-                console.log(`Failed to add ${key}`);
+                console.log(`Error running vercel add for ${key}`, e.message);
             }
         }
     }
