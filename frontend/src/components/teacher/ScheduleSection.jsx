@@ -188,6 +188,10 @@ function ScheduleSection({ user }) {
   };
   const safePos = getSafeTooltipPos();
 
+  const hasClassesThisWeek = allSchedules.some(item => 
+    weekDates.some(date => isSameDate(date, item.ngayHoc))
+  );
+
   return (
     <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden relative">
       
@@ -293,7 +297,7 @@ function ScheduleSection({ user }) {
       {/* KHU VỰC 1: XEM THEO TUẦN (GRID MA TRẬN) */}
       {/* ======================================= */}
       {viewType === 'week' && (
-        allSchedules.length > 0 ? (
+        hasClassesThisWeek ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse min-w-[1000px]">
               <thead>
@@ -348,8 +352,8 @@ function ScheduleSection({ user }) {
         ) : (
           <div className="flex flex-col items-center justify-center p-16 text-center">
             <div className="w-20 h-20 bg-[#FFF7D6] rounded-full flex items-center justify-center mb-4"><BookOpen className="w-10 h-10 text-orange-300" /></div>
-            <h3 className="text-xl font-bold text-gray-700 mb-2">Chưa có lịch giảng dạy</h3>
-            <p className="text-[#6B7280] max-w-md">Hệ thống chưa ghi nhận lịch giảng dạy nào cho tuần này.</p>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">{allSchedules.length === 0 ? "Chưa có lịch giảng dạy" : "Trống lịch tuần này"}</h3>
+            <p className="text-gray-500 max-w-md">{allSchedules.length === 0 ? "Hiện tại bạn chưa được phân công lịch giảng dạy nào. Các lịch học sẽ hiển thị tại đây khi được phòng đào tạo xếp lịch." : "Tuần này bạn không có lịch lên lớp. Hãy chọn tuần khác hoặc chuyển sang Lịch dạy Học Kỳ."}</p>
           </div>
         )
       )}

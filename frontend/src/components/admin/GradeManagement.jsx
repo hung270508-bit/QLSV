@@ -747,7 +747,62 @@ function GradeManagement() {
                         </div>
                         
                         <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
-                          <div className="overflow-x-auto">
+                          
+                          {/* Mobile View */}
+                          <div className="block sm:hidden divide-y divide-gray-100">
+                            {filteredStudents.length > 0 ? filteredStudents.map((stu) => {
+                              const grade = stu.grade;
+                              const hasGrade = !!grade;
+                              const t10 = hasGrade && grade.DiemTong != null ? grade.DiemTong : calcTotal10(grade || {}, active);
+                              const gpa = convertToGPA(t10);
+                              
+                              return (
+                                <div key={stu.MSSV} className="p-4 hover:bg-[#3B82F6]/10/40 transition-colors">
+                                  <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                      <h4 className="text-sm font-bold text-[#1F2937]">{stu.HoTen}</h4>
+                                      <p className="text-xs text-gray-500 font-mono mt-0.5">{stu.MSSV}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-sm font-black text-[#1F2937] bg-[#F7F8FA] px-2 py-1 rounded shadow-sm inline-block mb-1">{t10}</span>
+                                      <br/>
+                                      <span className="text-xs font-black text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded shadow-sm inline-block">{gpa.gpa.toFixed(1)}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-4 gap-2 mb-3">
+                                    {active.map(c => {
+                                      const isZero = !c.enabled || Number(c.weight) === 0;
+                                      const val = grade && grade[c.key];
+                                      const displayVal = isZero ? '—' : (hasGrade && val != null && val !== '' ? val : '—');
+                                      return (
+                                        <div key={c.key} className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+                                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">{c.shortLabel}</p>
+                                          <p className="text-xs font-bold text-gray-700">{displayVal}</p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  
+                                  <div className="flex justify-end gap-2">
+                                    {hasGrade ? (
+                                      <>
+                                        <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-sm flex-1 justify-center ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
+                                        <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="px-4 py-2 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-xl transition-colors shadow-sm flex-1 flex justify-center items-center"><Trash2 className="w-4 h-4"/> Xóa</button>
+                                      </>
+                                    ) : (
+                                      <button onClick={() => openAddGradeForStudent(ta, stu)} className={`w-full px-4 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5"/> Nhập điểm</button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }) : (
+                              <div className="p-8 text-center text-gray-500 font-medium text-sm border-t border-gray-100">Không tìm thấy sinh viên nào.</div>
+                            )}
+                          </div>
+
+                          {/* Desktop View */}
+                          <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
                               <thead className="bg-[#F7F8FA]/80 border-b border-[#E5E7EB]">
                                 <tr>
@@ -976,9 +1031,65 @@ function GradeManagement() {
                 </div>
 
                 {bulkGrades.length > 0 ? (
-                  <div className="border-2 border-[#E5E7EB] rounded-2xl overflow-x-auto shadow-sm">
-                    <table className="w-full min-w-[800px]">
-                      <thead className="bg-[#F7F8FA]">
+                  <div className="border-2 border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm bg-white">
+                    
+                    {/* Mobile View */}
+                    <div className="block sm:hidden divide-y divide-gray-100">
+                      {bulkGrades.map((grade, idx) => {
+                        const cfg = getActiveConfig(bulkSection);
+                        const hasRowErr = SCORE_FIELDS.some(f => grade.rowErrors?.[f]);
+                        const isScored = hasAnyScore(grade.DiemChuyenCan, grade.DiemBaiTap, grade.DiemGiuaKy, grade.DiemCuoiKy);
+                        const t10 = isScored && !hasRowErr ? calcTotal10(grade, cfg) : null;
+                        const gpa = t10 ? convertToGPA(t10) : null;
+                        
+                        return (
+                          <div key={idx} className={`p-4 ${grade.alreadyExists ? 'bg-[#3B82F6]/10/20' : ''} ${hasRowErr ? 'bg-[#EF4444]/10/30' : ''}`}>
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h4 className="text-sm font-bold text-[#1F2937]">{grade.HoTen}</h4>
+                                <p className="text-xs text-gray-500 font-mono mt-0.5">{grade.MSSV}</p>
+                                {grade.alreadyExists && <span className="inline-block mt-2 px-2 py-0.5 rounded-md text-[9px] text-[#3B82F6] bg-blue-50 font-bold uppercase tracking-wider border border-blue-100">Cập nhật</span>}
+                              </div>
+                              <div className="text-right flex flex-col gap-1">
+                                <div className="bg-gray-50 px-2 py-1 rounded shadow-inner border border-gray-100">
+                                  <span className="text-[10px] text-gray-500 font-bold uppercase mr-2">Tổng</span>
+                                  <span className="text-sm font-black text-[#1F2937]">{t10 ?? '—'}</span>
+                                </div>
+                                <div className="bg-purple-50 px-2 py-1 rounded shadow-inner border border-purple-100">
+                                  <span className="text-[10px] text-purple-400 font-bold uppercase mr-2">GPA</span>
+                                  <span className={`text-xs font-black ${getLetterColor(gpa?.letter)}`}>{gpa?.letter ?? '—'}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                              {cfg.map(c => {
+                                const isZero = !c.enabled || Number(c.weight) === 0;
+                                return (
+                                  <div key={c.key} className="flex flex-col">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 flex justify-between">
+                                      <span>{c.shortLabel}</span>
+                                      <span className="text-purple-400">{!isZero ? c.weight+'%' : '0%'}</span>
+                                    </label>
+                                    <BulkScoreInput
+                                      value={isZero ? '' : grade[c.key]}
+                                      disabled={isZero}
+                                      onChange={val => handleBulkFieldChange(idx, c.key, val, false)}
+                                      onError={hasErr => handleBulkFieldChange(idx, c.key, grade[c.key], hasErr)}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop View */}
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="w-full min-w-[800px]">
+                        <thead className="bg-[#F7F8FA]">
                         <tr>
                           <th className="text-left py-4 px-5 text-xs font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>
                           <th className="text-left py-4 px-4 text-xs font-black text-[#6B7280] uppercase tracking-wider">Họ tên</th>
@@ -1029,6 +1140,7 @@ function GradeManagement() {
                       </tbody>
                     </table>
                   </div>
+                </div>
                 ) : bulkSection ? <div className="py-20 text-center text-gray-300 font-semibold border-2 border-dashed border-[#E5E7EB] rounded-2xl">Không có sinh viên nào đăng ký lớp này</div> : null}
 
                 <div className="flex gap-4 pt-2">

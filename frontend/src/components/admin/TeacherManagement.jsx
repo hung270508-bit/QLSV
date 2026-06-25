@@ -578,7 +578,39 @@ function TeacherManagement() {
 
       {/* Table Section */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
-        <div className="overflow-x-auto">
+        
+        {/* Mobile View */}
+        <div className="block sm:hidden divide-y divide-orange-50">
+          {currentItems.length > 0 ? currentItems.map((teacher, index) => (
+            <div key={teacher.MaGiangVien} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer" onClick={() => handleViewDetails(teacher)}>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h4 className="font-bold text-[#1F2937] text-sm">{teacher.HoTen}</h4>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{teacher.MaGiangVien}</p>
+                </div>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${teacher.TrangThai === 'Đang dạy' ? 'bg-[#22C55E]/10 text-green-700' : teacher.TrangThai === 'Tạm nghỉ' ? 'bg-yellow-50 text-yellow-700' : 'bg-[#EF4444]/10 text-red-700'}`}>{teacher.TrangThai || 'Đang dạy'}</span>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 mb-3">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 truncate max-w-[150px]">{teacher.TenKhoa || 'Chưa xếp khoa'}</span>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${teacher.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-blue-700' : teacher.GioiTinh === 'Nữ' ? 'bg-pink-50 text-pink-700' : 'bg-[#F7F8FA] text-gray-700'}`}>{teacher.GioiTinh || 'N/A'}</span>
+              </div>
+              
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex flex-col min-w-0">
+                  <span className="truncate max-w-[180px]">{teacher.Email || 'N/A'}</span>
+                  <span className="mt-0.5">{teacher.SoDienThoai || 'N/A'}</span>
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); handleEdit(teacher); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shrink-0">
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )) : <div className="p-8 text-center text-gray-400 text-sm">Không tìm thấy giảng viên nào</div>}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>

@@ -439,7 +439,28 @@ function FacultyManagement() {
 
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
-        <div className="overflow-x-auto">
+        
+        {/* Mobile View */}
+        <div className="block sm:hidden divide-y divide-gray-50">
+          {currentItems.length > 0 ? (
+            currentItems.map((faculty, index) => (
+              <div key={faculty.MaKhoa} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer flex justify-between items-center" onClick={() => handleViewDetails(faculty)}>
+                <div>
+                  <h4 className="font-bold text-[#1F2937] text-sm">{faculty.TenKhoa}</h4>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{faculty.MaKhoa}</p>
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); handleEdit(faculty); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm shrink-0">
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-400 text-sm">Không tìm thấy khoa nào</div>
+          )}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50/80 to-orange-100/60 border-b border-[#FFF7D6]">
               <tr>

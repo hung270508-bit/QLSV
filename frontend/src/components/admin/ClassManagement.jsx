@@ -650,7 +650,47 @@ function ClassManagement() {
 
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
-        <div className="overflow-x-auto">
+        
+        {/* Mobile View */}
+        <div className="block sm:hidden divide-y divide-gray-100">
+          {currentItems.length > 0 ? (
+            currentItems.map((cls, index) => (
+              <div key={cls.MaLop} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer" onClick={() => handleViewDetails(cls)}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="font-bold text-[#1F2937] text-sm">{cls.TenLop}</h4>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{cls.MaLop}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); handleEdit(cls); }} className="p-2 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(cls); }} className="p-2 bg-[#EF4444]/20 text-[#EF4444] rounded-xl hover:bg-red-200 transition-all shadow-sm">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-semibold bg-[#F4C542]/20 text-[#B45309]">
+                    {cls.TenKhoa || 'N/A'}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
+                    {cls.NienKhoa || 'N/A'}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700">
+                    Sĩ số: {cls.SoSinhVien ?? 0}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-400 text-sm">Không tìm thấy lớp học nào</div>
+          )}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
               <tr>

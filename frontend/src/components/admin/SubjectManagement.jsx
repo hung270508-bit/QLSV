@@ -499,7 +499,36 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
 
       {/* Table & Pagination */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
-        <div className="overflow-x-auto">
+        
+        {/* Mobile View */}
+        <div className="block sm:hidden divide-y divide-gray-100">
+          {currentItems.length > 0 ? (
+            currentItems.map((subject, index) => (
+              <div key={subject.MaMonHoc} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer" onClick={() => handleViewDetails(subject)}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="font-bold text-[#1F2937] text-sm">{subject.TenMonHoc}</h4>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{subject.MaMonHoc}</p>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(subject); }} className="p-2 bg-red-100 text-[#DC2626] rounded-xl hover:bg-red-200 transition-all shadow-sm border border-red-200 shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="flex items-center">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6]">
+                    {subject.SoTinChi} tín chỉ
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-400 text-sm">Không tìm thấy môn học nào</div>
+          )}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100/40">
               <tr>

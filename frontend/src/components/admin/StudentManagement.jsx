@@ -1417,9 +1417,43 @@ function StudentManagement() {
       {/* Table */}
 
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
+        
+        {/* Mobile View */}
+        <div className="block sm:hidden divide-y divide-orange-50">
+          {currentItems.length > 0 ? (
+            currentItems.map((student, index) => (
+              <div key={student.MSSV} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer" onClick={() => handleViewDetails(student)}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="font-bold text-[#1F2937] text-sm">{capitalizeVietnameseName(student.HoTen)}</h4>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{student.MSSV}</p>
+                  </div>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${student.TrangThai === 'Đang học' ? 'bg-[#22C55E]/10 text-green-700' : student.TrangThai === 'Học lại' ? 'bg-yellow-50 text-yellow-700' : 'bg-[#EF4444]/10 text-red-700'}`}>{student.TrangThai || 'Đang học'}</span>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">{student.TenLop || 'N/A'}</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${student.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-blue-700' : student.GioiTinh === 'Nữ' ? 'bg-pink-50 text-pink-700' : 'bg-[#F7F8FA] text-gray-700'}`}>{student.GioiTinh || 'N/A'}</span>
+                </div>
+                
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate max-w-[180px]">{student.Email || 'N/A'}</span>
+                    <span className="mt-0.5">{student.SoDienThoai || 'N/A'}</span>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(student); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shrink-0">
+                    <Edit className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-400 text-sm">Không tìm thấy sinh viên nào</div>
+          )}
+        </div>
 
-        <div className="overflow-x-auto">
-
+        {/* Desktop View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
 
             <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
