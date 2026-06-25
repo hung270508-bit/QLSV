@@ -31,11 +31,11 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
     } else if (passwordForm.newPassword.includes(' ')) {
       newErrors.newPassword = 'Mật khẩu không được chứa khoảng trắng';
       hasError = true;
-    } else if (passwordForm.newPassword.length < 5) {
-      newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 5 ký tự';
+    } else if (passwordForm.newPassword.length < 8) {
+      newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự';
       hasError = true;
-    } else if (passwordForm.newPassword.length > 8) {
-      newErrors.newPassword = 'Mật khẩu mới không được vượt quá 8 ký tự';
+    } else if (passwordForm.newPassword.length > 20) {
+      newErrors.newPassword = 'Mật khẩu mới không được vượt quá 20 ký tự';
       hasError = true;
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(passwordForm.newPassword)) {
       newErrors.newPassword = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt';

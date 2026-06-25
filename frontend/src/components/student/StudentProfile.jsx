@@ -98,13 +98,13 @@ function StudentProfile({ profile, loading }) {
 
       errors.newPassword = 'Mật khẩu không được chứa khoảng trắng';
 
-    } else if (passwordForm.newPassword.length < 5) {
+    } else if (passwordForm.newPassword.length < 8) {
 
-      errors.newPassword = 'Mật khẩu mới phải có ít nhất 5 ký tự';
+      errors.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự';
 
-    } else if (passwordForm.newPassword.length > 8) {
+    } else if (passwordForm.newPassword.length > 20) {
 
-      errors.newPassword = 'Mật khẩu mới không được vượt quá 8 ký tự';
+      errors.newPassword = 'Mật khẩu mới không được vượt quá 20 ký tự';
 
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(passwordForm.newPassword)) {
 
