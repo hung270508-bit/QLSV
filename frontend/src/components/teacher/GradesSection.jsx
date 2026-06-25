@@ -256,7 +256,8 @@ function GradesSection({ grades, teachingAssignments, students, user, onRefresh 
       const cfg = loadConfig(ta.MaLopHocPhan);
       configs[ta.MaLopHocPhan] = cfg;
       active[ta.MaLopHocPhan] = cfg;
-      locks[ta.MaLopHocPhan] = localStorage.getItem(getLockKey(ta.MaLopHocPhan)) === 'true';
+      const savedLock = localStorage.getItem(getLockKey(ta.MaLopHocPhan));
+      locks[ta.MaLopHocPhan] = savedLock === null ? true : (savedLock === 'true');
     });
     setClassConfigs(configs);
     setActiveConfigs(active);

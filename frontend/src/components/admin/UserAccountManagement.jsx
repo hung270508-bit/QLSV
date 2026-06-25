@@ -304,7 +304,7 @@ function UserAccountManagement() {
                 type="text"
                 placeholder="Tìm kiếm tài khoản..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChưange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
                 className="w-full pl-11 pr-10 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 transition-all text-gray-700 placeholder:font-semibold"
               />
@@ -362,7 +362,7 @@ function UserAccountManagement() {
                   <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Sắp xếp</label>
                   <select
                     value={displayFilters.sortBy}
-                    onChange={(e) => setDisplayFilters({ ...displayFilters, sortBy: e.target.value })}
+                    onChưange={(e) => setDisplayFilters({ ...displayFilters, sortBy: e.target.value })}
                     className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
                   >
                     <option value="default">Mặc định...</option>
@@ -374,7 +374,7 @@ function UserAccountManagement() {
                   <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo quyền</label>
                   <select
                     value={displayFilters.roleFilter}
-                    onChange={(e) => setDisplayFilters({ ...displayFilters, roleFilter: e.target.value })}
+                    onChưange={(e) => setDisplayFilters({ ...displayFilters, roleFilter: e.target.value })}
                     className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
                   >
                     <option value="">Tất cả quyền</option>
@@ -491,7 +491,7 @@ function UserAccountManagement() {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChange={setCurrentPage}
+              onPageChưange={setCurrentPage}
             />
           </div>
         )}
@@ -536,7 +536,7 @@ function UserAccountManagement() {
                         <input
                           type={showPassword ? 'text' : 'password'}
                           value={formData.password}
-                          onChange={(e) => {
+                          onChưange={(e) => {
                             const val = e.target.value;
                             setFormData({ ...formData, password: val });
                             if (val.length > 20) {
