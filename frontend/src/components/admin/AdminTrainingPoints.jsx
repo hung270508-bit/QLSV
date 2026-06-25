@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { TrainingPointsSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
-import Toast from '../common/Toast';
-import ConfirmDialog from '../common/ConfirmDialog';
+import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award, Filter, CheckCircle2, Clock, Edit, X, Calculator,

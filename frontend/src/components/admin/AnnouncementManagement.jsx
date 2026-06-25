@@ -47,7 +47,7 @@ function AnnouncementManagement() {
       setClasses(classesRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
-      alert('Lỗi khi tải dữ liệu: ' + (error.response?.data?.message || error.message));
+      setToast({ show: true, message: 'Lỗi khi tải dữ liệu: ' + (error.response?.data?.message || error.message), type: 'error' });
     } finally {
       setLoading(false);
     }

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Edit, Search, X, Eye, EyeOff, Check, AlertCircle, Lock, Unlock, Filter, XCircle } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
-import ModalPortal from '../common/ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
 
 const getPasswordStrength = (pwd) => {
@@ -275,20 +275,12 @@ function UserAccountManagement() {
       <div className="flex-1 space-y-8">
 
         {/* Toast Notification */}
-        <AnimatePresence>
-          {notification.show && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={`fixed top-8 right-8 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 z-[100] ${notification.type === 'success' ? 'bg-[#22C55E]/100 text-white' : 'bg-[#EF4444]/100 text-white'
-                }`}
-            >
-              {notification.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-              <span className="font-semibold text-sm">{notification.message}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <Toast 
+          show={notification.show} 
+          message={notification.message} 
+          type={notification.type} 
+          onClose={() => setNotification({ ...notification, show: false })} 
+        />
 
         {/* Header Section (Loại bỏ nút Thêm, bổ sung ghi chú tự động) */}
         <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl">
@@ -652,40 +644,13 @@ function UserAccountManagement() {
       </AnimatePresence>
 
       {/* Confirm Dialog (Hộp thoại xác nhận 2 bước chuẩn hệ thống) */}
-      <AnimatePresence>
-        {confirmDialog.show && (
-          <ModalPortal>
-            <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 bg-black/40 backdrop-blur-sm">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl border border-[#E5E7EB]"
-              >
-                <div className="w-14 h-14 bg-[#F4C542]/20 text-[#B45309] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-7 h-7" />
-                </div>
-                <h3 className="text-lg font-black text-[#1F2937] mb-2">{confirmDialog.title}</h3>
-                <p className="text-[#6B7280] text-sm mb-6 font-medium leading-relaxed">{confirmDialog.message}</p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
-                    className="flex-1 py-2.5 bg-gray-100 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-200 transition-colors"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={confirmDialog.action}
-                    className="flex-1 py-2.5 bg-[#F4C542] text-[#152238] rounded-xl text-sm font-bold hover:bg-[#F4C542]/90 transition-colors shadow-sm"
-                  >
-                    Đồng ý
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </ModalPortal>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={() => confirmDialog.action && confirmDialog.action()}
+        onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+      />
 
       {/* Modal Xem chi tiết người dùng */}
       <AnimatePresence>

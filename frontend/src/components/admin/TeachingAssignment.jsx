@@ -23,7 +23,7 @@ function TeachingAssignment() {
 
   // Dialog & Toast State
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', action: null });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -264,14 +264,12 @@ function TeachingAssignment() {
     <div className="space-y-8 p-4 max-w-screen-3xl mx-auto w-full">
 
       {/* Toast Notification */}
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed top-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border-l-4 ${toast.type === 'success' ? 'bg-[#FFFFFF] border-green-500' : 'bg-[#FFFFFF] border-red-500'}`}>
-            {toast.type === 'success' ? <CheckCircle2 className="text-[#22C55E]" /> : <AlertCircle className="text-[#EF4444]" />}
-            <p className="font-bold text-sm text-[#1F2937]">{toast.message}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Toast 
+        show={toast.show} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast({ ...toast, show: false })} 
+      />
 
       {/* Header Panel */}
       <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl shadow-orange-500/10">
@@ -492,23 +490,13 @@ function TeachingAssignment() {
       )}
 
       {/* Confirm Dialog */}
-      <AnimatePresence>
-        {confirmDialog.show && (
-          <ModalPortal>
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-              <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="bg-[#FFFFFF] rounded-xl p-6 w-full max-w-sm text-center shadow-2xl border border-[#E5E7EB]">
-                <div className="w-14 h-14 bg-[#F4C542]/20 text-[#B45309] rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle className="w-7 h-7" /></div>
-                <h3 className="text-lg font-black text-[#1F2937] mb-2">{confirmDialog.title}</h3>
-                <p className="text-[#6B7280] text-sm mb-6 font-medium">{confirmDialog.message}</p>
-                <div className="flex gap-3">
-                  <button onClick={() => setConfirmDialog({ show: false, action: null })} className="flex-1 py-2.5 bg-gray-100 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-200 transition-colors">Hủy</button>
-                  <button onClick={confirmDialog.action} className="flex-1 py-2.5 bg-[#F4C542] text-[#152238] rounded-xl text-sm font-bold hover:bg-[#F4C542]/90 transition-colors shadow-sm">Xác nhận</button>
-                </div>
-              </motion.div>
-            </div>
-          </ModalPortal>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={() => confirmDialog.action && confirmDialog.action()}
+        onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+      />
 
       <style dangerouslySetInnerHTML={{
         __html: `

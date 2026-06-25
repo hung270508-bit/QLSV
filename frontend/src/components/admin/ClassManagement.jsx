@@ -389,7 +389,7 @@ function ClassManagement() {
   };
 
   const handleViewDetails = async (cls) => {
-    if (!cls?.MaLop) { alert('Không xác định được mã lớp học!'); return; }
+    if (!cls?.MaLop) { setToast({ show: true, message: 'Không xác định được mã lớp học!', type: 'error' }); return; }
     setSelectedClass(cls);
     setShowDetailModal(true);
     setDetailTab('overview');

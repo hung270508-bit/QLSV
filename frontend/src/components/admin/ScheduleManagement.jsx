@@ -7,6 +7,7 @@ import {
 import axios from 'axios';
 import { ScheduleSkeleton } from '../common/AdminSkeleton';
 import API_URL from '../../api';
+import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 
 // ================================================================
 // HẰNG SỐ NGHIỆP VỤ DUY NHẤT (Quy định 1 TC = 9 tiết)
@@ -562,49 +563,21 @@ function ScheduleManagement() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 px-4">
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded border-l-4 shadow-xl ${toast.type === 'success' ? 'bg-[#FFFFFF] border-green-500' : 'bg-[#FFFFFF] border-red-500'}`}
-          >
-            {toast.type === 'success' ? <CheckCircle2 className="text-[#22C55E] w-5 h-5" /> : <AlertCircle className="text-[#EF4444] w-5 h-5" />}
-            <p className="font-bold text-sm text-[#1F2937]">{toast.message}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-{/* CONFIRM DIALOG - THÊM VÀO SAU PHẦN TOAST */}
-<AnimatePresence>
-  {confirmDialog.show && (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/50"
-        onClick={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+      {/* Toast Notification */}
+      <Toast 
+        show={toast.show} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={() => setToast({ ...toast, show: false })} 
       />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        className="relative bg-[#FFFFFF] rounded-xl shadow-2xl p-6 w-full max-w-sm z-10"
-      >
-        <h4 className="text-base font-bold text-[#1F2937] mb-2">{confirmDialog.title}</h4>
-        <p className="text-sm text-[#6B7280] mb-5">{confirmDialog.message}</p>
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
-            className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-200"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={() => confirmDialog.action && confirmDialog.action()}
-            className="px-4 py-2 bg-[#F4C542] text-[#152238] rounded-lg text-sm font-bold hover:bg-[#F4C542]/90"
-          >
-            Xác nhận
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  )}
-</AnimatePresence>
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={() => confirmDialog.action && confirmDialog.action()}
+        onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+      />
       <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl text-[#152238] flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-white/40 p-3 rounded-full shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>

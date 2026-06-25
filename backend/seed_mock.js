@@ -1,5 +1,7 @@
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env.local') });
+const isCloud = process.argv.includes('--cloud') || process.env.VERCEL === '1' || !!process.env.VERCEL;
+const envFile = isCloud ? '.env' : '.env.local';
+require('dotenv').config({ path: path.join(__dirname, envFile) });
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 
