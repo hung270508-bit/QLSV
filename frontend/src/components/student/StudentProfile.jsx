@@ -98,6 +98,10 @@ function StudentProfile({ profile, loading }) {
 
       errors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
 
+    } else if (passwordForm.newPassword === passwordForm.currentPassword) {
+
+      errors.newPassword = 'Mật khẩu mới không được trùng với mật khẩu hiện tại';
+
     }
 
     if (!passwordForm.confirmPassword) {

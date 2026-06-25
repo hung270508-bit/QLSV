@@ -31,6 +31,9 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
     } else if (passwordForm.newPassword.length < 6) {
       newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
       hasError = true;
+    } else if (passwordForm.newPassword === passwordForm.currentPassword) {
+      newErrors.newPassword = 'Mật khẩu mới không được trùng với mật khẩu hiện tại';
+      hasError = true;
     }
     if (!passwordForm.confirmPassword) {
       newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới';
