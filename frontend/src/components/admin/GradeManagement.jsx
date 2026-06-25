@@ -235,6 +235,11 @@ function ConfigPanelAdmin({ tenLop, components, locked }) {
 // ================================================================
 // MAIN COMPONENT ADMIN
 // ================================================================
+const removeVietnameseTones = (str) => {
+  if (!str) return '';
+  return str.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+};
+
 function GradeManagement() {
   const [grades, setGrades] = useState([]);
   const [students, setStudents] = useState([]);
@@ -562,8 +567,8 @@ function GradeManagement() {
       secs = secs.filter(cs => cs.MaLopHocPhan === displayFilters.sectionFilter);
     }
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      secs = secs.filter(cs => cs.TenMonHoc?.toLowerCase().includes(term) || cs.MaLopHocPhan?.toLowerCase().includes(term));
+      const term = removeVietnameseTones(searchTerm);
+      secs = secs.filter(cs => removeVietnameseTones(cs.TenMonHoc).includes(term) || removeVietnameseTones(cs.MaLopHocPhan).includes(term));
     }
     return secs;
   }, [courseSections, displayFilters, searchTerm]);
@@ -691,14 +696,14 @@ function GradeManagement() {
               return { ...s, grade };
             });
 
-            const term = searchTerm.toLowerCase();
+            const term = removeVietnameseTones(searchTerm);
             const matchClass = term && (
-                ta.TenMonHoc?.toLowerCase().includes(term) ||
-                ta.MaLopHocPhan?.toLowerCase().includes(term)
+                removeVietnameseTones(ta.TenMonHoc).includes(term) ||
+                removeVietnameseTones(ta.MaLopHocPhan).includes(term)
             );
 
             const filteredStudents = studentsWithGrades.filter(s => 
-              !term || matchClass || s.HoTen?.toLowerCase().includes(term) || s.MSSV?.toLowerCase().includes(term)
+              !term || matchClass || removeVietnameseTones(s.HoTen).includes(term) || removeVietnameseTones(s.MSSV).includes(term)
             );
 
             if (term && !matchClass && filteredStudents.length === 0) return null;
