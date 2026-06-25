@@ -492,6 +492,9 @@ app.post('/api/change-password', verifyToken, async (req, res) => {
     if (!currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới!' });
     }
+    if (currentPassword === newPassword) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới không được trùng với mật khẩu cũ!' });
+    }
     if (newPassword.length < 8 || newPassword.length > 20) {
         return res.status(400).json({ success: false, message: 'Mật khẩu mới phải từ 8 đến 20 ký tự!' });
     }
@@ -534,6 +537,9 @@ app.post('/api/student/change-password', async (req, res) => {
 
     if (!username || !currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin!' });
+    }
+    if (currentPassword === newPassword) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới không được trùng với mật khẩu cũ!' });
     }
     if (newPassword.length < 6) {
         return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự!' });
@@ -578,6 +584,9 @@ app.post('/api/teacher/change-password', async (req, res) => {
 
     if (!username || !currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin!' });
+    }
+    if (currentPassword === newPassword) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới không được trùng với mật khẩu cũ!' });
     }
     if (newPassword.length < 6) {
         return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự!' });
@@ -643,13 +652,32 @@ app.post('/api/reset-password', async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         const { email, id, userType } = decoded;
 
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        // Fetch current user password
+        db.query('SELECT password FROM users WHERE TaiKhoan = ?', [id], async (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi server khi kiểm tra mật khẩu cũ!' });
+            if (results.length === 0) return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại!' });
 
-        // Update password in users table
-        db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, id], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
-            res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
+            const user = results[0];
+            let passwordMatch = false;
+
+            if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+                passwordMatch = await bcrypt.compare(newPassword, user.password);
+            } else {
+                passwordMatch = (newPassword === user.password);
+            }
+
+            if (passwordMatch) {
+                return res.status(400).json({ success: false, message: 'Mật khẩu mới không được trùng với mật khẩu cũ!' });
+            }
+
+            // Hash new password
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+            // Update password in users table
+            db.query('UPDATE users SET password = ? WHERE TaiKhoan = ?', [hashedPassword, id], (updateErr) => {
+                if (updateErr) return res.status(500).json({ success: false, message: 'Lỗi cập nhật mật khẩu!' });
+                res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
+            });
         });
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
