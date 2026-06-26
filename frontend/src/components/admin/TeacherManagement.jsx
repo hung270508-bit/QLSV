@@ -146,7 +146,7 @@ function TeacherManagement() {
     if (!formData.Email.trim()) {
       newErrors.Email = 'Email không được để trống';
     } else {
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+      const emailRegex = /^[a-zA-Z0-9]+@gmail\.com$/i;
       if (!emailRegex.test(formData.Email)) {
         newErrors.Email = 'Email không đúng định dạng';
       } else {

@@ -461,7 +461,7 @@ function StudentManagement() {
 
     } else {
 
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+      const emailRegex = /^[a-zA-Z0-9]+@gmail\.com$/i;
 
       if (!emailRegex.test(formData.Email)) {
 
