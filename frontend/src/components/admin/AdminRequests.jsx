@@ -59,6 +59,22 @@ function AdminRequests() {
 
   useEffect(() => { fetchRequests(); }, []);
 
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && selectedReq) {
+        setSelectedReq(null);
+        setReplyErrors({});
+        setIsViewOnly(false);
+      }
+    };
+    if (selectedReq) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [selectedReq]);
+
   const handleOpenModal = (req, viewOnly = false) => {
     setSelectedReq(req);
     setReplyText(req.PhanHoi || '');
@@ -87,18 +103,26 @@ function AdminRequests() {
 
   const handleUpdate = async () => {
     if (!validateReply()) return;
+    if (!navigator.onLine) {
+      setToast({ show: true, message: 'Mất kết nối Internet. Vui lòng kiểm tra lại mạng.', type: 'error' });
+      return;
+    }
     try {
       await axios.put(`${API_URL}/api/admin/support-requests/${selectedReq.MaYeuCau}`, {
         TrangThai: updateStatus,
         PhanHoi: replyText,
         NguoiTraLoi: 'Admin QLSV'
-      });
+      }, { timeout: 10000 });
       setToast({ show: true, message: 'Gửi phản hồi thành công!', type: 'success' });
       setSelectedReq(null);
       setReplyErrors({});
       fetchRequests();
     } catch (e) {
-      setReplyErrors({ general: 'Có lỗi xảy ra khi xử lý yêu cầu!' });
+      if (e.code === 'ERR_NETWORK' || e.code === 'ECONNABORTED' || !e.response) {
+        setToast({ show: true, message: 'Mất kết nối Internet. Vui lòng kiểm tra lại mạng.', type: 'error' });
+      } else {
+        setToast({ show: true, message: 'Có lỗi xảy ra khi xử lý yêu cầu!', type: 'error' });
+      }
     }
   };
 
@@ -117,12 +141,17 @@ function AdminRequests() {
         ? `Bạn có chắc chắn muốn xóa ${selectedRequests.size} yêu cầu đã chọn không?`
         : 'Bạn có chắc chắn muốn xóa yêu cầu này không?',
       onConfirm: async () => {
+        if (!navigator.onLine) {
+          setToast({ show: true, message: 'Mất kết nối Internet. Vui lòng kiểm tra lại mạng.', type: 'error' });
+          setConfirmDialog({ show: false, message: '', onConfirm: null });
+          return;
+        }
         try {
           if (isBulkDelete) {
             console.log('Bulk deleting requests:', Array.from(selectedRequests));
             await Promise.all(
               Array.from(selectedRequests).map(id =>
-                axios.delete(`${API_URL}/api/admin/support-requests/${id}`)
+                axios.delete(`${API_URL}/api/admin/support-requests/${id}`, { timeout: 10000 })
               )
             );
             console.log('Bulk delete successful');
@@ -130,7 +159,7 @@ function AdminRequests() {
             setSelectedRequests(new Set());
           } else {
             console.log('Deleting request:', requestIdToDelete);
-            await axios.delete(`${API_URL}/api/admin/support-requests/${requestIdToDelete}`);
+            await axios.delete(`${API_URL}/api/admin/support-requests/${requestIdToDelete}`, { timeout: 10000 });
             console.log('Delete successful');
             setToast({ show: true, message: 'Xóa yêu cầu thành công!', type: 'success' });
           }
@@ -138,6 +167,11 @@ function AdminRequests() {
           setConfirmDialog({ show: false, message: '', onConfirm: null });
         } catch (error) {
           console.error('Error deleting request:', error);
+          if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED' || !error.response) {
+            setToast({ show: true, message: 'Mất kết nối Internet. Vui lòng kiểm tra lại mạng.', type: 'error' });
+          } else {
+            setToast({ show: true, message: 'Lỗi khi xóa yêu cầu!', type: 'error' });
+          }
           setConfirmDialog({ show: false, message: '', onConfirm: null });
         }
       }
