@@ -27,8 +27,8 @@ function TeacherManagement() {
   const [teachingSchedule, setTeachingSchedule] = useState([]);
   const [teachingLoad, setTeachingLoad] = useState([]);
   const [detailTab, setDetailTab] = useState('info'); // 'info', 'schedule', 'load'
+  const [detailLoading, setDetailLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
   const [successDialog, setSuccessDialog] = useState({ show: false, message: '' });
@@ -321,19 +321,22 @@ function TeacherManagement() {
     setSelectedTeacher(teacher);
     setShowDetailModal(true);
     setDetailTab('info');
+    setDetailLoading(true);
     
     try {
-      const [detailsRes, scheduleRes, loadRes] = await Promise.all([
+      const [detailsRes, scheduleRes, loadRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/teachers/${teacher.MaGiangVien}/details`),
         axios.get(`${API_BASE}/teachers/${teacher.MaGiangVien}/teaching-schedule`),
         axios.get(`${API_BASE}/teachers/${teacher.MaGiangVien}/teaching-load`)
       ]);
       
-      setTeacherDetails(detailsRes.data[0] || null);
-      setTeachingSchedule(scheduleRes.data);
-      setTeachingLoad(loadRes.data);
+      setTeacherDetails(detailsRes.status === 'fulfilled' ? (detailsRes.value.data[0] || null) : null);
+      setTeachingSchedule(scheduleRes.status === 'fulfilled' && Array.isArray(scheduleRes.value.data) ? scheduleRes.value.data : []);
+      setTeachingLoad(loadRes.status === 'fulfilled' && Array.isArray(loadRes.value.data) ? loadRes.value.data : []);
     } catch (error) {
       console.error('Error fetching teacher details:', error);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -959,9 +962,17 @@ function TeacherManagement() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-3 mb-1">
-                    <div className="bg-[#FFFFFF]/30 rounded-xl p-2">
-                      <UserCheck className="w-6 h-6 text-[#152238]" />
-                    </div>
+                    {(teacherDetails?.Avatar || selectedTeacher.Avatar) ? (
+                      <img 
+                        src={teacherDetails?.Avatar || selectedTeacher.Avatar} 
+                        alt="Avatar" 
+                        className="w-10 h-10 rounded-xl object-cover shadow-sm border border-white/20"
+                      />
+                    ) : (
+                      <div className="bg-[#FFFFFF]/30 rounded-xl p-2 w-10 h-10 flex items-center justify-center">
+                        <UserCheck className="w-6 h-6 text-[#152238]" />
+                      </div>
+                    )}
                     <span className="text-[#152238]/70 text-sm font-medium uppercase tracking-widest">Chi tiết giảng viên</span>
                   </div>
                   <h2 className="text-2xl font-bold text-[#152238] mt-2">{teacherDetails?.HoTen || selectedTeacher.HoTen}</h2>
@@ -1010,8 +1021,15 @@ function TeacherManagement() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {detailTab === 'info' && teacherDetails && (
-                <div className="space-y-6">
+              {detailLoading ? (
+                <div className="flex flex-col items-center justify-center h-64 text-[#152238]/50">
+                  <div className="w-8 h-8 border-4 border-[#F4C542] border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="font-medium">Đang tải dữ liệu chi tiết...</p>
+                </div>
+              ) : (
+                <>
+                  {detailTab === 'info' && teacherDetails && (
+                    <div className="space-y-6">
                   {/* Stats cards */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
@@ -1105,9 +1123,9 @@ function TeacherManagement() {
                           {teachingLoad.map((load, index) => (
                             <motion.tr
                               key={index}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.03 }}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.05 }}
                               className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
                             >
                               <td className="py-3.5 px-5 font-semibold text-[#1F2937] text-sm">{load.TenMonHoc}</td>
@@ -1129,7 +1147,9 @@ function TeacherManagement() {
                   )}
                 </div>
               )}
-            </div>
+            </>
+          )}
+        </div>
           </motion.div>
         </div>
         </ModalPortal>

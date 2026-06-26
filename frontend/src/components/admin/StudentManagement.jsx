@@ -71,6 +71,7 @@ function StudentManagement() {
   const [studentAttendance, setStudentAttendance] = useState([]);
 
   const [detailTab, setDetailTab] = useState('info');
+  const [detailLoading, setDetailLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formData, setFormData] = useState({
@@ -842,45 +843,28 @@ function StudentManagement() {
 
 
   const handleViewDetails = async (student) => {
-
     setSelectedStudent(student);
-
     setShowDetailModal(true);
-
     setDetailTab('info');
-
-
+    setDetailLoading(true);
 
     try {
-
-      const [detailsRes, transcriptRes, scheduleRes, attendanceRes] = await Promise.all([
-
+      const [detailsRes, transcriptRes, scheduleRes, attendanceRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/students/${student.MSSV}/details`),
-
         axios.get(`${API_BASE}/academic/transcript/${student.MSSV}`),
-
         axios.get(`${API_BASE}/students/${student.MSSV}/schedule`),
-
         axios.get(`${API_BASE}/attendance/student/${student.MSSV}`)
-
       ]);
 
-
-
-      setStudentDetails(detailsRes.data[0] || null);
-
-      setStudentTranscript(transcriptRes.data);
-
-      setStudentSchedule(Array.isArray(scheduleRes.data) ? scheduleRes.data : []);
-
-      setStudentAttendance(attendanceRes.data);
-
+      setStudentDetails(detailsRes.status === 'fulfilled' ? (detailsRes.value.data[0] || null) : null);
+      setStudentTranscript(transcriptRes.status === 'fulfilled' ? transcriptRes.value.data : null);
+      setStudentSchedule(scheduleRes.status === 'fulfilled' && Array.isArray(scheduleRes.value.data) ? scheduleRes.value.data : []);
+      setStudentAttendance(attendanceRes.status === 'fulfilled' && Array.isArray(attendanceRes.value.data) ? attendanceRes.value.data : []);
     } catch (error) {
-
       console.error('Error fetching student details:', error);
-
+    } finally {
+      setDetailLoading(false);
     }
-
   };
 
 
@@ -2139,23 +2123,23 @@ function StudentManagement() {
 
                   <div className="flex items-center gap-4">
 
-                    <div className="bg-[#FFFFFF]/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
-
-                      {(studentDetails?.HoTen || selectedStudent.HoTen || 'SV')
-
-                        .split(' ')
-
-                        .map(w => w[0])
-
-                        .filter(Boolean)
-
-                        .slice(-2)
-
-                        .join('')
-
-                        .toUpperCase()}
-
-                    </div>
+                    {(studentDetails?.Avatar || selectedStudent.Avatar) ? (
+                      <img 
+                        src={studentDetails?.Avatar || selectedStudent.Avatar} 
+                        alt="Avatar" 
+                        className="w-16 h-16 rounded-2xl object-cover shadow-lg flex-shrink-0 border border-white/20"
+                      />
+                    ) : (
+                      <div className="bg-[#FFFFFF]/10 backdrop-blur-md text-white border border-white/20 font-bold text-xl rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg flex-shrink-0">
+                        {(studentDetails?.HoTen || selectedStudent.HoTen || 'SV')
+                          .split(' ')
+                          .map(w => w[0])
+                          .filter(Boolean)
+                          .slice(-2)
+                          .join('')
+                          .toUpperCase()}
+                      </div>
+                    )}
 
                     <div>
 
@@ -2264,10 +2248,15 @@ function StudentManagement() {
 
 
               {/* Content */}
-
               <div className="flex-1 overflow-y-auto p-6">
-
-                {detailTab === 'info' && studentDetails && (
+                {detailLoading ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-[#152238]/50">
+                    <div className="w-8 h-8 border-4 border-[#F4C542] border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="font-medium">Đang tải dữ liệu chi tiết...</p>
+                  </div>
+                ) : (
+                  <>
+                    {detailTab === 'info' && studentDetails && (
 
                   <div className="space-y-6">
 
@@ -2625,11 +2614,11 @@ function StudentManagement() {
 
                                 key={index}
 
-                                initial={{ opacity: 0 }}
+                                initial={{ opacity: 0, x: -20 }}
 
-                                animate={{ opacity: 1 }}
+                                animate={{ opacity: 1, x: 0 }}
 
-                                transition={{ delay: index * 0.03 }}
+                                transition={{ delay: index * 0.05 }}
 
                                 className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
 
@@ -2682,12 +2671,11 @@ function StudentManagement() {
                     )}
 
                   </div>
-
                 )}
-
-              </div>
-
-            </motion.div>
+              </>
+            )}
+          </div>
+        </motion.div>
 
           </div>
 

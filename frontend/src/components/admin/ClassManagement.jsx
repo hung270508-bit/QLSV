@@ -1038,9 +1038,9 @@ function ClassManagement() {
                   </div>
                 )}
                 {detailLoading ? (
-                  <div className="flex flex-col items-center justify-center h-48 gap-3">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#F4C542]"></div>
-                    <p className="text-gray-300 text-sm">Đang tải dữ liệu...</p>
+                  <div className="flex flex-col items-center justify-center h-64 text-[#152238]/50">
+                    <div className="w-8 h-8 border-4 border-[#F4C542] border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="font-medium">Đang tải dữ liệu chi tiết...</p>
                   </div>
                 ) : (
                   <>
@@ -1088,12 +1088,12 @@ function ClassManagement() {
                           <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-3">Giảng viên phụ trách</h4>
                           {classTeachers.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {classTeachers.map((t, i) => (
+                              {classTeachers.map((t, index) => (
                                 <motion.div
-                                  key={i}
-                                  initial={{ opacity: 0, x: -10 }}
+                                  key={index}
+                                  initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: i * 0.06 }}
+                                  transition={{ delay: index * 0.05 }}
                                   whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
                                   className="flex items-center gap-3 bg-[#F7F8FA] rounded-xl p-4 border border-[#E5E7EB] hover:border-[#F4C542]/30 hover:bg-[#FFF7D6]/30 transition-all duration-300"
                                 >
@@ -1152,15 +1152,15 @@ function ClassManagement() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {classStudents.map((sv, idx) => (
+                                {classStudents.map((sv, index) => (
                                   <motion.tr
                                     key={sv.MSSV}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: idx * 0.03 }}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.05 }}
                                     className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
                                   >
-                                    <td className="py-3.5 px-5 text-sm text-gray-300">{idx + 1}</td>
+                                    <td className="py-3.5 px-5 text-sm text-gray-300">{index + 1}</td>
                                     <td className="py-3.5 px-5">
                                       <span className="font-mono text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-lg">{sv.MSSV}</span>
                                     </td>

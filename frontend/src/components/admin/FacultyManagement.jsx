@@ -37,6 +37,8 @@ function FacultyManagement() {
     totalClasses: 0
   });
   const [detailTab, setDetailTab] = useState('teachers');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Thêm state cho Toast
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -206,22 +208,29 @@ function FacultyManagement() {
     setSelectedFaculty(faculty);
     setShowDetailModal(true);
     setDetailTab('teachers');
+    setDetailLoading(true);
     try {
-      const [teachersRes, studentsRes, classesRes] = await Promise.all([
+      const [teachersRes, studentsRes, classesRes] = await Promise.allSettled([
         axios.get(`${API_URL}/api/faculties/${faculty.MaKhoa}/teachers`),
         axios.get(`${API_URL}/api/faculties/${faculty.MaKhoa}/students`),
         axios.get(`${API_URL}/api/faculties/${faculty.MaKhoa}/classes`)
       ]);
-      setFacultyTeachers(teachersRes.data);
-      setFacultyStudents(studentsRes.data);
-      setFacultyClasses(classesRes.data);
+      const teachers = teachersRes.status === 'fulfilled' ? teachersRes.value.data : [];
+      const students = studentsRes.status === 'fulfilled' ? studentsRes.value.data : [];
+      const classes = classesRes.status === 'fulfilled' ? classesRes.value.data : [];
+
+      setFacultyTeachers(teachers);
+      setFacultyStudents(students);
+      setFacultyClasses(classes);
       setFacultyStats({
-        totalTeachers: teachersRes.data.length,
-        totalStudents: studentsRes.data.length,
-        totalClasses: classesRes.data.length
+        totalTeachers: teachers.length,
+        totalStudents: students.length,
+        totalClasses: classes.length
       });
     } catch (error) {
       console.error('Error fetching faculty details:', error);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -278,8 +287,6 @@ function FacultyManagement() {
     setCurrentPage(1);
   };
 
-  // Pagination calculations
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -696,20 +703,14 @@ function FacultyManagement() {
                       <button
                         key={tab.id}
                         onClick={() => setDetailTab(tab.id)}
-                        className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all z-10 ${detailTab === tab.id
-                            ? 'text-[#F4C542]'
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                          detailTab === tab.id
+                            ? 'bg-[#FFFFFF] text-[#F4C542] shadow-md'
                             : 'text-white/70 hover:text-white hover:bg-[#FFFFFF]/10'
-                          }`}
+                        }`}
                       >
-                        {detailTab === tab.id && (
-                          <motion.div
-                            layoutId="activeDetailTab"
-                            className="absolute inset-0 bg-[#FFFFFF] rounded-xl shadow-md -z-10"
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                          />
-                        )}
-                        <Icon className="w-4 h-4 z-10" />
-                        <span className="z-10">{tab.label}</span>
+                        <Icon className="w-4 h-4" />
+                        <span>{tab.label}</span>
                       </button>
                     );
                   })}
@@ -718,8 +719,15 @@ function FacultyManagement() {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-6">
-                {detailTab === 'teachers' && (
-                  <div>
+                {detailLoading ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-[#152238]/50">
+                    <div className="w-8 h-8 border-4 border-[#F4C542] border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="font-medium">Đang tải dữ liệu chi tiết...</p>
+                  </div>
+                ) : (
+                  <>
+                    {detailTab === 'teachers' && (
+                      <div>
                     <h4 className="text-sm font-bold text-[#6B7280] uppercase tracking-wider mb-4">
                       Danh sách giảng viên ({facultyTeachers.length})
                     </h4>
@@ -728,9 +736,9 @@ function FacultyManagement() {
                         {facultyTeachers.map((teacher, index) => (
                           <motion.div
                             key={index}
-                            initial={{ opacity: 0, x: -10 }}
+                            initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.06 }}
+                            transition={{ delay: index * 0.05 }}
                             whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
                             className="flex items-center gap-3 bg-[#F7F8FA] rounded-xl p-4 border border-[#E5E7EB] hover:border-[#F4C542]/30 hover:bg-[#FFF7D6]/30 transition-all duration-300"
                           >
@@ -773,9 +781,9 @@ function FacultyManagement() {
                             {facultyStudents.map((student, index) => (
                               <motion.tr
                                 key={index}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: index * 0.03 }}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
                                 className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
                               >
                                 <td className="py-3.5 px-5 font-semibold text-[#1F2937] text-sm">{student.MSSV}</td>
@@ -820,9 +828,9 @@ function FacultyManagement() {
                             {facultyClasses.map((cls, index) => (
                               <motion.tr
                                 key={index}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: index * 0.03 }}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
                                 className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
                               >
                                 <td className="py-3.5 px-5 font-semibold text-[#1F2937] text-sm">{cls.MaLop}</td>
@@ -889,7 +897,9 @@ function FacultyManagement() {
                     </div>
                   </div>
                 )}
-              </div>
+              </>
+            )}
+          </div>
             </motion.div>
           </div>
         </ModalPortal>

@@ -178,8 +178,26 @@ const verifyToken = (req, res, next) => {
     }
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
-        next();
+        
+        // Kiểm tra xem tài khoản có bị khóa trong database không
+        db.query('SELECT TrangThai FROM users WHERE TaiKhoan = ?', [decoded.username], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi server khi xác thực token!' });
+            
+            if (results.length === 0) {
+                return res.status(401).json({ success: false, message: 'Tài khoản không tồn tại!' });
+            }
+            
+            if (results[0].TrangThai === 0 || results[0].TrangThai === false || results[0].TrangThai === 'Bị khóa') {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Tài khoản của bạn đã bị khóa! Bạn sẽ bị đăng xuất.', 
+                    isLocked: true 
+                });
+            }
+            
+            req.user = decoded;
+            next();
+        });
     } catch (error) {
         return res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn!' });
     }

@@ -787,9 +787,9 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                           {subjectClasses.map((cls, index) => (
                             <motion.tr
                               key={index}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.03 }}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.05 }}
                               className="border-t border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors"
                             >
                               <td className="py-3.5 px-5 font-semibold text-[#1F2937] text-sm">{cls.MaLop}</td>
@@ -821,9 +821,9 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                       {subjectTeachers.map((teacher, index) => (
                         <motion.div
                           key={index}
-                          initial={{ opacity: 0, x: -10 }}
+                          initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.06 }}
+                          transition={{ delay: index * 0.05 }}
                           whileHover={{ y: -2, boxShadow: '0 8px 30px rgb(0 0 0 / 0.04)', borderColor: 'rgb(254 215 170)' }}
                           className="flex items-center gap-3 bg-[#F7F8FA] rounded-xl p-4 border border-[#E5E7EB] hover:border-[#F4C542]/30 hover:bg-[#FFF7D6]/30 transition-all duration-300"
                         >
