@@ -213,6 +213,7 @@ function UserAccountManagement() {
   };
 
   const filteredUsers = users.filter(user => {
+    if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') return false;
     const searchLower = debouncedSearchTerm.toLowerCase();
     const matchesSearch =
       user.TaiKhoan?.toLowerCase().includes(searchLower) ||

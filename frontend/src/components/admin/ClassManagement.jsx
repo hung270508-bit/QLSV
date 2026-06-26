@@ -445,6 +445,11 @@ function ClassManagement() {
   };
 
   const filteredClasses = classes.filter(cls => {
+    // Nếu nhập toàn dấu cách -> Không hiển thị gì (yêu cầu đặc biệt của test case)
+    if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') {
+      return false;
+    }
+
     const searchLower = debouncedSearchTerm.trim().toLowerCase();
     const searchNoTones = removeVietnameseTones(searchLower);
     const nameLower = cls.TenLop?.toLowerCase() || '';

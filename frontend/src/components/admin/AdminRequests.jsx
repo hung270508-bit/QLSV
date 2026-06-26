@@ -179,6 +179,7 @@ function AdminRequests() {
   };
 
   const filtered = requests.filter(req => {
+    if (search && search.length > 0 && search.trim() === '') return false;
     if (filterRole !== 'All' && req.VaiTro !== filterRole) return false;
     if (filterStatus !== 'All' && req.TrangThai !== filterStatus) return false;
     if (search && !req.TenNguoiGui?.toLowerCase().includes(search.toLowerCase()) &&

@@ -950,6 +950,7 @@ function StudentManagement() {
 
 
   const filteredStudents = students.filter(student => {
+    if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') return false;
 
     const searchLower = debouncedSearchTerm.toLowerCase();
 

@@ -303,6 +303,7 @@ function SubjectManagement() {
   };
 
   const filteredSubjects = subjects.filter(subject => {
+  if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') return false;
   const searchLower = debouncedSearchTerm.toLowerCase();
   const searchNoTones = removeVietnameseTones(searchLower);
   const nameLower = subject.TenMonHoc?.toLowerCase() || '';

@@ -107,10 +107,18 @@ function AdminTrainingPoints() {
     return month >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
   };
 
+  const getLocalDateString = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // === STATES: ĐỢT ĐÁNH GIÁ ===
   const [periods, setPeriods] = useState([]);
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
-  const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: new Date().toISOString().split('T')[0], NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
+  const [periodForm, setPeriodForm] = useState({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: getLocalDateString(), NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
   const [periodFormErrors, setPeriodFormErrors] = useState({});
   const [periodModalTab, setPeriodModalTab] = useState('info'); // 'info' or 'builder'
   // State cho Modal xác nhận chuyển trạng thái đợt
@@ -213,12 +221,16 @@ function AdminTrainingPoints() {
   };
 
   const nienKhoaRange = parseNienKhoa(periodForm.NamHoc);
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  const todayDateStr = getLocalDateString();
   const minNgay = todayDateStr; // Không cho phép chọn quá khứ
   const maxNgay = nienKhoaRange ? `${nienKhoaRange.end}-12-31` : '';
 
   const handleNgayChange = (field, value) => {
     setPeriodFormErrors(prev => ({ ...prev, [field]: '' }));
+    
+    // Luôn cập nhật giá trị vào state để UI cho phép chọn ngày
+    setPeriodForm(prev => ({ ...prev, [field]: value }));
+
     if (value && value < minNgay) {
       setPeriodFormErrors(prev => ({
         ...prev,
@@ -233,7 +245,6 @@ function AdminTrainingPoints() {
       }));
       return;
     }
-    setPeriodForm(prev => ({ ...prev, [field]: value }));
   };
 
   const triggerCreatePeriod = () => {
@@ -268,7 +279,7 @@ function AdminTrainingPoints() {
       });
 
       setIsPeriodModalOpen(false);
-      setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: new Date().toISOString().split('T')[0], NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
+      setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: getLocalDateString(), NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) });
       setPeriodModalTab('info');
       setPeriodFormErrors({});
       fetchData();
@@ -308,6 +319,7 @@ function AdminTrainingPoints() {
   // LOGIC: XÉT DUYỆT ĐIỂM
   // ==========================================
   const filteredData = pointsData.filter(item => {
+    if (searchTerm.length > 0 && searchTerm.trim() === '') return false;
     if (filterHocKy !== 'All' && item.HocKy !== filterHocKy) return false;
     if (filterTrangThai !== 'All' && item.TrangThai !== filterTrangThai) return false;
     if (filterKhoa !== 'All' && item.MaKhoa !== filterKhoa) return false;
@@ -532,7 +544,7 @@ function AdminTrainingPoints() {
               <h3 className="text-xl font-bold text-[#1F2937]">Danh sách các đợt đã thiết lập</h3>
               <button
                 onClick={() => {
-                  setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: '', NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: [] });
+                  setPeriodForm({ HocKy: 'HK1', NamHoc: getCurrentNienKhoa(), NgayBatDau: getLocalDateString(), NgayKetThuc: '', TrangThai: 'Đang tự đánh giá', CauTrucTieuChi: [] });
                   setPeriodFormErrors({});
                   setIsPeriodModalOpen(true);
                 }}
@@ -837,16 +849,16 @@ function AdminTrainingPoints() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu <span className="text-[#EF4444]">*</span></label>
-                        <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} min={minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-[#FFFFFF] border rounded-xl outline-none text-sm text-[#6B7280] disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
+                        <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-[#FFFFFF] border rounded-xl outline-none text-sm text-[#6B7280] disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
                         {periodFormErrors.NgayBatDau ? (
                           <p className="text-[#EF4444] text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayBatDau}</p>
                         ) : (
-                          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Mặc định là ngày hôm nay, không thể chọn quá khứ.</p>
+                          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Có thể chọn để xem thông báo lỗi nếu là ngày quá khứ.</p>
                         )}
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc <span className="text-[#EF4444]">*</span></label>
-                        <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} min={periodForm.NgayBatDau || minNgay} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-[#FFFFFF] border rounded-xl outline-none text-sm text-[#6B7280] disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
+                        <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-[#FFFFFF] border rounded-xl outline-none text-sm text-[#6B7280] disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
                         {periodFormErrors.NgayKetThuc ? (
                           <p className="text-[#EF4444] text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayKetThuc}</p>
                         ) : (

@@ -193,6 +193,7 @@ function AnnouncementManagement() {
 
 
   const filteredAnnouncements = announcements.filter(announcement => {
+    if (searchTerm.length > 0 && searchTerm.trim() === '') return false;
     const matchesSearch = 
       announcement.TieuDe?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.NoiDung?.toLowerCase().includes(searchTerm.toLowerCase());
