@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin } from 'lucide-react';
+import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin , Camera} from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
@@ -243,6 +243,18 @@ function TeacherManagement() {
     return Object.keys(newErrors).length === 0;
   };
 
+  
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, Avatar: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -313,7 +325,7 @@ function TeacherManagement() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingTeacher(null);
-    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '' });
+    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '', Avatar: '' });
     setErrors({});
   };
 
@@ -473,7 +485,7 @@ function TeacherManagement() {
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '' }); setShowModal(true); }}
+            onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '', Avatar: '' }); setShowModal(true); }}
             className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
           >
             <Plus className="w-5 h-5" />
@@ -802,7 +814,7 @@ function TeacherManagement() {
                     value={formData.NgaySinh}
                     onChange={(e) => {
                       setFormData({ ...formData, NgaySinh: e.target.value });
-                      if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '' });
+                      if (errors.NgaySinh) setErrors({ ...errors, NgaySinh: '', Avatar: '' });
                     }}
                     className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${
                       errors.NgaySinh ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'

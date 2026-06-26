@@ -978,8 +978,8 @@ app.post('/api/students', async (req, res) => {
 
         await new Promise((resolve, reject) => {
             db.query(
-                'INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 3)',
-                [MSSV, hashedPassword],
+                'INSERT INTO users (TaiKhoan, password, MaQuyen, Avatar) VALUES (?, ?, 3, ?)',
+                [MSSV, hashedPassword, req.body.Avatar || null],
                 (err) => {
                     if (err) reject(err);
                     else resolve();
@@ -1145,6 +1145,15 @@ app.put('/api/students/:mssv', async (req, res) => {
             });
         }
 
+        if (data.Avatar !== undefined) {
+            await new Promise((resolve) => {
+                db.query('UPDATE users SET Avatar = ? WHERE TaiKhoan = ?', [data.Avatar, req.params.mssv], (err) => {
+                    if (err) console.error('Lỗi cập nhật Avatar:', err);
+                    resolve();
+                });
+            });
+        }
+
         // Cập nhật thẻ UID nếu có truyền lên
         if (data.UID !== undefined) {
             await new Promise((resolve, reject) => {
@@ -1263,7 +1272,7 @@ app.post('/api/teachers', async (req, res) => {
     const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh } = req.body;
     try {
         const hashedPassword = await bcrypt.hash('gv@2025', saltRounds);
-        db.query('INSERT INTO users (TaiKhoan, password, MaQuyen) VALUES (?, ?, 2)', [MaGiangVien, hashedPassword], (err) => {
+        db.query('INSERT INTO users (TaiKhoan, password, MaQuyen, Avatar) VALUES (?, ?, 2, ?)', [MaGiangVien, hashedPassword, req.body.Avatar || null], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo TK GV!' });
             db.query('INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai || 'Đang dạy', GioiTinh || null, NgaySinh || null], (err) => {
                 if (err) return res.status(500).json({ success: false, message: 'Lỗi thêm GV!' });
@@ -1290,6 +1299,15 @@ app.put('/api/teachers/:maGV', async (req, res) => {
             await new Promise((resolve) => {
                 db.query('UPDATE users SET TrangThai = ? WHERE TaiKhoan = ?', [userStatus, req.params.maGV], (err) => {
                     if (err) console.error('Lỗi cập nhật trạng thái tài khoản giảng viên:', err);
+                    resolve();
+                });
+            });
+        }
+
+        if (req.body.Avatar !== undefined) {
+            await new Promise((resolve) => {
+                db.query('UPDATE users SET Avatar = ? WHERE TaiKhoan = ?', [req.body.Avatar, req.params.maGV], (err) => {
+                    if (err) console.error('Lỗi cập nhật Avatar GV:', err);
                     resolve();
                 });
             });
@@ -1445,10 +1463,14 @@ app.get('/api/classes/next-name/:tenLop/:maKhoa/:nienKhoa', (req, res) => {
     });
 });
 app.post('/api/classes', (req, res) => {
-    const { MaLop, TenLop, MaKhoa, NienKhoa } = req.body;
+    let { MaLop, TenLop, MaKhoa, NienKhoa } = req.body;
+    TenLop = `Lớp ${MaLop}`; // Enforce "Lớp + mã lớp"
     executeInsert('INSERT INTO lophoc (MaLop, TenLop, MaKhoa, NienKhoa) VALUES (?, ?, ?, ?)', [MaLop, TenLop, MaKhoa, NienKhoa], res, 'Thêm lớp thành công!', 'Lỗi thêm lớp!');
 });
-app.put('/api/classes/:maLop', (req, res) => executeUpdate('UPDATE lophoc SET TenLop=?, MaKhoa=?, NienKhoa=? WHERE MaLop=?', [req.body.TenLop, req.body.MaKhoa, req.body.NienKhoa, req.params.maLop], res, 'Cập nhật thành công!', 'Lỗi cập nhật!'));
+app.put('/api/classes/:maLop', (req, res) => {
+    const TenLop = `Lớp ${req.params.maLop}`; // Enforce "Lớp + mã lớp"
+    executeUpdate('UPDATE lophoc SET TenLop=?, MaKhoa=?, NienKhoa=? WHERE MaLop=?', [TenLop, req.body.MaKhoa, req.body.NienKhoa, req.params.maLop], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
+});
 app.delete('/api/classes/:maLop', (req, res) => executeDelete('DELETE FROM lophoc WHERE MaLop=?', [req.params.maLop], res, 'Xóa thành công!', 'Lỗi xóa!'));
 app.get('/api/classes/:maLop/details', (req, res) => {
     const { maLop } = req.params;

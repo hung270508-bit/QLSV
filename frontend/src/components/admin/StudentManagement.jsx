@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Upload, FileText, Calendar, CheckCircle, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, BookOpen, BarChart3, UserCheck, Clock, MapPin } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Upload, FileText, Calendar, CheckCircle, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, BookOpen, BarChart3, UserCheck, Clock, MapPin , Camera} from 'lucide-react';
 
 import axios from 'axios';
 
@@ -666,6 +666,18 @@ function StudentManagement() {
 
 
 
+
+  
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, Avatar: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e) => {
 
@@ -1689,7 +1701,23 @@ function StudentManagement() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-
+                  {/* Avatar Upload */}
+                  <div className="md:col-span-2 flex flex-col items-center justify-center mb-4">
+                    <div className="relative group cursor-pointer" onClick={() => document.getElementById('avatar-upload').click()}>
+                      {formData.Avatar ? (
+                        <img src={formData.Avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-[#F4C542]/20" />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center border-4 border-[#F4C542]/20">
+                          <Camera className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                    <input type="file" id="avatar-upload" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                    <p className="text-xs text-gray-500 mt-2">Ảnh đại diện (tuỳ chọn)</p>
+                  </div>
 
                   {/* Ô Họ tên */}
 
