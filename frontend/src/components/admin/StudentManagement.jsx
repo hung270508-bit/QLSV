@@ -44,7 +44,7 @@ function StudentManagement() {
 
   const [filters, setFilters] = useState({
 
-    classFilter: '',
+    facultyFilter: '',
 
     statusFilter: ''
 
@@ -52,7 +52,7 @@ function StudentManagement() {
 
   const [displayFilters, setDisplayFilters] = useState({
 
-    classFilter: '',
+    facultyFilter: '',
 
     statusFilter: ''
 
@@ -990,13 +990,13 @@ function StudentManagement() {
 
 
 
-    const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
+    const matchesFaculty = !filters.facultyFilter || student.MaKhoa === filters.facultyFilter;
 
     const matchesStatus = !filters.statusFilter || student.TrangThai === filters.statusFilter;
 
 
 
-    return matchesSearch && matchesClass && matchesStatus;
+    return matchesSearch && matchesFaculty && matchesStatus;
 
   });
 
@@ -1038,9 +1038,9 @@ function StudentManagement() {
 
   const clearFilters = () => {
 
-    setFilters({ classFilter: '', statusFilter: '' });
+    setFilters({ facultyFilter: '', statusFilter: '' });
 
-    setDisplayFilters({ classFilter: '', statusFilter: '' });
+    setDisplayFilters({ facultyFilter: '', statusFilter: '' });
 
     setSearchTerm('');
 
@@ -1065,9 +1065,9 @@ function StudentManagement() {
 
 
 
-  const activeFilterCount = (filters.classFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm ? 1 : 0);
 
-  const hasActiveFilters = filters.classFilter || filters.statusFilter || searchTerm;
+  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || searchTerm;
 
 
 
@@ -1305,25 +1305,25 @@ function StudentManagement() {
 
               <div>
 
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
 
                 <select
 
-                  value={displayFilters.classFilter}
+                  value={displayFilters.facultyFilter}
 
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
 
                   className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
 
                 >
 
-                  <option value="">Tất cả lớp</option>
+                  <option value="">Tất cả khoa</option>
 
-                  {classes.map((cls) => (
+                  {faculties.map((faculty) => (
 
-                    <option key={cls.MaLop} value={cls.MaLop}>
+                    <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
 
-                      {cls.TenLop}
+                      {faculty.TenKhoa}
 
                     </option>
 
@@ -1385,7 +1385,7 @@ function StudentManagement() {
 
                 whileTap={{ scale: 0.99 }}
 
-                onClick={() => setDisplayFilters({ classFilter: '', statusFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '' })}
 
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
 
@@ -1432,7 +1432,8 @@ function StudentManagement() {
                 </div>
                 
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">{student.TenLop || 'N/A'}</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">{student.TenKhoa || 'N/A'}</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">{student.TenLop || 'N/A'}</span>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${student.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-blue-700' : student.GioiTinh === 'Nữ' ? 'bg-pink-50 text-pink-700' : 'bg-[#F7F8FA] text-gray-700'}`}>{student.GioiTinh || 'N/A'}</span>
                 </div>
                 
@@ -1462,7 +1463,7 @@ function StudentManagement() {
 
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Sinh viên</th>
 
-                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Lớp</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Khoa / Lớp</th>
 
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Giới tính</th>
 
@@ -1519,10 +1520,11 @@ function StudentManagement() {
 
                     </td>
 
-                    <td className="py-5 px-6 text-sm text-gray-700 font-medium whitespace-nowrap">
-
-                      {student.TenLop || 'N/A'}
-
+                    <td className="py-5 px-6">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-[#B45309] mb-0.5">{student.TenKhoa || 'N/A'}</span>
+                        <span className="text-sm text-gray-700 font-medium">{student.TenLop || 'N/A'}</span>
+                      </div>
                     </td>
 
                     <td className="py-5 px-6">
