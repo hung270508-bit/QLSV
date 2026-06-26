@@ -17,16 +17,17 @@ export default function ConfirmDialog({
     <AnimatePresence>
       {show && (
         <ModalPortal>
-          <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#FFFFFF] rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center border border-slate-100"
+              transition={{ duration: 0.2 }}
+              className="bg-[#FFFFFF] rounded-2xl max-w-sm w-full p-6 shadow-xl text-center border border-[#E5E7EB]"
             >
               <div
                 className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  type === 'danger' ? 'bg-red-100 text-[#DC2626]' : 'bg-[#3B82F6]/10 text-[#3B82F6]'
+                  type === 'danger' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'
                 }`}
               >
                 {type === 'danger' ? (
@@ -35,21 +36,21 @@ export default function ConfirmDialog({
                   <HelpCircle className="w-8 h-8" />
                 )}
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">{title}</h3>
-              <p className="text-slate-500 text-sm mb-6 leading-relaxed">{message}</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
+              <p className="text-gray-500 text-sm mb-6 leading-relaxed">{message}</p>
               <div className="flex gap-3">
                 <button
                   onClick={onCancel}
-                  className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                  className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
                 >
                   {cancelText}
                 </button>
                 <button
                   onClick={onConfirm}
-                  className={`flex-1 py-3 text-white font-bold rounded-xl transition-colors shadow-lg ${
+                  className={`flex-1 py-2.5 text-white font-semibold rounded-xl transition-colors ${
                     type === 'danger'
-                      ? 'bg-red-600 hover:bg-red-700 shadow-red-100'
-                      : 'bg-blue-600 hover:bg-blue-700 shadow-blue-100'
+                      ? 'bg-red-500 hover:bg-red-600'
+                      : 'bg-amber-500 hover:bg-amber-600'
                   }`}
                 >
                   {confirmText}

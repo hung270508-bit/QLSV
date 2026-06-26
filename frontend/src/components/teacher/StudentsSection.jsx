@@ -111,7 +111,7 @@ function StudentsSection({ students, teachingAssignments, grades }) {
                   <p className="text-sm text-[#F4C542]">Mã lớp: {group.MaLop}</p>
                 </div>
               </div>
-              <span className="bg-orange-200 text-[#F4C542] text-xs font-bold px-3 py-1 rounded-full">
+              <span className="bg-amber-200 text-[#F4C542] text-xs font-bold px-3 py-1 rounded-full">
                 {group.students.length} sinh viên
               </span>
             </div>
@@ -126,7 +126,7 @@ function StudentsSection({ students, teachingAssignments, grades }) {
                 >
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead className="bg-gradient-to-r from-orange-50 to-amber-50">
+                      <thead className="bg-gradient-to-r from-amber-50 to-amber-50">
                         <tr>
                           <th className="text-left py-4 px-6 text-sm font-bold text-gray-700">MSSV</th>
                           <th className="text-left py-4 px-6 text-sm font-bold text-gray-700">Họ tên</th>

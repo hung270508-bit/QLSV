@@ -34,14 +34,13 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
               whileTap={{ scale: 0.95 }}
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-[#FFFFFF] text-sm font-medium ${
-                currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[#6B7280] hover:bg-[#F7F8FA]'
-              }`}
+              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-[#FFFFFF] text-sm font-medium ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[#6B7280] hover:bg-[#F7F8FA]'
+                }`}
             >
               <span className="sr-only">Previous</span>
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </motion.button>
-            
+
             {startPage > 1 && (
               <>
                 <motion.button
@@ -67,11 +66,10 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onPageChange(number)}
                 aria-current={currentPage === number ? 'page' : undefined}
-                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                  currentPage === number
+                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === number
                     ? 'z-10 bg-[#FFF7D6] border-[#F4C542] text-[#F4C542]'
                     : 'bg-[#FFFFFF] border-gray-300 text-gray-700 hover:bg-[#F7F8FA]'
-                }`}
+                  }`}
               >
                 {number}
               </motion.button>
@@ -100,9 +98,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
               whileTap={{ scale: 0.95 }}
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-[#FFFFFF] text-sm font-medium ${
-                currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-[#6B7280] hover:bg-[#F7F8FA]'
-              }`}
+              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-[#FFFFFF] text-sm font-medium ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-[#6B7280] hover:bg-[#F7F8FA]'
+                }`}
             >
               <span className="sr-only">Next</span>
               <ChevronRight className="h-5 w-5" aria-hidden="true" />
@@ -114,9 +111,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-[#FFFFFF] ${
-            currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-[#F7F8FA]'
-          }`}
+          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-[#FFFFFF] ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-[#F7F8FA]'
+            }`}
         >
           Trước
         </button>
@@ -124,9 +120,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-[#FFFFFF] ${
-            currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-[#F7F8FA]'
-          }`}
+          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-[#FFFFFF] ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-[#F7F8FA]'
+            }`}
         >
           Sau
         </button>

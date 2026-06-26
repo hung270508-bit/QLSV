@@ -114,7 +114,7 @@ function StudentAttendance({ user }) {
       
       {/* Header Panel */}
       <div className="bg-[#FFFFFF] rounded-3xl p-8 shadow-sm border border-[#E5E7EB] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-64 h-64 bg-gradient-to-br from-orange-50 to-orange-100 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+        <div className="absolute right-0 top-0 w-64 h-64 bg-gradient-to-br from-amber-50 to-amber-100 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
         
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">

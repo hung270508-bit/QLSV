@@ -365,7 +365,7 @@ function FacultyManagement() {
               onClick={() => setShowFilters(!showFilters)}
               className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
                 hasActiveFilters
-                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30'
+                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-amber-500/30'
                   : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
                 }`}
             >
@@ -449,7 +449,7 @@ function FacultyManagement() {
                   <h4 className="font-bold text-[#1F2937] text-sm">{faculty.TenKhoa}</h4>
                   <p className="text-xs text-gray-400 font-mono mt-0.5">{faculty.MaKhoa}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleEdit(faculty); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm shrink-0">
+                <button onClick={(e) => { e.stopPropagation(); handleEdit(faculty); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm shrink-0">
                   <Edit className="w-4 h-4" />
                 </button>
               </div>
@@ -462,7 +462,7 @@ function FacultyManagement() {
         {/* Desktop View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50/80 to-orange-100/60 border-b border-[#FFF7D6]">
+            <thead className="bg-gradient-to-r from-amber-50/80 to-amber-100/60 border-b border-[#FFF7D6]">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã khoa</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên khoa</th>
@@ -492,7 +492,7 @@ function FacultyManagement() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(faculty)}
-                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
@@ -762,7 +762,7 @@ function FacultyManagement() {
                       <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
                         <table className="w-full">
                           <thead>
-                            <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <tr className="bg-gradient-to-r from-amber-50 to-amber-100">
                               <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">MSSV</th>
                               <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Họ tên</th>
                               <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Giới tính</th>
@@ -810,7 +810,7 @@ function FacultyManagement() {
                       <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
                         <table className="w-full">
                           <thead>
-                            <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <tr className="bg-gradient-to-r from-amber-50 to-amber-100">
                               <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Mã lớp</th>
                               <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Tên lớp</th>
                               <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Số sinh viên</th>
@@ -885,7 +885,7 @@ function FacultyManagement() {
                       <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
                       <div className="text-5xl font-bold mb-1">{facultyStats.totalStudents > 0 ? Math.round(facultyStats.totalTeachers / facultyStats.totalStudents * 10) / 10 : 0}</div>
                       <div className="text-[#152238]/70 font-medium">Tỷ lệ giảng viên/sinh viên</div>
-                      <div className="text-orange-200 text-sm mt-1">Trung bình mỗi giảng viên phụ trách {facultyStats.totalTeachers > 0 ? Math.round(facultyStats.totalStudents / facultyStats.totalTeachers) : 0} sinh viên</div>
+                      <div className="text-amber-200 text-sm mt-1">Trung bình mỗi giảng viên phụ trách {facultyStats.totalTeachers > 0 ? Math.round(facultyStats.totalStudents / facultyStats.totalTeachers) : 0} sinh viên</div>
                     </div>
                   </div>
                 )}

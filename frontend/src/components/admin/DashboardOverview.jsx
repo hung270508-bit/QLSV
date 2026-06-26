@@ -276,7 +276,7 @@ function DashboardOverview({ onNavigate }) {
             </div>
 
             {/* Legend */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-orange-100">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-amber-100">
               {facultyStudentData.map((item, i) => {
                 const pct = totalStudents > 0 ? ((item.value / totalStudents) * 100).toFixed(1) : 0;
                 return (

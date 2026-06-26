@@ -628,7 +628,7 @@ function ScheduleManagement() {
                         if (e.target.checked) setSelectedSchedules(prev => [...prev, s.MaLichHoc]);
                         else setSelectedSchedules(prev => prev.filter(id => id !== s.MaLichHoc));
                       }}
-                      className="w-5 h-5 text-[#F4C542] rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
+                      className="w-5 h-5 text-[#F4C542] rounded border-gray-300 focus:ring-amber-500 cursor-pointer"
                     />
                   </div>
                   <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 items-center w-full">
@@ -656,7 +656,7 @@ function ScheduleManagement() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-[#E5E7EB]">
-                    <button onClick={() => handleEdit(s)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#FFFFFF] border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-[#F4C542] hover:border-orange-300 transition-colors">
+                    <button onClick={() => handleEdit(s)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#FFFFFF] border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-[#F4C542] hover:border-amber-300 transition-colors">
                       <Edit className="w-3.5 h-3.5"/> Sửa
                     </button>
                     <button onClick={() => handleDelete(s.MaLichHoc)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#FFFFFF] border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:text-[#EF4444] hover:border-red-300 transition-colors">

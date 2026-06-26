@@ -71,6 +71,7 @@ function StudentManagement() {
   const [studentAttendance, setStudentAttendance] = useState([]);
 
   const [detailTab, setDetailTab] = useState('info');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [formData, setFormData] = useState({
     MSSV: '',
@@ -87,6 +88,24 @@ function StudentManagement() {
   });
 
   const [errors, setErrors] = useState({});
+
+  const getAvatarColor = (name) => {
+    if (!name) return 'bg-gray-100 text-gray-700 border-gray-200';
+    const colors = [
+      'bg-red-100 text-red-700 border-red-200',
+      'bg-blue-100 text-blue-700 border-blue-200',
+      'bg-green-100 text-green-700 border-green-200',
+      'bg-purple-100 text-purple-700 border-purple-200',
+      'bg-pink-100 text-pink-700 border-pink-200',
+      'bg-indigo-100 text-indigo-700 border-indigo-200',
+      'bg-teal-100 text-teal-700 border-teal-200',
+      'bg-orange-100 text-orange-700 border-orange-200',
+      'bg-cyan-100 text-cyan-700 border-cyan-200',
+      'bg-emerald-100 text-emerald-700 border-emerald-200',
+    ];
+    const charCode = name.charCodeAt(0);
+    return colors[charCode % colors.length];
+  };
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -231,50 +250,28 @@ function StudentManagement() {
 
 
 
-  useEffect(() => {
-
-    fetchData();
-
-  }, []);
-
-
-
   const fetchData = async () => {
-
     try {
-
       const [studentsRes, classesRes, facultiesRes, teachersRes] = await Promise.all([
-
         axios.get(`${API_BASE}/students`),
-
         axios.get(`${API_BASE}/classes`),
-
         axios.get(`${API_BASE}/faculties`),
-
         axios.get(`${API_BASE}/teachers`)
-
       ]);
-
       setStudents(studentsRes.data);
-
       setClasses(classesRes.data);
-
       setFaculties(facultiesRes.data);
-
       setTeachers(teachersRes.data);
-
     } catch (error) {
-
       console.error('Error fetching data:', error);
-
     } finally {
-
       setLoading(false);
-
     }
-
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
 
 
   const handleFacultyChange = (e) => {
@@ -1059,9 +1056,6 @@ function StudentManagement() {
 
 
   // Pagination calculations
-
-  const [currentPage, setCurrentPage] = useState(1);
-
   const itemsPerPage = 10;
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -1244,7 +1238,7 @@ function StudentManagement() {
 
                 hasActiveFilters 
 
-                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30' 
+                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-amber-500/30' 
 
                   : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
 
@@ -1419,14 +1413,23 @@ function StudentManagement() {
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
         
         {/* Mobile View */}
-        <div className="block sm:hidden divide-y divide-orange-50">
+        <div className="block sm:hidden divide-y divide-amber-50">
           {currentItems.length > 0 ? (
             currentItems.map((student, index) => (
               <div key={student.MSSV} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer" onClick={() => handleViewDetails(student)}>
                 <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="font-bold text-[#1F2937] text-sm">{capitalizeVietnameseName(student.HoTen)}</h4>
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">{student.MSSV}</p>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold overflow-hidden shrink-0 border ${student.Avatar ? 'bg-gray-100 border-gray-200' : getAvatarColor(student.HoTen)}`}>
+                      {student.Avatar ? (
+                        <img src={student.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        student.HoTen?.charAt(0).toUpperCase() || 'S'
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#1F2937] text-sm">{capitalizeVietnameseName(student.HoTen)}</h4>
+                      <p className="text-xs text-gray-400 font-mono mt-0.5">{student.MSSV}</p>
+                    </div>
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${student.TrangThai === 'Đang học' ? 'bg-[#22C55E]/10 text-green-700' : student.TrangThai === 'Học lại' ? 'bg-yellow-50 text-yellow-700' : 'bg-[#EF4444]/10 text-red-700'}`}>{student.TrangThai || 'Đang học'}</span>
                 </div>
@@ -1441,7 +1444,7 @@ function StudentManagement() {
                     <span className="truncate max-w-[180px]">{student.Email || 'N/A'}</span>
                     <span className="mt-0.5">{student.SoDienThoai || 'N/A'}</span>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(student); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shrink-0">
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(student); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shrink-0">
                     <Edit className="w-4 h-4" />
                   </button>
                 </div>
@@ -1456,7 +1459,7 @@ function StudentManagement() {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
 
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+            <thead className="bg-gradient-to-r from-amber-50 to-amber-100">
 
               <tr>
 
@@ -1492,7 +1495,7 @@ function StudentManagement() {
 
                     transition={{ delay: index * 0.05 }}
 
-                    className="border-b border-orange-50 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer"
+                    className="border-b border-amber-50 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer"
 
                     onClick={() => handleViewDetails(student)}
 
@@ -1500,12 +1503,21 @@ function StudentManagement() {
 
                     <td className="py-5 px-6">
 
-                      <div className="flex flex-col">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold overflow-hidden shrink-0 border ${student.Avatar ? 'bg-gray-100 border-gray-200' : getAvatarColor(student.HoTen)}`}>
+                          {student.Avatar ? (
+                            <img src={student.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            student.HoTen?.charAt(0).toUpperCase() || 'S'
+                          )}
+                        </div>
+                        <div className="flex flex-col">
 
-                        <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{capitalizeVietnameseName(student.HoTen)}</span>
+                          <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{capitalizeVietnameseName(student.HoTen)}</span>
 
-                        <span className="text-xs text-gray-300 font-mono mt-0.5 whitespace-nowrap">{student.MSSV}</span>
+                          <span className="text-xs text-gray-300 font-mono mt-0.5 whitespace-nowrap">{student.MSSV}</span>
 
+                        </div>
                       </div>
 
                     </td>
@@ -1576,7 +1588,7 @@ function StudentManagement() {
 
                           onClick={() => handleEdit(student)}
 
-                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm"
 
                           title="Chỉnh sửa"
 
@@ -2271,7 +2283,7 @@ function StudentManagement() {
 
                         { label: 'Tỷ lệ qua', value: `${studentTranscript?.summary?.passRate || 0}%`, icon: TrendingUp, color: 'purple' },
 
-                        { label: 'Số môn', value: studentTranscript?.transcript?.length || 0, icon: BarChart3, color: 'orange' },
+                        { label: 'Số môn', value: studentTranscript?.transcript?.length || 0, icon: BarChart3, color: 'amber' },
 
                       ].map((card, i) => {
 
@@ -2285,7 +2297,7 @@ function StudentManagement() {
 
                           purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
 
-                          orange: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-orange-300 hover:bg-[#FFF7D6]/30',
+                          amber: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-amber-300 hover:bg-[#FFF7D6]/30',
 
                         };
 
@@ -2423,7 +2435,7 @@ function StudentManagement() {
 
                           { label: 'GPA tích lũy', value: studentTranscript.summary.cumulativeGPA, icon: Award, color: 'purple' },
 
-                          { label: 'Tỷ lệ qua', value: `${studentTranscript.summary.passRate}%`, icon: TrendingUp, color: 'orange' },
+                          { label: 'Tỷ lệ qua', value: `${studentTranscript.summary.passRate}%`, icon: TrendingUp, color: 'amber' },
 
                         ].map((card, i) => {
 
@@ -2437,7 +2449,7 @@ function StudentManagement() {
 
                             purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
 
-                            orange: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-orange-300 hover:bg-[#FFF7D6]/30',
+                            amber: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-amber-300 hover:bg-[#FFF7D6]/30',
 
                           };
 
@@ -2489,7 +2501,7 @@ function StudentManagement() {
 
                         <thead>
 
-                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                          <tr className="bg-gradient-to-r from-amber-50 to-amber-100">
 
                             <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Môn học</th>
 
@@ -2593,7 +2605,7 @@ function StudentManagement() {
 
                           <thead>
 
-                            <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <tr className="bg-gradient-to-r from-amber-50 to-amber-100">
 
                               <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Ngày</th>
 
@@ -2761,7 +2773,7 @@ const SCHEDULE_CA_SLOTS = {
 
   '2': { label: 'Ca 2', time: 'Tiết 4–6', color: 'bg-amber-100 text-amber-700' },
 
-  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-orange-200 text-[#F4C542]' },
+  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-amber-200 text-[#F4C542]' },
 
   '4': { label: 'Ca 4', time: 'Tiết 10–12', color: 'bg-amber-200 text-amber-800' },
 

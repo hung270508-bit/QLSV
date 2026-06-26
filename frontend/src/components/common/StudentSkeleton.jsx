@@ -10,11 +10,11 @@ export function StudentCourseRegistrationSkeleton() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-pulse pb-10">
       {/* HEADER TỔNG */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 flex items-center gap-6 h-36 shadow-sm border border-orange-100/50">
-        <Bone className="w-16 h-16 !rounded-2xl !bg-orange-200/50" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 flex items-center gap-6 h-36 shadow-sm border border-amber-100/50">
+        <Bone className="w-16 h-16 !rounded-2xl !bg-amber-200/50" />
         <div>
-          <Bone className="h-8 w-64 mb-3 !bg-orange-200/50" />
-          <Bone className="h-5 w-80 !bg-orange-200/40" />
+          <Bone className="h-8 w-64 mb-3 !bg-amber-200/50" />
+          <Bone className="h-5 w-80 !bg-amber-200/40" />
         </div>
       </div>
 
@@ -23,11 +23,11 @@ export function StudentCourseRegistrationSkeleton() {
         <Bone className="h-6 w-64 mb-6" />
         <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB]">
           <div className="w-full text-left text-sm border-collapse min-w-[700px]">
-            <div className="bg-gradient-to-r from-orange-50 to-orange-100/60 p-5 flex gap-6 border-b border-[#FFF7D6]">
-              <Bone className="h-4 flex-1 !bg-orange-200/60" />
-              <Bone className="h-4 flex-1 !bg-orange-200/60" />
-              <Bone className="h-4 flex-1 !bg-orange-200/60" />
-              <Bone className="h-4 flex-1 !bg-orange-200/60" />
+            <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 p-5 flex gap-6 border-b border-amber-100">
+              <Bone className="h-4 flex-1 !bg-amber-200/60" />
+              <Bone className="h-4 flex-1 !bg-amber-200/60" />
+              <Bone className="h-4 flex-1 !bg-amber-200/60" />
+              <Bone className="h-4 flex-1 !bg-amber-200/60" />
             </div>
             <div className="divide-y divide-gray-50">
               {[...Array(2)].map((_, i) => (
@@ -48,9 +48,9 @@ export function StudentCourseRegistrationSkeleton() {
         <Bone className="h-6 w-80 mb-6" />
         <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB]">
           <div className="w-full text-left text-sm border-collapse min-w-[900px]">
-            <div className="bg-gradient-to-r from-orange-50 to-orange-100/60 p-5 flex gap-6 border-b border-[#FFF7D6]">
+            <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 p-5 flex gap-6 border-b border-amber-100">
               {[...Array(6)].map((_, i) => (
-                <Bone key={i} className="h-4 flex-1 !bg-orange-200/60" />
+                <Bone key={i} className="h-4 flex-1 !bg-amber-200/60" />
               ))}
             </div>
             <div className="divide-y divide-gray-50">
@@ -74,12 +74,12 @@ export function StudentAttendanceSkeleton() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-pulse pb-12">
       {/* Header Panel */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 shadow-sm border border-orange-100/50 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 shadow-sm border border-amber-100/50 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
         <div>
-          <Bone className="h-8 w-64 mb-3 !bg-orange-200/50" />
-          <Bone className="h-5 w-80 !bg-orange-200/40" />
+          <Bone className="h-8 w-64 mb-3 !bg-amber-200/50" />
+          <Bone className="h-5 w-80 !bg-amber-200/40" />
         </div>
-        <Bone className="h-24 w-80 !rounded-2xl !bg-orange-200/50" />
+        <Bone className="h-24 w-80 !rounded-2xl !bg-amber-200/50" />
       </div>
 
       {/* Main Layout (Split View) */}
@@ -102,9 +102,9 @@ export function StudentAttendanceSkeleton() {
         {/* Right Column */}
         <div className="lg:col-span-2">
           <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] h-full min-h-[500px] flex flex-col overflow-hidden">
-            <div className="bg-gradient-to-r from-orange-50 to-orange-100/60 p-6 flex items-center justify-between gap-4 h-28 border-b border-[#FFF7D6]">
-               <Bone className="h-8 w-64 !bg-orange-200/60" />
-               <Bone className="h-14 w-32 !rounded-xl !bg-orange-200/60" />
+            <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 p-6 flex items-center justify-between gap-4 h-28 border-b border-amber-100">
+               <Bone className="h-8 w-64 !bg-amber-200/60" />
+               <Bone className="h-14 w-32 !rounded-xl !bg-amber-200/60" />
             </div>
             <div className="p-6 space-y-5">
               {[...Array(3)].map((_, idx) => (
@@ -121,9 +121,9 @@ export function StudentAttendanceSkeleton() {
 export function StudentSupportSkeleton() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-pulse pb-10">
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 h-36 shadow-sm border border-orange-100/50 flex flex-col justify-center">
-        <Bone className="h-8 w-64 mb-3 !bg-orange-200/50" />
-        <Bone className="h-5 w-96 !bg-orange-200/40" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 h-36 shadow-sm border border-amber-100/50 flex flex-col justify-center">
+        <Bone className="h-8 w-64 mb-3 !bg-amber-200/50" />
+        <Bone className="h-5 w-96 !bg-amber-200/40" />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -148,12 +148,12 @@ export function StudentScheduleSkeleton() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-pulse pb-12">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 shadow-sm border border-orange-100/50 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 shadow-sm border border-amber-100/50 flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <Bone className="h-8 w-64 mb-3 !bg-orange-200/50" />
-          <Bone className="h-5 w-80 !bg-orange-200/40" />
+          <Bone className="h-8 w-64 mb-3 !bg-amber-200/50" />
+          <Bone className="h-5 w-80 !bg-amber-200/40" />
         </div>
-        <Bone className="h-12 w-48 !rounded-xl !bg-orange-200/50" />
+        <Bone className="h-12 w-48 !rounded-xl !bg-amber-200/50" />
       </div>
       
       <Bone className="h-16 w-full !rounded-2xl" />
@@ -181,9 +181,9 @@ export function StudentScheduleSkeleton() {
 export function StudentOverviewSkeleton() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-pulse pb-10">
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-5 rounded-2xl shadow-sm border border-orange-100/50 flex justify-between h-16 items-center">
-        <Bone className="h-6 w-64 !bg-orange-200/50" />
-        <Bone className="h-10 w-10 !rounded-full !bg-orange-200/50" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 p-5 rounded-2xl shadow-sm border border-amber-100/50 flex justify-between h-16 items-center">
+        <Bone className="h-6 w-64 !bg-amber-200/50" />
+        <Bone className="h-10 w-10 !rounded-full !bg-amber-200/50" />
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3 space-y-6">
@@ -206,14 +206,14 @@ export function StudentOverviewSkeleton() {
 export function StudentProfileSkeleton() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-pulse pb-10">
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 sm:p-10 h-64 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-sm border border-orange-100/50">
-        <Bone className="w-36 h-36 !rounded-full !bg-orange-200/60 border-4 border-white shadow-sm" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 sm:p-10 h-64 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-sm border border-amber-100/50">
+        <Bone className="w-36 h-36 !rounded-full !bg-amber-200/60 border-4 border-white shadow-sm" />
         <div className="mt-2 text-center md:text-left flex-1">
-          <Bone className="h-10 w-64 mb-4 mx-auto md:mx-0 !bg-orange-200/50" />
-          <Bone className="h-6 w-48 mb-6 mx-auto md:mx-0 !bg-orange-200/40" />
+          <Bone className="h-10 w-64 mb-4 mx-auto md:mx-0 !bg-amber-200/50" />
+          <Bone className="h-6 w-48 mb-6 mx-auto md:mx-0 !bg-amber-200/40" />
           <div className="flex gap-3 justify-center md:justify-start">
-             <Bone className="h-10 w-28 !rounded-full !bg-orange-200/50" />
-             <Bone className="h-10 w-28 !rounded-full !bg-orange-200/50" />
+             <Bone className="h-10 w-28 !rounded-full !bg-amber-200/50" />
+             <Bone className="h-10 w-28 !rounded-full !bg-amber-200/50" />
           </div>
         </div>
       </div>
@@ -228,11 +228,11 @@ export function StudentProfileSkeleton() {
 export function StudentAnnouncementsSkeleton() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-pulse pb-10">
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 h-32 flex items-center gap-5 shadow-sm border border-orange-100/50">
-        <Bone className="w-14 h-14 !rounded-xl !bg-orange-200/60" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 h-32 flex items-center gap-5 shadow-sm border border-amber-100/50">
+        <Bone className="w-14 h-14 !rounded-xl !bg-amber-200/60" />
         <div>
-          <Bone className="h-8 w-56 mb-3 !bg-orange-200/50" />
-          <Bone className="h-5 w-80 !bg-orange-200/40" />
+          <Bone className="h-8 w-56 mb-3 !bg-amber-200/50" />
+          <Bone className="h-5 w-80 !bg-amber-200/40" />
         </div>
       </div>
       <div className="space-y-5">
@@ -254,9 +254,9 @@ export function StudentAnnouncementsSkeleton() {
 export function StudentGradesSkeleton() {
   return (
     <div className="space-y-6 animate-pulse pb-10 max-w-7xl mx-auto">
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 h-32 flex flex-col justify-center shadow-sm border border-orange-100/50 mb-8">
-        <Bone className="h-8 w-64 mb-3 !bg-orange-200/50" />
-        <Bone className="h-5 w-80 !bg-orange-200/40" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 h-32 flex flex-col justify-center shadow-sm border border-amber-100/50 mb-8">
+        <Bone className="h-8 w-64 mb-3 !bg-amber-200/50" />
+        <Bone className="h-5 w-80 !bg-amber-200/40" />
       </div>
 
       {/* Overview Cards */}

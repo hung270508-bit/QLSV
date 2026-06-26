@@ -365,7 +365,7 @@ function StudentSupport({ user, profile }) {
                           <option value="Học phí & Học bổng">Học phí & Học bổng</option>
                           <option value="Khác">Khác</option>
                         </select>
-                        <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-orange-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-amber-400 pointer-events-none" />
                       </div>
                       {formErrors.chuDe && <p className="text-[#EF4444] text-xs mt-1">{formErrors.chuDe}</p>}
                     </div>
@@ -385,7 +385,7 @@ function StudentSupport({ user, profile }) {
                     </div>
                   </div>
                   <div className="text-right pt-1">
-                    <button type="submit" disabled={submitting} className="bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-[#152238] font-semibold py-2.5 px-6 rounded-lg transition-all flex items-center gap-2 ml-auto shadow-md shadow-[#F4C542]/30 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed transform hover:-translate-y-0.5 text-sm">
+                    <button type="submit" disabled={submitting} className="bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-semibold py-2.5 px-6 rounded-lg transition-all flex items-center gap-2 ml-auto shadow-md shadow-[#F4C542]/30 disabled:from-amber-300 disabled:to-amber-300 disabled:cursor-not-allowed transform hover:-translate-y-0.5 text-sm">
                       {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi...</> : <><Send className="w-4 h-4" /> Gửi Yêu Cầu</>}
                     </button>
                   </div>
@@ -589,7 +589,7 @@ function StudentSupport({ user, profile }) {
                     <button type="button" onClick={() => setRequestForm({ show: false, chude: '' })} className="px-6 py-2.5 text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] font-semibold rounded-lg transition-colors border border-[#F4C542]/30 w-full sm:w-auto text-sm">
                       HỦY BỎ
                     </button>
-                    <button type="submit" disabled={requestSubmitting} className="bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-[#152238] font-semibold py-2.5 px-8 rounded-lg transition-all shadow-md shadow-[#F4C542]/30 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 transform hover:-translate-y-0.5 w-full sm:w-auto text-sm">
+                    <button type="submit" disabled={requestSubmitting} className="bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-semibold py-2.5 px-8 rounded-lg transition-all shadow-md shadow-[#F4C542]/30 disabled:from-amber-300 disabled:to-amber-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 transform hover:-translate-y-0.5 w-full sm:w-auto text-sm">
                       {requestSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> ĐANG XỬ LÝ...</> : 'ĐĂNG KÝ'}
                     </button>
                   </div>

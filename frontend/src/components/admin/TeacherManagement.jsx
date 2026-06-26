@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
@@ -27,6 +27,7 @@ function TeacherManagement() {
   const [teachingSchedule, setTeachingSchedule] = useState([]);
   const [teachingLoad, setTeachingLoad] = useState([]);
   const [detailTab, setDetailTab] = useState('info'); // 'info', 'schedule', 'load'
+  const [currentPage, setCurrentPage] = useState(1);
   
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null });
@@ -43,6 +44,25 @@ function TeacherManagement() {
     GioiTinh: '',
     NgaySinh: ''
   });
+
+  const getAvatarColor = (name) => {
+    if (!name) return 'bg-gray-100 text-gray-700 border-gray-200';
+    const colors = [
+      'bg-red-100 text-red-700 border-red-200',
+      'bg-blue-100 text-blue-700 border-blue-200',
+      'bg-green-100 text-green-700 border-green-200',
+      'bg-purple-100 text-purple-700 border-purple-200',
+      'bg-pink-100 text-pink-700 border-pink-200',
+      'bg-indigo-100 text-indigo-700 border-indigo-200',
+      'bg-teal-100 text-teal-700 border-teal-200',
+      'bg-orange-100 text-orange-700 border-orange-200',
+      'bg-cyan-100 text-cyan-700 border-cyan-200',
+      'bg-emerald-100 text-emerald-700 border-emerald-200',
+    ];
+    const charCode = name.charCodeAt(0);
+    return colors[charCode % colors.length];
+  };
+
   const [errors, setErrors] = useState({});
 
   // Loại bỏ dấu tiếng Việt
@@ -72,10 +92,6 @@ function TeacherManagement() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     try {
       const [teachersRes, facultiesRes, studentsRes] = await Promise.all([
@@ -93,6 +109,9 @@ function TeacherManagement() {
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
   const handleKhoaChange = async (e) => {
     const maKhoa = e.target.value;
     setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaGiangVien: '' }));
@@ -407,7 +426,6 @@ function TeacherManagement() {
   };
 
   // Pagination calculations
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -491,7 +509,7 @@ function TeacherManagement() {
               onClick={() => setShowFilters(!showFilters)}
               className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
                 hasActiveFilters 
-                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30' 
+                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-amber-500/30' 
                   : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
               }`}
             >
@@ -580,13 +598,22 @@ function TeacherManagement() {
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
         
         {/* Mobile View */}
-        <div className="block sm:hidden divide-y divide-orange-50">
+        <div className="block sm:hidden divide-y divide-amber-50">
           {currentItems.length > 0 ? currentItems.map((teacher, index) => (
             <div key={teacher.MaGiangVien} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer" onClick={() => handleViewDetails(teacher)}>
               <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h4 className="font-bold text-[#1F2937] text-sm">{teacher.HoTen}</h4>
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">{teacher.MaGiangVien}</p>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold overflow-hidden shrink-0 border ${teacher.Avatar ? 'bg-gray-100 border-gray-200' : getAvatarColor(teacher.HoTen)}`}>
+                    {teacher.Avatar ? (
+                      <img src={teacher.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      teacher.HoTen?.charAt(0).toUpperCase() || 'G'
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#1F2937] text-sm">{teacher.HoTen}</h4>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{teacher.MaGiangVien}</p>
+                  </div>
                 </div>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${teacher.TrangThai === 'Đang dạy' ? 'bg-[#22C55E]/10 text-green-700' : teacher.TrangThai === 'Tạm nghỉ' ? 'bg-yellow-50 text-yellow-700' : 'bg-[#EF4444]/10 text-red-700'}`}>{teacher.TrangThai || 'Đang dạy'}</span>
               </div>
@@ -601,7 +628,7 @@ function TeacherManagement() {
                   <span className="truncate max-w-[180px]">{teacher.Email || 'N/A'}</span>
                   <span className="mt-0.5">{teacher.SoDienThoai || 'N/A'}</span>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleEdit(teacher); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shrink-0">
+                <button onClick={(e) => { e.stopPropagation(); handleEdit(teacher); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shrink-0">
                   <Edit className="w-4 h-4" />
                 </button>
               </div>
@@ -612,7 +639,7 @@ function TeacherManagement() {
         {/* Desktop View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+            <thead className="bg-gradient-to-r from-amber-50 to-amber-100">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Giảng viên</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Khoa</th>
@@ -630,13 +657,22 @@ function TeacherManagement() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b border-orange-50 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer"
+                    className="border-b border-amber-50 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer"
                     onClick={() => handleViewDetails(teacher)}
                   >
                     <td className="py-5 px-6">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{teacher.HoTen}</span>
-                        <span className="text-xs text-gray-300 font-mono mt-0.5 whitespace-nowrap">{teacher.MaGiangVien}</span>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold overflow-hidden shrink-0 border ${teacher.Avatar ? 'bg-gray-100 border-gray-200' : getAvatarColor(teacher.HoTen)}`}>
+                          {teacher.Avatar ? (
+                            <img src={teacher.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            teacher.HoTen?.charAt(0).toUpperCase() || 'G'
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{teacher.HoTen}</span>
+                          <span className="text-xs text-gray-300 font-mono mt-0.5 whitespace-nowrap">{teacher.MaGiangVien}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="py-5 px-6 text-sm text-gray-700 font-medium whitespace-nowrap">
@@ -679,7 +715,7 @@ function TeacherManagement() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(teacher)}
-                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
@@ -692,7 +728,7 @@ function TeacherManagement() {
                 <tr>
                   <td colSpan="6" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-300">
-                      <Users className="w-16 h-16 mb-4 text-orange-200" />
+                      <Users className="w-16 h-16 mb-4 text-amber-200" />
                       <p className="text-lg font-medium text-[#6B7280]">Không tìm thấy giảng viên nào</p>
                       <p className="text-sm text-gray-300 mt-1">Thử tìm kiếm với từ khóa hoặc bộ lọc khác</p>
                     </div>
@@ -982,14 +1018,14 @@ function TeacherManagement() {
                       { label: 'Lớp dạy', value: teachingSchedule.length, icon: BookOpen, color: 'blue' },
                       { label: 'Môn học', value: [...new Set(teachingSchedule.map(s => s.TenMonHoc))].length, icon: BarChart3, color: 'green' },
                       { label: 'Tín chỉ', value: teachingLoad.reduce((sum, l) => sum + (parseInt(l.SoTinChi) || 0), 0), icon: Award, color: 'purple' },
-                      { label: 'Ca/tuần', value: teachingSchedule.length, icon: Calendar, color: 'orange' },
+                      { label: 'Ca/tuần', value: teachingSchedule.length, icon: Calendar, color: 'amber' },
                     ].map((card, i) => {
                       const Icon = card.icon;
                       const colorMap = {
                         blue: 'bg-[#3B82F6]/10 text-[#3B82F6] border-blue-100',
                         green: 'bg-[#22C55E]/10 text-[#22C55E] border-green-100',
                         purple: 'bg-purple-50 text-purple-600 border-purple-100',
-                        orange: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6]',
+                        amber: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6]',
                       };
                       return (
                         <motion.div
@@ -1058,7 +1094,7 @@ function TeacherManagement() {
                     <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB]">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                          <tr className="bg-gradient-to-r from-amber-50 to-amber-100">
                             <th className="text-left py-3.5 px-5 text-xs font-bold text-[#6B7280] uppercase tracking-wider">Môn học</th>
                             <th className="text-left py-3.5 px-5 text-xs font-bold text-[#6B7280] uppercase tracking-wider">Số tín chỉ</th>
                             <th className="text-left py-3.5 px-5 text-xs font-bold text-[#6B7280] uppercase tracking-wider">Lớp học</th>
@@ -1107,7 +1143,7 @@ const SCHEDULE_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Th
 const SCHEDULE_CA_SLOTS = {
   '1': { label: 'Ca 1', time: 'Tiết 1–3', color: 'bg-[#F4C542]/20 text-[#B45309]' },
   '2': { label: 'Ca 2', time: 'Tiết 4–6', color: 'bg-amber-100 text-amber-700' },
-  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-orange-200 text-[#F4C542]' },
+  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-amber-200 text-[#F4C542]' },
   '4': { label: 'Ca 4', time: 'Tiết 10–12', color: 'bg-amber-200 text-amber-800' },
 };
 

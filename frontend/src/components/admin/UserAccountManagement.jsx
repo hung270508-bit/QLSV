@@ -324,7 +324,7 @@ function UserAccountManagement() {
                 onClick={() => setShowFilters(!showFilters)}
                 className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
                   hasActiveFilters 
-                    ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30' 
+                    ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-amber-500/30' 
                     : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
                 }`}
               >
@@ -412,7 +412,7 @@ function UserAccountManagement() {
         <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+              <thead className="bg-gradient-to-r from-amber-50 to-amber-100">
                 <tr>
                   <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Tài khoản</th>
                   <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Quyền</th>
@@ -430,7 +430,7 @@ function UserAccountManagement() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
                       onClick={() => setViewingUser(user)}
-                      className="border-b border-orange-50 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
+                      className="border-b border-amber-50 hover:bg-gradient-to-r hover:from-amber-50 hover:to-amber-100 transition-all cursor-pointer"
                     >
                       <td className="py-5 px-6">
                         <span className="font-bold text-[#1F2937] text-sm">{user.TaiKhoan}</span>
@@ -454,7 +454,7 @@ function UserAccountManagement() {
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={(e) => { e.stopPropagation(); handleEdit(user); }}
-                            className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-colors shadow-sm"
+                            className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-colors shadow-sm"
                             title="Cập nhật tài khoản"
                           >
                             <Edit className="w-4 h-4" />
@@ -629,7 +629,7 @@ function UserAccountManagement() {
                         </button>
                         <button
                           type="submit"
-                          className="flex-1 py-3 bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all"
+                          className="flex-1 py-3 bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all"
                         >
                           Lưu thay đổi
                         </button>

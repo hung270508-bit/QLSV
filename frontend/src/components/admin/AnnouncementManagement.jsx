@@ -295,7 +295,7 @@ function AnnouncementManagement() {
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+            <thead className="bg-gradient-to-r from-amber-50 to-amber-100">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tiêu đề</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Gửi đến</th>
@@ -312,7 +312,7 @@ function AnnouncementManagement() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleViewDetail(announcement)}
-                    className="border-b border-[#E5E7EB] hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 transition-all cursor-pointer"
+                    className="border-b border-[#E5E7EB] hover:bg-gradient-to-r hover:from-amber-50 hover:to-amber-100 transition-all cursor-pointer"
                   >
                     <td className="py-5 px-6">
                       <div className="font-semibold text-[#1F2937] text-base">{announcement.TieuDe}</div>
@@ -553,7 +553,7 @@ function AnnouncementManagement() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-2xl p-6">
+              <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-2xl p-6">
                 <h4 className="text-3xl font-bold text-[#1F2937] mb-2">{selectedAnnouncement.TieuDe}</h4>
               </div>
 

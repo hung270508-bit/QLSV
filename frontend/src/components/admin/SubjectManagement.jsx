@@ -427,7 +427,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
               onClick={() => setShowFilters(!showFilters)}
               className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
                 hasActiveFilters
-                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-100'
+                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-amber-100'
                   : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
               }`}
             >
@@ -530,7 +530,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
         {/* Desktop View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100/40">
+            <thead className="bg-gradient-to-r from-amber-50 to-amber-100/40">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Môn học</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Số tín chỉ</th>
@@ -578,7 +578,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                 <tr>
                   <td colSpan="3" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-300">
-                      <BookOpen className="w-16 h-16 mb-4 text-orange-200" />
+                      <BookOpen className="w-16 h-16 mb-4 text-amber-200" />
                       <p className="text-lg font-medium">Không tìm thấy môn học nào</p>
                       <p className="text-sm mt-2">Thử tìm kiếm hoặc đổi bộ lọc khác</p>
                     </div>
@@ -777,7 +777,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                     <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                          <tr className="bg-gradient-to-r from-amber-50 to-amber-100">
                             <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Mã lớp</th>
                             <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Tên lớp</th>
                             <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Số sinh viên</th>
@@ -855,7 +855,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                         <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
                         <div className="text-5xl font-bold mb-1">{subjectGradeStats.average || 0}</div>
                         <div className="text-[#152238]/70 font-medium">Điểm trung bình môn học</div>
-                        <div className="text-orange-200 text-sm mt-1">Tổng {subjectGradeStats.totalGrades} bản ghi điểm</div>
+                        <div className="text-amber-200 text-sm mt-1">Tổng {subjectGradeStats.totalGrades} bản ghi điểm</div>
                       </div>
 
                       {/* Phân loại */}

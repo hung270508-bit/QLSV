@@ -499,7 +499,7 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                         <button
                           type="submit"
                           disabled={passwordSubmitting}
-                          className="w-full bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-[#152238] font-semibold py-2.5 rounded-lg transition-all shadow-md shadow-[#F4C542]/30 disabled:from-orange-300 disabled:to-orange-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                          className="w-full bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-semibold py-2.5 rounded-lg transition-all shadow-md shadow-[#F4C542]/30 disabled:from-amber-300 disabled:to-amber-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                         >
                           {passwordSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý...</> : <><Key className="w-4 h-4" /> Đổi mật khẩu</>}
                         </button>

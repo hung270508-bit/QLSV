@@ -261,7 +261,7 @@ function ScheduleSection({ user }) {
               type="radio" 
               checked={viewType === 'week'} 
               onChange={() => setViewType('week')}
-              className="w-5 h-5 text-[#F4C542] focus:ring-orange-500 border-gray-300" 
+              className="w-5 h-5 text-[#F4C542] focus:ring-amber-500 border-gray-300" 
             />
             <span className={`font-medium ${viewType === 'week' ? 'text-[#F4C542]' : 'text-[#6B7280]'}`}>Lịch dạy Tuần</span>
           </label>
@@ -270,7 +270,7 @@ function ScheduleSection({ user }) {
               type="radio" 
               checked={viewType === 'semester'} 
               onChange={() => setViewType('semester')}
-              className="w-5 h-5 text-[#F4C542] focus:ring-orange-500 border-gray-300" 
+              className="w-5 h-5 text-[#F4C542] focus:ring-amber-500 border-gray-300" 
             />
             <span className={`font-medium ${viewType === 'semester' ? 'text-[#F4C542]' : 'text-[#6B7280]'}`}>Lịch dạy Học Kỳ</span>
           </label>
@@ -351,7 +351,7 @@ function ScheduleSection({ user }) {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center p-16 text-center">
-            <div className="w-20 h-20 bg-[#FFF7D6] rounded-full flex items-center justify-center mb-4"><BookOpen className="w-10 h-10 text-orange-300" /></div>
+            <div className="w-20 h-20 bg-[#FFF7D6] rounded-full flex items-center justify-center mb-4"><BookOpen className="w-10 h-10 text-amber-300" /></div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">{allSchedules.length === 0 ? "Chưa có lịch giảng dạy" : "Trống lịch tuần này"}</h3>
             <p className="text-gray-500 max-w-md">{allSchedules.length === 0 ? "Hiện tại bạn chưa được phân công lịch giảng dạy nào. Các lịch học sẽ hiển thị tại đây khi được phòng đào tạo xếp lịch." : "Tuần này bạn không có lịch lên lớp. Hãy chọn tuần khác hoặc chuyển sang Lịch dạy Học Kỳ."}</p>
           </div>

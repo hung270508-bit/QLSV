@@ -561,7 +561,7 @@ function StudentTrainingPoints({ user }) {
                     <button 
                       onClick={() => handleOpenNew(period.HocKy)} 
                       disabled={daysLeft !== null && daysLeft < 0}
-                      className="w-full bg-[#F4C542] hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-[#152238] font-bold py-3 rounded-xl text-sm shadow-md shadow-[#F4C542]/30 transition-colors"
+                      className="w-full bg-[#F4C542] hover:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-[#152238] font-bold py-3 rounded-xl text-sm shadow-md shadow-[#F4C542]/30 transition-colors"
                     >
                       Khai báo ngay
                     </button>

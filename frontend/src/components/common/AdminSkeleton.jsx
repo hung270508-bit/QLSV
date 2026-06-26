@@ -13,9 +13,9 @@ export function TableSkeleton({ columns = 5, rows = 6 }) {
   return (
     <div className="space-y-6 animate-pulse pb-10">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 h-32 flex flex-col justify-center shadow-sm border border-orange-100/50">
-        <Bone className="h-8 w-64 mb-3 !bg-orange-200/50" />
-        <Bone className="h-5 w-96 !bg-orange-200/40" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 h-32 flex flex-col justify-center shadow-sm border border-amber-100/50">
+        <Bone className="h-8 w-64 mb-3 !bg-amber-200/50" />
+        <Bone className="h-5 w-96 !bg-amber-200/40" />
       </div>
 
       {/* Search & Filter Bar */}
@@ -29,9 +29,9 @@ export function TableSkeleton({ columns = 5, rows = 6 }) {
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
         {/* Table Header */}
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100/60 px-6 py-5 flex gap-6 border-b border-[#FFF7D6]">
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 px-6 py-5 flex gap-6 border-b border-amber-100">
           {[...Array(columns)].map((_, i) => (
-            <Bone key={i} className={`h-4 ${i === 0 ? 'w-16 flex-none' : 'flex-1'} !bg-orange-200/60 !rounded-md`} />
+            <Bone key={i} className={`h-4 ${i === 0 ? 'w-16 flex-none' : 'flex-1'} !bg-amber-200/60 !rounded-md`} />
           ))}
         </div>
         {/* Table Rows */}
@@ -59,9 +59,9 @@ export function GradeSkeleton() {
   return (
     <div className="space-y-6 animate-pulse pb-10">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 h-32 flex flex-col justify-center shadow-sm border border-orange-100/50">
-        <Bone className="h-8 w-72 mb-3 !bg-orange-200/50" />
-        <Bone className="h-5 w-80 !bg-orange-200/40" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 h-32 flex flex-col justify-center shadow-sm border border-amber-100/50">
+        <Bone className="h-8 w-72 mb-3 !bg-amber-200/50" />
+        <Bone className="h-5 w-80 !bg-amber-200/40" />
       </div>
 
       {/* Selector Row */}
@@ -75,9 +75,9 @@ export function GradeSkeleton() {
 
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100/60 px-6 py-5 flex gap-6 border-b border-[#FFF7D6]">
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 px-6 py-5 flex gap-6 border-b border-amber-100">
           {[...Array(7)].map((_, i) => (
-            <Bone key={i} className="h-4 flex-1 !bg-orange-200/60 !rounded-md" />
+            <Bone key={i} className="h-4 flex-1 !bg-amber-200/60 !rounded-md" />
           ))}
         </div>
         <div className="divide-y divide-gray-50">
@@ -101,12 +101,12 @@ export function ScheduleSkeleton() {
   return (
     <div className="space-y-6 animate-pulse max-w-7xl mx-auto pb-12 px-4 md:px-0">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 h-32 flex flex-col md:flex-row items-center justify-between shadow-sm border border-orange-100/50 gap-4">
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 h-32 flex flex-col md:flex-row items-center justify-between shadow-sm border border-amber-100/50 gap-4">
         <div className="w-full">
-          <Bone className="h-8 w-56 mb-3 !bg-orange-200/50" />
-          <Bone className="h-5 w-80 !bg-orange-200/40" />
+          <Bone className="h-8 w-56 mb-3 !bg-amber-200/50" />
+          <Bone className="h-5 w-80 !bg-amber-200/40" />
         </div>
-        <Bone className="h-12 w-40 shrink-0 !bg-orange-200/50" />
+        <Bone className="h-12 w-40 shrink-0 !bg-amber-200/50" />
       </div>
 
       {/* Search */}
@@ -149,13 +149,13 @@ export function RequestsSkeleton() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-pulse pb-10">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 flex items-center gap-6 shadow-sm border border-orange-100/50">
-        <Bone className="w-16 h-16 !rounded-2xl !bg-orange-200/50" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 flex items-center gap-6 shadow-sm border border-amber-100/50">
+        <Bone className="w-16 h-16 !rounded-2xl !bg-amber-200/50" />
         <div className="flex-1">
-          <Bone className="h-8 w-56 mb-3 !bg-orange-200/50" />
-          <Bone className="h-5 w-80 !bg-orange-200/40" />
+          <Bone className="h-8 w-56 mb-3 !bg-amber-200/50" />
+          <Bone className="h-5 w-80 !bg-amber-200/40" />
         </div>
-        <Bone className="h-12 w-32 shrink-0 !rounded-xl !bg-orange-200/50" />
+        <Bone className="h-12 w-32 shrink-0 !rounded-xl !bg-amber-200/50" />
       </div>
 
       {/* Filters */}
@@ -167,9 +167,9 @@ export function RequestsSkeleton() {
 
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100/60 px-6 py-5 flex gap-6 border-b border-[#FFF7D6]">
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 px-6 py-5 flex gap-6 border-b border-amber-100">
           {[...Array(6)].map((_, i) => (
-            <Bone key={i} className="h-4 flex-1 !bg-orange-200/60 !rounded-md" />
+            <Bone key={i} className="h-4 flex-1 !bg-amber-200/60 !rounded-md" />
           ))}
         </div>
         <div className="divide-y divide-gray-50">
@@ -193,11 +193,11 @@ export function TrainingPointsSkeleton() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-pulse pb-10">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-8 flex items-center gap-6 shadow-sm border border-orange-100/50">
-        <Bone className="w-16 h-16 !rounded-2xl !bg-orange-200/50" />
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 rounded-3xl p-8 flex items-center gap-6 shadow-sm border border-amber-100/50">
+        <Bone className="w-16 h-16 !rounded-2xl !bg-amber-200/50" />
         <div>
-          <Bone className="h-8 w-56 mb-3 !bg-orange-200/50" />
-          <Bone className="h-5 w-72 !bg-orange-200/40" />
+          <Bone className="h-8 w-56 mb-3 !bg-amber-200/50" />
+          <Bone className="h-5 w-72 !bg-amber-200/40" />
         </div>
       </div>
 
@@ -209,9 +209,9 @@ export function TrainingPointsSkeleton() {
 
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100/60 px-6 py-5 flex gap-6 border-b border-[#FFF7D6]">
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100/60 px-6 py-5 flex gap-6 border-b border-amber-100">
           {[...Array(5)].map((_, i) => (
-            <Bone key={i} className="h-4 flex-1 !bg-orange-200/60 !rounded-md" />
+            <Bone key={i} className="h-4 flex-1 !bg-amber-200/60 !rounded-md" />
           ))}
         </div>
         <div className="divide-y divide-gray-50">

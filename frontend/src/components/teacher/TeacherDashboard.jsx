@@ -17,6 +17,16 @@ import AttendanceSection from './AttendanceSection';
 import ScheduleSection from './ScheduleSection';
 import AnnouncementsSection from './AnnouncementsSection';
 import TeacherSupport from './TeacherSupport';
+import { 
+  TeacherOverviewSkeleton, 
+  TeacherStudentsSkeleton, 
+  TeacherGradesSkeleton, 
+  TeacherAttendanceSkeleton, 
+  TeacherScheduleSkeleton, 
+  TeacherProfileSkeleton, 
+  TeacherAnnouncementsSkeleton, 
+  TeacherSupportSkeleton 
+} from '../common/TeacherSkeleton';
 
 const menuItems = [
   { id: 'tongquan', label: 'Tổng quan', icon: LayoutDashboard },
@@ -53,9 +63,20 @@ function TeacherDashboard({ user, onLogout }) {
   const isMobile = useIsMobile();
 
   useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => { if (!isMobile) setMobileDrawerOpen(false); }, [isMobile]);
+  useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
+  useEffect(() => { 
+    // Initialize mounted and mobile drawer state outside of effect or use layout effect if needed. 
+    // Instead of doing it here synchronously, we just do it in one go.
+  }, []);
 
+  useEffect(() => {
+    // Handling side effects outside render cycle
+    const initApp = () => {
+      setMounted(true);
+      if (!isMobile) setMobileDrawerOpen(false);
+    };
+    initApp();
+  }, [isMobile]);
   useEffect(() => {
     if (user?.id) {
       axios.get(`${API_URL}/api/teachers/${user.id}/details`)
@@ -95,11 +116,19 @@ function TeacherDashboard({ user, onLogout }) {
   };
 
   const renderContent = () => {
-    if (loading) return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F4C542]" />
-      </div>
-    );
+    if (loading) {
+      switch (activeMenu) {
+        case 'tongquan': return <TeacherOverviewSkeleton />;
+        case 'sinhvien': return <TeacherStudentsSkeleton />;
+        case 'quanlydiem': return <TeacherGradesSkeleton />;
+        case 'diemdanh': return <TeacherAttendanceSkeleton />;
+        case 'lichgiangday': return <TeacherScheduleSkeleton />;
+        case 'hoso': return <TeacherProfileSkeleton />;
+        case 'thongbao': return <TeacherAnnouncementsSkeleton />;
+        case 'hotro': return <TeacherSupportSkeleton />;
+        default: return <TeacherOverviewSkeleton />;
+      }
+    }
     switch (activeMenu) {
       case 'tongquan': return <OverviewSection teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} setActiveMenu={setActiveMenu} />;
       case 'sinhvien': return <StudentsSection students={students} teachingAssignments={teachingAssignments} grades={grades} />;
@@ -113,7 +142,7 @@ function TeacherDashboard({ user, onLogout }) {
     }
   };
 
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <div className="h-full flex flex-col w-72">
       <div className="p-6 border-b border-[#1e2f4c] shrink-0">
         <div onClick={() => handleNavigate('tongquan')} className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
@@ -177,7 +206,7 @@ function TeacherDashboard({ user, onLogout }) {
       {/* Desktop Sidebar */}
       {!isMobile && (
         <aside className={`bg-[#152238] border-r shadow-lg border-[#1e2f4c] overflow-hidden shrink-0 h-screen transition-all duration-300 ease-out z-20 ${sidebarOpen ? 'w-72' : 'w-0'}`}>
-          <SidebarContent />
+          {renderSidebarContent()}
         </aside>
       )}
 
@@ -196,7 +225,7 @@ function TeacherDashboard({ user, onLogout }) {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <SidebarContent />
+                {renderSidebarContent()}
               </motion.aside>
             </>
           )}

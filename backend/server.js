@@ -140,6 +140,16 @@ db.getConnection((err, connection) => {
         }
     });
 
+    // Tự động thêm cột Avatar vào bảng users nếu chưa có
+    connection.query("SHOW COLUMNS FROM users LIKE 'Avatar'", (err, results) => {
+        if (!err && results.length === 0) {
+            connection.query("ALTER TABLE users ADD COLUMN Avatar LONGTEXT", (errAlter) => {
+                if (errAlter) console.error("Lỗi thêm cột Avatar:", errAlter);
+                else console.log("Đã tự động thêm cột Avatar vào bảng users.");
+            });
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
@@ -272,7 +282,7 @@ app.post('/api/login', (req, res) => {
         const attempts = loginAttempts[username].attempts;
 
         if (attempts >= 25) {
-            db.query("UPDATE users SET TrangThai = 'Bị khóa' WHERE TaiKhoan = ?", [username], (err) => {
+            db.query("UPDATE users SET TrangThai = 0 WHERE TaiKhoan = ?", [username], (err) => {
                 if (err) console.error("Lỗi khóa tài khoản vĩnh viễn:", err);
             });
             delete loginAttempts[username];
@@ -831,11 +841,13 @@ app.get('/api/students', (req, res) =>
       l.TenLop,
       l.NienKhoa,
       k.TenKhoa,
-      the.uid AS UID
+      the.uid AS UID,
+      u.Avatar
     FROM sinhvien s
     LEFT JOIN lophoc l ON s.MaLop = l.MaLop
     LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa
-    LEFT JOIN the_sv the ON s.MSSV COLLATE utf8mb4_unicode_ci = the.MSSV COLLATE utf8mb4_unicode_ci`,
+    LEFT JOIN the_sv the ON s.MSSV COLLATE utf8mb4_unicode_ci = the.MSSV COLLATE utf8mb4_unicode_ci
+    LEFT JOIN users u ON s.MSSV COLLATE utf8mb4_unicode_ci = u.TaiKhoan COLLATE utf8mb4_unicode_ci`,
         [],
         res,
         'Lỗi lấy danh sách sinh viên!'
@@ -1217,7 +1229,7 @@ app.get('/api/students/:mssv/schedule', (req, res) => executeQuery(`
     WHERE d.MSSV = ?
 `, [req.params.mssv], res, 'Lỗi lịch SV!'));
 // ==================== TEACHERS ====================
-app.get('/api/teachers', (req, res) => executeQuery('SELECT g.*, k.TenKhoa FROM giangvien g LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa', [], res, 'Lỗi lấy GV!'));
+app.get('/api/teachers', (req, res) => executeQuery('SELECT g.*, k.TenKhoa, u.Avatar FROM giangvien g LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa LEFT JOIN users u ON g.MaGiangVien COLLATE utf8mb4_unicode_ci = u.TaiKhoan COLLATE utf8mb4_unicode_ci', [], res, 'Lỗi lấy GV!'));
 app.get('/api/teachers/next-code/:maKhoa', (req, res) => {
     const prefix = `GV${req.params.maKhoa}`;
     db.query(`SELECT MaGiangVien FROM giangvien WHERE MaGiangVien LIKE ? ORDER BY MaGiangVien DESC LIMIT 1`, [`${prefix}%`], (err, results) => {

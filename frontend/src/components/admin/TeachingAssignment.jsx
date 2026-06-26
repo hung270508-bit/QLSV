@@ -272,7 +272,7 @@ function TeachingAssignment() {
       />
 
       {/* Header Panel */}
-      <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl shadow-orange-500/10">
+      <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl shadow-amber-500/10">
         <div className="flex items-center justify-between">
           <div className="text-[#152238]">
             <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
@@ -313,7 +313,7 @@ function TeachingAssignment() {
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100/60 border-b border-[#FFF7D6]">
+            <thead className="bg-gradient-to-r from-amber-50 to-amber-100/60 border-b border-[#FFF7D6]">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã LHP</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Môn học</th>
@@ -372,7 +372,7 @@ function TeachingAssignment() {
                 <tr>
                   <td colSpan="7" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-300">
-                      <ClipboardCheck className="w-16 h-16 mb-4 text-orange-200" />
+                      <ClipboardCheck className="w-16 h-16 mb-4 text-amber-200" />
                       <p className="text-lg font-medium text-[#6B7280]">Chưa có phân công giảng dạy nào</p>
                     </div>
                   </td>
@@ -480,7 +480,7 @@ function TeachingAssignment() {
                 <button type="button" onClick={handleCloseModal} className="flex-1 py-3 bg-[#FFFFFF] border border-[#E5E7EB] text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-sm">
                   Hủy
                 </button>
-                <button form="assignment-form" type="submit" disabled={!!hocKyError} className="flex-1 py-3 bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <button form="assignment-form" type="submit" disabled={!!hocKyError} className="flex-1 py-3 bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                   Xác nhận phân công
                 </button>
               </div>

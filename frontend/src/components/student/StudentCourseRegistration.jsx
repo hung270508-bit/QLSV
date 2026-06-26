@@ -92,7 +92,7 @@ function StudentCourseRegistration({ user }) {
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ show: false, message: '', type: 'success' })} />
       <ConfirmDialog show={confirmDialog.show} title={confirmDialog.title} message={confirmDialog.message} onConfirm={confirmDialog.action} onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })} />
 
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#F4C542] rounded-3xl p-8 text-[#152238] shadow-xl shadow-orange-500/20 relative overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#F4C542] rounded-3xl p-8 text-[#152238] shadow-xl shadow-amber-500/20 relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-5">
           <div className="p-4 bg-white/40 backdrop-blur-sm rounded-2xl"><BookPlus className="w-10 h-10" /></div>
           <div><h2 className="text-3xl font-black mb-1">Đăng ký môn học</h2><p className="text-[#152238]/70 font-medium">Học kỳ hiện tại - Danh sách lớp học phần đang mở</p></div>

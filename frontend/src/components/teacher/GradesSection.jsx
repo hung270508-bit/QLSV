@@ -174,7 +174,7 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
             ${locked ? 'border-[#E5E7EB] bg-gray-100 opacity-80' : c.enabled ? 'border-[#F4C542]/30 bg-[#FFF7D6]/50 hover:bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA] opacity-60'}`}>
             <input
               type="checkbox" checked={c.enabled} disabled={locked} onChange={() => toggleComp(c.key)}
-              className="w-4 h-4 accent-orange-500 cursor-pointer disabled:cursor-not-allowed"
+              className="w-4 h-4 accent-amber-500 cursor-pointer disabled:cursor-not-allowed"
             />
             <span className="text-sm font-bold text-gray-700">{c.label}</span>
             <div className="flex items-center gap-1 ml-auto">
@@ -182,7 +182,7 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
                 type="number" min="0" max="100" value={c.enabled ? c.weight : ''} disabled={!c.enabled || locked}
                 onChange={e => setWeight(c.key, e.target.value)} onKeyDown={blockInvalidKeys} placeholder="0"
                 className={`w-14 text-center px-2 py-1.5 border-2 rounded-lg text-sm font-bold focus:outline-none transition-colors
-                  ${(!c.enabled || locked) ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed' : 'bg-[#FFFFFF] border-orange-300 focus:border-[#F4C542] text-[#1F2937]'}`}
+                  ${(!c.enabled || locked) ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed' : 'bg-[#FFFFFF] border-amber-300 focus:border-[#F4C542] text-[#1F2937]'}`}
               />
               <span className="text-sm font-bold text-[#6B7280]">%</span>
             </div>
@@ -193,7 +193,7 @@ function ConfigPanel({ maLopHocPhan, tenLop, components, locked, onChange, onSav
       <div className="flex items-center gap-4">
         <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${locked ? 'bg-gray-400' : totalWeight === 100 ? 'bg-[#22C55E]/100' : totalWeight > 100 ? 'bg-[#EF4444]/100' : 'bg-orange-400'}`}
+            className={`h-full rounded-full transition-all ${locked ? 'bg-gray-400' : totalWeight === 100 ? 'bg-[#22C55E]/100' : totalWeight > 100 ? 'bg-[#EF4444]/100' : 'bg-amber-400'}`}
             style={{ width: `${Math.min(totalWeight, 100)}%` }}
           />
         </div>
@@ -461,7 +461,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
         <input
           type="text" placeholder="Tìm sinh viên theo MSSV hoặc Họ tên..."
           value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-14 pr-10 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:border-[#F4C542] focus:ring-4 focus:ring-orange-500/10 transition-all shadow-sm font-medium text-sm"
+          className="w-full pl-14 pr-10 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:border-[#F4C542] focus:ring-4 focus:ring-amber-500/10 transition-all shadow-sm font-medium text-sm"
         />
         {searchTerm && (
           <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#6B7280] p-1 bg-gray-100 rounded-full">
@@ -722,7 +722,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                 </div>
 
                 {hasPreview && (
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#FFF7D6] rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-50 border-2 border-[#FFF7D6] rounded-2xl px-6 py-5 flex justify-between items-center shadow-sm">
                     <div>
                       <p className="text-xs text-[#F4C542] font-bold uppercase mb-1 tracking-wider">Hệ 10 (Tạm tính)</p>
                       <p className="text-[2.5rem] leading-none font-black text-[#1F2937]">{previewTotal}</p>
@@ -835,7 +835,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </div>
               <div className="flex gap-3">
                 <button onClick={handleDeleteCancel} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Hủy</button>
-                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-[#F4C542] text-[#152238] rounded-xl font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
+                <button onClick={handleDeleteConfirm} className="flex-1 py-3.5 bg-[#F4C542] text-[#152238] rounded-xl font-bold shadow-md hover:from-amber-600 hover:to-red-700 transition-colors flex items-center justify-center gap-2"><Trash2 className="w-5 h-5" /> Xóa ngay</button>
               </div>
             </motion.div>
           </div>

@@ -870,7 +870,7 @@ function AdminTrainingPoints() {
                   <div className="space-y-6">
                     <div className="flex justify-between items-center mb-4">
                       <p className="text-sm text-[#6B7280] font-medium">Bạn có thể tự thiết kế bộ tiêu chí động riêng cho đợt này.</p>
-                      <button onClick={() => setPeriodForm({ ...periodForm, CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) })} className="text-xs font-bold bg-[#F4C542]/20 text-[#B45309] px-3 py-1.5 rounded-lg hover:bg-orange-200 transition-colors">
+                      <button onClick={() => setPeriodForm({ ...periodForm, CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) })} className="text-xs font-bold bg-[#F4C542]/20 text-[#B45309] px-3 py-1.5 rounded-lg hover:bg-amber-200 transition-colors">
                         Dùng mẫu mặc định
                       </button>
                     </div>
@@ -886,7 +886,7 @@ function AdminTrainingPoints() {
                               newCriteria[secIdx].title = e.target.value;
                               setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                             }}
-                            className="font-bold text-gray-700 bg-transparent border-none outline-none w-full focus:bg-[#FFFFFF] focus:ring-2 focus:ring-orange-200 rounded px-2 py-1"
+                            className="font-bold text-gray-700 bg-transparent border-none outline-none w-full focus:bg-[#FFFFFF] focus:ring-2 focus:ring-amber-200 rounded px-2 py-1"
                             placeholder="Nhập tên nhóm tiêu chí..."
                           />
                           <button onClick={() => {
@@ -919,7 +919,7 @@ function AdminTrainingPoints() {
                                     newCriteria[secIdx].items[itemIdx].label = e.target.value;
                                     setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                   }}
-                                  className="flex-1 text-sm font-semibold border border-[#E5E7EB] rounded p-1.5 focus:bg-[#FFFFFF] focus:ring-1 focus:ring-orange-300 outline-none"
+                                  className="flex-1 text-sm font-semibold border border-[#E5E7EB] rounded p-1.5 focus:bg-[#FFFFFF] focus:ring-1 focus:ring-amber-300 outline-none"
                                   placeholder="Nội dung tiêu chí..."
                                 />
                                 <button onClick={() => {
@@ -941,7 +941,7 @@ function AdminTrainingPoints() {
                                         newCriteria[secIdx].items[itemIdx].options[optIdx].label = e.target.value;
                                         setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                       }}
-                                      className="flex-1 text-xs border border-[#E5E7EB] rounded px-2 py-1 focus:bg-[#FFFFFF] focus:border-orange-300 outline-none"
+                                      className="flex-1 text-xs border border-[#E5E7EB] rounded px-2 py-1 focus:bg-[#FFFFFF] focus:border-amber-300 outline-none"
                                       placeholder="Mô tả mức điểm..."
                                     />
                                     <input
@@ -952,7 +952,7 @@ function AdminTrainingPoints() {
                                         newCriteria[secIdx].items[itemIdx].options[optIdx].point = Number(e.target.value);
                                         setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                       }}
-                                      className="w-16 text-xs text-center border border-[#E5E7EB] rounded px-2 py-1 font-bold text-[#F4C542] focus:bg-[#FFFFFF] focus:border-orange-300 outline-none"
+                                      className="w-16 text-xs text-center border border-[#E5E7EB] rounded px-2 py-1 font-bold text-[#F4C542] focus:bg-[#FFFFFF] focus:border-amber-300 outline-none"
                                       placeholder="Điểm"
                                     />
                                     <button onClick={() => {
@@ -1014,7 +1014,7 @@ function AdminTrainingPoints() {
                     Tiếp theo (Thiết kế tiêu chí)
                   </button>
                 ) : (
-                  <button onClick={triggerCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-[#F4C542] rounded-xl hover:bg-orange-700 shadow-md shadow-[#F4C542]/30 flex items-center gap-2">
+                  <button onClick={triggerCreatePeriod} className="px-6 py-2.5 font-bold text-white bg-[#F4C542] rounded-xl hover:bg-amber-700 shadow-md shadow-[#F4C542]/30 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5" /> Xác nhận tạo đợt
                   </button>
                 )}
@@ -1244,7 +1244,7 @@ function AdminTrainingPoints() {
                     placeholder="Tìm theo MSSV, Họ tên hoặc nội dung..."
                     value={allLogsSearch}
                     onChange={e => setAllLogsSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:bg-[#FFFFFF] transition-all outline-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-100 focus:bg-[#FFFFFF] transition-all outline-none"
                   />
                 </div>
 

@@ -317,7 +317,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
   const renderAvatar = (student) => {
     const initial = student.HoTen?.charAt(0).toUpperCase() || student.MSSV?.charAt(0);
     return (
-      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-orange-400 to-[#F4C542]/90 text-white flex items-center justify-center text-lg font-bold shadow-sm">
+      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-[#F4C542]/90 text-white flex items-center justify-center text-lg font-bold shadow-sm">
         {initial}
       </div>
     );
@@ -389,7 +389,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                 }}
                 className="relative group bg-[#FFFFFF] text-left rounded-3xl p-6 shadow-sm border border-[#E5E7EB] hover:shadow-xl hover:border-[#F4C542]/30 transition-all overflow-hidden flex flex-col h-full"
               >
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-orange-400 to-[#F4C542]/90"></div>
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-[#F4C542]/90"></div>
 
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
@@ -401,7 +401,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                     </h4>
                   </div>
                   <div className="flex flex-col items-center justify-center bg-[#FFF7D6] w-12 h-12 rounded-2xl shrink-0 border border-[#FFF7D6]">
-                    <span className="text-xs font-bold text-orange-400">Ca</span>
+                    <span className="text-xs font-bold text-amber-400">Ca</span>
                     <span className="text-lg font-black text-[#F4C542]">{schedule.CaHoc || '-'}</span>
                   </div>
                 </div>
@@ -606,7 +606,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                     <button
                       onClick={handleEarlyClose}
                       disabled={isSaving}
-                      className="px-8 py-3 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-[#F4C542]/30 hover:from-[#F4C542] hover:to-[#F4C542]/90 transition-all flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-70"
+                      className="px-8 py-3 bg-gradient-to-r from-amber-400 to-amber-500 text-white font-bold rounded-xl shadow-lg shadow-[#F4C542]/30 hover:from-[#F4C542] hover:to-[#F4C542]/90 transition-all flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-70"
                     >
                       <Clock className="w-5 h-5 animate-pulse" />
                       {formatTime(timeRemaining)} - Chốt sổ sớm
@@ -617,7 +617,7 @@ function AttendanceSection({ teachingSchedule = [], students = [] }) {
                     <button
                       onClick={() => handleSaveAttendance(true)}
                       disabled={isSaving}
-                      className="px-8 py-3 bg-[#F4C542] text-[#152238] font-bold rounded-xl shadow-lg shadow-[#F4C542]/30 hover:from-orange-600 hover:to-orange-700 transition-all w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-70"
+                      className="px-8 py-3 bg-[#F4C542] text-[#152238] font-bold rounded-xl shadow-lg shadow-[#F4C542]/30 hover:from-amber-600 hover:to-amber-700 transition-all w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-70"
                     >
                       {isSaving ? (
                         <>Đang lưu...</>

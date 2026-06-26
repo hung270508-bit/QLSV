@@ -558,7 +558,7 @@ function ClassManagement() {
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
               className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${hasActiveFilters
-                ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-orange-500/30'
+                ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-amber-500/30'
                 : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
                 }`}
             >
@@ -662,7 +662,7 @@ function ClassManagement() {
                     <p className="text-xs text-gray-400 font-mono mt-0.5">{cls.MaLop}</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); handleEdit(cls); }} className="p-2 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm">
+                    <button onClick={(e) => { e.stopPropagation(); handleEdit(cls); }} className="p-2 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm">
                       <Edit className="w-4 h-4" />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(cls); }} className="p-2 bg-[#EF4444]/20 text-[#EF4444] rounded-xl hover:bg-red-200 transition-all shadow-sm">
@@ -692,7 +692,7 @@ function ClassManagement() {
         {/* Desktop View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+            <thead className="bg-gradient-to-r from-amber-50 to-amber-100">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Lớp học</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Khoa</th>
@@ -739,7 +739,7 @@ function ClassManagement() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleEdit(cls)}
-                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-orange-200 transition-all shadow-sm"
+                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
@@ -1050,14 +1050,14 @@ function ClassManagement() {
                         {/* Stats cards */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           {[
-                            { label: 'Sinh viên', value: classStudents.length, icon: Users, color: 'orange' },
+                            { label: 'Sinh viên', value: classStudents.length, icon: Users, color: 'amber' },
                             { label: 'Môn học', value: [...new Set(classSchedule.map(s => s.TenMonHoc))].length, icon: BookOpen, color: 'blue' },
                             { label: 'Giảng viên', value: classTeachers.length, icon: UserCheck, color: 'purple' },
                             { label: 'Điểm TB', value: classGradeStats ? (classGradeStats.average || 0) : '—', icon: Award, color: 'green' },
                           ].map((card, i) => {
                             const Icon = card.icon;
                             const colorMap = {
-                              orange: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-orange-300 hover:bg-[#FFF7D6]/30',
+                              amber: 'bg-[#F4C542]/20 text-[#B45309] border-[#FFF7D6] hover:border-amber-300 hover:bg-[#FFF7D6]/30',
                               blue: 'bg-[#3B82F6]/10 text-[#3B82F6] border-blue-100 hover:border-blue-300 hover:bg-blue-100/30',
                               purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-300 hover:bg-purple-100/30',
                               green: 'bg-[#22C55E]/10 text-[#22C55E] border-green-100 hover:border-green-300 hover:bg-[#22C55E]/20/30',
@@ -1142,7 +1142,7 @@ function ClassManagement() {
                           <div className="overflow-x-auto rounded-2xl border border-[#FFF7D6]">
                             <table className="w-full">
                               <thead>
-                                <tr className="bg-gradient-to-r from-orange-50 to-orange-100">
+                                <tr className="bg-gradient-to-r from-amber-50 to-amber-100">
                                   <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">#</th>
                                   <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">MSSV</th>
                                   <th className="text-left py-3.5 px-5 text-xs font-bold text-[#152238] uppercase tracking-wider">Họ và tên</th>
@@ -1217,7 +1217,7 @@ function ClassManagement() {
                               <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
                               <div className="text-5xl font-bold mb-1">{classGradeStats.average || 0}</div>
                               <div className="text-[#152238]/70 font-medium">Điểm trung bình của lớp</div>
-                              <div className="text-orange-200 text-sm mt-1">Tổng {classGradeStats.totalGrades} bản ghi điểm</div>
+                              <div className="text-amber-200 text-sm mt-1">Tổng {classGradeStats.totalGrades} bản ghi điểm</div>
                             </div>
 
                             {/* Phân loại */}
@@ -1302,7 +1302,7 @@ const SCHEDULE_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Th
 const SCHEDULE_CA_SLOTS = {
   '1': { label: 'Ca 1', time: 'Tiết 1–3', color: 'bg-[#F4C542]/20 text-[#B45309]' },
   '2': { label: 'Ca 2', time: 'Tiết 4–6', color: 'bg-amber-100 text-amber-700' },
-  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-orange-200 text-[#F4C542]' },
+  '3': { label: 'Ca 3', time: 'Tiết 7–9', color: 'bg-amber-200 text-[#F4C542]' },
   '4': { label: 'Ca 4', time: 'Tiết 10–12', color: 'bg-amber-200 text-amber-800' },
 };
 

@@ -122,7 +122,7 @@ function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-100 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-white to-amber-100 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -143,7 +143,7 @@ function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-100 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-white to-amber-100 p-4 relative overflow-hidden">
       {/* Background decorative elements */}
       <motion.div
         animate={{
@@ -155,7 +155,7 @@ function ResetPassword() {
           repeat: Infinity,
           ease: "linear"
         }}
-        className="absolute top-20 left-20 w-64 h-64 bg-orange-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+        className="absolute top-20 left-20 w-64 h-64 bg-amber-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
       />
       <motion.div
         animate={{
@@ -190,7 +190,7 @@ function ResetPassword() {
               initial={{ scale: 0.8, rotate: -10 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
-              className="inline-flex p-4 bg-gradient-to-br from-[#F4C542] to-[#F4C542]/90 rounded-3xl text-white mb-4 shadow-xl shadow-orange-300"
+              className="inline-flex p-4 bg-gradient-to-br from-[#F4C542] to-[#F4C542]/90 rounded-3xl text-white mb-4 shadow-xl shadow-amber-300"
             >
               <Lock className="w-10 h-10" />
             </motion.div>
@@ -331,7 +331,7 @@ function ResetPassword() {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading}
-              className="w-full bg-[#F4C542] hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-300 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-amber-300 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
