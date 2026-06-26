@@ -839,7 +839,9 @@ app.put('/api/users/:taiKhoan/reset-password', async (req, res) => {
 });
 
 app.put('/api/users/:taiKhoan/status', (req, res) => {
-    const { TrangThai } = req.body;
+    let { TrangThai } = req.body;
+    if (TrangThai === 1 || TrangThai === '1' || TrangThai === true) TrangThai = 'Hoạt động';
+    if (TrangThai === 0 || TrangThai === '0' || TrangThai === false) TrangThai = 'Bị khóa';
     executeUpdate('UPDATE users SET TrangThai = ? WHERE TaiKhoan = ?', [TrangThai, req.params.taiKhoan], res, 'Cập nhật trạng thái thành công!', 'Lỗi cập nhật trạng thái!');
 });
 

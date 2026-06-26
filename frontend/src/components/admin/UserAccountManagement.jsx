@@ -188,7 +188,7 @@ function UserAccountManagement() {
 
   const handleToggleStatus = (user) => {
     const isLocked = user.TrangThai === 0 || user.TrangThai === false || user.TrangThai === 'Bị khóa';
-    const newStatus = isLocked ? 1 : 0;
+    const newStatus = isLocked ? 'Hoạt động' : 'Bị khóa';
     const actionText = isLocked ? 'mở khóa' : 'khóa';
 
     setConfirmDialog({
