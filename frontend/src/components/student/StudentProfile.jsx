@@ -197,8 +197,8 @@ function StudentProfile({ profile, loading, user }) {
           {/* Avatar Mặc định */}
           <div className="w-32 h-32 bg-[#FFFFFF] rounded-full p-2 shadow-xl flex-shrink-0 relative group">
             <div className="w-full h-full bg-[#FFF7D6] rounded-full flex items-center justify-center overflow-hidden border-4 border-amber-50">
-                {user?.Avatar ? (
-                   <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                {(profile?.Avatar || user?.Avatar) ? (
+                   <img src={profile?.Avatar || user?.Avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                    <UserCircle className="w-24 h-24 text-amber-400 mt-4" />
                 )}
