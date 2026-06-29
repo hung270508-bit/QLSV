@@ -5,8 +5,6 @@ import {
   UserCircle, MessageSquare, Award, Menu, X, MoreHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-import API_URL from '../../api';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import DashboardOverview from './DashboardOverview';
 import StudentManagement from './StudentManagement';
@@ -116,36 +114,6 @@ function AdminDashboard({ user, onLogout }) {
 
   const handleLogoutWithHistory = () => { onLogout(); };
 
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('Vui lòng chọn ảnh có kích thước dưới 2MB'); return; }
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const img = new Image();
-      img.onload = async () => {
-        const canvas = document.createElement('canvas');
-        const MAX = 250;
-        let w = img.width, h = img.height;
-        if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } else { if (h > MAX) { w *= MAX / h; h = MAX; } }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const b64 = canvas.toDataURL('image/jpeg', 0.8);
-        try {
-          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-          const res = await axios.post(`${API_URL}/api/users/avatar`, { avatarBase64: b64 }, { headers: { Authorization: `Bearer ${token}` } });
-          if (res.data.success) {
-            const u = { ...user, Avatar: b64 };
-            if (localStorage.getItem('user')) localStorage.setItem('user', JSON.stringify(u));
-            if (sessionStorage.getItem('user')) sessionStorage.setItem('user', JSON.stringify(u));
-            window.location.reload();
-          }
-        } catch (err) { console.error(err); alert('Cập nhật ảnh đại diện thất bại!'); }
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
 
   const ActiveComponent = pageComponents[activeMenu] || DashboardOverview;
 
@@ -240,12 +208,8 @@ function AdminDashboard({ user, onLogout }) {
         <div className="flex items-center justify-between gap-2">
           <motion.div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0 p-2 rounded-xl hover:bg-[#1e2f4c] transition-colors duration-200 relative"
             onClick={() => handleNavigate('taikhoan')} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
-            <div className="relative w-9 h-9 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 overflow-hidden cursor-pointer group/avatar">
+            <div className="relative w-9 h-9 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 overflow-hidden">
               {user?.Avatar ? <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span>AD</span>}
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
-                <span className="text-[9px] text-white font-medium">Sửa</span>
-              </div>
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} className="absolute inset-0 opacity-0 cursor-pointer" title="Đổi ảnh đại diện" />
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-white truncate group-hover:text-[#F4C542] transition-colors duration-200">{user?.name || 'ADMIN'}</p>

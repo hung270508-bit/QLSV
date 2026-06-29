@@ -54,10 +54,16 @@ function StudentDashboard({ user, onLogout }) {
 
   useEffect(() => {
     if (user?.username) {
-      axios.get(`${API_URL}/api/students/${user.username}/details`)
-        .then(res => { if (res.data.length > 0) setProfile(res.data[0]); })
-        .catch(err => console.error('Lỗi lấy hồ sơ:', err))
-        .finally(() => setLoadingProfile(false));
+      const fetchProfile = () => {
+        axios.get(`${API_URL}/api/students/${user.username}/details?t=${new Date().getTime()}`)
+          .then(res => { if (res.data.length > 0) setProfile(res.data[0]); })
+          .catch(err => console.error('Lỗi lấy hồ sơ:', err))
+          .finally(() => setLoadingProfile(false));
+      };
+      
+      fetchProfile();
+      const interval = setInterval(fetchProfile, 3000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -125,7 +131,7 @@ function StudentDashboard({ user, onLogout }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => handleNavigate('hoso')}>
             <div className="w-10 h-10 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-200">
-              {user?.Avatar ? <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span>SV</span>}
+              {(profile?.Avatar || user?.Avatar) ? <img src={profile?.Avatar || user?.Avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span>SV</span>}
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-white truncate group-hover:text-[#F4C542] transition-colors">{profile?.HoTen || user?.username || 'Sinh Viên'}</p>
@@ -187,7 +193,7 @@ function StudentDashboard({ user, onLogout }) {
               <span className="text-sm font-bold text-white">Cổng Sinh Viên</span>
             </div>
             <div onClick={() => handleNavigate('hoso')} className="w-9 h-9 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black text-sm overflow-hidden cursor-pointer">
-              {user?.Avatar ? <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" /> : 'SV'}
+              {(profile?.Avatar || user?.Avatar) ? <img src={profile?.Avatar || user?.Avatar} alt="Avatar" className="w-full h-full object-cover" /> : 'SV'}
             </div>
           </div>
         )}

@@ -115,8 +115,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="w-24 h-24 bg-[#FFFFFF] rounded-full p-2 shadow-lg flex-shrink-0 relative group">
               <div className="w-full h-full bg-gradient-to-br from-[#FFF7D6] to-[#FFF7D6] rounded-full flex items-center justify-center overflow-hidden">
-                {user?.Avatar ? (
-                   <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                {(profile?.Avatar || user?.Avatar) ? (
+                   <img src={profile?.Avatar || user?.Avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                    <UserCircle className="w-16 h-16 text-[#F4C542]" />
                 )}
@@ -246,8 +246,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
         <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="w-24 h-24 bg-[#FFFFFF] rounded-full p-2 shadow-lg flex-shrink-0 relative group">
             <div className="w-full h-full bg-gradient-to-br from-[#FFF7D6] to-[#FFF7D6] rounded-full flex items-center justify-center overflow-hidden">
-                {user?.Avatar ? (
-                   <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                {(profile?.Avatar || user?.Avatar) ? (
+                   <img src={profile?.Avatar || user?.Avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                    <UserCircle className="w-16 h-16 text-[#F4C542]" />
                 )}

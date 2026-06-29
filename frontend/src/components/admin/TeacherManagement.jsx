@@ -111,6 +111,18 @@ function TeacherManagement() {
 
   useEffect(() => {
     fetchData();
+
+    // Tự động cập nhật danh sách giảng viên mỗi 3 giây để thấy ảnh đại diện mới
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/teachers`);
+        setTeachers(res.data);
+      } catch (error) {
+        console.error('Error auto-updating teachers:', error);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
   const handleKhoaChange = async (e) => {
     const maKhoa = e.target.value;
