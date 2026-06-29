@@ -13,7 +13,7 @@ import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 const statusConfig = {
   'Hoàn thành': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
   'Đã phản hồi': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
-  'Chờ xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
+  'Đang xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
   'Từ chối': { bg: 'bg-gray-100', text: 'text-[#6B7280]', border: 'border-[#E5E7EB]', Icon: X },
 };
 
@@ -87,8 +87,9 @@ function AdminRequests() {
     if (!updateStatus) {
       errors.updateStatus = 'Vui lòng chọn trạng thái';
     }
-    const requiresReply = ['Đã phản hồi', 'Từ chối'].includes(updateStatus);
-    if (requiresReply && !replyText.trim()) {
+    if (updateStatus === 'Đang xử lý') {
+      errors.updateStatus = 'Vui lòng phản hồi';
+    } else if (['Đã phản hồi', 'Từ chối'].includes(updateStatus) && !replyText.trim()) {
       errors.replyText = 'Vui lòng nhập nội dung phản hồi';
     } else if (replyText.trim().length > 1000) {
       errors.replyText = 'Nội dung phản hồi tối đa 1000 ký tự';
@@ -254,7 +255,7 @@ function AdminRequests() {
           className="px-3 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
         >
           <option value="All">Tất cả trạng thái</option>
-          <option value="Chờ xử lý">Chờ xử lý</option>
+          <option value="Đang xử lý">Đang xử lý</option>
           <option value="Đã phản hồi">Đã phản hồi</option>
           <option value="Từ chối">Từ chối</option>
         </select>
@@ -353,7 +354,7 @@ function AdminRequests() {
                   <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
                   <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
-                      {req.TrangThai === 'Chờ xử lý' ? (
+                      {req.TrangThai === 'Đang xử lý' ? (
                         <motion.button
                           whileHover={{ scale: 1.04 }}
                           whileTap={{ scale: 0.96 }}
@@ -472,7 +473,7 @@ function AdminRequests() {
                         }}
                         className={`w-full p-2.5 bg-[#FFFFFF] border rounded-xl outline-none text-sm font-medium text-gray-700 transition-colors ${replyErrors.updateStatus ? 'border-red-400 focus:border-red-400' : 'border-[#E5E7EB] focus:border-blue-400'}`}
                       >
-                        <option value="Chờ xử lý">Chờ xử lý</option>
+                        <option value="Đang xử lý">Đang xử lý</option>
                         <option value="Đã phản hồi">Đã phản hồi</option>
                         <option value="Từ chối">Từ chối</option>
                       </select>
