@@ -317,7 +317,8 @@ function TeacherManagement() {
       MaKhoa: teacher.MaKhoa || '',
       TrangThai: teacher.TrangThai || 'Đang dạy',
       GioiTinh: teacher.GioiTinh || '',
-      NgaySinh: teacher.NgaySinh ? teacher.NgaySinh.split('T')[0] : ''
+      NgaySinh: teacher.NgaySinh ? teacher.NgaySinh.split('T')[0] : '',
+      Avatar: teacher.Avatar || ''
     });
     setShowModal(true);
   };
@@ -788,6 +789,29 @@ function TeacherManagement() {
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" noValidate>
               <input type="hidden" value={formData.MaGiangVien} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Avatar Upload */}
+                  <div className="md:col-span-2 flex flex-col items-center justify-center mb-4">
+                    <div className="relative group cursor-pointer" onClick={() => document.getElementById('avatar-upload-teacher').click()}>
+                      {formData.Avatar ? (
+                        <div className="w-24 h-24 rounded-full bg-gray-100 border-4 border-[#F4C542]/20 relative">
+                          <img src={formData.Avatar} alt="Avatar" className="w-full h-full rounded-full object-cover opacity-50 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
+                            <Camera className="w-8 h-8 text-gray-500" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center border-4 border-[#F4C542]/20">
+                          <Camera className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                    <input type="file" id="avatar-upload-teacher" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                    <p className="text-xs text-gray-500 mt-2">Ảnh đại diện (tuỳ chọn)</p>
+                  </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Họ tên</label>
                   <input

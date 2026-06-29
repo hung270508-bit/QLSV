@@ -794,7 +794,8 @@ function StudentManagement() {
       TrangThai: student.TrangThai || 'Đang học',
       startYear: years[0] || '',
       endYear: years[1] || '',
-      UID: student.UID || ''
+      UID: student.UID || '',
+      Avatar: student.Avatar || ''
     });
 
     setSelectedFaculty(student.MaKhoa || '');
@@ -1707,7 +1708,12 @@ function StudentManagement() {
                   <div className="md:col-span-2 flex flex-col items-center justify-center mb-4">
                     <div className="relative group cursor-pointer" onClick={() => document.getElementById('avatar-upload').click()}>
                       {formData.Avatar ? (
-                        <img src={formData.Avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-[#F4C542]/20" />
+                        <div className="w-24 h-24 rounded-full bg-gray-100 border-4 border-[#F4C542]/20 relative">
+                          <img src={formData.Avatar} alt="Avatar" className="w-full h-full rounded-full object-cover opacity-50 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
+                            <Camera className="w-8 h-8 text-gray-500" />
+                          </div>
+                        </div>
                       ) : (
                         <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center border-4 border-[#F4C542]/20">
                           <Camera className="w-8 h-8 text-gray-400" />
@@ -1889,9 +1895,11 @@ function StudentManagement() {
 
                           onChange={handleStartYearChange}
 
+                          disabled={!!editingStudent}
+
                           placeholder="Năm bắt đầu"
 
-                          className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.startYear ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
+                          className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.startYear ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'} ${editingStudent ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
 
                           maxLength={4}
 
