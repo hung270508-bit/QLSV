@@ -492,7 +492,7 @@ function UserAccountManagement() {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChưange={setCurrentPage}
+              onPageChange={setCurrentPage}
             />
           </div>
         )}
