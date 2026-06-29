@@ -285,7 +285,17 @@ app.post('/api/login', (req, res) => {
 
     // Check if account is locked out
     const now = new Date();
+
+    // Reset attempts sau 30 phút không có thao tác đăng nhập
+    if (loginAttempts[username] && loginAttempts[username].lastAttempt) {
+        if (now - loginAttempts[username].lastAttempt > 30 * 60 * 1000) {
+            delete loginAttempts[username];
+        }
+    }
+
     if (loginAttempts[username] && loginAttempts[username].lockoutUntil && loginAttempts[username].lockoutUntil > now) {
+        // Cập nhật lại thời gian thao tác để đếm lại 30 phút
+        loginAttempts[username].lastAttempt = now;
         const remainingMs = loginAttempts[username].lockoutUntil - now;
         const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
         return res.status(403).json({
@@ -296,9 +306,10 @@ app.post('/api/login', (req, res) => {
 
     const handleFailedAttempt = (username) => {
         if (!loginAttempts[username]) {
-            loginAttempts[username] = { attempts: 0, lockoutUntil: null };
+            loginAttempts[username] = { attempts: 0, lockoutUntil: null, lastAttempt: new Date() };
         }
         loginAttempts[username].attempts += 1;
+        loginAttempts[username].lastAttempt = new Date();
         const attempts = loginAttempts[username].attempts;
 
         if (attempts >= 25) {
@@ -364,8 +375,7 @@ app.post('/api/login', (req, res) => {
 
                     // Reset login attempts on success
                     if (loginAttempts[username]) {
-                        loginAttempts[username].attempts = 0;
-                        loginAttempts[username].lockoutUntil = null;
+                        delete loginAttempts[username];
                     }
 
                     let roleString = user.MaQuyen === 1 ? 'admin' : (user.MaQuyen === 2 ? 'teacher' : 'student');

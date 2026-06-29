@@ -55,7 +55,7 @@ function StudentDashboard({ user, onLogout }) {
   useEffect(() => {
     if (user?.username) {
       const fetchProfile = () => {
-        axios.get(`${API_URL}/api/students/${user.username}/details`)
+        axios.get(`${API_URL}/api/students/${user.username}/details?t=${new Date().getTime()}`)
           .then(res => { if (res.data.length > 0) setProfile(res.data[0]); })
           .catch(err => console.error('Lỗi lấy hồ sơ:', err))
           .finally(() => setLoadingProfile(false));

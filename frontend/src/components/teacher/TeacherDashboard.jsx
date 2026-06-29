@@ -80,7 +80,7 @@ function TeacherDashboard({ user, onLogout }) {
   useEffect(() => {
     if (user?.id) {
       const fetchProfile = () => {
-        axios.get(`${API_URL}/api/teachers/${user.id}/details`)
+        axios.get(`${API_URL}/api/teachers/${user.id}/details?t=${new Date().getTime()}`)
           .then(res => { if (res.data.length > 0) setProfile(res.data[0]); })
           .catch(err => console.error('Lỗi lấy hồ sơ giảng viên:', err))
           .finally(() => setLoadingProfile(false));
