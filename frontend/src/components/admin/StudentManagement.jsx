@@ -272,6 +272,18 @@ function StudentManagement() {
 
   useEffect(() => {
     fetchData();
+
+    // Tự động cập nhật danh sách sinh viên mỗi 3 giây để thấy ảnh đại diện mới
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/students`);
+        setStudents(res.data);
+      } catch (error) {
+        console.error('Error auto-updating students:', error);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
 
