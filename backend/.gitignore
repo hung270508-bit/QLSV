@@ -1,2 +1,6 @@
 .vercel
+.env
+.env.email
+.env.local
+.env.production
 .env*
