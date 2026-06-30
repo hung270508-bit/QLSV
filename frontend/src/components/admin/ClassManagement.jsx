@@ -282,20 +282,7 @@ function ClassManagement() {
     );
 
     if (isDuplicate) {
-      // Báo cho người dùng biết tên đã trùng, hỏi xác nhận trước khi tự thêm số vào sau
-      try {
-        const res = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(tenLopTrimmed)}/${formData.MaKhoa}/${encodeURIComponent(nienKhoa)}`);
-        const suggestedName = res.data.TenLop;
-
-        setConfirmDialog({
-          show: true,
-          message: `Tên lớp "${tenLopTrimmed}" đã tồn tại trong khoa này. Hệ thống sẽ tự đổi thành "${suggestedName}". Bạn có muốn tiếp tục thêm không?`,
-          onConfirm: () => saveClass(suggestedName)
-        });
-      } catch (err) {
-        console.error('Lỗi khi lấy tên lớp tiếp theo:', err);
-        setErrorDialog({ show: true, message: 'Không thể kiểm tra tên lớp trùng, vui lòng thử lại!' });
-      }
+      setFormErrors(prev => ({ ...prev, TenLop: 'Tên lớp này đã tồn tại trong khoa và niên khóa này!' }));
       return;
     }
 
