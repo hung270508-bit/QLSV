@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Plus, Edit, Search, X, Filter, XCircle, Calendar, FileText, Download, UserCheck, Mail, Phone, Award, BookOpen, BarChart3, Clock, MapPin , Camera} from 'lucide-react';
 import axios from 'axios';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast, ConfirmDialog, SuccessDialog, ErrorDialog } from '../common/ModalPortal';
 import Pagination from '../common/Pagination';
@@ -374,23 +376,103 @@ function TeacherManagement() {
     setDetailTab('info');
   };
 
-  const handleExportTeachers = () => {
-    const csvContent = [
-      ['Mã GV', 'Họ tên', 'Email', 'SĐT', 'Khoa'],
-      ...filteredTeachers.map(t => [
-        t.MaGiangVien,
-        t.HoTen,
-        t.Email,
-        t.SoDienThoai,
-        t.TenKhoa || ''
-      ])
-    ].map(row => row.join(',')).join('\n');
+  const handleExportTeachers = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Danh sách giảng viên');
 
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'giangVien.csv';
-    link.click();
+      // 1. Add Title
+      worksheet.mergeCells('A1:H1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = 'DANH SÁCH GIẢNG VIÊN';
+      titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF152238' } };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(1).height = 40;
+
+      // 2. Add Export Date
+      worksheet.mergeCells('A2:H2');
+      const dateCell = worksheet.getCell('A2');
+      const today = new Date();
+      dateCell.value = `Ngày xuất: ${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
+      dateCell.font = { name: 'Arial', size: 11, italic: true, color: { argb: 'FF4B5563' } };
+      dateCell.alignment = { vertical: 'middle', horizontal: 'right' };
+      worksheet.getRow(2).height = 25;
+
+      // Blank row
+      worksheet.getRow(3).height = 10;
+
+      // 3. Add Headers
+      const headers = ['STT', 'Mã GV', 'Họ và tên', 'Giới tính', 'Email', 'Số điện thoại', 'Khoa', 'Trạng thái'];
+      const headerRow = worksheet.addRow(headers);
+      headerRow.height = 30;
+
+      worksheet.columns = [
+        { key: 'stt', width: 8 },
+        { key: 'maGV', width: 15 },
+        { key: 'hoTen', width: 30 },
+        { key: 'gioiTinh', width: 12 },
+        { key: 'email', width: 35 },
+        { key: 'sdt', width: 20 },
+        { key: 'khoa', width: 35 },
+        { key: 'trangThai', width: 20 },
+      ];
+
+      // Format Header Row
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF004080' } // Professional dark blue
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin' }, left: { style: 'thin' },
+          bottom: { style: 'thin' }, right: { style: 'thin' }
+        };
+      });
+
+      // 4. Add Data
+      filteredTeachers.forEach((t, index) => {
+        const row = worksheet.addRow({
+          stt: index + 1,
+          maGV: t.MaGiangVien || '',
+          hoTen: t.HoTen || '',
+          gioiTinh: t.GioiTinh || '',
+          email: t.Email || '',
+          sdt: t.SoDienThoai || '',
+          khoa: t.TenKhoa || '',
+          trangThai: t.TrangThai || '',
+        });
+
+        // Alternating row colors
+        const isEven = index % 2 === 0;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Arial', size: 11, color: { argb: 'FF000000' } };
+          cell.alignment = { 
+            vertical: 'middle', 
+            horizontal: (colNumber === 1 || colNumber === 2 || colNumber === 4) ? 'center' : 'left' 
+          };
+          if (!isEven) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+          }
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+          };
+        });
+      });
+
+      // Generate & Save file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `DanhSachGiangVien_${today.getTime()}.xlsx`);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      setToast({ show: true, message: 'Lỗi khi xuất file Excel', type: 'error' });
+    }
   };
 
   // Loại bỏ các khoa rác/trùng lặp (FIX TC_09)
