@@ -1739,22 +1739,19 @@ function StudentManagement() {
                     <p className="text-xs text-gray-500 mt-2">Ảnh đại diện (tuỳ chọn)</p>
                   </div>
 
-                  {/* Ô MSSV */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Mã số sinh viên</label>
-                    <input
-                      type="text"
-                      value={formData.MSSV}
-                      onChange={(e) => {
-                        setFormData({ ...formData, MSSV: e.target.value });
-                        if (errors.MSSV) setErrors({ ...errors, MSSV: '' });
-                      }}
-                      readOnly={editingStudent}
-                      disabled={editingStudent}
-                      className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${errors.MSSV ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'} ${editingStudent ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                    />
-                    {errors.MSSV && <p className="text-[#EF4444] text-sm mt-1">{errors.MSSV}</p>}
-                  </div>
+                  {/* Ô MSSV - Chỉ hiển thị khi sửa */}
+                  {editingStudent && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Mã số sinh viên</label>
+                      <input
+                        type="text"
+                        value={formData.MSSV}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-300 rounded-xl focus:outline-none transition-colors cursor-not-allowed"
+                      />
+                    </div>
+                  )}
 
                   {/* Ô Họ tên */}
 
