@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Plus, Edit, Search, X, Filter, XCircle, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
+import { Building2, Plus, Search, X, Filter, XCircle, Users, BookOpen, BarChart3, GraduationCap, UserCheck, TrendingUp } from 'lucide-react';
 import axios from 'axios';
 import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { Toast } from '../common/ModalPortal';
@@ -11,9 +11,9 @@ const API_BASE = `${API_URL}/api`;
 function FacultyManagement() {
   const [faculties, setFaculties] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSecondConfirmModal, setShowSecondConfirmModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingFaculty, setEditingFaculty] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('default');
@@ -115,16 +115,27 @@ function FacultyManagement() {
     return '';
   };
 
-  const generateMaKhoa = (tenKhoa) => {
-    return removeVietnameseTones(
+  const generateMaKhoa = (tenKhoa, existingFaculties = []) => {
+    const words = removeVietnameseTones(
       tenKhoa.replace(/-/g, ' ')
     )
       .trim()
       .split(/\s+/)
-      .filter(word => word)
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase();
+      .filter(word => word);
+
+    if (words.length === 0) return '';
+
+    let baseCode = words.map(word => word.charAt(0)).join('').toUpperCase();
+    
+    const isDuplicate = existingFaculties.some(f => f.MaKhoa === baseCode);
+    if (isDuplicate) {
+      const lastWord = words[words.length - 1];
+      if (lastWord && lastWord.length > 1) {
+        baseCode += lastWord.charAt(1).toUpperCase();
+      }
+    }
+
+    return baseCode;
   };
 
   const handleFacultyNameChange = (e) => {
@@ -132,7 +143,7 @@ function FacultyManagement() {
     setFormData({
       ...formData,
       TenKhoa: value,
-      MaKhoa: generateMaKhoa(value)
+      MaKhoa: generateMaKhoa(value, faculties)
     });
     setErrors({ TenKhoa: '' });
   };
@@ -151,8 +162,7 @@ function FacultyManagement() {
     // Kiểm tra trùng lặp tên khoa
     const duplicateName = faculties.find(
       faculty =>
-        faculty.TenKhoa.toLowerCase() === tenKhoa.toLowerCase() &&
-        (!editingFaculty || faculty.MaKhoa !== editingFaculty.MaKhoa)
+        faculty.TenKhoa.toLowerCase() === tenKhoa.toLowerCase()
     );
 
     if (duplicateName) {
@@ -164,7 +174,7 @@ function FacultyManagement() {
     setFormData(prev => ({
       ...prev,
       TenKhoa: tenKhoa,
-      MaKhoa: generateMaKhoa(tenKhoa)
+      MaKhoa: generateMaKhoa(tenKhoa, faculties)
     }));
 
     setErrors({ TenKhoa: '' });
@@ -174,13 +184,10 @@ function FacultyManagement() {
   // Hàm gọi API khi nhấn CÓ trên Popup Confirm
   const executeSubmit = async () => {
     try {
-      if (editingFaculty) {
-        await axios.put(`${API_URL}/api/faculties/${editingFaculty.MaKhoa}`, formData);
-      } else {
-        await axios.post(`${API_URL}/api/faculties`, formData);
-      }
-      showToast(editingFaculty ? 'Cập nhật khoa thành công!' : 'Thêm khoa thành công!', 'success');
+      await axios.post(`${API_URL}/api/faculties`, formData);
+      showToast('Thêm khoa thành công!', 'success');
       setShowConfirmModal(false);
+      setShowSecondConfirmModal(false);
       handleCloseModal();
       fetchData(); // FIX TC_13: Real-time update danh sách
     } catch (error) {
@@ -188,18 +195,8 @@ function FacultyManagement() {
     }
   };
 
-  const handleEdit = (faculty) => {
-    setEditingFaculty(faculty);
-    setFormData({
-      MaKhoa: faculty.MaKhoa,
-      TenKhoa: faculty.TenKhoa
-    });
-    setShowModal(true);
-  };
-
   const handleCloseModal = () => {
     setShowModal(false);
-    setEditingFaculty(null);
     setFormData({ MaKhoa: '', TenKhoa: '' });
     setErrors({ TenKhoa: '' });
   };
@@ -323,7 +320,7 @@ function FacultyManagement() {
             <h2 className="text-3xl font-bold text-[#152238] mb-1">
               Quản lý khoa
             </h2>
-            <p className="text-[#152238]/70 text-lg">Thêm, sửa thông tin khoa</p>
+            <p className="text-[#152238]/70 text-lg">Thêm thông tin khoa</p>
           </div>
         </div>
         <div className="relative z-10">
@@ -444,21 +441,18 @@ function FacultyManagement() {
         )}
       </div>
 
-      {/* Table */}
+      {/* Table View for Faculties */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#FFF7D6] overflow-hidden">
         
         {/* Mobile View */}
         <div className="block sm:hidden divide-y divide-gray-50">
           {currentItems.length > 0 ? (
-            currentItems.map((faculty, index) => (
+            currentItems.map((faculty) => (
               <div key={faculty.MaKhoa} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer flex justify-between items-center" onClick={() => handleViewDetails(faculty)}>
                 <div>
                   <h4 className="font-bold text-[#1F2937] text-sm">{faculty.TenKhoa}</h4>
                   <p className="text-xs text-gray-400 font-mono mt-0.5">{faculty.MaKhoa}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleEdit(faculty); }} className="p-2.5 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm shrink-0">
-                  <Edit className="w-4 h-4" />
-                </button>
               </div>
             ))
           ) : (
@@ -473,7 +467,6 @@ function FacultyManagement() {
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã khoa</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên khoa</th>
-                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -493,24 +486,11 @@ function FacultyManagement() {
                     <td className="py-5 px-6">
                       <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{faculty.TenKhoa}</span>
                     </td>
-                    <td className="py-5 px-6">
-                      <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(faculty)}
-                          className="p-3 bg-[#F4C542]/20 text-[#B45309] rounded-xl hover:bg-amber-200 transition-all shadow-sm"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
-                      </div>
-                    </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="py-16">
+                  <td colSpan="2" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-300">
                       <Building2 className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy khoa nào</p>
@@ -543,10 +523,10 @@ function FacultyManagement() {
                 <div className="text-white">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <Building2 className="w-5 h-5" />
-                    {editingFaculty ? 'Cập nhật khoa' : 'Thêm khoa mới'}
+                    Thêm khoa mới
                   </h3>
                   <p className="text-[#152238]/70 text-sm mt-0.5">
-                    {editingFaculty ? 'Chỉnh sửa thông tin khoa' : 'Tạo khoa mới trong hệ thống'}
+                    Tạo khoa mới trong hệ thống
                   </p>
                 </div>
                 <button onClick={handleCloseModal} className="p-2 hover:bg-white/40 rounded-lg text-white">
@@ -572,7 +552,7 @@ function FacultyManagement() {
                     onBlur={() => {
                       // FIX TC_12: Khi người dùng bấm ra ngoài ô nhập liệu, tự động chuẩn hóa viết hoa
                       const formatted = formatTitleCase(formData.TenKhoa.trim());
-                      setFormData(prev => ({ ...prev, TenKhoa: formatted, MaKhoa: generateMaKhoa(formatted) }));
+                      setFormData(prev => ({ ...prev, TenKhoa: formatted, MaKhoa: generateMaKhoa(formatted, faculties) }));
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -606,7 +586,7 @@ function FacultyManagement() {
                     onClick={validateAndConfirm}
                     className="flex-1 py-3 bg-[#F4C542] text-[#152238] font-semibold rounded-xl shadow-lg"
                   >
-                    {editingFaculty ? 'Lưu thay đổi' : 'Thêm khoa'}
+                    Thêm khoa
                   </button>
                 </div>
               </form>
@@ -615,7 +595,7 @@ function FacultyManagement() {
         </ModalPortal>
       )}
 
-      {/* Modal xác nhận thêm/sửa */}
+      {/* Modal xác nhận thêm */}
       {showConfirmModal && (
         <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/40">
@@ -625,7 +605,7 @@ function FacultyManagement() {
               className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-sm shadow-2xl"
             >
               <h3 className="text-xl font-bold text-[#1F2937] mb-2">Xác nhận</h3>
-              <p className="text-[#6B7280] mb-6">Bạn có chắc chắn muốn {editingFaculty ? 'cập nhật' : 'thêm'} khoa <strong className="text-[#F4C542]">{formData.TenKhoa}</strong> không?</p>
+              <p className="text-[#6B7280] mb-6">Bạn có chắc chắn muốn thêm khoa <strong className="text-[#F4C542]">{formData.TenKhoa}</strong> không?</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmModal(false)}
@@ -634,10 +614,43 @@ function FacultyManagement() {
                   Không
                 </button>
                 <button
-                  onClick={executeSubmit}
+                  onClick={() => {
+                    setShowConfirmModal(false);
+                    setShowSecondConfirmModal(true);
+                  }}
                   className="flex-1 px-4 py-2 bg-[#F4C542] text-[#152238] rounded-xl font-semibold hover:bg-[#F4C542]/90 shadow-lg"
                 >
                   Có
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Modal xác nhận thêm lần 2 */}
+      {showSecondConfirmModal && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 backdrop-blur-sm bg-black/40">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-[#1F2937] mb-2">Cảnh báo</h3>
+              <p className="text-[#6B7280] mb-6">Hành động này sẽ không thể hoàn tác, khoa sẽ không chỉnh sửa hay xóa được.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSecondConfirmModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={executeSubmit}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-lg"
+                >
+                  Tiếp tục
                 </button>
               </div>
             </motion.div>
