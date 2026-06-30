@@ -1476,12 +1476,11 @@ app.get('/api/classes/next-name/:tenLop/:maKhoa/:nienKhoa', (req, res) => {
 });
 app.post('/api/classes', (req, res) => {
     let { MaLop, TenLop, MaKhoa, NienKhoa } = req.body;
-    TenLop = `Lớp ${MaLop}`; // Enforce "Lớp + mã lớp"
     executeInsert('INSERT INTO lophoc (MaLop, TenLop, MaKhoa, NienKhoa) VALUES (?, ?, ?, ?)', [MaLop, TenLop, MaKhoa, NienKhoa], res, 'Thêm lớp thành công!', 'Lỗi thêm lớp!');
 });
 app.put('/api/classes/:maLop', (req, res) => {
-    const TenLop = `Lớp ${req.params.maLop}`; // Enforce "Lớp + mã lớp"
-    executeUpdate('UPDATE lophoc SET TenLop=?, MaKhoa=?, NienKhoa=? WHERE MaLop=?', [TenLop, req.body.MaKhoa, req.body.NienKhoa, req.params.maLop], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
+    let { TenLop, MaKhoa, NienKhoa } = req.body;
+    executeUpdate('UPDATE lophoc SET TenLop=?, MaKhoa=?, NienKhoa=? WHERE MaLop=?', [TenLop, MaKhoa, NienKhoa, req.params.maLop], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
 });
 app.delete('/api/classes/:maLop', (req, res) => executeDelete('DELETE FROM lophoc WHERE MaLop=?', [req.params.maLop], res, 'Xóa thành công!', 'Lỗi xóa!'));
 app.get('/api/classes/:maLop/details', (req, res) => {

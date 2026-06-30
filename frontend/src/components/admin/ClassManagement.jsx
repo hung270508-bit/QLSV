@@ -172,24 +172,14 @@ function ClassManagement() {
 
 
 
-    // Validate TenLop (TC_13, TC_14)
+    // Validate TenLop
     const tenLopTrimmed = formData.TenLop.trim();
     if (!tenLopTrimmed) {
       newErrors.TenLop = 'Tên lớp không được để trống';
     } else if (tenLopTrimmed.length < 2) {
       newErrors.TenLop = 'Tên lớp phải có ít nhất 2 ký tự';
-    } else if (tenLopTrimmed.includes('-')) {
-      // Validate dash position: must be between two words
-      const parts = tenLopTrimmed.split('-');
-      if (parts.length > 3) {
-        newErrors.TenLop = 'Tên lớp chỉ được phép có tối đa hai dấu "-"';
-      } else {
-        const beforeDash = parts[0].trim();
-        const afterDash = parts[1].trim();
-        if (!beforeDash || !afterDash) {
-          newErrors.TenLop = 'Dấu "-" phải nằm giữa hai từ (VD: Toán - Văn)';
-        }
-      }
+    } else if (!/^[A-Z0-9]+(?:\s[A-Z0-9]+)?$/.test(tenLopTrimmed)) {
+      newErrors.TenLop = 'Tên lớp chỉ chứa chữ cái in hoa, số và tối đa 1 khoảng trắng';
     }
 
     // Validate MaKhoa
@@ -874,29 +864,21 @@ function ClassManagement() {
                       type="text"
                       value={formData.TenLop}
                       onChange={(e) => {
-                        let value = e.target.value;
+                        let value = e.target.value.toUpperCase();
 
-                        // 1. Loại bỏ ký tự đặc biệt, chỉ giữ chữ, số, khoảng trắng và dấu gạch ngang
-                        value = value.replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s-]/g, '').replace(/\s\s+/g, ' ');
+                        // Chỉ cho phép chữ cái viết hoa A-Z, số 0-9 và khoảng trắng
+                        value = value.replace(/[^A-Z0-9\s]/g, '');
 
-                        // 2. CHUẨN HÓA VIẾT HOA / VIẾT THƯỜNG
-                        if (value.length > 0) {
-                          // Cách 1: Chỉ viết hoa chữ cái đầu câu, các chữ sau ép về in thường 
-                          // VD: "Valorant NhẬp MôN" -> "Valorant nhập môn"
-                          value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-
-                          // --- HOẶC ---
-
-                          // Cách 2: Nếu muốn viết hoa chữ cái đầu của MỖI TỪ (đúng chuẩn danh từ riêng)
-                          // VD: "Valorant NhẬp MôN" -> "Valorant Nhập Môn"
-                          // (Xóa comment dòng dưới và bỏ Cách 1 nếu muốn dùng cách này)
-                          value = value.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+                        // Chỉ cho phép tối đa 1 khoảng trắng
+                        const spaces = value.split(' ');
+                        if (spaces.length > 2) {
+                          value = spaces[0] + ' ' + spaces.slice(1).join('');
                         }
 
                         setFormData({ ...formData, TenLop: value });
                         if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
                       }}
-                      placeholder="Nhập tên lớp học"
+                      placeholder="Nhập tên lớp học (VD: CNTT 1)"
                       className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
                     />
                     {formErrors.TenLop && (
