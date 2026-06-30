@@ -633,7 +633,7 @@ function ClassManagement() {
 
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
-        
+
         {/* Mobile View */}
         <div className="block sm:hidden divide-y divide-gray-100">
           {currentItems.length > 0 ? (
@@ -653,7 +653,7 @@ function ClassManagement() {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-semibold bg-[#F4C542]/20 text-[#B45309]">
                     {cls.TenKhoa || 'N/A'}
@@ -871,7 +871,7 @@ function ClassManagement() {
                         if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
                       }}
                       maxLength={20}
-                      placeholder="Nhập tên lớp học (VD: Logistics 1)"
+                      placeholder="Nhập tên lớp học (VD: 23CNTT1)"
                       className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
                     />
                     {formErrors.TenLop && (
