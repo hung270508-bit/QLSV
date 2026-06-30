@@ -180,8 +180,8 @@ function ClassManagement() {
       newErrors.TenLop = 'Tên lớp phải có ít nhất 2 ký tự';
     } else if (tenLopTrimmed.length > 20) {
       newErrors.TenLop = 'Tên lớp không được vượt quá 20 ký tự';
-    } else if (!/^[A-Z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲÝỴỶỸ]+(?:\s[A-Z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲÝỴỶỸ]+)?$/.test(tenLopTrimmed)) {
-      newErrors.TenLop = 'Tên lớp chỉ chứa chữ cái in hoa, số và tối đa 1 khoảng trắng';
+    } else if (!/^[A-Za-z0-9À-ỹ]+(?:\s[A-Za-z0-9À-ỹ]+)?$/.test(tenLopTrimmed)) {
+      newErrors.TenLop = 'Tên lớp chỉ chứa chữ cái, số và tối đa 1 khoảng trắng';
     }
 
     // Validate MaKhoa
@@ -633,7 +633,7 @@ function ClassManagement() {
 
       {/* Table */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-xl border border-[#E5E7EB] overflow-hidden">
-        
+
         {/* Mobile View */}
         <div className="block sm:hidden divide-y divide-gray-100">
           {currentItems.length > 0 ? (
@@ -653,7 +653,7 @@ function ClassManagement() {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-semibold bg-[#F4C542]/20 text-[#B45309]">
                     {cls.TenKhoa || 'N/A'}
@@ -853,10 +853,10 @@ function ClassManagement() {
                       type="text"
                       value={formData.TenLop}
                       onChange={(e) => {
-                        let value = e.target.value.toUpperCase();
+                        let value = e.target.value;
 
-                        // Chỉ cho phép chữ cái viết hoa tiếng Anh & tiếng Việt, số 0-9 và khoảng trắng
-                        value = value.replace(/[^A-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲÝỴỶỸ]/g, '');
+                        // Chỉ cho phép chữ cái tiếng Anh & tiếng Việt (cả hoa và thường), số 0-9 và khoảng trắng
+                        value = value.replace(/[^A-Za-z0-9\sÀ-ỹ]/g, '');
 
                         // Chỉ cho phép tối đa 1 khoảng trắng
                         const spaces = value.split(' ');
@@ -871,7 +871,7 @@ function ClassManagement() {
                         if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
                       }}
                       maxLength={20}
-                      placeholder="Nhập tên lớp học (VD: LOGISTICS 1)"
+                      placeholder="Nhập tên lớp học (VD: 23CNTT1)"
                       className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
                     />
                     {formErrors.TenLop && (
