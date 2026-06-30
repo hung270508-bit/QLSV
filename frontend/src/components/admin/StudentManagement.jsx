@@ -203,6 +203,17 @@ function StudentManagement() {
 
 
 
+  // Format date to local YYYY-MM-DD
+  const formatDateLocal = useCallback((dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   // Capitalize first letter of each word for Vietnamese names
 
   const capitalizeVietnameseName = useCallback((str) => {
@@ -798,7 +809,7 @@ function StudentManagement() {
     setFormData({
       MSSV: student.MSSV,
       HoTen: student.HoTen,
-      NgaySinh: student.NgaySinh ? student.NgaySinh.split('T')[0] : '',
+      NgaySinh: formatDateLocal(student.NgaySinh),
       GioiTinh: student.GioiTinh || 'Nam',
       Email: student.Email || '',
       SoDienThoai: student.SoDienThoai || '',
@@ -926,7 +937,7 @@ function StudentManagement() {
 
         s.HoTen,
 
-        s.NgaySinh ? s.NgaySinh.split('T')[0] : '',
+        formatDateLocal(s.NgaySinh),
 
         s.GioiTinh,
 
@@ -2411,7 +2422,7 @@ function StudentManagement() {
 
                           { label: 'Họ tên', value: studentDetails.HoTen, icon: Users },
 
-                          { label: 'Ngày sinh', value: studentDetails.NgaySinh ? studentDetails.NgaySinh.split('T')[0] : '', icon: Calendar },
+                          { label: 'Ngày sinh', value: formatDateLocal(studentDetails.NgaySinh), icon: Calendar },
 
                           { label: 'Giới tính', value: studentDetails.GioiTinh, icon: UserCheck },
 
