@@ -91,6 +91,8 @@ function AdminRequests() {
       errors.updateStatus = 'Vui lòng phản hồi';
     } else if (['Đã phản hồi', 'Từ chối'].includes(updateStatus) && !replyText.trim()) {
       errors.replyText = 'Vui lòng nhập nội dung phản hồi';
+    } else if (replyText.trim().length > 0 && replyText.trim().length < 10) {
+      errors.replyText = 'Nội dung phản hồi tối thiểu 10 ký tự';
     } else if (replyText.trim().length > 1000) {
       errors.replyText = 'Nội dung phản hồi tối đa 1000 ký tự';
     }
