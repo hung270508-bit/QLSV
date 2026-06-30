@@ -178,7 +178,9 @@ function ClassManagement() {
       newErrors.TenLop = 'Tên lớp không được để trống';
     } else if (tenLopTrimmed.length < 2) {
       newErrors.TenLop = 'Tên lớp phải có ít nhất 2 ký tự';
-    } else if (!/^[A-Z0-9]+(?:\s[A-Z0-9]+)?$/.test(tenLopTrimmed)) {
+    } else if (tenLopTrimmed.length > 20) {
+      newErrors.TenLop = 'Tên lớp không được vượt quá 20 ký tự';
+    } else if (!/^[A-Z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲÝỴỶỸ]+(?:\s[A-Z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲÝỴỶỸ]+)?$/.test(tenLopTrimmed)) {
       newErrors.TenLop = 'Tên lớp chỉ chứa chữ cái in hoa, số và tối đa 1 khoảng trắng';
     }
 
@@ -282,20 +284,7 @@ function ClassManagement() {
     );
 
     if (isDuplicate) {
-      // Báo cho người dùng biết tên đã trùng, hỏi xác nhận trước khi tự thêm số vào sau
-      try {
-        const res = await axios.get(`${API_BASE}/classes/next-name/${encodeURIComponent(tenLopTrimmed)}/${formData.MaKhoa}/${encodeURIComponent(nienKhoa)}`);
-        const suggestedName = res.data.TenLop;
-
-        setConfirmDialog({
-          show: true,
-          message: `Tên lớp "${tenLopTrimmed}" đã tồn tại trong khoa này. Hệ thống sẽ tự đổi thành "${suggestedName}". Bạn có muốn tiếp tục thêm không?`,
-          onConfirm: () => saveClass(suggestedName)
-        });
-      } catch (err) {
-        console.error('Lỗi khi lấy tên lớp tiếp theo:', err);
-        setErrorDialog({ show: true, message: 'Không thể kiểm tra tên lớp trùng, vui lòng thử lại!' });
-      }
+      setFormErrors(prev => ({ ...prev, TenLop: 'Tên lớp này đã tồn tại trong khoa và niên khóa này!' }));
       return;
     }
 
@@ -866,8 +855,8 @@ function ClassManagement() {
                       onChange={(e) => {
                         let value = e.target.value.toUpperCase();
 
-                        // Chỉ cho phép chữ cái viết hoa A-Z, số 0-9 và khoảng trắng
-                        value = value.replace(/[^A-Z0-9\s]/g, '');
+                        // Chỉ cho phép chữ cái viết hoa tiếng Anh & tiếng Việt, số 0-9 và khoảng trắng
+                        value = value.replace(/[^A-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲÝỴỶỸ]/g, '');
 
                         // Chỉ cho phép tối đa 1 khoảng trắng
                         const spaces = value.split(' ');
@@ -875,10 +864,14 @@ function ClassManagement() {
                           value = spaces[0] + ' ' + spaces.slice(1).join('');
                         }
 
+                        // Giới hạn 20 ký tự
+                        value = value.slice(0, 20);
+
                         setFormData({ ...formData, TenLop: value });
                         if (formErrors.TenLop) setFormErrors(prev => ({ ...prev, TenLop: '' }));
                       }}
-                      placeholder="Nhập tên lớp học (VD: CNTT 1)"
+                      maxLength={20}
+                      placeholder="Nhập tên lớp học (VD: LOGISTICS 1)"
                       className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors ${formErrors.TenLop ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
                     />
                     {formErrors.TenLop && (
