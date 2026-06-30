@@ -208,9 +208,6 @@ function AdminDashboard({ user, onLogout }) {
         <div className="flex items-center justify-between gap-2">
           <motion.div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0 p-2 rounded-xl hover:bg-[#1e2f4c] transition-colors duration-200 relative"
             onClick={() => handleNavigate('taikhoan')} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
-            <div className="relative w-9 h-9 bg-[#F4C542] rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 overflow-hidden">
-              {user?.Avatar ? <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span>AD</span>}
-            </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-white truncate group-hover:text-[#F4C542] transition-colors duration-200">{user?.name || 'ADMIN'}</p>
               <p className="text-xs text-gray-300 truncate">Quản trị viên hệ thống</p>
@@ -313,9 +310,7 @@ function AdminDashboard({ user, onLogout }) {
                  <span className="text-[6px] text-[#D4AF37] font-bold uppercase tracking-widest mt-0.5 leading-none">Trường Đại Học Nhất Tín</span>
               </div>
             </div>
-            <div className="w-9 h-9 bg-[#1e2f4c] rounded-full flex items-center justify-center font-bold text-[#D4AF37] text-sm overflow-hidden border border-[#D4AF37]/30">
-              {user?.Avatar ? <img src={user.Avatar} alt="Avatar" className="w-full h-full object-cover" /> : 'AD'}
-            </div>
+
           </div>
         )}
 
