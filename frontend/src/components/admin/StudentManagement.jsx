@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Edit, Trash2, Search, X, Filter, XCircle, Eye, Download, Upload, FileText, Calendar, CheckCircle, GraduationCap, Mail, Phone, Award, TrendingUp, AlertCircle, BookOpen, BarChart3, UserCheck, Clock, MapPin , Camera} from 'lucide-react';
 
 import axios from 'axios';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 import { TableSkeleton } from '../common/AdminSkeleton';
 
@@ -925,44 +927,106 @@ function StudentManagement() {
 
 
 
-  const handleExportStudents = () => {
+  const handleExportStudents = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Danh sách sinh viên');
 
-    const csvContent = [
+      // 1. Add Title
+      worksheet.mergeCells('A1:I1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = 'DANH SÁCH SINH VIÊN';
+      titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF152238' } };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(1).height = 40;
 
-      ['MSSV', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Email', 'SĐT', 'Lớp'],
+      // 2. Add Export Date
+      worksheet.mergeCells('A2:I2');
+      const dateCell = worksheet.getCell('A2');
+      const today = new Date();
+      dateCell.value = `Ngày xuất: ${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
+      dateCell.font = { name: 'Arial', size: 11, italic: true, color: { argb: 'FF4B5563' } };
+      dateCell.alignment = { vertical: 'middle', horizontal: 'right' };
+      worksheet.getRow(2).height = 25;
 
-      ...filteredStudents.map(s => [
+      // Blank row
+      worksheet.getRow(3).height = 10;
 
-        s.MSSV,
+      // 3. Add Headers
+      const headers = ['STT', 'MSSV', 'Họ và tên', 'Ngày sinh', 'Giới tính', 'Email', 'Số điện thoại', 'Lớp', 'Trạng thái'];
+      const headerRow = worksheet.addRow(headers);
+      headerRow.height = 30;
 
-        s.HoTen,
+      // Define columns width after adding headers to align correctly
+      worksheet.columns = [
+        { key: 'stt', width: 8 },
+        { key: 'mssv', width: 15 },
+        { key: 'hoTen', width: 30 },
+        { key: 'ngaySinh', width: 15 },
+        { key: 'gioiTinh', width: 12 },
+        { key: 'email', width: 35 },
+        { key: 'sdt', width: 20 },
+        { key: 'lop', width: 20 },
+        { key: 'trangThai', width: 20 },
+      ];
 
-        formatDateLocal(s.NgaySinh),
+      // Format Header Row
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF004080' } // Professional dark blue
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin' }, left: { style: 'thin' },
+          bottom: { style: 'thin' }, right: { style: 'thin' }
+        };
+      });
 
-        s.GioiTinh,
+      // 4. Add Data
+      filteredStudents.forEach((s, index) => {
+        const row = worksheet.addRow({
+          stt: index + 1,
+          mssv: s.MSSV || '',
+          hoTen: s.HoTen || '',
+          ngaySinh: s.NgaySinh ? new Date(s.NgaySinh).toLocaleDateString('vi-VN') : '',
+          gioiTinh: s.GioiTinh || '',
+          email: s.Email || '',
+          sdt: s.SoDienThoai || '',
+          lop: s.TenLop || '',
+          trangThai: s.TrangThai || '',
+        });
 
-        s.Email,
+        // Alternating row colors
+        const isEven = index % 2 === 0;
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Arial', size: 11, color: { argb: 'FF000000' } };
+          cell.alignment = { 
+            vertical: 'middle', 
+            horizontal: (colNumber === 1 || colNumber === 2 || colNumber === 4 || colNumber === 5) ? 'center' : 'left' 
+          };
+          if (!isEven) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } }; // Light gray for zebra striping
+          }
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+          };
+        });
+      });
 
-        s.SoDienThoai,
-
-        s.TenLop || ''
-
-      ])
-
-    ].map(row => row.join(',')).join('\n');
-
-
-
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-
-    const link = document.createElement('a');
-
-    link.href = URL.createObjectURL(blob);
-
-    link.download = 'sinhVien.csv';
-
-    link.click();
-
+      // Generate & Save file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `DanhSachSinhVien_${today.getTime()}.xlsx`);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      setToast({ show: true, message: 'Lỗi khi xuất file Excel', type: 'error' });
+    }
   };
 
 
