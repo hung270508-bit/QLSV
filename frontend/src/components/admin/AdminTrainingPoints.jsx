@@ -256,7 +256,10 @@ function AdminTrainingPoints() {
     if (periodForm.NgayBatDau > maxNgay || periodForm.NgayKetThuc > maxNgay) {
       return showToast(`Ngày không được vượt quá niên khóa (tối đa ${maxNgay})!`, 'error');
     }
-    if (new Date(periodForm.NgayBatDau) > new Date(periodForm.NgayKetThuc)) return showToast('Ngày kết thúc phải sau Ngày bắt đầu!', 'error');
+    const diffTime = new Date(periodForm.NgayKetThuc) - new Date(periodForm.NgayBatDau);
+    if (diffTime < 24 * 60 * 60 * 1000) {
+      return showToast('Ngày kết thúc phải cách ngày bắt đầu ít nhất 1 ngày!', 'error');
+    }
 
     const totalPoints = calculateTotalPoints(periodForm.CauTrucTieuChi);
     if (totalPoints !== 100) return showToast(`Tổng điểm tối đa của bộ tiêu chí phải bằng 100 (hiện tại là ${totalPoints})!`, 'error');
@@ -1017,8 +1020,9 @@ function AdminTrainingPoints() {
                 <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); setPeriodFormErrors({}); }} className="px-5 py-2.5 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Hủy</button>
                 {periodModalTab === 'info' ? (
                   <button onClick={() => {
-                    if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc || periodForm.NgayBatDau > periodForm.NgayKetThuc || periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
-                      showToast('Vui lòng kiểm tra lại ngày hợp lệ trước khi tiếp tục!', 'error');
+                    const diffTime = new Date(periodForm.NgayKetThuc) - new Date(periodForm.NgayBatDau);
+                    if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc || diffTime < 24 * 60 * 60 * 1000 || periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
+                      showToast('Vui lòng kiểm tra lại ngày hợp lệ (ngày kết thúc phải cách ngày bắt đầu ít nhất 1 ngày)!', 'error');
                       return;
                     }
                     setPeriodModalTab('builder');
