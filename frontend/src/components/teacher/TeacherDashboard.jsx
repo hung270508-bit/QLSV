@@ -17,6 +17,8 @@ import AttendanceSection from './AttendanceSection';
 import ScheduleSection from './ScheduleSection';
 import AnnouncementsSection from './AnnouncementsSection';
 import TeacherSupport from './TeacherSupport';
+import QuestionBankManagement from './QuestionBankManagement';
+import ExamManagement from './ExamManagement';
 import { 
   TeacherOverviewSkeleton, 
   TeacherStudentsSkeleton, 
@@ -36,6 +38,8 @@ const menuItems = [
   { id: 'lichgiangday', label: 'Lịch giảng dạy', icon: Calendar },
   { id: 'hoso', label: 'Hồ sơ cá nhân', icon: UserCircle },
   { id: 'thongbao', label: 'Thông báo', icon: Bell },
+  { id: 'nganhang', label: 'Ngân hàng câu hỏi (AI)', icon: BookOpen },
+  { id: 'thionline', label: 'Tổ chức Thi Online', icon: Award },
   { id: 'hotro', label: 'Yêu cầu - Hỗ trợ', icon: HelpCircle },
 ];
 
@@ -143,6 +147,8 @@ function TeacherDashboard({ user, onLogout }) {
       case 'hoso': return <TeacherProfileManagement user={user} onLogout={onLogout} profile={profile} loading={loadingProfile} />;
       case 'thongbao': return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} classes={teachingAssignments} />;
       case 'hotro': return <TeacherSupport user={user} profile={profile} />;
+      case 'nganhang': return <QuestionBankManagement />;
+      case 'thionline': return <ExamManagement />;
       default: return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={setActiveMenu} />;
     }
   };

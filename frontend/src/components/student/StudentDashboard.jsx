@@ -18,6 +18,8 @@ import StudentSupport from './StudentSupport';
 import StudentTrainingPoints from './StudentTrainingPoints';
 import StudentCourseRegistration from './StudentCourseRegistration';
 import StudentAnnouncements from './StudentAnnouncements';
+import StudentAIPractice from './StudentAIPractice';
+import StudentOnlineExam from './StudentOnlineExam';
 
 const menuItems = [
   { id: 'dashboard', label: 'Trang chủ', icon: LayoutDashboard },
@@ -27,6 +29,8 @@ const menuItems = [
   { id: 'diemdanh', label: 'Điểm danh', icon: ClipboardCheck },
   { id: 'renluyen', label: 'Đánh giá rèn luyện', icon: Award },
   { id: 'dangky', label: 'Đăng ký môn học', icon: BookPlus },
+  { id: 'luyentap', label: 'Luyện tập AI', icon: GraduationCap },
+  { id: 'thionline', label: 'Kỳ thi Online', icon: Award },
   { id: 'thongbao', label: 'Thông báo', icon: Bell },
   { id: 'hotro', label: 'Yêu cầu - Trợ giúp', icon: HelpCircle },
 ];
@@ -82,6 +86,8 @@ function StudentDashboard({ user, onLogout }) {
       case 'diemdanh': return <StudentAttendance user={user} />;
       case 'renluyen': return <StudentTrainingPoints user={user} />;
       case 'dangky': return <StudentCourseRegistration user={user} />;
+      case 'luyentap': return <StudentAIPractice user={user} />;
+      case 'thionline': return <StudentOnlineExam user={user} />;
       case 'thongbao': return <StudentAnnouncements user={user} />;
       case 'hotro': return <StudentSupport user={user} profile={profile} />;
       default: return <StudentOverview user={user} setActiveMenu={setActiveMenu} />;

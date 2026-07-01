@@ -497,6 +497,10 @@ app.post('/api/forgot-password', (req, res) => {
     });
 });
 
+// Mount AI Exam routes
+const aiExamRoutes = require('./ai-exam/routes')(db);
+app.use('/api/ai-exams', aiExamRoutes);
+
 // Global middleware to check if account is locked out across all API requests
 app.use((req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];

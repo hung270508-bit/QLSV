@@ -146,14 +146,22 @@ function TeachingAssignment() {
       }
     }
 
-    // Ràng buộc Sĩ số: Phải là SỐ NGUYÊN và nằm trong khoảng 30 - 80
+    // Ràng buộc: Lớp sinh hoạt phải có >= 20 sinh viên
+    if (formData.MaLop) {
+      const selectedClass = classes.find(c => String(c.MaLop).trim() === String(formData.MaLop).trim());
+      if (selectedClass && selectedClass.SoSinhVien < 20) {
+        errors.MaLop = `Lớp này chỉ có ${selectedClass.SoSinhVien} sinh viên, không đủ điều kiện (tối thiểu 20 sinh viên).`;
+      }
+    }
+
+    // Ràng buộc Sĩ số: Phải là SỐ NGUYÊN và nằm trong khoảng 20 - 80
     const siSo = Number(formData.SoLuongToiDa);
     if (!formData.SoLuongToiDa || isNaN(siSo)) {
       errors.SoLuongToiDa = 'Vui lòng nhập Sĩ số.';
     } else if (!Number.isInteger(siSo)) {
       errors.SoLuongToiDa = 'Sĩ số bắt buộc phải là số nguyên.';
-    } else if (siSo < 30 || siSo > 80) {
-      errors.SoLuongToiDa = 'Sĩ số phải từ 30 đến 80 sinh viên.';
+    } else if (siSo < 20 || siSo > 80) {
+      errors.SoLuongToiDa = 'Sĩ số phải từ 20 đến 80 sinh viên.';
     }
 
     if (!hocKySo || hocKySo < 1 || hocKySo > 3) errors.HocKy = 'Vui lòng chọn Học kỳ hợp lệ.';
@@ -440,7 +448,7 @@ function TeachingAssignment() {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
                       <select value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all`}>
                         <option value="">-- Dành cho mọi sinh viên --</option>
-                        {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop})</option>)}
+                        {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop}) - {c.SoSinhVien || 0} SV</option>)}
                       </select>
                       {formErrors.MaLop && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaLop}</p>}
                     </div>
@@ -462,8 +470,8 @@ function TeachingAssignment() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#6B7280] uppercase mb-2">Sĩ số (30 - 80) <span className="text-[#EF4444]">*</span></label>
-                        <input type="number" min="30" max="80" step="1" onKeyDown={(e) => { if (e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => { setFormData({ ...formData, SoLuongToiDa: e.target.value }); setFormErrors({ ...formErrors, SoLuongToiDa: '' }) }} className={`w-full p-3 bg-[#FFFFFF] border-2 rounded-xl font-bold text-[#F4C542] outline-none focus:border-[#F4C542] ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
+                        <label className="block text-xs font-bold text-[#6B7280] uppercase mb-2">Sĩ số (20 - 80) <span className="text-[#EF4444]">*</span></label>
+                        <input type="number" min="20" max="80" step="1" onKeyDown={(e) => { if (e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => { setFormData({ ...formData, SoLuongToiDa: e.target.value }); setFormErrors({ ...formErrors, SoLuongToiDa: '' }) }} className={`w-full p-3 bg-[#FFFFFF] border-2 rounded-xl font-bold text-[#F4C542] outline-none focus:border-[#F4C542] ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
                         {formErrors.SoLuongToiDa && <p className="text-[#EF4444] text-sm mt-1">{formErrors.SoLuongToiDa}</p>}
                       </div>
                     </div>
