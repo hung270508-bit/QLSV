@@ -3,7 +3,7 @@ const multer = require('multer');
 const { extractTextFromDocx, generateQuestionsFromText } = require('./aiService');
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: require('os').tmpdir() });
 
 module.exports = (db) => {
     const dbPromise = db.promise();
