@@ -525,7 +525,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                     {subject.LoaiMonHoc || 'Đại cương'}
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                    {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || 'Tất cả khoa')}
+                    {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || faculties.find(f => f.MaKhoa === subject.MaKhoa)?.TenKhoa || 'Tất cả khoa')}
                   </span>
                 </div>
               </div>
@@ -571,7 +571,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                     </td>
                     <td className="py-5 px-6">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-                        {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || 'Tất cả khoa')}
+                        {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || faculties.find(f => f.MaKhoa === subject.MaKhoa)?.TenKhoa || 'Tất cả khoa')}
                       </span>
                     </td>
                     <td className="py-5 px-6">
