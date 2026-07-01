@@ -24,6 +24,10 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Server is running' });
+});
+
 // Đã xóa global.currentRfidState, chuyển sang dùng bảng rfid_state trong MySQL
 
 // Middleware CORS cho Express API
