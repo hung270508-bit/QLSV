@@ -3,8 +3,8 @@ USE quanlysv;
 -- Bảng Ngân hàng câu hỏi
 CREATE TABLE IF NOT EXISTS question_banks (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    ma_mon_hoc VARCHAR(50) NOT NULL,
-    ma_giang_vien VARCHAR(50) NOT NULL,
+    ma_mon_hoc VARCHAR(20) NOT NULL,
+    ma_giang_vien VARCHAR(20) NOT NULL,
     tieu_de VARCHAR(255) NOT NULL,
     file_url VARCHAR(255),
     tong_so_cau INT DEFAULT 0,
@@ -41,9 +41,9 @@ CREATE TABLE IF NOT EXISTS question_options (
 -- Bảng Kỳ thi
 CREATE TABLE IF NOT EXISTS exams (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    ma_lop_hoc_phan VARCHAR(50) NOT NULL,
-    ma_mon_hoc VARCHAR(50) NOT NULL,
-    ma_giang_vien VARCHAR(50) NOT NULL,
+    ma_lop_hoc_phan VARCHAR(30) NOT NULL,
+    ma_mon_hoc VARCHAR(20) NOT NULL,
+    ma_giang_vien VARCHAR(20) NOT NULL,
     tieu_de VARCHAR(255) NOT NULL,
     thoi_gian_thi_phut INT DEFAULT 60,
     tong_so_cau INT NOT NULL,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS exams (
 CREATE TABLE IF NOT EXISTS exam_attempts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     exam_id INT NOT NULL,
-    mssv VARCHAR(50) NOT NULL,
+    mssv VARCHAR(20) NOT NULL,
     thoi_gian_bat_dau DATETIME DEFAULT CURRENT_TIMESTAMP,
     thoi_gian_nop_bai DATETIME NULL,
     diem_so FLOAT DEFAULT NULL,
@@ -88,8 +88,8 @@ CREATE TABLE IF NOT EXISTS exam_attempt_answers (
 -- Bảng Lượt luyện tập
 CREATE TABLE IF NOT EXISTS practice_attempts (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    mssv VARCHAR(50) NOT NULL,
-    ma_mon_hoc VARCHAR(50) NOT NULL,
+    mssv VARCHAR(20) NOT NULL,
+    ma_mon_hoc VARCHAR(20) NOT NULL,
     tong_so_cau INT NOT NULL,
     diem_so FLOAT DEFAULT NULL,
     thoi_gian_bat_dau DATETIME DEFAULT CURRENT_TIMESTAMP,
