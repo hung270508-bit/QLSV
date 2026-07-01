@@ -76,6 +76,17 @@ function TeacherManagement() {
       .replace(/Đ/g, 'D');
   }, []);
 
+  // Format date to local YYYY-MM-DD
+  const formatDateLocal = useCallback((dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   // Hàm chuẩn hóa viết hoa tên riêng (FIX TC_05, TC_12)
   const formatTitleCase = (str) => {
     return str.toLowerCase().split(/\s+/).map(word => {
@@ -331,7 +342,7 @@ function TeacherManagement() {
       MaKhoa: teacher.MaKhoa || '',
       TrangThai: teacher.TrangThai || 'Đang dạy',
       GioiTinh: teacher.GioiTinh || '',
-      NgaySinh: teacher.NgaySinh ? teacher.NgaySinh.split('T')[0] : '',
+      NgaySinh: formatDateLocal(teacher.NgaySinh),
       Avatar: teacher.Avatar || ''
     });
     setShowModal(true);
@@ -1199,7 +1210,7 @@ function TeacherManagement() {
                         { label: 'Mã giảng viên', value: teacherDetails.MaGiangVien, icon: null },
                         { label: 'Họ và tên', value: teacherDetails.HoTen, icon: null },
                         { label: 'Giới tính', value: teacherDetails.GioiTinh, icon: null },
-                        { label: 'Ngày sinh', value: teacherDetails.NgaySinh ? new Date(teacherDetails.NgaySinh).toLocaleDateString('vi-VN') : '', icon: null },
+                        { label: 'Ngày sinh', value: formatDateLocal(teacherDetails.NgaySinh), icon: Calendar },
                         { label: 'Email', value: teacherDetails.Email, icon: Mail },
                         { label: 'Số điện thoại', value: teacherDetails.SoDienThoai, icon: Phone },
                         { label: 'Khoa trực thuộc', value: teacherDetails.TenKhoa, icon: null },
