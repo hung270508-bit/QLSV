@@ -1404,7 +1404,7 @@ app.get('/api/faculties/:maKhoa/students', (req, res) => executeQuery('SELECT sv
 app.get('/api/faculties/:maKhoa/classes', (req, res) => executeQuery('SELECT l.*, (SELECT COUNT(*) FROM sinhvien sv WHERE sv.MaLop = l.MaLop) as SoSinhVien FROM lophoc l WHERE l.MaKhoa = ?', [req.params.maKhoa], res, 'Lỗi lấy danh sách Lớp!'));
 
 // ==================== SUBJECTS ====================
-app.get('/api/subjects', (req, res) => executeQuery('SELECT * FROM monhoc', [], res, 'Lỗi lấy môn!'));
+app.get('/api/subjects', (req, res) => executeQuery('SELECT mh.*, k.TenKhoa FROM monhoc mh LEFT JOIN khoa k ON mh.MaKhoa = k.MaKhoa', [], res, 'Lỗi lấy môn!'));
 app.get('/api/subjects/next-code/:maKhoa', (req, res) => {
     const prefix = `${req.params.maKhoa}`;
     db.query(`SELECT MaMonHoc FROM monhoc WHERE MaMonHoc LIKE ? ORDER BY MaMonHoc DESC LIMIT 1`, [`${prefix}%`], (err, results) => {

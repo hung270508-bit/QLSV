@@ -103,9 +103,6 @@ function SubjectManagement() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
   try {
@@ -121,6 +118,10 @@ function SubjectManagement() {
     loading && setLoading(false);
   }
 };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const validateForm = (data = formData) => {
     const errors = {
@@ -516,12 +517,15 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                   </button>
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap mt-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6]">
                     {subject.SoTinChi} tín chỉ
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
                     {subject.LoaiMonHoc || 'Đại cương'}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                    {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || 'Tất cả khoa')}
                   </span>
                 </div>
               </div>
@@ -538,6 +542,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Môn học</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Loại môn</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Khoa</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Số tín chỉ</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Thao tác</th>
               </tr>
@@ -565,6 +570,11 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                       </span>
                     </td>
                     <td className="py-5 px-6">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                        {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || 'Tất cả khoa')}
+                      </span>
+                    </td>
+                    <td className="py-5 px-6">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] whitespace-nowrap">
                         {subject.SoTinChi} tín chỉ
                       </span>
@@ -586,7 +596,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="py-16">
+                  <td colSpan="5" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-300">
                       <BookOpen className="w-16 h-16 mb-4 text-amber-200" />
                       <p className="text-lg font-medium">Không tìm thấy môn học nào</p>
