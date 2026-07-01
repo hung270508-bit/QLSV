@@ -158,6 +158,16 @@ db.getConnection((err, connection) => {
         }
     });
 
+    // Tự động thêm cột CapBac vào bảng giangvien nếu chưa có
+    connection.query("SHOW COLUMNS FROM giangvien LIKE 'CapBac'", (err, results) => {
+        if (!err && results.length === 0) {
+            connection.query("ALTER TABLE giangvien ADD COLUMN CapBac VARCHAR(255) DEFAULT 'Thạc sĩ'", (errAlter) => {
+                if (errAlter) console.error("Lỗi thêm cột CapBac:", errAlter);
+                else console.log("Đã tự động thêm cột CapBac vào bảng giangvien.");
+            });
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
@@ -1291,12 +1301,12 @@ app.get('/api/teachers/next-code/:maKhoa', (req, res) => {
     });
 });
 app.post('/api/teachers', async (req, res) => {
-    const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh } = req.body;
+    const { MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh, CapBac } = req.body;
     try {
         const hashedPassword = await bcrypt.hash('gv@2025', saltRounds);
         db.query('INSERT INTO users (TaiKhoan, password, MaQuyen, Avatar) VALUES (?, ?, 2, ?)', [MaGiangVien, hashedPassword, req.body.Avatar || null], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo TK GV!' });
-            db.query('INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai || 'Đang dạy', GioiTinh || null, NgaySinh || null], (err) => {
+            db.query('INSERT INTO giangvien (MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai, GioiTinh, NgaySinh, CapBac) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [MaGiangVien, HoTen, Email, SoDienThoai, MaKhoa, TrangThai || 'Đang dạy', GioiTinh || null, NgaySinh || null, CapBac || 'Thạc sĩ'], (err) => {
                 if (err) return res.status(500).json({ success: false, message: 'Lỗi thêm GV!' });
                 res.json({ success: true, message: 'Thêm giảng viên thành công!' });
             });
@@ -1304,14 +1314,22 @@ app.post('/api/teachers', async (req, res) => {
     } catch (err) { res.status(500).json({ success: false, message: 'Lỗi mã hóa!' }); }
 });
 app.put('/api/teachers/:maGV', async (req, res) => {
+    console.log('DEBUG UPDATE GV - CapBac nhận được:', req.body.CapBac);
     try {
         await new Promise((resolve, reject) => {
+            const capBacValue = req.body.CapBac || 'Thạc sĩ';
+            console.log('DEBUG UPDATE GV - CapBac sẽ lưu:', capBacValue);
             db.query(
-                'UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=?, GioiTinh=?, NgaySinh=? WHERE MaGiangVien=?',
-                [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.body.GioiTinh || null, req.body.NgaySinh || null, req.params.maGV],
+                'UPDATE giangvien SET HoTen=?, Email=?, SoDienThoai=?, MaKhoa=?, TrangThai=?, GioiTinh=?, NgaySinh=?, CapBac=? WHERE MaGiangVien=?',
+                [req.body.HoTen, req.body.Email, req.body.SoDienThoai, req.body.MaKhoa, req.body.TrangThai || 'Đang dạy', req.body.GioiTinh || null, req.body.NgaySinh || null, capBacValue, req.params.maGV],
                 (err) => {
-                    if (err) reject(err);
-                    else resolve();
+                    if (err) {
+                        console.error('Lỗi UPDATE giảng viên:', err);
+                        reject(err);
+                    } else {
+                        console.log('UPDATE giảng viên thành công');
+                        resolve();
+                    }
                 }
             );
         });
@@ -1577,22 +1595,46 @@ app.post('/api/teaching-assignments', (req, res) => {
     const maLHP = MaLopHocPhan || `${MaMonHoc}_${HocKy}_${Math.floor(Math.random() * 1000)}`;
     const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
 
-    db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa) VALUES (?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
+    // Kiểm tra cấp bậc giảng viên và loại môn học
+    db.query('SELECT gv.CapBac, mh.LoaiMonHoc FROM giangvien gv JOIN monhoc mh ON gv.MaGiangVien = ? AND mh.MaMonHoc = ?', [MaGiangVien, MaMonHoc], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra cấp bậc!' });
+        if (results.length === 0) return res.status(400).json({ success: false, message: 'Không tìm thấy giảng viên hoặc môn học!' });
 
-        if (finalMaLop) {
-            db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
-                if (!err && students.length > 0) {
-                    students.forEach(sv => { 
-                        db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]); 
-                        db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Đã duyệt', NOW())", [sv.MSSV, maLHP, HocKy]);
-                    });
-                }
-                res.json({ success: true, message: 'Tạo Lớp HP và tự động lên danh sách thành công!' });
+        const { CapBac, LoaiMonHoc } = results[0];
+        
+        // Quy tắc phân quyền:
+        // - Thạc sĩ: Chỉ dạy Đại cương
+        // - Tiến sĩ: Dạy cả Đại cương và Chuyên ngành
+        const canTeach = {
+            'Thạc sĩ': ['Đại cương'],
+            'Tiến sĩ': ['Đại cương', 'Chuyên ngành']
+        };
+
+        const allowedSubjects = canTeach[CapBac] || ['Đại cương'];
+        if (!allowedSubjects.includes(LoaiMonHoc)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `Giảng viên cấp bậc "${CapBac}" không đủ điều kiện dạy môn loại "${LoaiMonHoc}". Yêu cầu cấp bậc cao hơn.` 
             });
-        } else {
-            res.json({ success: true, message: 'Tạo Lớp tự do thành công (Sinh viên phải tự đăng ký)!' });
         }
+
+        db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa) VALUES (?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
+
+            if (finalMaLop) {
+                db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
+                    if (!err && students.length > 0) {
+                        students.forEach(sv => { 
+                            db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]); 
+                            db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Đã duyệt', NOW())", [sv.MSSV, maLHP, HocKy]);
+                        });
+                    }
+                    res.json({ success: true, message: 'Tạo Lớp HP và tự động lên danh sách thành công!' });
+                });
+            } else {
+                res.json({ success: true, message: 'Tạo Lớp tự do thành công (Sinh viên phải tự đăng ký)!' });
+            }
+        });
     });
 });
 
@@ -1600,20 +1642,44 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
     const { MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
     const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
 
-    db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, req.params.id], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+    // Kiểm tra cấp bậc giảng viên và loại môn học
+    db.query('SELECT gv.CapBac, mh.LoaiMonHoc FROM giangvien gv JOIN monhoc mh ON gv.MaGiangVien = ? AND mh.MaMonHoc = ?', [MaGiangVien, MaMonHoc], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra cấp bậc!' });
+        if (results.length === 0) return res.status(400).json({ success: false, message: 'Không tìm thấy giảng viên hoặc môn học!' });
 
-        db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
-            if (finalMaLop) {
-                db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
-                    if (!err && students.length > 0) {
-                        students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); });
-                    }
-                    res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách mới thành công!' });
-                });
-            } else {
-                res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' });
-            }
+        const { CapBac, LoaiMonHoc } = results[0];
+        
+        // Quy tắc phân quyền:
+        // - Thạc sĩ: Chỉ dạy Đại cương
+        // - Tiến sĩ: Dạy cả Đại cương và Chuyên ngành
+        const canTeach = {
+            'Thạc sĩ': ['Đại cương'],
+            'Tiến sĩ': ['Đại cương', 'Chuyên ngành']
+        };
+
+        const allowedSubjects = canTeach[CapBac] || ['Đại cương'];
+        if (!allowedSubjects.includes(LoaiMonHoc)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `Giảng viên cấp bậc "${CapBac}" không đủ điều kiện dạy môn loại "${LoaiMonHoc}". Yêu cầu cấp bậc cao hơn.` 
+            });
+        }
+
+        db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, req.params.id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+
+            db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
+                if (finalMaLop) {
+                    db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
+                        if (!err && students.length > 0) {
+                            students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); });
+                        }
+                        res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách mới thành công!' });
+                    });
+                } else {
+                    res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' });
+                }
+            });
         });
     });
 });
