@@ -51,7 +51,8 @@ function SubjectManagement() {
     MaMonHoc: '',
     TenMonHoc: '',
     SoTinChi: '',
-    TenKhoa: ''
+    MaKhoa: '',
+    LoaiMonHoc: 'Đại cương'
   });
   const [deleteModal, setDeleteModal] = useState({ show: false, subject: null });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, title: 'Xác nhận' });
@@ -129,8 +130,8 @@ function SubjectManagement() {
     };
     let isValid = true;
 
-    if (!data.MaKhoa) {
-      errors.MaKhoa = 'Vui lòng chọn khoa';
+    if (data.LoaiMonHoc === 'Chuyên ngành' && !data.MaKhoa) {
+      errors.MaKhoa = 'Vui lòng chọn khoa phụ trách môn chuyên ngành';
       isValid = false;
     }
 
@@ -223,7 +224,7 @@ function SubjectManagement() {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '' });
+    setFormData({ MaMonHoc: '', TenMonHoc: '', SoTinChi: '', MaKhoa: '', LoaiMonHoc: 'Đại cương' });
     setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
   };
 
@@ -515,9 +516,12 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                   </button>
                 </div>
                 
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6]">
                     {subject.SoTinChi} tín chỉ
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                    {subject.LoaiMonHoc || 'Đại cương'}
                   </span>
                 </div>
               </div>
@@ -533,6 +537,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
             <thead className="bg-gradient-to-r from-amber-50 to-amber-100/40">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Môn học</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Loại môn</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Số tín chỉ</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Thao tác</th>
               </tr>
@@ -553,6 +558,11 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                         <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{subject.TenMonHoc}</span>
                         <span className="text-xs text-gray-300 font-mono mt-0.5 whitespace-nowrap">{subject.MaMonHoc}</span>
                       </div>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap">
+                        {subject.LoaiMonHoc || 'Đại cương'}
+                      </span>
                     </td>
                     <td className="py-5 px-6">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] whitespace-nowrap">
@@ -646,15 +656,39 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                   {formErrors.TenMonHoc && <p className="text-[#EF4444] text-xs mt-1">{formErrors.TenMonHoc}</p>}
                 </div>
 
-                {/* Row 2: Khoa | Số tín chỉ */}
+                {/* Row 2: Loại môn học | Khoa */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Loại môn học</label>
                   <select
-                    value={formData.MaKhoa}
-                    onChange={handleKhoaChange}
-                    className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
+                    value={formData.LoaiMonHoc}
+                    onChange={(e) => {
+                      const newLoai = e.target.value;
+                      setFormData({ 
+                        ...formData, 
+                        LoaiMonHoc: newLoai,
+                        MaKhoa: newLoai === 'Đại cương' ? '' : formData.MaKhoa
+                      });
+                      if (formErrors.MaKhoa) setFormErrors({ ...formErrors, MaKhoa: '' });
+                    }}
+                    className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors border-[#E5E7EB] focus:border-[#F4C542] text-gray-700`}
                   >
-                    <option value="">Chọn khoa</option>
+                    <option value="Đại cương">Đại cương</option>
+                    <option value="Chuyên ngành">Chuyên ngành</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa phụ trách</label>
+                  <select
+                    value={formData.LoaiMonHoc === 'Đại cương' ? '' : formData.MaKhoa}
+                    onChange={handleKhoaChange}
+                    disabled={formData.LoaiMonHoc === 'Đại cương'}
+                    className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'} ${formData.LoaiMonHoc === 'Đại cương' ? 'opacity-60 cursor-not-allowed bg-gray-100' : ''}`}
+                  >
+                    {formData.LoaiMonHoc === 'Đại cương' ? (
+                      <option value="">Bắt buộc toàn trường</option>
+                    ) : (
+                      <option value="">Chọn khoa</option>
+                    )}
                     {faculties.map((faculty) => (
                       <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
                         {faculty.TenKhoa}

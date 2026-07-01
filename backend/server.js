@@ -148,6 +148,16 @@ db.getConnection((err, connection) => {
         }
     });
 
+    // Tự động thêm cột LoaiMonHoc vào bảng monhoc nếu chưa có
+    connection.query("SHOW COLUMNS FROM monhoc LIKE 'LoaiMonHoc'", (err, results) => {
+        if (!err && results.length === 0) {
+            connection.query("ALTER TABLE monhoc ADD COLUMN LoaiMonHoc VARCHAR(255) DEFAULT 'Đại cương'", (errAlter) => {
+                if (errAlter) console.error("Lỗi thêm cột LoaiMonHoc:", errAlter);
+                else console.log("Đã tự động thêm cột LoaiMonHoc vào bảng monhoc.");
+            });
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
@@ -1386,12 +1396,12 @@ app.get('/api/subjects/next-code/:maKhoa', (req, res) => {
         res.json({ MaMonHoc: `${prefix}${String(nextNum).padStart(3, '0')}` });
     });
 });
-// Đã sửa: Bổ sung trường MaKhoa vào câu lệnh INSERT và mảng tham số
+// Đã sửa: Bổ sung trường MaKhoa và LoaiMonHoc vào câu lệnh INSERT và mảng tham số
 app.post('/api/subjects', (req, res) => {
     console.log("Dữ liệu nhận được từ Frontend:", req.body);
     executeInsert(
-        'INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi, MaKhoa) VALUES (?, ?, ?, ?)',
-        [req.body.MaMonHoc, req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa],
+        'INSERT INTO monhoc (MaMonHoc, TenMonHoc, SoTinChi, MaKhoa, LoaiMonHoc) VALUES (?, ?, ?, ?, ?)',
+        [req.body.MaMonHoc, req.body.TenMonHoc, req.body.SoTinChi, req.body.MaKhoa || null, req.body.LoaiMonHoc || 'Đại cương'],
         res,
         'Thêm môn thành công!',
         'Lỗi thêm!'

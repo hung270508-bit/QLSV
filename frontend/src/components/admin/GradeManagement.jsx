@@ -10,6 +10,7 @@ import {
 import axios from 'axios';
 import { GradeSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
+import * as XLSX from 'xlsx';
 
 // ================================================================
 // STORAGE KEY
@@ -272,10 +273,22 @@ function GradeManagement() {
   const [bulkSection, setBulkSection] = useState('');
   const [bulkGrades, setBulkGrades] = useState([]);
 
+  const getCurrentSemesterInfo = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    if (month >= 8) return { namHoc: `${year}-${year + 1}`, hocKy: 'HK1' };
+    if (month >= 2 && month <= 6) return { namHoc: `${year - 1}-${year}`, hocKy: 'HK2' };
+    if (month === 7) return { namHoc: `${year - 1}-${year}`, hocKy: 'HK3' };
+    return { namHoc: `${year - 1}-${year}`, hocKy: 'HK1' };
+  };
+
+  const defaultSemester = useMemo(() => getCurrentSemesterInfo(), []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [displayFilters, setDisplayFilters] = useState({ khoaFilter: '', sectionFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ khoaFilter: '', sectionFilter: '', namHoc: defaultSemester.namHoc, hocKy: defaultSemester.hocKy });
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -560,6 +573,14 @@ function GradeManagement() {
 
   const filteredSections = useMemo(() => {
     let secs = courseSections;
+    if (displayFilters.namHoc) {
+      const startYear = displayFilters.namHoc.split('-')[0];
+      secs = secs.filter(cs => String(cs.NamBatDau) === startYear);
+    }
+    if (displayFilters.hocKy) {
+      const hkNum = displayFilters.hocKy.replace('HK', '');
+      secs = secs.filter(cs => String(cs.HocKy) === hkNum || String(cs.HocKy).toUpperCase() === displayFilters.hocKy.toUpperCase());
+    }
     if (displayFilters.khoaFilter) {
       secs = secs.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase());
     }
@@ -573,40 +594,58 @@ function GradeManagement() {
     return secs;
   }, [courseSections, displayFilters, searchTerm]);
 
-  const hasActiveFilters = displayFilters.khoaFilter || displayFilters.sectionFilter || searchTerm;
-  const activeFilterCount = (displayFilters.khoaFilter ? 1 : 0) + (displayFilters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = displayFilters.khoaFilter || displayFilters.sectionFilter || searchTerm || displayFilters.namHoc !== defaultSemester.namHoc || displayFilters.hocKy !== defaultSemester.hocKy;
+  const activeFilterCount = (displayFilters.khoaFilter ? 1 : 0) + (displayFilters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0) + (displayFilters.namHoc !== defaultSemester.namHoc ? 1 : 0) + (displayFilters.hocKy !== defaultSemester.hocKy ? 1 : 0);
 
   const clearFilters = () => {
-    setDisplayFilters({ khoaFilter: '', sectionFilter: '' });
+    setDisplayFilters({ khoaFilter: '', sectionFilter: '', namHoc: defaultSemester.namHoc, hocKy: defaultSemester.hocKy });
     setSearchTerm(''); setDisplaySearchTerm('');
   };
 
   const handleExport = () => {
-    const rows = [
-      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC', 'BT', 'GK', 'CK', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
-      ...grades.filter(g => filteredSections.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).map(g => {
-        const cfg = getActiveConfig(g.MaLopHocPhan);
-        const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
-        if (!scored) return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '', '-', '-', '-', '-', 'Chưa có điểm', '', '', ''];
+    const data = [];
+    grades.filter(g => filteredSections.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).forEach(g => {
+      const cfg = getActiveConfig(g.MaLopHocPhan);
+      const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+      
+      const getExportVal = (key) => {
+        const comp = cfg.find(c => c.key === key);
+        if (!comp || !comp.enabled || Number(comp.weight) === 0) return '0';
+        return g[key] ?? '-';
+      };
+
+      if (!scored) {
+        data.push({
+          'MSSV': g.MSSV, 'Sinh viên': g.TenSinhVien || 'N/A', 'Môn học': g.TenMonHoc || 'N/A', 'Khoa': g.TenKhoa || '', 'Học kỳ': g.HocKy || '',
+          'Chuyên cần': '-', 'Bài tập': '-', 'Giữa kỳ': '-', 'Cuối kỳ': '-',
+          'Điểm TB': 'Chưa có điểm', 'GPA': '', 'Điểm chữ': '', 'Xếp loại': ''
+        });
+      } else {
         const t10 = calcTotal10(g, cfg);
         const gpa = convertToGPA(t10);
-        
-        const getExportVal = (key) => {
-          const comp = cfg.find(c => c.key === key);
-          if (!comp || !comp.enabled || Number(comp.weight) === 0) return '0';
-          return g[key] ?? '-';
-        };
+        data.push({
+          'MSSV': g.MSSV, 'Sinh viên': g.TenSinhVien || 'N/A', 'Môn học': g.TenMonHoc || 'N/A', 'Khoa': g.TenKhoa || '', 'Học kỳ': g.HocKy || '',
+          'Chuyên cần': getExportVal('DiemChuyenCan'), 'Bài tập': getExportVal('DiemBaiTap'), 'Giữa kỳ': getExportVal('DiemGiuaKy'), 'Cuối kỳ': getExportVal('DiemCuoiKy'),
+          'Điểm TB': Number(g.DiemTong || t10), 'GPA': Number(g.DiemGPA ?? gpa.gpa.toFixed(1)), 'Điểm chữ': g.DiemChu || gpa.letter, 'Xếp loại': gpa.text
+        });
+      }
+    });
 
-        return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '',
-        getExportVal('DiemChuyenCan'), getExportVal('DiemBaiTap'), getExportVal('DiemGiuaKy'), getExportVal('DiemCuoiKy'),
-        g.DiemTong || t10, g.DiemGPA ?? gpa.gpa.toFixed(1), g.DiemChu || gpa.letter, gpa.text];
-      })
-    ].map(r => r.join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'diem_sinh_vien_admin.csv';
-    a.click();
+    if(data.length === 0) {
+       showNotification('error', 'Không có dữ liệu điểm để xuất!');
+       return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "DiemSinhVien");
+    
+    const keys = Object.keys(data[0]);
+    const wscols = keys.map(k => ({ wch: Math.max(k.length, 12) }));
+    ws['!cols'] = wscols;
+
+    const fileName = `DiemSinhVien_${displayFilters.namHoc || 'TatCa'}_${displayFilters.hocKy || 'TatCa'}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   const activeCfgModal = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
@@ -659,7 +698,27 @@ function GradeManagement() {
         <AnimatePresence>
           {showFilters && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Năm học</label>
+                  <select value={displayFilters.namHoc} onChange={e => setDisplayFilters(p => ({ ...p, namHoc: e.target.value }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
+                    <option value="">Tất cả năm học</option>
+                    <option value="2022-2023">2022-2023</option>
+                    <option value="2023-2024">2023-2024</option>
+                    <option value="2024-2025">2024-2025</option>
+                    <option value="2025-2026">2025-2026</option>
+                    <option value="2026-2027">2026-2027</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Học kỳ</label>
+                  <select value={displayFilters.hocKy} onChange={e => setDisplayFilters(p => ({ ...p, hocKy: e.target.value }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
+                    <option value="">Tất cả học kỳ</option>
+                    <option value="HK1">Học kỳ 1</option>
+                    <option value="HK2">Học kỳ 2</option>
+                    <option value="HK3">Học kỳ Hè</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Khoa</label>
                   <select value={displayFilters.khoaFilter} onChange={e => setDisplayFilters(p => ({ ...p, khoaFilter: e.target.value, sectionFilter: '' }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
@@ -668,7 +727,7 @@ function GradeManagement() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Lớp học phần</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Lớp</label>
                   <select value={displayFilters.sectionFilter} onChange={e => setDisplayFilters(p => ({ ...p, sectionFilter: e.target.value }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
                     <option value="">Tất cả lớp học phần</option>
                     {courseSections.filter(cs => !displayFilters.khoaFilter || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase()).map(cs => (
