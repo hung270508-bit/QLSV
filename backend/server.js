@@ -24,25 +24,21 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Server is running' });
+});
+
 // Đã xóa global.currentRfidState, chuyển sang dùng bảng rfid_state trong MySQL
 
 // Middleware CORS cho Express API
 app.use(cors({
-    origin: [
-        'https://hung270508-bit.github.io',
-        'https://qlsv-huq1.onrender.com',
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:5175',
-        'http://localhost:3000',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:5174',
-        'http://127.0.0.1:5175',
-        'http://127.0.0.1:3000',
-        'https://qlsv-kappa.vercel.app'
-    ],
+    origin: function (origin, callback) {
+        // Cho phép tất cả các domain
+        callback(null, true);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
 // Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh/tệp Base64 lớn)
