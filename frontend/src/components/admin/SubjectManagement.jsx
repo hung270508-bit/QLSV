@@ -207,7 +207,8 @@ function SubjectManagement() {
       onConfirm: async () => {
         setIsSubmitting(true);
         try {
-          const resCode = await axios.get(`${API_BASE}/subjects/next-code/${updatedFormData.MaKhoa}`);
+          const prefix = updatedFormData.LoaiMonHoc === 'Đại cương' ? 'DC' : updatedFormData.MaKhoa;
+          const resCode = await axios.get(`${API_BASE}/subjects/next-code/${prefix}`);
           await axios.post(`${API_BASE}/subjects`, { ...updatedFormData, MaMonHoc: resCode.data.MaMonHoc });
           setToast({ show: true, message: 'Thêm môn học mới thành công!', type: 'success' });
           fetchData();
@@ -387,9 +388,15 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(249,115,22,0.2)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => {
+            onClick={async () => {
               setFormErrors({ MaKhoa: '', TenMonHoc: '', SoTinChi: '' });
               setShowModal(true);
+              try {
+                const res = await axios.get(`${API_BASE}/subjects/next-code/DC`);
+                setFormData(prev => ({ ...prev, MaMonHoc: res.data.MaMonHoc }));
+              } catch (err) {
+                console.error('Lỗi lấy mã môn học ban đầu:', err);
+              }
             }}
             className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
           >
@@ -671,14 +678,25 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Loại môn học</label>
                   <select
                     value={formData.LoaiMonHoc}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const newLoai = e.target.value;
-                      setFormData({ 
-                        ...formData, 
+                      setFormData(prev => ({ 
+                        ...prev, 
                         LoaiMonHoc: newLoai,
-                        MaKhoa: newLoai === 'Đại cương' ? '' : formData.MaKhoa
-                      });
-                      if (formErrors.MaKhoa) setFormErrors({ ...formErrors, MaKhoa: '' });
+                        MaKhoa: newLoai === 'Đại cương' ? '' : prev.MaKhoa,
+                        MaMonHoc: ''
+                      }));
+                      if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
+                      
+                      const prefix = newLoai === 'Đại cương' ? 'DC' : formData.MaKhoa;
+                      if (prefix) {
+                        try {
+                          const res = await axios.get(`${API_BASE}/subjects/next-code/${prefix}`);
+                          setFormData(prev => ({ ...prev, MaMonHoc: res.data.MaMonHoc }));
+                        } catch (err) {
+                          console.error('Lỗi tạo mã môn học:', err);
+                        }
+                      }
                     }}
                     className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors border-[#E5E7EB] focus:border-[#F4C542] text-gray-700`}
                   >
