@@ -272,6 +272,11 @@ function TeacherManagement() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        setToast({ show: true, message: 'Định dạng tệp không hợp lệ! Vui lòng chọn tệp hình ảnh (jpg, png, ...).', type: 'error' });
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({ ...formData, Avatar: reader.result });
