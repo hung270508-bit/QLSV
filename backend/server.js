@@ -777,7 +777,7 @@ app.post('/api/reset-password', async (req, res) => {
 
 // ==================== DASHBOARD STATISTICS ====================
 app.get('/api/dashboard/stats', (req, res) => {
-    const queries = ['SELECT COUNT(*) as total FROM sinhvien', 'SELECT COUNT(*) as total FROM monhoc', 'SELECT COUNT(*) as total FROM lophoc', 'SELECT COUNT(*) as total FROM giangvien'];
+    const queries = ["SELECT COUNT(*) as total FROM sinhvien WHERE TrangThai = 'Đang học'", 'SELECT COUNT(*) as total FROM monhoc', 'SELECT COUNT(*) as total FROM lophoc', 'SELECT COUNT(*) as total FROM giangvien'];
     Promise.all(queries.map(q => new Promise((resolve, reject) => {
         db.query(q, (err, results) => err ? reject(err) : resolve(results[0].total));
     }))).then(([students, subjects, classes, teachers]) => {
@@ -789,7 +789,7 @@ app.get('/api/dashboard/stats', (req, res) => {
 });
 
 app.get('/api/dashboard/stats-by-faculty', (req, res) => {
-    const query = `SELECT k.MaKhoa, k.TenKhoa, (SELECT COUNT(*) FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE l.MaKhoa = k.MaKhoa) as studentCount, (SELECT COUNT(*) FROM giangvien WHERE MaKhoa = k.MaKhoa) as teacherCount, (SELECT COUNT(*) FROM lophoc WHERE MaKhoa = k.MaKhoa) as classCount FROM khoa k`;
+    const query = `SELECT k.MaKhoa, k.TenKhoa, (SELECT COUNT(*) FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE l.MaKhoa = k.MaKhoa AND s.TrangThai = 'Đang học') as studentCount, (SELECT COUNT(*) FROM giangvien WHERE MaKhoa = k.MaKhoa) as teacherCount, (SELECT COUNT(*) FROM lophoc WHERE MaKhoa = k.MaKhoa) as classCount FROM khoa k`;
     executeQuery(query, [], res, 'Lỗi lấy thống kê theo khoa!');
 });
 
@@ -979,7 +979,7 @@ app.post('/api/students', async (req, res) => {
     }
 
     // Validate TrangThai
-    const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
+    const validTrangThai = ['Đang học', 'Bảo lưu', 'Nghỉ học'];
     if (TrangThai && !validTrangThai.includes(TrangThai)) {
         return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
     }
@@ -1117,7 +1117,7 @@ app.put('/api/students/:mssv', async (req, res) => {
     }
 
     // Validate TrangThai
-    const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
+    const validTrangThai = ['Đang học', 'Bảo lưu', 'Nghỉ học'];
     if (data.TrangThai && !validTrangThai.includes(data.TrangThai)) {
         return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
     }
