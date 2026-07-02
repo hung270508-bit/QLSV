@@ -6,6 +6,7 @@ import API_URL from '../../api';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 
 function StudentOnlineExam({ user }) {
+    const mssv = user?.username || user?.MSSV || user?.id || 'SV000016';
     const [exams, setExams] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -39,7 +40,7 @@ function StudentOnlineExam({ user }) {
 
     const fetchExams = async () => {
         try {
-            const res = await axios.get(`${API_URL}/api/ai-exams/exams/student/${user.MSSV}`);
+            const res = await axios.get(`${API_URL}/api/ai-exams/exams/student/${mssv}`);
             setExams(res.data);
         } catch (error) {
             console.error('Error fetching exams:', error);
@@ -61,7 +62,7 @@ function StudentOnlineExam({ user }) {
             action: async () => {
                 setConfirmDialog({ show: false, action: null });
                 try {
-                    const res = await axios.post(`${API_URL}/api/ai-exams/exams/${exam.id}/start`, { mssv: user.MSSV });
+                    const res = await axios.post(`${API_URL}/api/ai-exams/exams/${exam.id}/start`, { mssv });
                     setCurrentExam(exam);
                     setQuestions(res.data.questions);
                     setAttemptId(res.data.attempt_id);
