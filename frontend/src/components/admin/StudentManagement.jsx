@@ -48,7 +48,9 @@ function StudentManagement() {
 
     facultyFilter: '',
 
-    statusFilter: ''
+    statusFilter: '',
+    nienKhoaFilter: '',
+    classFilter: ''
 
   });
 
@@ -56,11 +58,20 @@ function StudentManagement() {
 
     facultyFilter: '',
 
-    statusFilter: ''
+    statusFilter: '',
+    nienKhoaFilter: '',
+    classFilter: ''
 
   });
 
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportOptions, setExportOptions] = useState({
+    type: 'all',
+    faculty: '',
+    nienKhoa: '',
+    class: ''
+  });
 
   const [selectedStudent, setSelectedStudent] = useState(null);
 
@@ -700,6 +711,11 @@ function StudentManagement() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        setToast({ show: true, message: 'Định dạng tệp không hợp lệ! Vui lòng chọn tệp hình ảnh (jpg, png, ...).', type: 'error' });
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({ ...formData, Avatar: reader.result });
@@ -936,6 +952,17 @@ function StudentManagement() {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Danh sách sinh viên');
 
+      // Filter students based on export options
+      let studentsToExport = students;
+      
+      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+        studentsToExport = students.filter(s => s.MaKhoa === exportOptions.faculty);
+      } else if (exportOptions.type === 'nienKhoa' && exportOptions.nienKhoa) {
+        studentsToExport = students.filter(s => s.NienKhoa === exportOptions.nienKhoa);
+      } else if (exportOptions.type === 'class' && exportOptions.class) {
+        studentsToExport = students.filter(s => s.MaLop === exportOptions.class);
+      }
+
       // 1. Add Title
       worksheet.mergeCells('A1:I1');
       const titleCell = worksheet.getCell('A1');
@@ -944,11 +971,23 @@ function StudentManagement() {
       titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
       worksheet.getRow(1).height = 40;
 
-      // 2. Add Export Date
+      // 2. Add Export Date and Filter Info
       worksheet.mergeCells('A2:I2');
       const dateCell = worksheet.getCell('A2');
       const today = new Date();
-      dateCell.value = `Ngày xuất: ${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
+      let filterInfo = `Ngày xuất: ${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
+      
+      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+        const facultyName = faculties.find(f => f.MaKhoa === exportOptions.faculty)?.TenKhoa || '';
+        filterInfo += ` | Khoa: ${facultyName}`;
+      } else if (exportOptions.type === 'nienKhoa' && exportOptions.nienKhoa) {
+        filterInfo += ` | Niên khóa: ${exportOptions.nienKhoa}`;
+      } else if (exportOptions.type === 'class' && exportOptions.class) {
+        const className = classes.find(c => c.MaLop === exportOptions.class)?.TenLop || '';
+        filterInfo += ` | Lớp: ${className}`;
+      }
+      
+      dateCell.value = filterInfo;
       dateCell.font = { name: 'Arial', size: 11, italic: true, color: { argb: 'FF4B5563' } };
       dateCell.alignment = { vertical: 'middle', horizontal: 'right' };
       worksheet.getRow(2).height = 25;
@@ -990,7 +1029,7 @@ function StudentManagement() {
       });
 
       // 4. Add Data
-      filteredStudents.forEach((s, index) => {
+      studentsToExport.forEach((s, index) => {
         const row = worksheet.addRow({
           stt: index + 1,
           mssv: s.MSSV || '',
@@ -1026,7 +1065,20 @@ function StudentManagement() {
       // Generate & Save file
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, `DanhSachSinhVien_${today.getTime()}.xlsx`);
+      
+      let fileName = 'DanhSachSinhVien';
+      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+        const facultyName = faculties.find(f => f.MaKhoa === exportOptions.faculty)?.TenKhoa || '';
+        fileName += `_Khoa_${facultyName}`;
+      } else if (exportOptions.type === 'nienKhoa' && exportOptions.nienKhoa) {
+        fileName += `_NienKhoa_${exportOptions.nienKhoa.replace('-', '_')}`;
+      } else if (exportOptions.type === 'class' && exportOptions.class) {
+        const className = classes.find(c => c.MaLop === exportOptions.class)?.TenLop || '';
+        fileName += `_Lop_${className}`;
+      }
+      fileName += `_${today.getTime()}.xlsx`;
+      
+      saveAs(blob, fileName);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       setToast({ show: true, message: 'Lỗi khi xuất file Excel', type: 'error' });
@@ -1085,10 +1137,12 @@ function StudentManagement() {
     const matchesFaculty = !filters.facultyFilter || student.MaKhoa === filters.facultyFilter;
 
     const matchesStatus = !filters.statusFilter || student.TrangThai === filters.statusFilter;
+    const matchesNienKhoa = !filters.nienKhoaFilter || student.NienKhoa === filters.nienKhoaFilter;
+    const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
 
 
 
-    return matchesSearch && matchesFaculty && matchesStatus;
+    return matchesSearch && matchesFaculty && matchesStatus && matchesNienKhoa && matchesClass;
 
   });
 
@@ -1130,9 +1184,9 @@ function StudentManagement() {
 
   const clearFilters = () => {
 
-    setFilters({ facultyFilter: '', statusFilter: '' });
+    setFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '' });
 
-    setDisplayFilters({ facultyFilter: '', statusFilter: '' });
+    setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '' });
 
     setSearchTerm('');
 
@@ -1157,9 +1211,9 @@ function StudentManagement() {
 
 
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (filters.nienKhoaFilter ? 1 : 0) + (filters.classFilter ? 1 : 0) + (searchTerm ? 1 : 0);
 
-  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || searchTerm;
+  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || filters.nienKhoaFilter || filters.classFilter || searchTerm;
 
 
 
@@ -1231,7 +1285,7 @@ function StudentManagement() {
 
             whileTap={{ scale: 0.95 }}
 
-            onClick={handleExportStudents}
+            onClick={() => setShowExportModal(true)}
 
             className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
 
@@ -1403,7 +1457,7 @@ function StudentManagement() {
 
                   value={displayFilters.facultyFilter}
 
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value })}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value, nienKhoaFilter: '', classFilter: '' })}
 
                   className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
 
@@ -1451,6 +1505,62 @@ function StudentManagement() {
 
               </div>
 
+              <div>
+
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo niên khóa</label>
+
+                <select
+
+                  value={displayFilters.nienKhoaFilter}
+
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, nienKhoaFilter: e.target.value, classFilter: '' })}
+
+                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+
+                  disabled={!displayFilters.facultyFilter}
+
+                >
+
+                  <option value="">Tất cả niên khóa</option>
+
+                  {Array.from(new Set(classes.filter(c => c.MaKhoa === displayFilters.facultyFilter).map(c => c.NienKhoa))).sort().map((nienKhoa) => (
+                    <option key={nienKhoa} value={nienKhoa}>
+                      {nienKhoa}
+                    </option>
+                  ))}
+
+                </select>
+
+              </div>
+
+              <div>
+
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
+
+                <select
+
+                  value={displayFilters.classFilter}
+
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
+
+                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+
+                  disabled={!displayFilters.nienKhoaFilter}
+
+                >
+
+                  <option value="">Tất cả lớp</option>
+
+                  {classes.filter(c => c.MaKhoa === displayFilters.facultyFilter && c.NienKhoa === displayFilters.nienKhoaFilter).map((cls) => (
+                    <option key={cls.MaLop} value={cls.MaLop}>
+                      {cls.TenLop}
+                    </option>
+                  ))}
+
+                </select>
+
+              </div>
+
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -1477,7 +1587,7 @@ function StudentManagement() {
 
                 whileTap={{ scale: 0.99 }}
 
-                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '' })}
 
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
 
@@ -2828,6 +2938,153 @@ function StudentManagement() {
       )}
 
 
+
+
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-[#FFFFFF] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div className="text-white">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Download className="w-5 h-5" />
+                    Xuất danh sách sinh viên
+                  </h3>
+                  <p className="text-[#152238]/70 text-sm mt-0.5">
+                    Chọn tiêu chí để xuất dữ liệu
+                  </p>
+                </div>
+                <button onClick={() => setShowExportModal(false)} className="p-2 hover:bg-white/40 rounded-lg text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Loại xuất</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setExportOptions({ type: 'all', faculty: '', nienKhoa: '', class: '' })}
+                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'all' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
+                    >
+                      <div className="font-semibold text-gray-800">Tất cả sinh viên</div>
+                      <div className="text-xs text-gray-500 mt-1">Xuất toàn bộ danh sách</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportOptions({ type: 'faculty', faculty: '', nienKhoa: '', class: '' })}
+                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'faculty' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
+                    >
+                      <div className="font-semibold text-gray-800">Theo khoa</div>
+                      <div className="text-xs text-gray-500 mt-1">Chọn khoa để xuất</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportOptions({ type: 'nienKhoa', faculty: '', nienKhoa: '', class: '' })}
+                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'nienKhoa' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
+                    >
+                      <div className="font-semibold text-gray-800">Theo niên khóa</div>
+                      <div className="text-xs text-gray-500 mt-1">Chọn niên khóa để xuất</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportOptions({ type: 'class', faculty: '', nienKhoa: '', class: '' })}
+                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'class' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
+                    >
+                      <div className="font-semibold text-gray-800">Theo lớp</div>
+                      <div className="text-xs text-gray-500 mt-1">Chọn lớp để xuất</div>
+                    </button>
+                  </div>
+                </div>
+
+                {exportOptions.type === 'faculty' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Chọn khoa</label>
+                    <select
+                      value={exportOptions.faculty}
+                      onChange={(e) => setExportOptions({ ...exportOptions, faculty: e.target.value })}
+                      className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
+                    >
+                      <option value="">Chọn khoa</option>
+                      {faculties.map((faculty) => (
+                        <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                          {faculty.TenKhoa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {exportOptions.type === 'nienKhoa' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Chọn niên khóa</label>
+                    <select
+                      value={exportOptions.nienKhoa}
+                      onChange={(e) => setExportOptions({ ...exportOptions, nienKhoa: e.target.value })}
+                      className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
+                    >
+                      <option value="">Chọn niên khóa</option>
+                      {Array.from(new Set(classes.map(c => c.NienKhoa))).sort().map((nienKhoa) => (
+                        <option key={nienKhoa} value={nienKhoa}>
+                          {nienKhoa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {exportOptions.type === 'class' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Chọn lớp</label>
+                    <select
+                      value={exportOptions.class}
+                      onChange={(e) => setExportOptions({ ...exportOptions, class: e.target.value })}
+                      className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
+                    >
+                      <option value="">Chọn lớp</option>
+                      {classes.map((cls) => (
+                        <option key={cls.MaLop} value={cls.MaLop}>
+                          {cls.TenLop}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => {
+                      handleExportStudents();
+                      setShowExportModal(false);
+                    }}
+                    disabled={exportOptions.type !== 'all' && !exportOptions.faculty && !exportOptions.nienKhoa && !exportOptions.class}
+                    className="flex-1 bg-[#F4C542] text-[#152238] py-3 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Xuất file
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setShowExportModal(false)}
+                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                  >
+                    Hủy
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </ModalPortal>
+      )}
 
 
 

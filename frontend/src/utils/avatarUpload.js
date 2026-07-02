@@ -4,6 +4,12 @@ export const handleAvatarUpload = async (e, user, apiUrl) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
+  if (!file.type.startsWith('image/')) {
+    alert('Định dạng tệp không hợp lệ! Vui lòng chọn tệp hình ảnh (jpg, png, ...).');
+    e.target.value = '';
+    return;
+  }
+
   if (file.size > 2 * 1024 * 1024) {
     alert('Vui lòng chọn ảnh có kích thước dưới 2MB');
     return;

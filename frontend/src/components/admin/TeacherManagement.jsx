@@ -21,8 +21,8 @@ function TeacherManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ facultyFilter: '', statusFilter: '' });
-  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '', statusFilter: '' });
+  const [filters, setFilters] = useState({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [teacherDetails, setTeacherDetails] = useState(null);
@@ -44,7 +44,8 @@ function TeacherManagement() {
     MaKhoa: '',
     TrangThai: 'Đang dạy',
     GioiTinh: '',
-    NgaySinh: ''
+    NgaySinh: '',
+    CapBac: 'Thạc sĩ'
   });
 
   const getAvatarColor = (name) => {
@@ -272,6 +273,11 @@ function TeacherManagement() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        setToast({ show: true, message: 'Định dạng tệp không hợp lệ! Vui lòng chọn tệp hình ảnh (jpg, png, ...).', type: 'error' });
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({ ...formData, Avatar: reader.result });
@@ -283,11 +289,14 @@ function TeacherManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     // Chuẩn hóa tên và ngày sinh trước khi gửi
     const formattedName = formatTitleCase(formData.HoTen.trim());
     const formattedNgaySinh = formData.NgaySinh ? formData.NgaySinh.split('T')[0] : '';
     const dataToSubmit = { ...formData, HoTen: formattedName, NgaySinh: formattedNgaySinh };
+
+    console.log('DEBUG FRONTEND - dataToSubmit.CapBac:', dataToSubmit.CapBac);
+    console.log('DEBUG FRONTEND - dataToSubmit:', dataToSubmit);
 
     try {
       if (editingTeacher) {
@@ -296,6 +305,7 @@ function TeacherManagement() {
           message: `Bạn có chắc chắn muốn cập nhật thông tin giảng viên "${dataToSubmit.HoTen}" (${dataToSubmit.MaGiangVien}) không?`,
           onConfirm: async () => {
             try {
+              console.log('DEBUG FRONTEND - PUT request with CapBac:', dataToSubmit.CapBac);
               await axios.put(`${API_BASE}/teachers/${editingTeacher.MaGiangVien}`, dataToSubmit);
               setToast({ show: true, message: 'Cập nhật giảng viên thành công!', type: 'success' });
               fetchData();
@@ -343,7 +353,8 @@ function TeacherManagement() {
       TrangThai: teacher.TrangThai || 'Đang dạy',
       GioiTinh: teacher.GioiTinh || '',
       NgaySinh: formatDateLocal(teacher.NgaySinh),
-      Avatar: teacher.Avatar || ''
+      Avatar: teacher.Avatar || '',
+      CapBac: teacher.CapBac || 'Thạc sĩ'
     });
     setShowModal(true);
   };
@@ -351,7 +362,7 @@ function TeacherManagement() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingTeacher(null);
-    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '', Avatar: '' });
+    setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '', Avatar: '', CapBac: 'Thạc sĩ' });
     setErrors({});
   };
 
@@ -517,8 +528,9 @@ function TeacherManagement() {
     
     const matchesFaculty = !filters.facultyFilter || teacher.MaKhoa === filters.facultyFilter;
     const matchesStatus = !filters.statusFilter || teacher.TrangThai === filters.statusFilter;
+    const matchesCapBac = !filters.capBacFilter || teacher.CapBac === filters.capBacFilter;
     
-    return matchesSearch && matchesFaculty && matchesStatus;
+    return matchesSearch && matchesFaculty && matchesStatus && matchesCapBac;
   });
 
   const handleSearch = () => {
@@ -539,8 +551,8 @@ function TeacherManagement() {
   };
 
   const clearFilters = () => {
-    setFilters({ facultyFilter: '', statusFilter: '' });
-    setDisplayFilters({ facultyFilter: '', statusFilter: '' });
+    setFilters({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
+    setDisplayFilters({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
     setSearchTerm('');
     setDisplaySearchTerm('');
     setCurrentPage(1);
@@ -553,8 +565,8 @@ function TeacherManagement() {
   const currentItems = filteredTeachers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || searchTerm.trim();
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (filters.capBacFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || filters.capBacFilter || searchTerm.trim();
 
   if (loading) {
     return <TableSkeleton columns={6} rows={6} />;
@@ -591,7 +603,7 @@ function TeacherManagement() {
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '', Avatar: '' }); setShowModal(true); }}
+            onClick={() => { setEditingTeacher(null); setFormData({ MaGiangVien: '', HoTen: '', Email: '', SoDienThoai: '', MaKhoa: '', TrangThai: 'Đang dạy', GioiTinh: '', NgaySinh: '', Avatar: '', CapBac: 'Thạc sĩ' }); setShowModal(true); }}
             className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
           >
             <Plus className="w-5 h-5" />
@@ -692,6 +704,18 @@ function TeacherManagement() {
                   <option value="Nghỉ việc">Nghỉ việc</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo cấp bậc</label>
+                <select
+                  value={displayFilters.capBacFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, capBacFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+                >
+                  <option value="">Tất cả cấp bậc</option>
+                  <option value="Thạc sĩ">Thạc sĩ</option>
+                  <option value="Tiến sĩ">Tiến sĩ</option>
+                </select>
+              </div>
             </div>
             <div className="flex gap-3 pt-2">
               <motion.button
@@ -705,7 +729,7 @@ function TeacherManagement() {
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '', capBacFilter: '' })}
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
@@ -742,6 +766,11 @@ function TeacherManagement() {
               <div className="flex flex-wrap gap-2 mb-3">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 truncate max-w-[150px]">{teacher.TenKhoa || 'Chưa xếp khoa'}</span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${teacher.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-blue-700' : teacher.GioiTinh === 'Nữ' ? 'bg-pink-50 text-pink-700' : 'bg-[#F7F8FA] text-gray-700'}`}>{teacher.GioiTinh || 'N/A'}</span>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  teacher.CapBac === 'Tiến sĩ' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                  teacher.CapBac === 'Thạc sĩ' ? 'bg-teal-100 text-teal-700 border border-teal-200' :
+                  'bg-gray-100 text-gray-700 border border-gray-200'
+                }`}>{teacher.CapBac || 'Thạc sĩ'}</span>
               </div>
               
               <div className="flex items-center justify-between text-xs text-gray-500">
@@ -764,6 +793,7 @@ function TeacherManagement() {
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Giảng viên</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Cấp bậc</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Giới tính</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Liên hệ</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Trạng thái</th>
@@ -802,6 +832,15 @@ function TeacherManagement() {
                         className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"
                       >
                         {teacher.TenKhoa || 'Chưa xếp khoa'}
+                      </span>
+                    </td>
+                    <td className="py-5 px-6">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
+                        teacher.CapBac === 'Tiến sĩ' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                        teacher.CapBac === 'Thạc sĩ' ? 'bg-teal-100 text-teal-700 border border-teal-200' :
+                        'bg-gray-100 text-gray-700 border border-gray-200'
+                      }`}>
+                        {teacher.CapBac || 'Thạc sĩ'}
                       </span>
                     </td>
                     <td className="py-5 px-6">
@@ -968,6 +1007,19 @@ function TeacherManagement() {
                     <option value="Nữ">Nữ</option>
                   </select>
                   {errors.GioiTinh && <p className="text-[#EF4444] text-sm mt-1">{errors.GioiTinh}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Cấp bậc</label>
+                  <select
+                    value={formData.CapBac}
+                    onChange={(e) => {
+                      setFormData({ ...formData, CapBac: e.target.value });
+                    }}
+                    className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
+                  >
+                    <option value="Thạc sĩ">Thạc sĩ</option>
+                    <option value="Tiến sĩ">Tiến sĩ</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>

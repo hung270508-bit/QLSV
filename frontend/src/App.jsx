@@ -94,8 +94,15 @@ function App() {
       intervalId = setInterval(async () => {
         try {
           await axios.get(`${API_URL}/api/verify-token`);
-        } catch {
+        } catch (error) {
           // Lỗi 403 sẽ được xử lý tự động ở interceptor trong main.jsx
+          if (error.response && error.response.status === 401) {
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('user');
+            window.location.reload();
+          }
         }
       }, 3000);
     }

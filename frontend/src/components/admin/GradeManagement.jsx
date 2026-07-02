@@ -10,6 +10,7 @@ import {
 import axios from 'axios';
 import { GradeSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
+import * as XLSX from 'xlsx';
 
 // ================================================================
 // STORAGE KEY
@@ -272,17 +273,17 @@ function GradeManagement() {
   const [bulkSection, setBulkSection] = useState('');
   const [bulkGrades, setBulkGrades] = useState([]);
 
+
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [displayFilters, setDisplayFilters] = useState({ khoaFilter: '', sectionFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ khoaFilter: '', sectionFilter: '', namHoc: '', hocKy: '' });
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const SCORE_FIELDS = ['DiemChuyenCan', 'DiemBaiTap', 'DiemGiuaKy', 'DiemCuoiKy'];
 
-  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -316,11 +317,12 @@ function GradeManagement() {
       setActiveConfigs(active);
       setLockedConfigs(locks);
     } catch (err) {
-      console.error('fetchData error:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchData(); }, []);
 
   const getActiveConfig = (maLopHocPhan) => activeConfigs[maLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
 
@@ -560,6 +562,12 @@ function GradeManagement() {
 
   const filteredSections = useMemo(() => {
     let secs = courseSections;
+    if (displayFilters.namHoc) {
+      secs = secs.filter(cs => String(cs.NamHoc) === displayFilters.namHoc);
+    }
+    if (displayFilters.hocKy) {
+      secs = secs.filter(cs => String(cs.HocKy) === displayFilters.hocKy);
+    }
     if (displayFilters.khoaFilter) {
       secs = secs.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase());
     }
@@ -573,40 +581,58 @@ function GradeManagement() {
     return secs;
   }, [courseSections, displayFilters, searchTerm]);
 
-  const hasActiveFilters = displayFilters.khoaFilter || displayFilters.sectionFilter || searchTerm;
-  const activeFilterCount = (displayFilters.khoaFilter ? 1 : 0) + (displayFilters.sectionFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const hasActiveFilters = displayFilters.khoaFilter || displayFilters.sectionFilter || displayFilters.namHoc || displayFilters.hocKy;
+  const activeFilterCount = (displayFilters.khoaFilter ? 1 : 0) + (displayFilters.sectionFilter ? 1 : 0) + (displayFilters.namHoc ? 1 : 0) + (displayFilters.hocKy ? 1 : 0);
 
   const clearFilters = () => {
-    setDisplayFilters({ khoaFilter: '', sectionFilter: '' });
-    setSearchTerm(''); setDisplaySearchTerm('');
+    setDisplayFilters({ khoaFilter: '', sectionFilter: '', namHoc: '', hocKy: '' });
+    setSearchTerm('');
   };
 
   const handleExport = () => {
-    const rows = [
-      ['MSSV', 'Sinh viên', 'Môn học', 'Khoa', 'Học kỳ', 'CC', 'BT', 'GK', 'CK', 'TB', 'GPA', 'Điểm chữ', 'Xếp loại'],
-      ...grades.filter(g => filteredSections.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).map(g => {
-        const cfg = getActiveConfig(g.MaLopHocPhan);
-        const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
-        if (!scored) return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '', '-', '-', '-', '-', 'Chưa có điểm', '', '', ''];
+    const data = [];
+    grades.filter(g => filteredSections.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).forEach(g => {
+      const cfg = getActiveConfig(g.MaLopHocPhan);
+      const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
+      
+      const getExportVal = (key) => {
+        const comp = cfg.find(c => c.key === key);
+        if (!comp || !comp.enabled || Number(comp.weight) === 0) return '0';
+        return g[key] ?? '-';
+      };
+
+      if (!scored) {
+        data.push({
+          'MSSV': g.MSSV, 'Sinh viên': g.TenSinhVien || 'N/A', 'Môn học': g.TenMonHoc || 'N/A', 'Khoa': g.TenKhoa || '', 'Học kỳ': g.HocKy || '',
+          'Chuyên cần': '-', 'Bài tập': '-', 'Giữa kỳ': '-', 'Cuối kỳ': '-',
+          'Điểm TB': 'Chưa có điểm', 'GPA': '', 'Điểm chữ': '', 'Xếp loại': ''
+        });
+      } else {
         const t10 = calcTotal10(g, cfg);
         const gpa = convertToGPA(t10);
-        
-        const getExportVal = (key) => {
-          const comp = cfg.find(c => c.key === key);
-          if (!comp || !comp.enabled || Number(comp.weight) === 0) return '0';
-          return g[key] ?? '-';
-        };
+        data.push({
+          'MSSV': g.MSSV, 'Sinh viên': g.TenSinhVien || 'N/A', 'Môn học': g.TenMonHoc || 'N/A', 'Khoa': g.TenKhoa || '', 'Học kỳ': g.HocKy || '',
+          'Chuyên cần': getExportVal('DiemChuyenCan'), 'Bài tập': getExportVal('DiemBaiTap'), 'Giữa kỳ': getExportVal('DiemGiuaKy'), 'Cuối kỳ': getExportVal('DiemCuoiKy'),
+          'Điểm TB': Number(g.DiemTong || t10), 'GPA': Number(g.DiemGPA ?? gpa.gpa.toFixed(1)), 'Điểm chữ': g.DiemChu || gpa.letter, 'Xếp loại': gpa.text
+        });
+      }
+    });
 
-        return [g.MSSV, g.TenSinhVien || 'N/A', g.TenMonHoc || 'N/A', g.TenKhoa || '', g.HocKy || '',
-        getExportVal('DiemChuyenCan'), getExportVal('DiemBaiTap'), getExportVal('DiemGiuaKy'), getExportVal('DiemCuoiKy'),
-        g.DiemTong || t10, g.DiemGPA ?? gpa.gpa.toFixed(1), g.DiemChu || gpa.letter, gpa.text];
-      })
-    ].map(r => r.join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'diem_sinh_vien_admin.csv';
-    a.click();
+    if(data.length === 0) {
+       showNotification('error', 'Không có dữ liệu điểm để xuất!');
+       return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "DiemSinhVien");
+    
+    const keys = Object.keys(data[0]);
+    const wscols = keys.map(k => ({ wch: Math.max(k.length, 12) }));
+    ws['!cols'] = wscols;
+
+    const fileName = `DiemSinhVien_${displayFilters.namHoc || 'TatCa'}_${displayFilters.hocKy || 'TatCa'}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   const activeCfgModal = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
@@ -635,41 +661,116 @@ function GradeManagement() {
         </div>
       </motion.div>
 
-      <div className="space-y-3">
-        <div className="flex gap-3">
+      {/* Search and Filters */}
+      <div className="bg-[#FFFFFF] rounded-2xl shadow-sm border border-[#E5E7EB] p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-            <input type="text"
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-300 w-5 h-5" />
+            <input
+              type="text"
               placeholder="Tìm theo mã lớp học phần, tên môn học..."
-              value={displaySearchTerm} onChange={e => setDisplaySearchTerm(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') setSearchTerm(displaySearchTerm); }}
-              className="w-full pl-14 pr-12 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:border-[#F4C542] transition-all shadow-sm font-medium text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setSearchTerm(''); }}
+              className="w-full pl-11 pr-10 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 transition-all text-gray-700 placeholder:font-semibold"
             />
-            <button type="button" onClick={() => setShowFilters(v => !v)}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${hasActiveFilters ? 'text-[#F4C542]' : 'text-gray-300'}`}
-            >
-              <Filter className="w-5 h-5" />
-              {activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-[#F4C542] text-[#152238] text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>}
-            </button>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-[#6B7280] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm(displaySearchTerm)} className="flex items-center gap-2 bg-[#F4C542] text-[#152238] px-6 py-3 rounded-xl shadow-lg font-bold"><Search className="w-5 h-5" /> Tìm kiếm</motion.button>
-          {hasActiveFilters && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={clearFilters} className="px-5 py-3 bg-[#EF4444]/20 text-[#EF4444] rounded-xl font-bold hover:bg-red-200 flex items-center gap-2"><XCircle className="w-5 h-5" /> Xóa lọc</motion.button>}
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
+                hasActiveFilters 
+                  ? 'bg-[#F4C542] text-[#152238] shadow-lg shadow-amber-500/30' 
+                  : 'bg-[#F4C542]/20 text-[#B45309] border border-[#FFF7D6] hover:bg-[#FFF7D6]'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </motion.button>
+            {hasActiveFilters && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={clearFilters}
+                className="px-5 py-2.5 bg-red-100 text-[#DC2626] rounded-xl font-medium hover:bg-red-200 transition-colors flex items-center gap-2 border border-red-200"
+              >
+                <XCircle className="w-4 h-4" />
+                Xóa lọc
+              </motion.button>
+            )}
+          </div>
         </div>
 
         <AnimatePresence>
           {showFilters && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="grid grid-cols-2 gap-5">
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-[#FFF7D6]/50 border border-[#FFF7D6] rounded-xl p-4 mt-4 space-y-4 relative z-10 w-full"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Khoa</label>
-                  <select value={displayFilters.khoaFilter} onChange={e => setDisplayFilters(p => ({ ...p, khoaFilter: e.target.value, sectionFilter: '' }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
-                    <option value="">Tất cả khoa</option>
-                    {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Năm học</label>
+                  <select
+                    value={displayFilters.namHoc}
+                    onChange={(e) => setDisplayFilters({...displayFilters, namHoc: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 font-medium text-sm text-gray-700 transition-all"
+                  >
+                    <option value="">Tất cả năm học</option>
+                    {[...new Set(courseSections.map(cs => cs.NamHoc).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Lớp học phần</label>
-                  <select value={displayFilters.sectionFilter} onChange={e => setDisplayFilters(p => ({ ...p, sectionFilter: e.target.value }))} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] font-medium text-sm">
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Học kỳ</label>
+                  <select
+                    value={displayFilters.hocKy}
+                    onChange={(e) => setDisplayFilters({...displayFilters, hocKy: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 font-medium text-sm text-gray-700 transition-all"
+                  >
+                    <option value="">Tất cả học kỳ</option>
+                    {[...new Set(courseSections.map(cs => cs.HocKy).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b))).map(hk => (
+                      <option key={hk} value={hk}>{String(hk).toLowerCase().includes('học kỳ') || String(hk).toLowerCase().includes('hk') ? hk : `Học kỳ ${hk}`}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Khoa</label>
+                  <select
+                    value={displayFilters.khoaFilter}
+                    onChange={(e) => setDisplayFilters({...displayFilters, khoaFilter: e.target.value, sectionFilter: ''})}
+                    className="w-full px-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 font-medium text-sm text-gray-700 transition-all"
+                  >
+                    <option value="">Tất cả khoa</option>
+                    {faculties.map((f) => (
+                      <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo Lớp</label>
+                  <select
+                    value={displayFilters.sectionFilter}
+                    onChange={(e) => setDisplayFilters({...displayFilters, sectionFilter: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:ring-2 focus:ring-[#F4C542]/20 font-medium text-sm text-gray-700 transition-all"
+                  >
                     <option value="">Tất cả lớp học phần</option>
                     {courseSections.filter(cs => !displayFilters.khoaFilter || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(displayFilters.khoaFilter).trim().toUpperCase()).map(cs => (
                       <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>{cs.TenMonHoc} — {cs.MaLopHocPhan}</option>
