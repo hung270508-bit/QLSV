@@ -1,5 +1,9 @@
 USE quanlysv;
 
+-- Xóa bảng luyện tập cũ
+DROP TABLE IF EXISTS practice_answers;
+DROP TABLE IF EXISTS practice_attempts;
+
 -- Bảng Ngân hàng câu hỏi
 CREATE TABLE IF NOT EXISTS question_banks (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -85,27 +89,66 @@ CREATE TABLE IF NOT EXISTS exam_attempt_answers (
     FOREIGN KEY (selected_option_id) REFERENCES question_options(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bảng Lượt luyện tập
-CREATE TABLE IF NOT EXISTS practice_attempts (
+-- =========================================================
+-- CÁC BẢNG MỚI CHO AI ASSISTED QUESTION BANK WORKFLOW
+-- =========================================================
+
+-- 1. Bảng Quản lý Tài liệu Word tải lên
+CREATE TABLE IF NOT EXISTS documents (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    mssv VARCHAR(20) NOT NULL,
     ma_mon_hoc VARCHAR(20) NOT NULL,
-    tong_so_cau INT NOT NULL,
-    diem_so FLOAT DEFAULT NULL,
-    thoi_gian_bat_dau DATETIME DEFAULT CURRENT_TIMESTAMP,
-    thoi_gian_nop_bai DATETIME NULL,
-    FOREIGN KEY (mssv) REFERENCES sinhvien(MSSV) ON DELETE CASCADE,
-    FOREIGN KEY (ma_mon_hoc) REFERENCES monhoc(MaMonHoc) ON DELETE CASCADE
+    ma_giang_vien VARCHAR(20) NOT NULL,
+    tieu_de VARCHAR(255) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_url VARCHAR(255) NOT NULL,
+    text_content MEDIUMTEXT NOT NULL,
+    trang_thai ENUM('READY', 'PROCESSING', 'ARCHIVED') DEFAULT 'READY',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ma_mon_hoc) REFERENCES monhoc(MaMonHoc) ON DELETE CASCADE,
+    FOREIGN KEY (ma_giang_vien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bảng Câu trả lời luyện tập chi tiết
-CREATE TABLE IF NOT EXISTS practice_answers (
+-- 2. Bảng Quản lý Phiên sinh câu hỏi AI (Sessions)
+CREATE TABLE IF NOT EXISTS ai_generation_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    attempt_id INT NOT NULL,
+    document_id INT NOT NULL,
+    ma_mon_hoc VARCHAR(20) NOT NULL,
+    ma_giang_vien VARCHAR(20) NOT NULL,
+    so_cau_yeu_cau INT DEFAULT 10,
+    so_cau_da_sinh INT DEFAULT 0,
+    do_kho ENUM('Easy', 'Medium', 'Hard', 'Mixed') DEFAULT 'Mixed',
+    chu_de VARCHAR(255) DEFAULT 'Toàn bộ',
+    trang_thai ENUM('READY', 'RUNNING', 'FAILED', 'COMPLETED') DEFAULT 'READY',
+    error_message TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
+    FOREIGN KEY (ma_mon_hoc) REFERENCES monhoc(MaMonHoc) ON DELETE CASCADE,
+    FOREIGN KEY (ma_giang_vien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Bảng Câu hỏi tạm thời do AI sinh ra (Staging Questions)
+CREATE TABLE IF NOT EXISTS ai_generated_questions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id INT NOT NULL,
+    document_id INT NOT NULL,
+    bank_question_id INT NULL,
+    chu_de VARCHAR(150),
+    noi_dung TEXT NOT NULL,
+    giai_thich TEXT,
+    do_kho ENUM('Easy', 'Medium', 'Hard') DEFAULT 'Medium',
+    trang_thai ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES ai_generation_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
+    FOREIGN KEY (bank_question_id) REFERENCES questions(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Bảng Đáp án cho Câu hỏi tạm thời do AI sinh ra
+CREATE TABLE IF NOT EXISTS ai_generated_options (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     question_id INT NOT NULL,
-    selected_option_id INT NULL,
+    noi_dung TEXT NOT NULL,
     la_dap_an_dung BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (attempt_id) REFERENCES practice_attempts(id) ON DELETE CASCADE,
-    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
-    FOREIGN KEY (selected_option_id) REFERENCES question_options(id) ON DELETE SET NULL
+    FOREIGN KEY (question_id) REFERENCES ai_generated_questions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

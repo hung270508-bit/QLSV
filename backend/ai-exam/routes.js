@@ -14,172 +14,30 @@ module.exports = (db) => {
         return rows;
     };
 
-    // 1. Upload & Tạo Bank
-    router.post('/banks/upload', upload.single('file'), async (req, res) => {
-        let connection;
-        try {
-            const { ma_mon_hoc, ma_giang_vien, tieu_de } = req.body;
-            const file = req.file;
+    // 1. Khởi tạo Repository, Service & Controller cho AI Assisted Question Bank
+    const aiAssistedRepo = require('./repositories/aiAssistedRepo')(dbPromise);
+    const aiAssistedService = require('./services/aiAssistedService')(aiAssistedRepo);
+    const aiAssistedController = require('./controllers/aiAssistedController')(aiAssistedService, dbPromise);
 
-            if (!file || !ma_mon_hoc || !ma_giang_vien || !tieu_de) {
-                return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc!' });
-            }
+    // 2. Các routes mới của AI Assisted Question Bank
+    router.post('/documents/upload', upload.single('file'), aiAssistedController.uploadDocument);
+    router.get('/documents/teacher/:ma_giang_vien', aiAssistedController.getDocumentsByTeacher);
+    
+    router.post('/sessions/start', aiAssistedController.startSession);
+    router.post('/sessions/:id/resume', aiAssistedController.resumeSession);
+    router.get('/sessions/teacher/:ma_giang_vien', aiAssistedController.getSessionsByTeacher);
+    
+    router.get('/sessions/:id/questions', aiAssistedController.getQuestionsBySession);
+    router.put('/questions/:id/status', aiAssistedController.updateQuestionStatus);
+    router.put('/questions/:id', aiAssistedController.updateQuestion);
+    router.post('/sessions/:id/approve-all', aiAssistedController.approveAllInSession);
+    router.delete('/questions/:id', aiAssistedController.deleteQuestion);
 
-            const text = await extractTextFromDocx(file.path);
-            const apiKey = process.env.OPENAI_API_KEY;
-            
-            if (!apiKey) {
-                return res.status(500).json({ success: false, message: 'Chưa cấu hình OPENAI_API_KEY ở backend.' });
-            }
-
-            const questions = await generateQuestionsFromText(text, apiKey);
-
-            connection = await dbPromise.getConnection();
-            await connection.beginTransaction();
-
-            const [bankResult] = await connection.query(
-                `INSERT INTO question_banks (ma_mon_hoc, ma_giang_vien, tieu_de, file_url, tong_so_cau, trang_thai) VALUES (?, ?, ?, ?, ?, 'Draft')`,
-                [ma_mon_hoc, ma_giang_vien, tieu_de, file.path, questions.length]
-            );
-            const bankId = bankResult.insertId;
-
-            for (const q of questions) {
-                const [qResult] = await connection.query(
-                    `INSERT INTO questions (bank_id, chu_de, noi_dung, giai_thich, do_kho, ai_generated, trang_thai) VALUES (?, ?, ?, ?, ?, 1, 'Draft')`,
-                    [bankId, q.topic || 'Chung', q.question, q.explanation, q.difficulty || 'Medium']
-                );
-                const questionId = qResult.insertId;
-
-                for (const opt of q.options) {
-                    await connection.query(
-                        `INSERT INTO question_options (question_id, noi_dung, la_dap_an_dung) VALUES (?, ?, ?)`,
-                        [questionId, opt.text, opt.is_correct ? 1 : 0]
-                    );
-                }
-            }
-
-            await connection.commit();
-            res.json({ success: true, message: 'Tạo ngân hàng câu hỏi bằng AI thành công!', bankId });
-        } catch (error) {
-            if (connection) await connection.rollback();
-            console.error('Error generating AI bank:', error);
-            res.status(500).json({ success: false, message: error.message });
-        } finally {
-            if (connection) connection.release();
-        }
-    });
-
-    // 2. Lấy danh sách Question Banks của Giảng viên
-    router.get('/banks/teacher/:ma_giang_vien', async (req, res) => {
-        try {
-            const rows = await execute(`SELECT b.*, m.TenMonHoc FROM question_banks b JOIN monhoc m ON b.ma_mon_hoc = m.MaMonHoc WHERE b.ma_giang_vien = ? ORDER BY b.created_at DESC`, [req.params.ma_giang_vien]);
-            res.json(rows);
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    });
-
-    // 3. Lấy chi tiết câu hỏi trong Bank
-    router.get('/banks/:id/questions', async (req, res) => {
-        try {
-            const questions = await execute(`SELECT * FROM questions WHERE bank_id = ?`, [req.params.id]);
-            for (const q of questions) {
-                const options = await execute(`SELECT * FROM question_options WHERE question_id = ?`, [q.id]);
-                q.options = options;
-            }
-            res.json({ success: true, data: questions });
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    });
-
-    // 4. Cập nhật trạng thái duyệt (Approve Bank)
-    router.put('/banks/:id/approve', async (req, res) => {
-        let connection;
-        try {
-            connection = await dbPromise.getConnection();
-            await connection.beginTransaction();
-
-            await connection.query(`UPDATE question_banks SET trang_thai = 'Approved' WHERE id = ?`, [req.params.id]);
-            await connection.query(`UPDATE questions SET trang_thai = 'Approved' WHERE bank_id = ?`, [req.params.id]);
-
-            await connection.commit();
-            res.json({ success: true, message: 'Đã duyệt ngân hàng câu hỏi!' });
-        } catch (error) {
-            if (connection) await connection.rollback();
-            res.status(500).json({ success: false, message: error.message });
-        } finally {
-            if (connection) connection.release();
-        }
-    });
-
-    // 5. Luyện tập (Sinh viên)
-    router.post('/practice/start', async (req, res) => {
-        try {
-            const { mssv, ma_mon_hoc, so_cau, do_kho } = req.body;
-            let diffFilter = "";
-            let params = [ma_mon_hoc];
-            if (do_kho && do_kho !== 'Mix') {
-                diffFilter = "AND q.do_kho = ?";
-                params.push(do_kho);
-            }
-            
-            const query = `
-                SELECT q.id, q.noi_dung, q.giai_thich, q.do_kho, q.chu_de 
-                FROM questions q 
-                JOIN question_banks b ON q.bank_id = b.id 
-                WHERE b.ma_mon_hoc = ? AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved' ${diffFilter}
-                ORDER BY RAND() 
-                LIMIT ?
-            `;
-            params.push(Number(so_cau) || 10);
-            
-            const questions = await execute(query, params);
-            
-            for (const q of questions) {
-                const options = await execute(`SELECT id, noi_dung, la_dap_an_dung FROM question_options WHERE question_id = ? ORDER BY RAND()`, [q.id]);
-                // Trả về cả cờ la_dap_an_dung để client tự hiện luôn giải thích (vì đây là luyện tập). Đối với thi thật thì ẩn.
-                q.options = options.map(o => ({ id: o.id, text: o.noi_dung, is_correct: o.la_dap_an_dung === 1 }));
-            }
-            
-            const [attRes] = await dbPromise.query(`INSERT INTO practice_attempts (mssv, ma_mon_hoc, tong_so_cau) VALUES (?, ?, ?)`, [mssv, ma_mon_hoc, questions.length]);
-            
-            res.json({ success: true, attempt_id: attRes.insertId, questions });
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    });
-
-    // 6. Nộp bài Luyện tập
-    router.post('/practice/submit', async (req, res) => {
-        try {
-            const { attempt_id, answers } = req.body; // answers: [{ question_id, selected_option_id }]
-            let correctCount = 0;
-            
-            for (const ans of answers) {
-                let isCorrect = false;
-                if (ans.selected_option_id) {
-                    const [opt] = await execute(`SELECT la_dap_an_dung FROM question_options WHERE id = ?`, [ans.selected_option_id]);
-                    if (opt && opt.la_dap_an_dung === 1) {
-                        isCorrect = true;
-                        correctCount++;
-                    }
-                }
-                
-                await dbPromise.query(
-                    `INSERT INTO practice_answers (attempt_id, question_id, selected_option_id, la_dap_an_dung) VALUES (?, ?, ?, ?)`,
-                    [attempt_id, ans.question_id, ans.selected_option_id || null, isCorrect ? 1 : 0]
-                );
-            }
-            
-            const score = answers.length > 0 ? (correctCount / answers.length) * 10 : 0;
-            await dbPromise.query(`UPDATE practice_attempts SET diem_so = ?, thoi_gian_nop_bai = CURRENT_TIMESTAMP WHERE id = ?`, [score, attempt_id]);
-            
-            res.json({ success: true, score, correctCount, total: answers.length });
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    });
+    // Route giữ lại để tương thích với ExamManagement.jsx khi chọn Ngân hàng câu hỏi
+    router.get('/banks/teacher/:ma_giang_vien', aiAssistedController.getTeacherQuestionBanks);
+    router.get('/banks/:id/questions', aiAssistedController.getBankQuestions);
+    router.delete('/banks/:id', aiAssistedController.deleteOfficialBank);
+    router.put('/banks/:id', aiAssistedController.updateOfficialBank);
 
     // 7. Tạo kỳ thi (Giảng viên)
     router.post('/exams', async (req, res) => {
@@ -197,6 +55,23 @@ module.exports = (db) => {
         }
     });
 
+    // 7b. Lấy danh sách kỳ thi của Giảng viên
+    router.get('/exams/teacher/:ma_giang_vien', async (req, res) => {
+        try {
+            const query = `
+                SELECT e.*, m.TenMonHoc 
+                FROM exams e 
+                LEFT JOIN monhoc m ON e.ma_mon_hoc = m.MaMonHoc
+                WHERE e.ma_giang_vien = ?
+                ORDER BY e.id DESC
+            `;
+            const exams = await execute(query, [req.params.ma_giang_vien]);
+            res.json(exams);
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
+
     // 8. Lấy danh sách kỳ thi của Sinh viên
     router.get('/exams/student/:mssv', async (req, res) => {
         try {
@@ -204,8 +79,8 @@ module.exports = (db) => {
                 SELECT e.*, m.TenMonHoc 
                 FROM exams e 
                 JOIN monhoc m ON e.ma_mon_hoc = m.MaMonHoc
-                JOIN dangkyhocphan dk ON e.ma_lop_hoc_phan = dk.MaLopHocPhan
-                WHERE dk.MSSV = ? AND e.trang_thai != 'Completed'
+                JOIN dangky_hocphan dk ON e.ma_lop_hoc_phan = dk.MaLopHocPhan
+                WHERE dk.MSSV = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') AND (e.trang_thai != 'Completed' OR e.trang_thai IS NULL)
             `;
             const exams = await execute(query, [req.params.mssv]);
             res.json(exams);
@@ -230,22 +105,26 @@ module.exports = (db) => {
             if (now < new Date(exam.thoi_gian_bat_dau)) return res.status(400).json({ success: false, message: 'Chưa tới giờ thi' });
             if (now > new Date(exam.thoi_gian_ket_thuc)) return res.status(400).json({ success: false, message: 'Đã quá giờ thi' });
 
-            if (!exam.cho_phep_thi_lai) {
-                const [prevAttempts] = await connection.query(`SELECT id FROM exam_attempts WHERE exam_id = ? AND mssv = ? AND trang_thai = 'Submitted'`, [examId, mssv]);
-                if (prevAttempts.length > 0) return res.status(400).json({ success: false, message: 'Bạn đã nộp bài và không được phép thi lại.' });
-            }
+            const [prevAttempts] = await connection.query(`SELECT id FROM exam_attempts WHERE exam_id = ? AND mssv = ? AND trang_thai = 'Submitted'`, [examId, mssv]);
+            if (prevAttempts.length > 0) return res.status(400).json({ success: false, message: 'Bạn đã hoàn thành bài thi này. Mỗi sinh viên chỉ được thi 1 lần duy nhất!' });
 
             const [attRes] = await connection.query(`INSERT INTO exam_attempts (exam_id, mssv) VALUES (?, ?)`, [examId, mssv]);
             const attemptId = attRes.insertId;
 
             const generateQs = async (diff, limit) => {
+                let diffCond = '';
+                if (diff === 'Easy') diffCond = "(q.do_kho = 'Easy' OR q.do_kho = 'Dễ' OR q.do_kho = 'easy' OR q.do_kho = 'dễ')";
+                else if (diff === 'Medium') diffCond = "(q.do_kho = 'Medium' OR q.do_kho = 'Trung bình' OR q.do_kho = 'medium' OR q.do_kho = 'trung bình')";
+                else if (diff === 'Hard') diffCond = "(q.do_kho = 'Hard' OR q.do_kho = 'Khó' OR q.do_kho = 'hard' OR q.do_kho = 'khó')";
+                else diffCond = "q.do_kho = ?";
+
                 const [qs] = await connection.query(`
                     SELECT q.id, q.noi_dung 
                     FROM questions q 
                     JOIN question_banks b ON q.bank_id = b.id 
-                    WHERE b.ma_mon_hoc = ? AND q.do_kho = ? AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved'
+                    WHERE b.ma_mon_hoc = ? AND ${diffCond} AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved'
                     ORDER BY RAND() LIMIT ?
-                `, [exam.ma_mon_hoc, diff, limit]);
+                `, [exam.ma_mon_hoc, limit]);
                 return qs;
             };
 
@@ -253,6 +132,21 @@ module.exports = (db) => {
             if (exam.so_cau_de > 0) questions.push(...await generateQs('Easy', exam.so_cau_de));
             if (exam.so_cau_tb > 0) questions.push(...await generateQs('Medium', exam.so_cau_tb));
             if (exam.so_cau_kho > 0) questions.push(...await generateQs('Hard', exam.so_cau_kho));
+
+            const targetTotal = Number(exam.tong_so_cau) || (Number(exam.so_cau_de) + Number(exam.so_cau_tb) + Number(exam.so_cau_kho));
+            if (questions.length < targetTotal) {
+                const needed = targetTotal - questions.length;
+                const existingIds = questions.map(q => q.id);
+                const notInClause = existingIds.length > 0 ? `AND q.id NOT IN (${existingIds.join(',')})` : '';
+                const [extraQs] = await connection.query(`
+                    SELECT q.id, q.noi_dung 
+                    FROM questions q 
+                    JOIN question_banks b ON q.bank_id = b.id 
+                    WHERE b.ma_mon_hoc = ? AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved' ${notInClause}
+                    ORDER BY RAND() LIMIT ?
+                `, [exam.ma_mon_hoc, needed]);
+                questions.push(...extraQs);
+            }
 
             questions.sort(() => Math.random() - 0.5);
 
