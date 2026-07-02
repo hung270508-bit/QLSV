@@ -109,11 +109,16 @@ function TeachingAssignment() {
     return teachers.filter(t => t.TrangThai === 'Đang dạy' && String(t.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
   }, [formData.MaMonHoc, formData.MaKhoa, teachers]);
 
-  // LỌC LỚP THEO KHOA
+  // LỌC LỚP:
+  // - Môn Đại cương -> cho phép chọn toàn bộ lớp trong trường (hoặc lớp tự do)
+  // - Môn Chuyên ngành -> chỉ lọc các lớp thuộc đúng khoa phụ trách
   const filteredClasses = useMemo(() => {
+    if (formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMon === 'Đại cương' || formData.LoaiMonHoc === 'Đại cương') {
+      return classes;
+    }
     if (!formData.MaKhoa) return [];
     return classes.filter(c => String(c.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
-  }, [formData.MaKhoa, classes]);
+  }, [formData.PhamViDangKy, formData.LoaiMon, formData.LoaiMonHoc, formData.MaKhoa, classes]);
 
   // RÀNG BUỘC CỐ ĐỊNH NĂM 2026
   useEffect(() => {
@@ -237,7 +242,7 @@ function TeachingAssignment() {
           fetchData();
           handleCloseModal();
         } catch (error) {
-          showToast('Có lỗi xảy ra khi lưu!', 'error');
+          showToast(error.response?.data?.message || 'Có lỗi xảy ra khi lưu!', 'error');
         }
       }
     });
@@ -263,7 +268,7 @@ function TeachingAssignment() {
               showToast('Xóa phân công giảng dạy thành công.', 'success');
               fetchData();
             } catch (error) {
-              showToast('Lớp HP đã có dữ liệu ràng buộc, không thể xóa!', 'error');
+              showToast(error.response?.data?.message || 'Lớp HP đã có dữ liệu ràng buộc, không thể xóa!', 'error');
             }
           }
         });
@@ -372,7 +377,14 @@ function TeachingAssignment() {
                     className="hover:bg-[#FFF7D6]/40 transition-colors"
                   >
                     <td className="py-4 px-6">
-                      <span className="font-semibold text-[#F4C542] bg-[#FFF7D6] px-2.5 py-1 rounded-lg text-sm">{assign.MaLopHocPhan}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-[#F4C542] bg-[#FFF7D6] px-2.5 py-1 rounded-lg text-sm">{assign.MaLopHocPhan}</span>
+                        {assign.TrangThaiLich === 'DA_CHOT' && (
+                          <span className="bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 flex items-center gap-1" title="Lớp học phần này đã được chốt lịch">
+                          Đã chốt
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-4 px-6">
                       <div className="font-semibold text-[#1F2937]">{assign.TenMonHoc}</div>
@@ -392,11 +404,16 @@ function TeachingAssignment() {
                       {assign.TenLop || 'Lớp tự do'}
                     </td>
                     <td className="py-4 px-6">
-                      {/* NÚT THAO TÁC CỨNG - CHỈ CÒN NÚT XÓA */}
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => handleDelete(assign.MaLopHocPhan)}
-                          className="p-2.5 bg-red-100 text-[#DC2626] rounded-xl hover:bg-red-200 transition-all shadow-sm border border-red-200"
+                          onClick={() => {
+                            if (assign.TrangThaiLich === 'DA_CHOT') {
+                              showToast('Lớp đã được xếp lịch, không được xóa!', 'error');
+                              return;
+                            }
+                            handleDelete(assign.MaLopHocPhan);
+                          }}
+                          className="p-2.5 rounded-xl transition-all shadow-sm border bg-red-100 text-[#DC2626] hover:bg-red-200 border-red-200 active:scale-95"
                           title="Xóa phân công"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -445,7 +462,7 @@ function TeachingAssignment() {
                       <option value="">-- Chọn Môn học --</option>
                       {Object.entries(subjectsByKhoa).map(([tenKhoa, subs]) => (
                         <optgroup key={tenKhoa} label={tenKhoa}>
-                          {subs.map(sub => <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc}</option>)}
+                          {subs.map(sub => <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc} ({sub.SoTinChi || 0} TC - {sub.LoaiMonHoc || sub.LoaiMon || 'Đại cương'})</option>)}
                         </optgroup>
                       ))}
                     </select>
@@ -455,15 +472,15 @@ function TeachingAssignment() {
                   {formData.MaMonHoc && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa phụ trách</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
                         <div className="w-full px-4 py-3 bg-gray-100 border-2 border-[#E5E7EB] rounded-xl text-gray-500 font-medium flex items-center gap-2">
-                          🔒 {formData.TenKhoa || '—'}
+                          {formData.TenKhoa || '—'}
                         </div>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Loại môn</label>
                         <div className={`w-full px-4 py-3 border-2 rounded-xl font-semibold flex items-center gap-2 ${formData.LoaiMonHoc === 'Đại cương' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
-                          🔒 {formData.LoaiMonHoc || '—'}
+                          {formData.LoaiMonHoc || '—'}
                         </div>
                       </div>
                     </div>
@@ -483,22 +500,19 @@ function TeachingAssignment() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
+                      <select disabled={!formData.MaMonHoc} value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all disabled:opacity-50 text-gray-700 font-medium cursor-pointer">
+                        <option value="">
+                          {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMon === 'Đại cương' || formData.LoaiMonHoc === 'Đại cương'
+                            ? '-- Lớp tự do (Mở cho toàn trường không giới hạn) --'
+                            : `-- Toàn bộ SV Khoa ${formData.TenKhoa || ''} --`}
+                        </option>
+                        {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop}) - {c.SoSinhVien || 0} SV</option>)}
+                      </select>
                       {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMon === 'Đại cương' || formData.LoaiMonHoc === 'Đại cương' ? (
-                        <div className="w-full p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200 rounded-xl shadow-sm">
-                          <div className="flex items-start gap-3">
-                            <span className="text-blue-600 text-lg mt-0.5">🌐</span>
-                            <div className="text-xs text-blue-900 leading-relaxed">
-                              <span className="font-bold text-blue-700 block text-sm mb-0.5">Môn Đại cương toàn trường</span>
-                              Mở đăng ký tự do cho sinh viên toàn trường, không giới hạn khoa hoặc lớp sinh hoạt.
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <select disabled={!formData.MaKhoa} value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all disabled:opacity-50 text-gray-700 font-medium cursor-pointer">
-                          <option value="">-- Toàn bộ SV Khoa {formData.TenKhoa || ''} --</option>
-                          {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop}) - {c.SoSinhVien || 0} SV</option>)}
-                        </select>
-                      )}
+                        <p className="text-[#3B82F6] text-xs font-medium mt-1.5 flex items-center gap-1">
+                          <span></span>Dù chọn Lớp hay Lớp tự do, sinh viên toàn trường đều có thể thấy và đăng ký học.
+                        </p>
+                      ) : null}
                       {formErrors.MaLop && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaLop}</p>}
                     </div>
                   </div>
