@@ -26,9 +26,9 @@ function TeacherManagement() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportOptions, setExportOptions] = useState({
-    type: 'all',
     faculty: '',
-    capBac: ''
+    capBac: '',
+    trangThai: ''
   });
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [teacherDetails, setTeacherDetails] = useState(null);
@@ -409,13 +409,16 @@ function TeacherManagement() {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Danh sách giảng viên');
 
-      // Filter teachers based on export options
+      // Filter teachers based on combined export options
       let teachersToExport = teachers;
-      
-      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
-        teachersToExport = teachers.filter(t => t.MaKhoa === exportOptions.faculty);
-      } else if (exportOptions.type === 'capBac' && exportOptions.capBac) {
-        teachersToExport = teachers.filter(t => t.CapBac === exportOptions.capBac);
+      if (exportOptions.faculty) {
+        teachersToExport = teachersToExport.filter(t => t.MaKhoa === exportOptions.faculty);
+      }
+      if (exportOptions.capBac) {
+        teachersToExport = teachersToExport.filter(t => t.CapBac === exportOptions.capBac);
+      }
+      if (exportOptions.trangThai) {
+        teachersToExport = teachersToExport.filter(t => t.TrangThai === exportOptions.trangThai);
       }
 
       // 1. Add Title
@@ -431,13 +434,14 @@ function TeacherManagement() {
       const dateCell = worksheet.getCell('A2');
       const today = new Date();
       let filterInfo = `Ngày xuất: ${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
-      
-      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+      const filterParts = [];
+      if (exportOptions.faculty) {
         const facultyName = uniqueFaculties.find(f => f.MaKhoa === exportOptions.faculty)?.TenKhoa || '';
-        filterInfo += ` | Khoa: ${facultyName}`;
-      } else if (exportOptions.type === 'capBac' && exportOptions.capBac) {
-        filterInfo += ` | Cấp bậc: ${exportOptions.capBac}`;
+        filterParts.push(`Khoa: ${facultyName}`);
       }
+      if (exportOptions.capBac) filterParts.push(`Cấp bậc: ${exportOptions.capBac}`);
+      if (exportOptions.trangThai) filterParts.push(`Trạng thái: ${exportOptions.trangThai}`);
+      if (filterParts.length > 0) filterInfo += ` | ${filterParts.join(' | ')}`;
       
       dateCell.value = filterInfo;
       dateCell.font = { name: 'Arial', size: 11, italic: true, color: { argb: 'FF4B5563' } };
@@ -466,11 +470,7 @@ function TeacherManagement() {
       // Format Header Row
       headerRow.eachCell((cell) => {
         cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF004080' } // Professional dark blue
-        };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
         cell.border = {
           top: { style: 'thin' }, left: { style: 'thin' },
@@ -491,7 +491,6 @@ function TeacherManagement() {
           trangThai: t.TrangThai || '',
         });
 
-        // Alternating row colors
         const isEven = index % 2 === 0;
         row.eachCell((cell, colNumber) => {
           cell.font = { name: 'Arial', size: 11, color: { argb: 'FF000000' } };
@@ -516,12 +515,12 @@ function TeacherManagement() {
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       
       let fileName = 'DanhSachGiangVien';
-      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+      if (exportOptions.faculty) {
         const facultyName = uniqueFaculties.find(f => f.MaKhoa === exportOptions.faculty)?.TenKhoa || '';
         fileName += `_Khoa_${facultyName}`;
-      } else if (exportOptions.type === 'capBac' && exportOptions.capBac) {
-        fileName += `_CapBac_${exportOptions.capBac}`;
       }
+      if (exportOptions.capBac) fileName += `_${exportOptions.capBac}`;
+      if (exportOptions.trangThai) fileName += `_${exportOptions.trangThai}`;
       fileName += `_${today.getTime()}.xlsx`;
       
       saveAs(blob, fileName);
@@ -1391,114 +1390,250 @@ function TeacherManagement() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-[#FFFFFF] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="bg-[#FFFFFF] rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
+              {/* Modal Header */}
               <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center flex-shrink-0">
-                <div className="text-white">
+                <div className="text-[#152238]">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <Download className="w-5 h-5" />
                     Xuất danh sách giảng viên
                   </h3>
                   <p className="text-[#152238]/70 text-sm mt-0.5">
-                    Chọn tiêu chí để xuất dữ liệu
+                    Kết hợp các bộ lọc để xuất đúng danh sách mong muốn
                   </p>
                 </div>
-                <button onClick={() => { setShowExportModal(false); setExportOptions({ type: 'all', faculty: '', capBac: '' }); }} className="p-2 hover:bg-white/40 rounded-lg text-white">
+                <button
+                  onClick={() => { setShowExportModal(false); setExportOptions({ faculty: '', capBac: '', trangThai: '' }); }}
+                  className="p-2 hover:bg-[#152238]/10 rounded-lg text-[#152238] transition-colors"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4 overflow-y-auto">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Loại xuất</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'all' }))}
-                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'all' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
-                    >
-                      <div className="font-semibold text-gray-800">Tất cả giảng viên</div>
-                      <div className="text-xs text-gray-500 mt-1">Xuất toàn bộ danh sách</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'faculty' }))}
-                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'faculty' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
-                    >
-                      <div className="font-semibold text-gray-800">Theo khoa</div>
-                      <div className="text-xs text-gray-500 mt-1">Chọn khoa để xuất</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'capBac' }))}
-                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'capBac' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
-                    >
-                      <div className="font-semibold text-gray-800">Theo cấp bậc</div>
-                      <div className="text-xs text-gray-500 mt-1">Chọn cấp bậc để xuất</div>
-                    </button>
+              <div className="flex flex-col flex-1 overflow-hidden">
+                {/* Filter Section */}
+                <div className="p-6 border-b border-[#E5E7EB] flex-shrink-0">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-bold text-[#374151] uppercase tracking-wide">Bộ lọc xuất</h4>
+                    {(exportOptions.faculty || exportOptions.capBac || exportOptions.trangThai) && (
+                      <button
+                        onClick={() => setExportOptions({ faculty: '', capBac: '', trangThai: '' })}
+                        className="text-xs text-[#EF4444] hover:text-red-700 font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        Xóa tất cả bộ lọc
+                      </button>
+                    )}
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Khoa filter */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#6B7280] mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5" />
+                        Khoa
+                      </label>
+                      <select
+                        value={exportOptions.faculty}
+                        onChange={(e) => setExportOptions(prev => ({ ...prev, faculty: e.target.value }))}
+                        className="w-full px-3 py-2.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
+                      >
+                        <option value="">Tất cả khoa</option>
+                        {uniqueFaculties.map((faculty) => (
+                          <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                            {faculty.TenKhoa}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Cấp bậc filter */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#6B7280] mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        Cấp bậc
+                      </label>
+                      <select
+                        value={exportOptions.capBac}
+                        onChange={(e) => setExportOptions(prev => ({ ...prev, capBac: e.target.value }))}
+                        className="w-full px-3 py-2.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
+                      >
+                        <option value="">Tất cả cấp bậc</option>
+                        <option value="Thạc sĩ">Thạc sĩ</option>
+                        <option value="Tiến sĩ">Tiến sĩ</option>
+                      </select>
+                    </div>
+
+                    {/* Trạng thái filter */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#6B7280] mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5" />
+                        Trạng thái
+                      </label>
+                      <select
+                        value={exportOptions.trangThai}
+                        onChange={(e) => setExportOptions(prev => ({ ...prev, trangThai: e.target.value }))}
+                        className="w-full px-3 py-2.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
+                      >
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="Đang dạy">Đang dạy</option>
+                        <option value="Tạm nghỉ">Tạm nghỉ</option>
+                        <option value="Nghỉ việc">Nghỉ việc</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Active filter tags */}
+                  {(exportOptions.faculty || exportOptions.capBac || exportOptions.trangThai) && (
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[#F3F4F6]">
+                      <span className="text-xs text-[#6B7280] font-medium self-center">Đang lọc:</span>
+                      {exportOptions.faculty && (
+                        <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+                          <Award className="w-3 h-3" />
+                          {uniqueFaculties.find(f => f.MaKhoa === exportOptions.faculty)?.TenKhoa}
+                          <button onClick={() => setExportOptions(prev => ({ ...prev, faculty: '' }))} className="ml-0.5 hover:text-red-600">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+                      {exportOptions.capBac && (
+                        <span className="inline-flex items-center gap-1 bg-teal-100 text-teal-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+                          <BookOpen className="w-3 h-3" />
+                          {exportOptions.capBac}
+                          <button onClick={() => setExportOptions(prev => ({ ...prev, capBac: '' }))} className="ml-0.5 hover:text-red-600">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+                      {exportOptions.trangThai && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          exportOptions.trangThai === 'Đang dạy' ? 'bg-green-100 text-green-800' :
+                          exportOptions.trangThai === 'Tạm nghỉ' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          <UserCheck className="w-3 h-3" />
+                          {exportOptions.trangThai}
+                          <button onClick={() => setExportOptions(prev => ({ ...prev, trangThai: '' }))} className="ml-0.5 hover:text-red-600">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {exportOptions.type === 'faculty' && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Chọn khoa</label>
-                    <select
-                      value={exportOptions.faculty}
-                      onChange={(e) => setExportOptions({ ...exportOptions, faculty: e.target.value })}
-                      className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
-                    >
-                      <option value="">Chọn khoa</option>
-                      {uniqueFaculties.map((faculty) => (
-                        <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
-                          {faculty.TenKhoa}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* Preview List */}
+                <ExportPreviewList
+                  teachers={teachers}
+                  exportOptions={exportOptions}
+                  uniqueFaculties={uniqueFaculties}
+                  getAvatarColor={getAvatarColor}
+                />
 
-                {exportOptions.type === 'capBac' && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Chọn cấp bậc</label>
-                    <select
-                      value={exportOptions.capBac}
-                      onChange={(e) => setExportOptions({ ...exportOptions, capBac: e.target.value })}
-                      className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
+                {/* Footer Actions */}
+                <div className="p-5 border-t border-[#E5E7EB] flex-shrink-0">
+                  <div className="flex gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => {
+                        handleExportTeachers();
+                        setShowExportModal(false);
+                        setExportOptions({ faculty: '', capBac: '', trangThai: '' });
+                      }}
+                      className="flex-1 bg-[#F4C542] text-[#152238] py-3 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm flex items-center justify-center gap-2"
                     >
-                      <option value="">Chọn cấp bậc</option>
-                      <option value="Thạc sĩ">Thạc sĩ</option>
-                      <option value="Tiến sĩ">Tiến sĩ</option>
-                    </select>
+                      <Download className="w-4 h-4" />
+                      Xuất file Excel
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => { setShowExportModal(false); setExportOptions({ faculty: '', capBac: '', trangThai: '' }); }}
+                      className="px-6 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                    >
+                      Hủy
+                    </motion.button>
                   </div>
-                )}
-
-                <div className="flex gap-3 pt-4">
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => {
-                      handleExportTeachers();
-                      setShowExportModal(false);
-                    }}
-                    disabled={exportOptions.type !== 'all' && !exportOptions.faculty && !exportOptions.capBac}
-                    className="flex-1 bg-[#F4C542] text-[#152238] py-3 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Xuất file
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => { setShowExportModal(false); setExportOptions({ type: 'all', faculty: '', capBac: '' }); }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
-                  >
-                    Hủy
-                  </motion.button>
                 </div>
               </div>
             </motion.div>
           </div>
         </ModalPortal>
       )}
+    </div>
+  );
+}
+
+function ExportPreviewList({ teachers, exportOptions, uniqueFaculties, getAvatarColor }) {
+  const filtered = useMemo(() => {
+    let result = teachers;
+    if (exportOptions.faculty) result = result.filter(t => t.MaKhoa === exportOptions.faculty);
+    if (exportOptions.capBac) result = result.filter(t => t.CapBac === exportOptions.capBac);
+    if (exportOptions.trangThai) result = result.filter(t => t.TrangThai === exportOptions.trangThai);
+    return result;
+  }, [teachers, exportOptions]);
+
+  const hasFilters = exportOptions.faculty || exportOptions.capBac || exportOptions.trangThai;
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+      {/* Preview header */}
+      <div className="px-6 py-3 bg-[#F7F8FA] border-b border-[#E5E7EB] flex items-center justify-between flex-shrink-0">
+        <span className="text-sm font-bold text-[#374151] flex items-center gap-2">
+          <FileText className="w-4 h-4 text-[#F4C542]" />
+          Danh sách sẽ xuất
+        </span>
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+          filtered.length === 0 ? 'bg-red-100 text-red-700' :
+          hasFilters ? 'bg-[#F4C542]/20 text-[#B45309]' : 'bg-green-100 text-green-700'
+        }`}>
+          {filtered.length} giảng viên
+        </span>
+      </div>
+
+      {/* Preview content */}
+      <div className="overflow-y-auto flex-1 px-6 py-3">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+            <Users className="w-10 h-10 mb-2 text-gray-200" />
+            <p className="text-sm font-medium">Không có giảng viên nào khớp với bộ lọc</p>
+            <p className="text-xs mt-1 text-gray-300">Thử thay đổi hoặc xóa bớt điều kiện lọc</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((teacher, index) => (
+              <div key={teacher.MaGiangVien} className="flex items-center gap-3 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl px-4 py-2.5 hover:border-[#F4C542]/30 transition-colors">
+                <span className="text-xs text-gray-300 font-mono w-6 text-right shrink-0">{index + 1}</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm overflow-hidden shrink-0 border ${teacher.Avatar ? 'bg-gray-100 border-gray-200' : getAvatarColor(teacher.HoTen)}`}>
+                  {teacher.Avatar
+                    ? <img src={teacher.Avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    : teacher.HoTen?.charAt(0).toUpperCase() || 'G'
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-[#1F2937] text-sm truncate">{teacher.HoTen}</span>
+                    <span className="text-xs text-gray-300 font-mono">{teacher.MaGiangVien}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 truncate">{teacher.TenKhoa || '—'}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    teacher.CapBac === 'Tiến sĩ' ? 'bg-blue-100 text-blue-700' : 'bg-teal-100 text-teal-700'
+                  }`}>{teacher.CapBac || 'Thạc sĩ'}</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    teacher.TrangThai === 'Đang dạy' ? 'bg-green-100 text-green-700' :
+                    teacher.TrangThai === 'Tạm nghỉ' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>{teacher.TrangThai || 'Đang dạy'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

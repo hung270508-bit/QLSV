@@ -685,7 +685,7 @@ function StudentManagement() {
 
     if (formData.TrangThai) {
 
-      const validTrangThai = ['Đang học', 'Học lại', 'Nghỉ học'];
+      const validTrangThai = ['Đang học', 'Bảo lưu', 'Nghỉ học'];
 
       if (!validTrangThai.includes(formData.TrangThai)) {
 
@@ -1500,7 +1500,7 @@ function StudentManagement() {
 
                   <option value="Đang học">Đang học</option>
 
-                  <option value="Học lại">Học lại</option>
+                  <option value="Bảo lưu">Bảo lưu</option>
 
                   <option value="Nghỉ học">Nghỉ học</option>
 
@@ -1633,7 +1633,7 @@ function StudentManagement() {
                       <p className="text-xs text-gray-400 font-mono mt-0.5">{student.MSSV}</p>
                     </div>
                   </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${student.TrangThai === 'Đang học' ? 'bg-[#22C55E]/10 text-green-700' : student.TrangThai === 'Học lại' ? 'bg-yellow-50 text-yellow-700' : 'bg-[#EF4444]/10 text-red-700'}`}>{student.TrangThai || 'Đang học'}</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${student.TrangThai === 'Đang học' ? 'bg-[#22C55E]/10 text-green-700' : student.TrangThai === 'Bảo lưu' ? 'bg-yellow-50 text-yellow-700' : 'bg-[#EF4444]/10 text-red-700'}`}>{student.TrangThai || 'Đang học'}</span>
                 </div>
                 
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -1766,7 +1766,7 @@ function StudentManagement() {
 
                         ? 'bg-[#22C55E]/10 text-green-700 border border-green-200'
 
-                        : student.TrangThai === 'Học lại'
+                        : student.TrangThai === 'Bảo lưu'
 
                           ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
 
@@ -2261,7 +2261,7 @@ function StudentManagement() {
 
                         <option value="Đang học">Đang học</option>
 
-                        <option value="Học lại">Học lại</option>
+                        <option value="Bảo lưu">Bảo lưu</option>
 
                         <option value="Nghỉ học">Nghỉ học</option>
 
