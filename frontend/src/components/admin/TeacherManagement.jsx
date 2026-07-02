@@ -21,8 +21,8 @@ function TeacherManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [displaySearchTerm, setDisplaySearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ facultyFilter: '', statusFilter: '' });
-  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '', statusFilter: '' });
+  const [filters, setFilters] = useState({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
+  const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [teacherDetails, setTeacherDetails] = useState(null);
@@ -528,8 +528,9 @@ function TeacherManagement() {
     
     const matchesFaculty = !filters.facultyFilter || teacher.MaKhoa === filters.facultyFilter;
     const matchesStatus = !filters.statusFilter || teacher.TrangThai === filters.statusFilter;
+    const matchesCapBac = !filters.capBacFilter || teacher.CapBac === filters.capBacFilter;
     
-    return matchesSearch && matchesFaculty && matchesStatus;
+    return matchesSearch && matchesFaculty && matchesStatus && matchesCapBac;
   });
 
   const handleSearch = () => {
@@ -550,8 +551,8 @@ function TeacherManagement() {
   };
 
   const clearFilters = () => {
-    setFilters({ facultyFilter: '', statusFilter: '' });
-    setDisplayFilters({ facultyFilter: '', statusFilter: '' });
+    setFilters({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
+    setDisplayFilters({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
     setSearchTerm('');
     setDisplaySearchTerm('');
     setCurrentPage(1);
@@ -564,8 +565,8 @@ function TeacherManagement() {
   const currentItems = filteredTeachers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
-  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || searchTerm.trim();
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (filters.capBacFilter ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || filters.capBacFilter || searchTerm.trim();
 
   if (loading) {
     return <TableSkeleton columns={6} rows={6} />;
@@ -703,6 +704,18 @@ function TeacherManagement() {
                   <option value="Nghỉ việc">Nghỉ việc</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo cấp bậc</label>
+                <select
+                  value={displayFilters.capBacFilter}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, capBacFilter: e.target.value })}
+                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+                >
+                  <option value="">Tất cả cấp bậc</option>
+                  <option value="Thạc sĩ">Thạc sĩ</option>
+                  <option value="Tiến sĩ">Tiến sĩ</option>
+                </select>
+              </div>
             </div>
             <div className="flex gap-3 pt-2">
               <motion.button
@@ -716,7 +729,7 @@ function TeacherManagement() {
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '', capBacFilter: '' })}
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 Đặt lại
