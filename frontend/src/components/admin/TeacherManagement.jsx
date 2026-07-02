@@ -24,6 +24,12 @@ function TeacherManagement() {
   const [filters, setFilters] = useState({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
   const [displayFilters, setDisplayFilters] = useState({ facultyFilter: '', statusFilter: '', capBacFilter: '' });
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportOptions, setExportOptions] = useState({
+    type: 'all',
+    faculty: '',
+    capBac: ''
+  });
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [teacherDetails, setTeacherDetails] = useState(null);
   const [teachingSchedule, setTeachingSchedule] = useState([]);
@@ -403,6 +409,15 @@ function TeacherManagement() {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Danh sách giảng viên');
 
+      // Filter teachers based on export options
+      let teachersToExport = teachers;
+      
+      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+        teachersToExport = teachers.filter(t => t.MaKhoa === exportOptions.faculty);
+      } else if (exportOptions.type === 'capBac' && exportOptions.capBac) {
+        teachersToExport = teachers.filter(t => t.CapBac === exportOptions.capBac);
+      }
+
       // 1. Add Title
       worksheet.mergeCells('A1:H1');
       const titleCell = worksheet.getCell('A1');
@@ -411,11 +426,20 @@ function TeacherManagement() {
       titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
       worksheet.getRow(1).height = 40;
 
-      // 2. Add Export Date
+      // 2. Add Export Date and Filter Info
       worksheet.mergeCells('A2:H2');
       const dateCell = worksheet.getCell('A2');
       const today = new Date();
-      dateCell.value = `Ngày xuất: ${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
+      let filterInfo = `Ngày xuất: ${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
+      
+      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+        const facultyName = uniqueFaculties.find(f => f.MaKhoa === exportOptions.faculty)?.TenKhoa || '';
+        filterInfo += ` | Khoa: ${facultyName}`;
+      } else if (exportOptions.type === 'capBac' && exportOptions.capBac) {
+        filterInfo += ` | Cấp bậc: ${exportOptions.capBac}`;
+      }
+      
+      dateCell.value = filterInfo;
       dateCell.font = { name: 'Arial', size: 11, italic: true, color: { argb: 'FF4B5563' } };
       dateCell.alignment = { vertical: 'middle', horizontal: 'right' };
       worksheet.getRow(2).height = 25;
@@ -455,7 +479,7 @@ function TeacherManagement() {
       });
 
       // 4. Add Data
-      filteredTeachers.forEach((t, index) => {
+      teachersToExport.forEach((t, index) => {
         const row = worksheet.addRow({
           stt: index + 1,
           maGV: t.MaGiangVien || '',
@@ -490,7 +514,17 @@ function TeacherManagement() {
       // Generate & Save file
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, `DanhSachGiangVien_${today.getTime()}.xlsx`);
+      
+      let fileName = 'DanhSachGiangVien';
+      if (exportOptions.type === 'faculty' && exportOptions.faculty) {
+        const facultyName = uniqueFaculties.find(f => f.MaKhoa === exportOptions.faculty)?.TenKhoa || '';
+        fileName += `_Khoa_${facultyName}`;
+      } else if (exportOptions.type === 'capBac' && exportOptions.capBac) {
+        fileName += `_CapBac_${exportOptions.capBac}`;
+      }
+      fileName += `_${today.getTime()}.xlsx`;
+      
+      saveAs(blob, fileName);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       setToast({ show: true, message: 'Lỗi khi xuất file Excel', type: 'error' });
@@ -515,6 +549,7 @@ function TeacherManagement() {
     const nameNoTones = removeVietnameseTones(nameLower);
     const codeLower = teacher.MaGiangVien?.toLowerCase() || '';
     const emailLower = teacher.Email?.toLowerCase() || '';
+    const phoneLower = teacher.SoDienThoai?.toLowerCase() || '';
     const facultyNameLower = teacher.TenKhoa?.toLowerCase() || '';
     const facultyNameNoTones = removeVietnameseTones(facultyNameLower);
     
@@ -523,6 +558,7 @@ function TeacherManagement() {
       nameNoTones.includes(searchNoTones) ||
       codeLower.includes(searchLower) ||
       emailLower.includes(searchLower) ||
+      phoneLower.includes(searchLower) ||
       facultyNameLower.includes(searchLower) ||
       facultyNameNoTones.includes(searchNoTones);
     
@@ -594,7 +630,7 @@ function TeacherManagement() {
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={handleExportTeachers}
+            onClick={() => setShowExportModal(true)}
             className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
           >
             <Download className="w-5 h-5" />
@@ -620,7 +656,7 @@ function TeacherManagement() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-300 w-5 h-5" />
             <input
               type="text"
-              placeholder="Tìm kiếm giảng viên theo tên, mã, email hoặc khoa..."
+              placeholder="Tìm kiếm giảng viên theo tên, mã, email, số điện thoại hoặc khoa..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && handleClearSearch()}
@@ -1345,6 +1381,122 @@ function TeacherManagement() {
         </div>
           </motion.div>
         </div>
+        </ModalPortal>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-[#FFFFFF] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="bg-[#F4C542] px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div className="text-white">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Download className="w-5 h-5" />
+                    Xuất danh sách giảng viên
+                  </h3>
+                  <p className="text-[#152238]/70 text-sm mt-0.5">
+                    Chọn tiêu chí để xuất dữ liệu
+                  </p>
+                </div>
+                <button onClick={() => { setShowExportModal(false); setExportOptions({ type: 'all', faculty: '', capBac: '' }); }} className="p-2 hover:bg-white/40 rounded-lg text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Loại xuất</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'all' }))}
+                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'all' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
+                    >
+                      <div className="font-semibold text-gray-800">Tất cả giảng viên</div>
+                      <div className="text-xs text-gray-500 mt-1">Xuất toàn bộ danh sách</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'faculty' }))}
+                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'faculty' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
+                    >
+                      <div className="font-semibold text-gray-800">Theo khoa</div>
+                      <div className="text-xs text-gray-500 mt-1">Chọn khoa để xuất</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'capBac' }))}
+                      className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'capBac' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
+                    >
+                      <div className="font-semibold text-gray-800">Theo cấp bậc</div>
+                      <div className="text-xs text-gray-500 mt-1">Chọn cấp bậc để xuất</div>
+                    </button>
+                  </div>
+                </div>
+
+                {exportOptions.type === 'faculty' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Chọn khoa</label>
+                    <select
+                      value={exportOptions.faculty}
+                      onChange={(e) => setExportOptions({ ...exportOptions, faculty: e.target.value })}
+                      className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
+                    >
+                      <option value="">Chọn khoa</option>
+                      {uniqueFaculties.map((faculty) => (
+                        <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
+                          {faculty.TenKhoa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {exportOptions.type === 'capBac' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Chọn cấp bậc</label>
+                    <select
+                      value={exportOptions.capBac}
+                      onChange={(e) => setExportOptions({ ...exportOptions, capBac: e.target.value })}
+                      className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-colors text-gray-700"
+                    >
+                      <option value="">Chọn cấp bậc</option>
+                      <option value="Thạc sĩ">Thạc sĩ</option>
+                      <option value="Tiến sĩ">Tiến sĩ</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => {
+                      handleExportTeachers();
+                      setShowExportModal(false);
+                    }}
+                    disabled={exportOptions.type !== 'all' && !exportOptions.faculty && !exportOptions.capBac}
+                    className="flex-1 bg-[#F4C542] text-[#152238] py-3 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Xuất file
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => { setShowExportModal(false); setExportOptions({ type: 'all', faculty: '', capBac: '' }); }}
+                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                  >
+                    Hủy
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </ModalPortal>
       )}
     </div>

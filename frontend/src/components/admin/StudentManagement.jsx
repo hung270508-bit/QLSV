@@ -1120,6 +1120,8 @@ function StudentManagement() {
 
     const emailLower = student.Email?.toLowerCase() || '';
 
+    const phoneLower = student.SoDienThoai?.toLowerCase() || '';
+
 
 
     const matchesSearch =
@@ -1130,7 +1132,8 @@ function StudentManagement() {
 
       idLower.includes(searchLower) ||
 
-      emailLower.includes(searchLower);
+      emailLower.includes(searchLower) ||
+      phoneLower.includes(searchLower);
 
 
 
@@ -1337,7 +1340,7 @@ function StudentManagement() {
 
               type="text"
 
-              placeholder="Tìm kiếm sinh viên theo tên, MSSV hoặc email..."
+              placeholder="Tìm kiếm sinh viên theo tên, MSSV, email hoặc số điện thoại..."
 
               value={searchTerm}
 
@@ -2960,7 +2963,7 @@ function StudentManagement() {
                     Chọn tiêu chí để xuất dữ liệu
                   </p>
                 </div>
-                <button onClick={() => setShowExportModal(false)} className="p-2 hover:bg-white/40 rounded-lg text-white">
+                <button onClick={() => { setShowExportModal(false); setExportOptions({ type: 'all', faculty: '', nienKhoa: '', class: '' }); }} className="p-2 hover:bg-white/40 rounded-lg text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -2971,7 +2974,7 @@ function StudentManagement() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setExportOptions({ type: 'all', faculty: '', nienKhoa: '', class: '' })}
+                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'all' }))}
                       className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'all' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
                     >
                       <div className="font-semibold text-gray-800">Tất cả sinh viên</div>
@@ -2979,7 +2982,7 @@ function StudentManagement() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExportOptions({ type: 'faculty', faculty: '', nienKhoa: '', class: '' })}
+                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'faculty' }))}
                       className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'faculty' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
                     >
                       <div className="font-semibold text-gray-800">Theo khoa</div>
@@ -2987,7 +2990,7 @@ function StudentManagement() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExportOptions({ type: 'nienKhoa', faculty: '', nienKhoa: '', class: '' })}
+                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'nienKhoa' }))}
                       className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'nienKhoa' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
                     >
                       <div className="font-semibold text-gray-800">Theo niên khóa</div>
@@ -2995,7 +2998,7 @@ function StudentManagement() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExportOptions({ type: 'class', faculty: '', nienKhoa: '', class: '' })}
+                      onClick={() => setExportOptions(prev => ({ ...prev, type: 'class' }))}
                       className={`p-4 rounded-xl border-2 transition-all ${exportOptions.type === 'class' ? 'border-[#F4C542] bg-[#FFF7D6]' : 'border-[#E5E7EB] bg-[#F7F8FA]'}`}
                     >
                       <div className="font-semibold text-gray-800">Theo lớp</div>
@@ -3074,7 +3077,7 @@ function StudentManagement() {
                   <motion.button
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    onClick={() => setShowExportModal(false)}
+                    onClick={() => { setShowExportModal(false); setExportOptions({ type: 'all', faculty: '', nienKhoa: '', class: '' }); }}
                     className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
                   >
                     Hủy
