@@ -131,8 +131,8 @@ function SubjectManagement() {
     };
     let isValid = true;
 
-    if (data.LoaiMonHoc === 'Chuyên ngành' && !data.MaKhoa) {
-      errors.MaKhoa = 'Vui lòng chọn khoa phụ trách môn chuyên ngành';
+    if (!data.MaKhoa) {
+      errors.MaKhoa = 'Vui lòng chọn khoa phụ trách môn học';
       isValid = false;
     }
 
@@ -262,7 +262,8 @@ function SubjectManagement() {
     if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
     if (!maKhoa) return;
     try {
-      const res = await axios.get(`${API_BASE}/subjects/next-code/${maKhoa}`);
+      const prefix = formData.LoaiMonHoc === 'Đại cương' ? 'DC' : maKhoa;
+      const res = await axios.get(`${API_BASE}/subjects/next-code/${prefix}`);
       setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: res.data.MaMonHoc }));
     } catch (err) {
       console.error('Lỗi tạo mã môn học:', err);
@@ -532,7 +533,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                     {subject.LoaiMonHoc || 'Đại cương'}
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                    {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || faculties.find(f => f.MaKhoa === subject.MaKhoa)?.TenKhoa || 'Tất cả khoa')}
+                    {subject.TenKhoa || faculties.find(f => f.MaKhoa === subject.MaKhoa)?.TenKhoa || 'Chưa xác định'}
                   </span>
                 </div>
               </div>
@@ -578,7 +579,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                     </td>
                     <td className="py-5 px-6">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-                        {subject.LoaiMonHoc === 'Đại cương' ? 'Tất cả khoa' : (subject.TenKhoa || faculties.find(f => f.MaKhoa === subject.MaKhoa)?.TenKhoa || 'Tất cả khoa')}
+                        {subject.TenKhoa || faculties.find(f => f.MaKhoa === subject.MaKhoa)?.TenKhoa || 'Chưa xác định'}
                       </span>
                     </td>
                     <td className="py-5 px-6">
@@ -683,7 +684,6 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                       setFormData(prev => ({ 
                         ...prev, 
                         LoaiMonHoc: newLoai,
-                        MaKhoa: newLoai === 'Đại cương' ? '' : prev.MaKhoa,
                         MaMonHoc: ''
                       }));
                       if (formErrors.MaKhoa) setFormErrors(prev => ({ ...prev, MaKhoa: '' }));
@@ -707,16 +707,11 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa phụ trách</label>
                   <select
-                    value={formData.LoaiMonHoc === 'Đại cương' ? '' : formData.MaKhoa}
+                    value={formData.MaKhoa}
                     onChange={handleKhoaChange}
-                    disabled={formData.LoaiMonHoc === 'Đại cương'}
-                    className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'} ${formData.LoaiMonHoc === 'Đại cương' ? 'opacity-60 cursor-not-allowed bg-gray-100' : ''}`}
+                    className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors text-gray-700 ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
                   >
-                    {formData.LoaiMonHoc === 'Đại cương' ? (
-                      <option value="">Bắt buộc toàn trường</option>
-                    ) : (
-                      <option value="">Chọn khoa</option>
-                    )}
+                    <option value="">Chọn khoa</option>
                     {faculties.map((faculty) => (
                       <option key={faculty.MaKhoa} value={faculty.MaKhoa}>
                         {faculty.TenKhoa}

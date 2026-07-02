@@ -153,7 +153,10 @@ db.getConnection((err, connection) => {
         if (!err && results.length === 0) {
             connection.query("ALTER TABLE monhoc ADD COLUMN LoaiMonHoc VARCHAR(255) DEFAULT 'Đại cương'", (errAlter) => {
                 if (errAlter) console.error("Lỗi thêm cột LoaiMonHoc:", errAlter);
-                else console.log("Đã tự động thêm cột LoaiMonHoc vào bảng monhoc.");
+                else {
+                    console.log("Đã tự động thêm cột LoaiMonHoc vào bảng monhoc.");
+                    connection.query("UPDATE monhoc SET LoaiMonHoc = 'Chuyên ngành' WHERE MaKhoa IS NOT NULL AND MaKhoa != ''");
+                }
             });
         }
     });
@@ -164,6 +167,16 @@ db.getConnection((err, connection) => {
             connection.query("ALTER TABLE giangvien ADD COLUMN CapBac VARCHAR(255) DEFAULT 'Thạc sĩ'", (errAlter) => {
                 if (errAlter) console.error("Lỗi thêm cột CapBac:", errAlter);
                 else console.log("Đã tự động thêm cột CapBac vào bảng giangvien.");
+            });
+        }
+    });
+
+    // Tự động thêm cột PhamViDangKy vào bảng lophocphan nếu chưa có
+    connection.query("SHOW COLUMNS FROM lophocphan LIKE 'PhamViDangKy'", (err, results) => {
+        if (!err && results.length === 0) {
+            connection.query("ALTER TABLE lophocphan ADD COLUMN PhamViDangKy VARCHAR(20) DEFAULT 'THEO_KHOA'", (errAlter) => {
+                if (errAlter) console.error("Lỗi thêm cột PhamViDangKy:", errAlter);
+                else console.log("Đã tự động thêm cột PhamViDangKy vào bảng lophocphan.");
             });
         }
     });
@@ -1364,6 +1377,7 @@ app.delete('/api/teachers/:maGV', (req, res) => executeDelete('DELETE FROM users
 app.get('/api/teachers/:maGV/details', (req, res) => executeQuery('SELECT g.*, k.TenKhoa, u.Avatar FROM giangvien g LEFT JOIN khoa k ON g.MaKhoa = k.MaKhoa LEFT JOIN users u ON g.MaGiangVien COLLATE utf8mb4_unicode_ci = u.TaiKhoan COLLATE utf8mb4_unicode_ci WHERE g.MaGiangVien = ?', [req.params.maGV], res, 'Lỗi lấy chi tiết!'));
 app.get('/api/teachers/:maGV/teaching-schedule', (req, res) => executeQuery(`SELECT lh.*, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy, mh.TenMonHoc, l.TenLop FROM lichhoc lh LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaGiangVien = ?`, [req.params.maGV], res, 'Lỗi lấy lịch giảng dạy!'));
 app.get('/api/teachers/:maGV/teaching-load', (req, res) => executeQuery(`SELECT mh.TenMonHoc, mh.SoTinChi, l.TenLop, lhp.HocKy FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaGiangVien = ?`, [req.params.maGV], res, 'Lỗi lấy tải công việc!'));
+app.get('/api/teachers/:maGV/subjects', (req, res) => executeQuery(`SELECT DISTINCT mh.MaMonHoc, mh.TenMonHoc FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaGiangVien = ?`, [req.params.maGV], res, 'Lỗi lấy môn học của giảng viên!'));
 
 // ==================== FACULTIES ====================
 app.get('/api/faculties', (req, res) => executeQuery('SELECT MaKhoa, TenKhoa FROM khoa ORDER BY TenKhoa', [], res, 'Loi lay khoa!'));
@@ -1404,7 +1418,7 @@ app.get('/api/faculties/:maKhoa/students', (req, res) => executeQuery('SELECT sv
 app.get('/api/faculties/:maKhoa/classes', (req, res) => executeQuery('SELECT l.*, (SELECT COUNT(*) FROM sinhvien sv WHERE sv.MaLop = l.MaLop) as SoSinhVien FROM lophoc l WHERE l.MaKhoa = ?', [req.params.maKhoa], res, 'Lỗi lấy danh sách Lớp!'));
 
 // ==================== SUBJECTS ====================
-app.get('/api/subjects', (req, res) => executeQuery('SELECT mh.*, k.TenKhoa FROM monhoc mh LEFT JOIN khoa k ON mh.MaKhoa = k.MaKhoa', [], res, 'Lỗi lấy môn!'));
+app.get('/api/subjects', (req, res) => executeQuery("SELECT mh.*, COALESCE(mh.LoaiMonHoc, 'Đại cương') AS LoaiMon, COALESCE(mh.LoaiMonHoc, 'Đại cương') AS LoaiMonHoc, k.TenKhoa FROM monhoc mh LEFT JOIN khoa k ON mh.MaKhoa = k.MaKhoa", [], res, 'Lỗi lấy môn!'));
 app.get('/api/subjects/next-code/:maKhoa', (req, res) => {
     const prefix = `${req.params.maKhoa}`;
     db.query(`SELECT MaMonHoc FROM monhoc WHERE MaMonHoc LIKE ? ORDER BY MaMonHoc DESC LIMIT 1`, [`${prefix}%`], (err, results) => {
@@ -1591,9 +1605,10 @@ app.get('/api/course-sections', (req, res) => {
 });
 
 app.post('/api/teaching-assignments', (req, res) => {
-    const { MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
+    const { MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, PhamViDangKy } = req.body;
     const maLHP = MaLopHocPhan || `${MaMonHoc}_${HocKy}_${Math.floor(Math.random() * 1000)}`;
     const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
+    const finalPhamVi = PhamViDangKy || 'THEO_KHOA';
 
     // Kiểm tra cấp bậc giảng viên và loại môn học
     db.query('SELECT gv.CapBac, mh.LoaiMonHoc FROM giangvien gv JOIN monhoc mh ON gv.MaGiangVien = ? AND mh.MaMonHoc = ?', [MaGiangVien, MaMonHoc], (err, results) => {
@@ -1618,7 +1633,7 @@ app.post('/api/teaching-assignments', (req, res) => {
             });
         }
 
-        db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa) VALUES (?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40], (err) => {
+        db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, PhamViDangKy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40, finalPhamVi], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
 
             if (finalMaLop) {
@@ -1639,8 +1654,9 @@ app.post('/api/teaching-assignments', (req, res) => {
 });
 
 app.put('/api/teaching-assignments/:id', (req, res) => {
-    const { MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa } = req.body;
+    const { MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, PhamViDangKy } = req.body;
     const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
+    const finalPhamVi = PhamViDangKy || 'THEO_KHOA';
 
     // Kiểm tra cấp bậc giảng viên và loại môn học
     db.query('SELECT gv.CapBac, mh.LoaiMonHoc FROM giangvien gv JOIN monhoc mh ON gv.MaGiangVien = ? AND mh.MaMonHoc = ?', [MaGiangVien, MaMonHoc], (err, results) => {
@@ -1665,7 +1681,7 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
             });
         }
 
-        db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, req.params.id], (err) => {
+        db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=?, PhamViDangKy=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, finalPhamVi, req.params.id], (err) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
 
             db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
@@ -1720,7 +1736,7 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
 
     const [rows] = await db.promise().query(`
       SELECT 
-        lhp.MaLopHocPhan, lhp.HocKy, lhp.NamHoc, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, lhp.SoLuongToiDa,
+        lhp.MaLopHocPhan, lhp.HocKy, lhp.NamHoc, lhp.MaLop, lhp.PhamViDangKy, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, lhp.SoLuongToiDa,
         COALESCE(
           (SELECT COUNT(*) FROM dangky_hocphan dk2
            WHERE dk2.MaLopHocPhan = lhp.MaLopHocPhan
@@ -1753,16 +1769,22 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
             AND lhp2.HocKy = lhp.HocKy 
             AND dk.TrangThai NOT IN ('Da huy', 'Tu choi')
         )
-        AND mh.MaKhoa = (
-          SELECT l.MaKhoa 
-          FROM sinhvien s 
-          JOIN lophoc l ON s.MaLop = l.MaLop 
-          WHERE s.MSSV = ?
+        AND (
+          COALESCE(lhp.PhamViDangKy, 'THEO_KHOA') = 'TOAN_TRUONG'
+          OR (COALESCE(lhp.PhamViDangKy, 'THEO_KHOA') = 'THEO_KHOA' AND (
+                (lhp.MaLop IS NULL AND mh.MaKhoa = (
+                  SELECT l.MaKhoa 
+                  FROM sinhvien s 
+                  JOIN lophoc l ON s.MaLop = l.MaLop 
+                  WHERE s.MSSV = ?
+                ))
+                OR ((SELECT s.MaLop FROM sinhvien s WHERE s.MSSV = ?) = lhp.MaLop)
+              ))
         )
       GROUP BY 
-        lhp.MaLopHocPhan, lhp.HocKy, lhp.NamHoc, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, lhp.SoLuongToiDa, gv.HoTen
+        lhp.MaLopHocPhan, lhp.HocKy, lhp.NamHoc, lhp.MaLop, lhp.PhamViDangKy, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, lhp.SoLuongToiDa, gv.HoTen
       ORDER BY mh.TenMonHoc, lhp.MaLopHocPhan
-    `, [mssv, mssv, mssv, mssv]);
+    `, [mssv, mssv, mssv, mssv, mssv]);
 
     const result = rows.map(r => ({
       ...r,

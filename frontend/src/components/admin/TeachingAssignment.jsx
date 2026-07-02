@@ -40,6 +40,9 @@ function TeachingAssignment() {
   // Form Data 
   const [formData, setFormData] = useState({
     MaKhoa: '',
+    TenKhoa: '',
+    LoaiMonHoc: '',
+    PhamViDangKy: '', // 'TOAN_TRUONG' | 'THEO_KHOA' - tự động suy ra từ Loại môn
     MaLopHocPhan: '',
     MaMonHoc: '',
     MaGiangVien: '',
@@ -77,20 +80,34 @@ function TeachingAssignment() {
     }
   };
 
-  // Lọc Môn học bằng Tiền tố Khoa
-  const filteredSubjects = useMemo(() => {
-    if (!formData.MaKhoa) return [];
-    return subjects.filter(s => {
-      if (!s.MaMonHoc) return false;
-      return s.MaMonHoc.toUpperCase().startsWith(formData.MaKhoa.toUpperCase());
-    });
-  }, [formData.MaKhoa, subjects]);
+  // Hàm suy ra Khoa phụ trách của 1 Môn học — dùng ĐÚNG field MaKhoa/TenKhoa
+  // có sẵn trên bản ghi môn học (giống cách Quản lý môn học đang hiển thị).
+  // Môn Đại cương có MaKhoa rỗng => trả về null (nghĩa là "Tất cả khoa").
+  const getKhoaCuaMonHoc = (mon) => {
+    if (!mon || !mon.MaKhoa) return null;
+    const k = khoas.find(kh => String(kh.MaKhoa).trim().toUpperCase() === String(mon.MaKhoa).trim().toUpperCase());
+    return k || { MaKhoa: mon.MaKhoa, TenKhoa: mon.TenKhoa || mon.MaKhoa };
+  };
 
-  // LỌC GIẢNG VIÊN THEO KHOA
+  // Toàn bộ Môn học, gom nhóm theo Khoa phụ trách để dễ tìm (không còn lọc theo Khoa trước)
+  const subjectsByKhoa = useMemo(() => {
+    const groups = {};
+    subjects.forEach(s => {
+      const k = getKhoaCuaMonHoc(s);
+      const key = k ? k.TenKhoa : 'Tất cả khoa (Đại cương)';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    });
+    return groups;
+  }, [subjects, khoas]);
+
+  // LỌC GIẢNG VIÊN THEO KHOA PHỤ TRÁCH CỦA MÔN HỌC
+  // Lấy đúng giảng viên thuộc khoa của môn học đó, không lấy lung tung từ các khoa khác
   const filteredTeachers = useMemo(() => {
-    if (!formData.MaKhoa) return [];
+    if (!formData.MaMonHoc) return [];
+    if (!formData.MaKhoa) return teachers.filter(t => t.TrangThai === 'Đang dạy');
     return teachers.filter(t => t.TrangThai === 'Đang dạy' && String(t.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
-  }, [formData.MaKhoa, teachers]);
+  }, [formData.MaMonHoc, formData.MaKhoa, teachers]);
 
   // LỌC LỚP THEO KHOA
   const filteredClasses = useMemo(() => {
@@ -130,8 +147,8 @@ function TeachingAssignment() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.MaKhoa) errors.MaKhoa = 'Vui lòng chọn Khoa.';
     if (!formData.MaMonHoc) errors.MaMonHoc = 'Vui lòng chọn Môn học.';
+    else if (formData.LoaiMonHoc !== 'Đại cương' && !formData.MaKhoa) errors.MaKhoa = 'Không xác định được Khoa phụ trách của môn học này. Vui lòng kiểm tra lại cấu hình Môn học.';
     if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn Giảng viên.';
 
     // Ràng buộc: Giảng viên không được dạy lại chính lớp A cho cùng 1 môn
@@ -170,17 +187,27 @@ function TeachingAssignment() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleKhoaChange = (e) => {
-    const maKhoa = e.target.value;
-    // RESET làm trắng các dropdown liên quan khi đổi Khoa
-    setFormData(prev => ({ ...prev, MaKhoa: maKhoa, MaMonHoc: '', MaLopHocPhan: '', MaGiangVien: '', MaLop: '' }));
-    setFormErrors(prev => ({ ...prev, MaKhoa: '', MaMonHoc: '', MaGiangVien: '', MaLop: '' }));
-  };
-
+  // Khi chọn Môn học: tự động suy ra Khoa phụ trách + Loại môn + Phạm vi đăng ký
+  // (Đại cương -> Toàn trường, Chuyên ngành -> Theo Khoa), đồng thời reset GV/Lớp đã chọn trước đó.
   const handleMonHocChange = (e) => {
     const maMon = e.target.value;
-    setFormData(prev => ({ ...prev, MaMonHoc: maMon, MaLopHocPhan: '' }));
-    setFormErrors(prev => ({ ...prev, MaMonHoc: '', MaLop: '' }));
+    const mon = subjects.find(s => s.MaMonHoc === maMon);
+    const khoa = getKhoaCuaMonHoc(mon);
+    const loaiMon = mon?.LoaiMonHoc || 'Đại cương';
+    const phamVi = loaiMon === 'Đại cương' ? 'TOAN_TRUONG' : 'THEO_KHOA';
+
+    setFormData(prev => ({
+      ...prev,
+      MaMonHoc: maMon,
+      MaKhoa: khoa?.MaKhoa || '',
+      TenKhoa: khoa ? khoa.TenKhoa : (maMon ? 'Tất cả khoa' : ''),
+      LoaiMonHoc: maMon ? loaiMon : '',
+      PhamViDangKy: maMon ? phamVi : '',
+      MaLopHocPhan: '',
+      MaGiangVien: '',
+      MaLop: ''
+    }));
+    setFormErrors(prev => ({ ...prev, MaMonHoc: '', MaKhoa: '', MaGiangVien: '', MaLop: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -193,7 +220,9 @@ function TeachingAssignment() {
     const payload = {
       ...formData,
       SoLuongToiDa: parseInt(formData.SoLuongToiDa), // Đảm bảo gửi lên DB là số nguyên chuẩn
-      HocKy: formData.HocKy
+      HocKy: formData.HocKy,
+      // PhamViDangKy: 'TOAN_TRUONG' (đại cương - mọi SV toàn trường) | 'THEO_KHOA' (chuyên ngành - giới hạn theo Khoa/Lớp)
+      PhamViDangKy: formData.PhamViDangKy
     };
 
     setConfirmDialog({
@@ -244,7 +273,7 @@ function TeachingAssignment() {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setFormData({ MaKhoa: '', MaLopHocPhan: '', MaMonHoc: '', MaGiangVien: '', MaLop: '', HocKy: '', NamHoc: '', SoLuongToiDa: 40 });
+    setFormData({ MaKhoa: '', TenKhoa: '', LoaiMonHoc: '', PhamViDangKy: '', MaLopHocPhan: '', MaMonHoc: '', MaGiangVien: '', MaLop: '', HocKy: '', NamHoc: '', SoLuongToiDa: 40 });
     setHocKySo(''); setHocKyError(''); setHocKyInfo('');
     setFormErrors({});
   };
@@ -410,34 +439,42 @@ function TeachingAssignment() {
               <div className="p-6 overflow-y-auto custom-scrollbar">
                 <form id="assignment-form" onSubmit={handleSubmit} noValidate className="space-y-6">
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Trực thuộc Khoa <span className="text-[#EF4444]">*</span></label>
-                      <select value={formData.MaKhoa} onChange={handleKhoaChange} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
-                        <option value="">-- Chọn Khoa quản lý --</option>
-                        {khoas.map(k => <option key={k.MaKhoa} value={k.MaKhoa}>{k.TenKhoa}</option>)}
-                      </select>
-                      {formErrors.MaKhoa && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaKhoa}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học giảng dạy <span className="text-[#EF4444]">*</span></label>
-                      <select value={formData.MaMonHoc} onChange={handleMonHocChange} disabled={!formData.MaKhoa} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaMonHoc ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
-                        {filteredSubjects.length === 0 && formData.MaKhoa
-                          ? <option value="" disabled>Khoa này chưa có môn học</option>
-                          : <option value="">-- Chọn Môn học --</option>}
-                        {filteredSubjects.map(sub => <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc}</option>)}
-                      </select>
-                      {formErrors.MaMonHoc && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaMonHoc}</p>}
-                    </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học giảng dạy <span className="text-[#EF4444]">*</span></label>
+                    <select value={formData.MaMonHoc} onChange={handleMonHocChange} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all ${formErrors.MaMonHoc ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
+                      <option value="">-- Chọn Môn học --</option>
+                      {Object.entries(subjectsByKhoa).map(([tenKhoa, subs]) => (
+                        <optgroup key={tenKhoa} label={tenKhoa}>
+                          {subs.map(sub => <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {formErrors.MaMonHoc && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaMonHoc}</p>}
                   </div>
+
+                  {formData.MaMonHoc && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa phụ trách</label>
+                        <div className="w-full px-4 py-3 bg-gray-100 border-2 border-[#E5E7EB] rounded-xl text-gray-500 font-medium flex items-center gap-2">
+                          🔒 {formData.TenKhoa || '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Loại môn</label>
+                        <div className={`w-full px-4 py-3 border-2 rounded-xl font-semibold flex items-center gap-2 ${formData.LoaiMonHoc === 'Đại cương' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                          🔒 {formData.LoaiMonHoc || '—'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Giảng viên phụ trách <span className="text-[#EF4444]">*</span></label>
-                      <select disabled={!formData.MaKhoa} value={formData.MaGiangVien} onChange={e => { setFormData({ ...formData, MaGiangVien: e.target.value }); setFormErrors(prev => ({ ...prev, MaGiangVien: '', MaLop: '' })) }} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
-                        {filteredTeachers.length === 0 && formData.MaKhoa
-                          ? <option value="" disabled>Khoa này chưa có giảng viên</option>
+                      <select disabled={!formData.MaMonHoc} value={formData.MaGiangVien} onChange={e => { setFormData({ ...formData, MaGiangVien: e.target.value }); setFormErrors(prev => ({ ...prev, MaGiangVien: '', MaLop: '' })) }} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaGiangVien ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
+                        {filteredTeachers.length === 0 && formData.MaMonHoc
+                          ? <option value="" disabled>{formData.LoaiMonHoc === 'Đại cương' ? 'Chưa có giảng viên nào đang dạy' : 'Khoa này chưa có giảng viên'}</option>
                           : <option value="">-- Chọn giảng viên --</option>}
                         {filteredTeachers.map(t => (<option key={t.MaGiangVien} value={t.MaGiangVien}>[{t.MaKhoa}] {t.HoTen}</option>))}
                       </select>
@@ -446,10 +483,22 @@ function TeachingAssignment() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
-                      <select value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all`}>
-                        <option value="">-- Dành cho mọi sinh viên --</option>
-                        {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop}) - {c.SoSinhVien || 0} SV</option>)}
-                      </select>
+                      {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMon === 'Đại cương' || formData.LoaiMonHoc === 'Đại cương' ? (
+                        <div className="w-full p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200 rounded-xl shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <span className="text-blue-600 text-lg mt-0.5">🌐</span>
+                            <div className="text-xs text-blue-900 leading-relaxed">
+                              <span className="font-bold text-blue-700 block text-sm mb-0.5">Môn Đại cương toàn trường</span>
+                              Mở đăng ký tự do cho sinh viên toàn trường, không giới hạn khoa hoặc lớp sinh hoạt.
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <select disabled={!formData.MaKhoa} value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all disabled:opacity-50 text-gray-700 font-medium cursor-pointer">
+                          <option value="">-- Toàn bộ SV Khoa {formData.TenKhoa || ''} --</option>
+                          {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop}) - {c.SoSinhVien || 0} SV</option>)}
+                        </select>
+                      )}
                       {formErrors.MaLop && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaLop}</p>}
                     </div>
                   </div>
