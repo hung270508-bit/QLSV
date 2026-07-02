@@ -20,7 +20,8 @@ function FacultyManagement() {
   const [showFilters, setShowFilters] = useState(false);
   const [formData, setFormData] = useState({
     MaKhoa: '',
-    TenKhoa: ''
+    TenKhoa: '',
+    TinChiYeuCau: 120
   });
   const [errors, setErrors] = useState({
     TenKhoa: ''
@@ -145,17 +146,22 @@ function FacultyManagement() {
       TenKhoa: value,
       MaKhoa: generateMaKhoa(value, faculties)
     });
-    setErrors({ TenKhoa: '' });
+    setErrors(prev => ({ ...prev, TenKhoa: '' }));
   };
 
   // Gộp Logic Kiểm Tra & Báo Lỗi trước khi hiện Modal Confirm (FIX TC_08, TC_21, TC_22)
   const validateAndConfirm = () => {
     let tenKhoa = formatTitleCase(formData.TenKhoa.trim());
+    let tinChiError = '';
 
     // Kiểm tra tính hợp lệ cơ bản
     const error = validateFacultyName(tenKhoa);
-    if (error) {
-      setErrors({ TenKhoa: error });
+    if (formData.TinChiYeuCau < 0 || formData.TinChiYeuCau > 300 || !formData.TinChiYeuCau) {
+      tinChiError = 'Tín chỉ yêu cầu phải là số lớn hơn 0 và nhỏ hơn 300';
+    }
+
+    if (error || tinChiError) {
+      setErrors({ TenKhoa: error || '', TinChiYeuCau: tinChiError });
       return;
     }
 
@@ -166,7 +172,7 @@ function FacultyManagement() {
     );
 
     if (duplicateName) {
-      setErrors({ TenKhoa: 'Tên khoa đã tồn tại!' });
+      setErrors({ TenKhoa: 'Tên khoa đã tồn tại!', TinChiYeuCau: '' });
       return;
     }
 
@@ -177,7 +183,7 @@ function FacultyManagement() {
       MaKhoa: generateMaKhoa(tenKhoa, faculties)
     }));
 
-    setErrors({ TenKhoa: '' });
+    setErrors({ TenKhoa: '', TinChiYeuCau: '' });
     setShowConfirmModal(true);
   };
 
@@ -197,8 +203,8 @@ function FacultyManagement() {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setFormData({ MaKhoa: '', TenKhoa: '' });
-    setErrors({ TenKhoa: '' });
+    setFormData({ MaKhoa: '', TenKhoa: '', TinChiYeuCau: 120 });
+    setErrors({ TenKhoa: '', TinChiYeuCau: '' });
   };
 
   const handleViewDetails = async (faculty) => {
@@ -451,7 +457,7 @@ function FacultyManagement() {
               <div key={faculty.MaKhoa} className="p-4 hover:bg-[#FFF7D6]/20 transition-colors cursor-pointer flex justify-between items-center" onClick={() => handleViewDetails(faculty)}>
                 <div>
                   <h4 className="font-bold text-[#1F2937] text-sm">{faculty.TenKhoa}</h4>
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">{faculty.MaKhoa}</p>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{faculty.MaKhoa} • TC: {faculty.TinChiYeuCau || 120}</p>
                 </div>
               </div>
             ))
@@ -467,6 +473,7 @@ function FacultyManagement() {
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã khoa</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tên khoa</th>
+                <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Tín chỉ y/c</th>
               </tr>
             </thead>
             <tbody>
@@ -486,11 +493,14 @@ function FacultyManagement() {
                     <td className="py-5 px-6">
                       <span className="font-semibold text-[#1F2937] text-sm whitespace-nowrap">{faculty.TenKhoa}</span>
                     </td>
+                    <td className="py-5 px-6">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-xs">{faculty.TinChiYeuCau || 120}</span>
+                    </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="2" className="py-16">
+                  <td colSpan="3" className="py-16">
                     <div className="flex flex-col items-center justify-center text-gray-300">
                       <Building2 className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">Không tìm thấy khoa nào</p>
@@ -569,6 +579,25 @@ function FacultyManagement() {
                   {errors.TenKhoa && (
                     <p className="mt-2 text-sm text-[#EF4444] font-medium">
                       {errors.TenKhoa}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tín chỉ yêu cầu
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="VD: 120"
+                    value={formData.TinChiYeuCau}
+                    onChange={(e) => setFormData(prev => ({ ...prev, TinChiYeuCau: parseInt(e.target.value) || '' }))}
+                    onFocus={() => setErrors(prev => ({ ...prev, TinChiYeuCau: '' }))}
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${errors.TinChiYeuCau ? 'border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
+                  />
+                  {errors.TinChiYeuCau && (
+                    <p className="mt-2 text-sm text-[#EF4444] font-medium">
+                      {errors.TinChiYeuCau}
                     </p>
                   )}
                 </div>

@@ -181,6 +181,16 @@ db.getConnection((err, connection) => {
         }
     });
 
+    // Tự động thêm cột TinChiYeuCau vào bảng khoa nếu chưa có
+    connection.query("SHOW COLUMNS FROM khoa LIKE 'TinChiYeuCau'", (err, results) => {
+        if (!err && results.length === 0) {
+            connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120", (errAlter) => {
+                if (errAlter) console.error("Lỗi thêm cột TinChiYeuCau:", errAlter);
+                else console.log("Đã tự động thêm cột TinChiYeuCau vào bảng khoa.");
+            });
+        }
+    });
+
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
@@ -1292,7 +1302,7 @@ app.get('/api/students/next-code/:maLop', (req, res) => {
         });
     });
 });
-app.get('/api/students/:mssv/details', (req, res) => executeQuery('SELECT s.*, l.TenLop, k.TenKhoa, u.Avatar FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa LEFT JOIN users u ON s.MSSV = u.TaiKhoan WHERE s.MSSV = ?', [req.params.mssv], res, 'Lỗi chi tiết SV!'));
+app.get('/api/students/:mssv/details', (req, res) => executeQuery('SELECT s.*, l.TenLop, k.TenKhoa, k.TinChiYeuCau, u.Avatar FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa LEFT JOIN users u ON s.MSSV = u.TaiKhoan WHERE s.MSSV = ?', [req.params.mssv], res, 'Lỗi chi tiết SV!'));
 app.get('/api/students/:mssv/schedule', (req, res) => executeQuery(`
     SELECT lh.*, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy, mh.TenMonHoc, gv.HoTen as TenGiangVien 
     FROM diem d 
@@ -1380,19 +1390,20 @@ app.get('/api/teachers/:maGV/teaching-load', (req, res) => executeQuery(`SELECT 
 app.get('/api/teachers/:maGV/subjects', (req, res) => executeQuery(`SELECT DISTINCT mh.MaMonHoc, mh.TenMonHoc FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaGiangVien = ?`, [req.params.maGV], res, 'Lỗi lấy môn học của giảng viên!'));
 
 // ==================== FACULTIES ====================
-app.get('/api/faculties', (req, res) => executeQuery('SELECT MaKhoa, TenKhoa FROM khoa ORDER BY TenKhoa', [], res, 'Loi lay khoa!'));
-app.post('/api/faculties', (req, res) => executeInsert('INSERT INTO khoa (MaKhoa, TenKhoa) VALUES (?, ?)', [req.body.MaKhoa, req.body.TenKhoa], res, 'Thêm khoa thành công!', 'Lỗi thêm!'));
+app.get('/api/faculties', (req, res) => executeQuery('SELECT MaKhoa, TenKhoa, TinChiYeuCau FROM khoa ORDER BY TenKhoa', [], res, 'Loi lay khoa!'));
+app.post('/api/faculties', (req, res) => executeInsert('INSERT INTO khoa (MaKhoa, TenKhoa, TinChiYeuCau) VALUES (?, ?, ?)', [req.body.MaKhoa, req.body.TenKhoa, req.body.TinChiYeuCau || 120], res, 'Thêm khoa thành công!', 'Lỗi thêm!'));
 app.put('/api/faculties/:maKhoa', (req, res) => {
     const maKhoaMoi = req.body.MaKhoa;
     const maKhoaCu = req.params.maKhoa;
     const tenKhoa = req.body.TenKhoa;
+    const tinChiYeuCau = req.body.TinChiYeuCau || 120;
 
     if (maKhoaMoi && maKhoaMoi !== maKhoaCu) {
         db.getConnection((err, connection) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi kết nối DB!' });
             connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
                 if (err) { connection.release(); return res.status(500).json({ success: false, message: 'Lỗi DB!' }); }
-                connection.query('UPDATE khoa SET TenKhoa=?, MaKhoa=? WHERE MaKhoa=?', [tenKhoa, maKhoaMoi, maKhoaCu], (err) => {
+                connection.query('UPDATE khoa SET TenKhoa=?, MaKhoa=?, TinChiYeuCau=? WHERE MaKhoa=?', [tenKhoa, maKhoaMoi, tinChiYeuCau, maKhoaCu], (err) => {
                     if (err) { connection.query('SET FOREIGN_KEY_CHECKS = 1;'); connection.release(); return res.status(500).json({ success: false, message: 'Lỗi cập nhật khoa!' }); }
                     connection.query('UPDATE lophoc SET MaKhoa=? WHERE MaKhoa=?', [maKhoaMoi, maKhoaCu], () => {
                         connection.query('UPDATE giangvien SET MaKhoa=? WHERE MaKhoa=?', [maKhoaMoi, maKhoaCu], () => {
@@ -1408,7 +1419,7 @@ app.put('/api/faculties/:maKhoa', (req, res) => {
             });
         });
     } else {
-        executeUpdate('UPDATE khoa SET TenKhoa=? WHERE MaKhoa=?', [tenKhoa, maKhoaCu], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
+        executeUpdate('UPDATE khoa SET TenKhoa=?, TinChiYeuCau=? WHERE MaKhoa=?', [tenKhoa, tinChiYeuCau, maKhoaCu], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
     }
 });
 

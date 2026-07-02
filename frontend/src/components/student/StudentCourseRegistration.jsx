@@ -102,9 +102,14 @@ function StudentCourseRegistration({ user }) {
       {/* TIẾN TRÌNH ĐĂNG KÝ VÀ NÚT CHỐT LƯU */}
       <div className="bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 border-b border-slate-100 pb-4">
-          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#F4C542]" /> Tiến trình đăng ký ({displayList.length} môn)
-          </h3>
+          <div className="flex flex-col">
+            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5 text-[#F4C542]" /> Tiến trình đăng ký ({displayList.length} môn)
+            </h3>
+            <p className="text-sm text-slate-500 font-medium mt-1">
+              Tổng tín chỉ học kỳ này: <span className="font-bold text-emerald-600">{displayList.reduce((sum, c) => sum + parseInt(c.SoTinChi || 0), 0)}</span>
+            </p>
+          </div>
           {cart.length > 0 && (
             <button onClick={handleFinalize} className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/30 flex items-center gap-2 transition-all hover:scale-105 animate-pulse">
               <Save className="w-4 h-4"/> Lưu lại ngay
@@ -160,7 +165,16 @@ function StudentCourseRegistration({ user }) {
             <tbody className="divide-y divide-slate-50">
               {availableCourses.map((c, i) => {
                 const isFull = c.DaDangKy >= (c.SoLuongToiDa || 40);
-                const isInCart = cart.some(cartItem => cartItem.MaLopHocPhan === c.MaLopHocPhan);
+                const isExactClassInCart = cart.some(cartItem => cartItem.MaLopHocPhan === c.MaLopHocPhan);
+                const isSubjectInCart = cart.some(cartItem => cartItem.MaMonHoc === c.MaMonHoc);
+                const isSubjectInDB = myCourses.some(myCourse => myCourse.MaMonHoc === c.MaMonHoc);
+                const isSubjectTaken = isSubjectInCart || isSubjectInDB;
+                const isDisabledVisual = isFull || isSubjectTaken;
+                
+                let buttonText = <><Plus className="w-4 h-4"/> Chọn</>;
+                if (isExactClassInCart) buttonText = 'Đã Chọn';
+                else if (isSubjectTaken) buttonText = 'Trùng Môn';
+                else if (isFull) buttonText = 'Lớp đầy';
                 
                 let tietStr = "Chưa rõ";
                 if (c.CaHoc) {
@@ -173,7 +187,7 @@ function StudentCourseRegistration({ user }) {
                 }
                 const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '';
                 return (
-                  <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${(isFull || isInCart) ? 'opacity-70 bg-slate-50' : ''}`}>
+                  <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${isDisabledVisual ? 'opacity-70 bg-slate-50' : ''}`}>
                     <td className="p-4 font-bold text-slate-700 bg-slate-50/30">{c.MaLopHocPhan}</td>
                     <td className="p-4">
                       <div className="font-bold text-slate-800 text-sm mb-1.5">{c.TenMonHoc}</div>
@@ -191,8 +205,21 @@ function StudentCourseRegistration({ user }) {
                     <td className="p-4 font-semibold text-slate-700">{c.TenGiangVien || 'Chưa xếp'}</td>
                     <td className="p-4 text-center"><span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isFull ? 'bg-red-100 text-[#DC2626] border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{c.DaDangKy} / {c.SoLuongToiDa || 40}</span></td>
                     <td className="p-4 text-center">
-                      <button onClick={() => handleAddToCart(c)} disabled={isFull || isInCart} className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs mx-auto shadow-sm transition-all ${(isFull || isInCart) ? 'bg-slate-100 text-slate-400 cursor-not-allowed border' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:scale-105 shadow-blue-500/30'}`}>
-                        {isInCart ? 'Đã Chọn' : isFull ? 'Lớp đầy' : <><Plus className="w-4 h-4"/> Chọn</>}
+                      <button 
+                        onClick={() => {
+                          if (isExactClassInCart) return;
+                          if (isSubjectTaken) {
+                            showToast(`Lỗi: Bạn đã đăng ký hoặc đang chọn lớp khác của môn ${c.TenMonHoc}! Không thể đăng ký thêm.`, "error");
+                            return;
+                          }
+                          if (isFull) {
+                            showToast(`Lỗi: Lớp ${c.MaLopHocPhan} đã đủ sĩ số!`, "error");
+                            return;
+                          }
+                          handleAddToCart(c);
+                        }} 
+                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs mx-auto shadow-sm transition-all ${isDisabledVisual ? 'bg-slate-100 text-slate-400 border cursor-pointer' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:scale-105 shadow-blue-500/30'}`}>
+                        {buttonText}
                       </button>
                     </td>
                   </tr>
