@@ -156,9 +156,14 @@ function FacultyManagement() {
 
     // Kiểm tra tính hợp lệ cơ bản
     const error = validateFacultyName(tenKhoa);
-    const tinChi = parseInt(formData.TinChiYeuCau, 10);
-    if (!formData.TinChiYeuCau || isNaN(tinChi) || tinChi < 120 || tinChi > 150) {
-      tinChiError = 'Tín chỉ yêu cầu phải là số nguyên từ 120 đến 150';
+    const tinChiStr = String(formData.TinChiYeuCau).trim();
+    if (!tinChiStr) {
+      tinChiError = 'Tín chỉ không được để trống';
+    } else {
+      const tinChi = parseInt(tinChiStr, 10);
+      if (isNaN(tinChi) || tinChi < 120 || tinChi > 150) {
+        tinChiError = 'Tín chỉ yêu cầu phải là số nguyên từ 120 đến 150';
+      }
     }
 
     if (error || tinChiError) {
