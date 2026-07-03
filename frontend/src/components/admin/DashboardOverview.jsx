@@ -114,7 +114,7 @@ function DashboardOverview({ onNavigate }) {
       ]);
       setStats(statsRes.data);
       setFacultyStats(facultyRes.data);
-      setTeachers(teachersRes.data);
+      setTeachers(teachersRes.data.filter(t => t.TrangThai === 'Đang dạy'));
       setStudents(allStudentsRes.data.filter(s => s.TrangThai === 'Đang học'));
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
