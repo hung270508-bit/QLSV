@@ -1104,6 +1104,13 @@ function StudentManagement() {
 
   }, [classes, selectedFaculty, formData.startYear, formData.endYear]);
 
+  const selectedClassInfo = useMemo(() => {
+    if (!formData.MaLop) return null;
+    return classes.find(cls => cls.MaLop === formData.MaLop);
+  }, [classes, formData.MaLop]);
+
+  const isClassFull = selectedClassInfo && selectedClassInfo.SoSinhVien >= 60;
+
 
 
   const filteredStudents = students.filter(student => {
@@ -2216,7 +2223,7 @@ function StudentManagement() {
 
                         }}
 
-                        disabled={!selectedFaculty || !formData.startYear || !formData.endYear}
+                        disabled={!selectedFaculty || !formData.startYear || !formData.endYear || isClassFull}
 
                         className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl focus:outline-none transition-colors disabled:opacity-50 ${errors.MaLop ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'
 
@@ -2228,9 +2235,9 @@ function StudentManagement() {
 
                         {filteredClassesForForm.map((cls) => (
 
-                          <option key={cls.MaLop} value={cls.MaLop}>
+                          <option key={cls.MaLop} value={cls.MaLop} disabled={cls.SoSinhVien >= 60}>
 
-                            {cls.TenLop}
+                            {cls.TenLop} ({cls.SoSinhVien || 0}/60)
 
                           </option>
 
@@ -2239,6 +2246,19 @@ function StudentManagement() {
                       </select>
 
                       {errors.MaLop && <p className="text-[#EF4444] text-sm mt-1">{errors.MaLop}</p>}
+
+                      {selectedClassInfo && (
+                        <div className={`mt-2 text-sm ${isClassFull ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                          {isClassFull ? (
+                            <span className="flex items-center gap-1">
+                              <AlertCircle className="w-4 h-4" />
+                              Lớp đã đủ sĩ số (60/60). Vui lòng chọn lớp khác.
+                            </span>
+                          ) : (
+                            <span>Sĩ số hiện tại: {selectedClassInfo.SoSinhVien || 0}/60</span>
+                          )}
+                        </div>
+                      )}
 
                     </div>
 
