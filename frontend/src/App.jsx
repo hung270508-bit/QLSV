@@ -104,7 +104,7 @@ function App() {
             window.location.reload();
           }
         }
-      }, 3000);
+      }, 60000); // Tăng lên 60 giây (60000ms) để tránh spam API và tốn Vercel Functions
     }
     return () => {
       if (intervalId) clearInterval(intervalId);

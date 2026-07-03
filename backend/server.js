@@ -75,111 +75,8 @@ db.getConnection((err, connection) => {
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
 
-    // Tự động tạo bảng lưu trạng thái RFID nếu chưa có
-    const createRfidTable = `
-        CREATE TABLE IF NOT EXISTS rfid_state (
-            id INT PRIMARY KEY DEFAULT 1,
-            mode VARCHAR(50) DEFAULT 'ATTENDANCE',
-            targetMSSV VARCHAR(20) DEFAULT NULL,
-            capturedUid VARCHAR(50) DEFAULT NULL
-        )
-    `;
-    connection.query(createRfidTable, (errTbl) => {
-        if (!errTbl) {
-            connection.query('INSERT IGNORE INTO rfid_state (id, mode) VALUES (1, "ATTENDANCE")');
-        }
-    });
-
-    // Tự động tạo bảng thẻ sinh viên the_sv nếu chưa có
-    const createTheSvTable = `
-        CREATE TABLE IF NOT EXISTS the_sv (
-          uid varchar(20) NOT NULL,
-          MSSV varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-          PRIMARY KEY (uid),
-          KEY fk_the_sv_sinhvien (MSSV),
-          CONSTRAINT fk_the_sv_sinhvien FOREIGN KEY (MSSV) REFERENCES sinhvien (MSSV) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `;
-    connection.query(createTheSvTable, (errTheSv) => {
-        if (errTheSv) {
-            console.error('Lỗi tự động tạo bảng the_sv:', errTheSv);
-        }
-    });
-
-    const createYCHTTable = `
-        CREATE TABLE IF NOT EXISTS yeucau_hotro (
-            MaYeuCau INT AUTO_INCREMENT PRIMARY KEY,
-            MSSV VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
-            MaGiangVien VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
-            LoaiYeuCau VARCHAR(100) NOT NULL,
-            ChuDe VARCHAR(255) NOT NULL,
-            NoiDung TEXT NOT NULL,
-            NgayGui DATETIME NOT NULL,
-            TrangThai VARCHAR(50) NOT NULL,
-            PhanHoi TEXT NULL,
-            NgayPhanHoi DATETIME NULL,
-            FOREIGN KEY (MSSV) REFERENCES sinhvien(MSSV) ON DELETE CASCADE,
-            FOREIGN KEY (MaGiangVien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `;
-    connection.query(createYCHTTable, (errYCHT) => {
-        if (errYCHT) {
-            console.error('Lỗi tự động tạo bảng yeucau_hotro:', errYCHT);
-        }
-    });
-
-    // Tự động thêm cột LanDiemDanh vào bảng diemdanh nếu chưa có
-    connection.query("SHOW COLUMNS FROM diemdanh LIKE 'LanDiemDanh'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE diemdanh ADD COLUMN LanDiemDanh INT DEFAULT 1", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột LanDiemDanh:", errAlter);
-                else console.log("Đã tự động thêm cột LanDiemDanh vào bảng diemdanh.");
-            });
-        }
-    });
-
-    // Tự động thêm cột Avatar vào bảng users nếu chưa có
-    connection.query("SHOW COLUMNS FROM users LIKE 'Avatar'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE users ADD COLUMN Avatar LONGTEXT", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột Avatar:", errAlter);
-                else console.log("Đã tự động thêm cột Avatar vào bảng users.");
-            });
-        }
-    });
-
-    // Tự động thêm cột LoaiMonHoc vào bảng monhoc nếu chưa có
-    connection.query("SHOW COLUMNS FROM monhoc LIKE 'LoaiMonHoc'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE monhoc ADD COLUMN LoaiMonHoc VARCHAR(255) DEFAULT 'Đại cương'", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột LoaiMonHoc:", errAlter);
-                else {
-                    console.log("Đã tự động thêm cột LoaiMonHoc vào bảng monhoc.");
-                    connection.query("UPDATE monhoc SET LoaiMonHoc = 'Chuyên ngành' WHERE MaKhoa IS NOT NULL AND MaKhoa != ''");
-                }
-            });
-        }
-    });
-
-    // Tự động thêm cột CapBac vào bảng giangvien nếu chưa có
-    connection.query("SHOW COLUMNS FROM giangvien LIKE 'CapBac'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE giangvien ADD COLUMN CapBac VARCHAR(255) DEFAULT 'Thạc sĩ'", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột CapBac:", errAlter);
-                else console.log("Đã tự động thêm cột CapBac vào bảng giangvien.");
-            });
-        }
-    });
-
-    // Tự động thêm cột PhamViDangKy vào bảng lophocphan nếu chưa có
-    connection.query("SHOW COLUMNS FROM lophocphan LIKE 'PhamViDangKy'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE lophocphan ADD COLUMN PhamViDangKy VARCHAR(20) DEFAULT 'THEO_KHOA'", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột PhamViDangKy:", errAlter);
-                else console.log("Đã tự động thêm cột PhamViDangKy vào bảng lophocphan.");
-            });
-        }
-    });
+    // Đã gỡ bỏ các đoạn code tự động CREATE/ALTER TABLE ở đây (Migration)
+    // để tối ưu hóa triệt để tốc độ khởi động (Cold Start) trên Vercel Serverless.
 
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
@@ -777,7 +674,7 @@ app.post('/api/reset-password', async (req, res) => {
 
 // ==================== DASHBOARD STATISTICS ====================
 app.get('/api/dashboard/stats', (req, res) => {
-    const queries = ["SELECT COUNT(*) as total FROM sinhvien WHERE TrangThai = 'Đang học'", 'SELECT COUNT(*) as total FROM monhoc', 'SELECT COUNT(*) as total FROM lophoc', 'SELECT COUNT(*) as total FROM giangvien'];
+    const queries = ["SELECT COUNT(*) as total FROM sinhvien WHERE TrangThai = 'Đang học'", 'SELECT COUNT(*) as total FROM monhoc', 'SELECT COUNT(*) as total FROM lophoc', "SELECT COUNT(*) as total FROM giangvien WHERE TrangThai = 'Đang dạy'"];
     Promise.all(queries.map(q => new Promise((resolve, reject) => {
         db.query(q, (err, results) => err ? reject(err) : resolve(results[0].total));
     }))).then(([students, subjects, classes, teachers]) => {
@@ -789,7 +686,7 @@ app.get('/api/dashboard/stats', (req, res) => {
 });
 
 app.get('/api/dashboard/stats-by-faculty', (req, res) => {
-    const query = `SELECT k.MaKhoa, k.TenKhoa, (SELECT COUNT(*) FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE l.MaKhoa = k.MaKhoa AND s.TrangThai = 'Đang học') as studentCount, (SELECT COUNT(*) FROM giangvien WHERE MaKhoa = k.MaKhoa) as teacherCount, (SELECT COUNT(*) FROM lophoc WHERE MaKhoa = k.MaKhoa) as classCount FROM khoa k`;
+    const query = `SELECT k.MaKhoa, k.TenKhoa, (SELECT COUNT(*) FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE l.MaKhoa = k.MaKhoa AND s.TrangThai = 'Đang học') as studentCount, (SELECT COUNT(*) FROM giangvien WHERE MaKhoa = k.MaKhoa AND TrangThai = 'Đang dạy') as teacherCount, (SELECT COUNT(*) FROM lophoc WHERE MaKhoa = k.MaKhoa) as classCount FROM khoa k`;
     executeQuery(query, [], res, 'Lỗi lấy thống kê theo khoa!');
 });
 
@@ -1296,7 +1193,7 @@ app.get('/api/students/next-code/:maLop', (req, res) => {
         });
     });
 });
-app.get('/api/students/:mssv/details', (req, res) => executeQuery('SELECT s.*, l.TenLop, k.TenKhoa, u.Avatar FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa LEFT JOIN users u ON s.MSSV = u.TaiKhoan WHERE s.MSSV = ?', [req.params.mssv], res, 'Lỗi chi tiết SV!'));
+app.get('/api/students/:mssv/details', (req, res) => executeQuery('SELECT s.*, l.TenLop, k.TenKhoa, k.TinChiYeuCau, u.Avatar FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa LEFT JOIN users u ON s.MSSV = u.TaiKhoan WHERE s.MSSV = ?', [req.params.mssv], res, 'Lỗi chi tiết SV!'));
 app.get('/api/students/:mssv/schedule', (req, res) => executeQuery(`
     SELECT lh.*, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy, mh.TenMonHoc, gv.HoTen as TenGiangVien 
     FROM diem d 
@@ -1384,19 +1281,20 @@ app.get('/api/teachers/:maGV/teaching-load', (req, res) => executeQuery(`SELECT 
 app.get('/api/teachers/:maGV/subjects', (req, res) => executeQuery(`SELECT DISTINCT mh.MaMonHoc, mh.TenMonHoc FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaGiangVien = ?`, [req.params.maGV], res, 'Lỗi lấy môn học của giảng viên!'));
 
 // ==================== FACULTIES ====================
-app.get('/api/faculties', (req, res) => executeQuery('SELECT MaKhoa, TenKhoa FROM khoa ORDER BY TenKhoa', [], res, 'Loi lay khoa!'));
-app.post('/api/faculties', (req, res) => executeInsert('INSERT INTO khoa (MaKhoa, TenKhoa) VALUES (?, ?)', [req.body.MaKhoa, req.body.TenKhoa], res, 'Thêm khoa thành công!', 'Lỗi thêm!'));
+app.get('/api/faculties', (req, res) => executeQuery('SELECT MaKhoa, TenKhoa, TinChiYeuCau FROM khoa ORDER BY TenKhoa', [], res, 'Loi lay khoa!'));
+app.post('/api/faculties', (req, res) => executeInsert('INSERT INTO khoa (MaKhoa, TenKhoa, TinChiYeuCau) VALUES (?, ?, ?)', [req.body.MaKhoa, req.body.TenKhoa, req.body.TinChiYeuCau || 120], res, 'Thêm khoa thành công!', 'Lỗi thêm!'));
 app.put('/api/faculties/:maKhoa', (req, res) => {
     const maKhoaMoi = req.body.MaKhoa;
     const maKhoaCu = req.params.maKhoa;
     const tenKhoa = req.body.TenKhoa;
+    const tinChiYeuCau = req.body.TinChiYeuCau || 120;
 
     if (maKhoaMoi && maKhoaMoi !== maKhoaCu) {
         db.getConnection((err, connection) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi kết nối DB!' });
             connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
                 if (err) { connection.release(); return res.status(500).json({ success: false, message: 'Lỗi DB!' }); }
-                connection.query('UPDATE khoa SET TenKhoa=?, MaKhoa=? WHERE MaKhoa=?', [tenKhoa, maKhoaMoi, maKhoaCu], (err) => {
+                connection.query('UPDATE khoa SET TenKhoa=?, MaKhoa=?, TinChiYeuCau=? WHERE MaKhoa=?', [tenKhoa, maKhoaMoi, tinChiYeuCau, maKhoaCu], (err) => {
                     if (err) { connection.query('SET FOREIGN_KEY_CHECKS = 1;'); connection.release(); return res.status(500).json({ success: false, message: 'Lỗi cập nhật khoa!' }); }
                     connection.query('UPDATE lophoc SET MaKhoa=? WHERE MaKhoa=?', [maKhoaMoi, maKhoaCu], () => {
                         connection.query('UPDATE giangvien SET MaKhoa=? WHERE MaKhoa=?', [maKhoaMoi, maKhoaCu], () => {
@@ -1412,7 +1310,7 @@ app.put('/api/faculties/:maKhoa', (req, res) => {
             });
         });
     } else {
-        executeUpdate('UPDATE khoa SET TenKhoa=? WHERE MaKhoa=?', [tenKhoa, maKhoaCu], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
+        executeUpdate('UPDATE khoa SET TenKhoa=?, TinChiYeuCau=? WHERE MaKhoa=?', [tenKhoa, tinChiYeuCau, maKhoaCu], res, 'Cập nhật thành công!', 'Lỗi cập nhật!');
     }
 });
 

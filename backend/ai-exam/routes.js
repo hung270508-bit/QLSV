@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { extractTextFromDocx, generateQuestionsFromText } = require('./aiService');
+const { extractTextFromDocx, generateQuestionsFromText } = require('./services/aiService');
 
 const router = express.Router();
 const upload = multer({ dest: require('os').tmpdir() });
@@ -22,11 +22,11 @@ module.exports = (db) => {
     // 2. Các routes mới của AI Assisted Question Bank
     router.post('/documents/upload', upload.single('file'), aiAssistedController.uploadDocument);
     router.get('/documents/teacher/:ma_giang_vien', aiAssistedController.getDocumentsByTeacher);
-    
+
     router.post('/sessions/start', aiAssistedController.startSession);
     router.post('/sessions/:id/resume', aiAssistedController.resumeSession);
     router.get('/sessions/teacher/:ma_giang_vien', aiAssistedController.getSessionsByTeacher);
-    
+
     router.get('/sessions/:id/questions', aiAssistedController.getQuestionsBySession);
     router.put('/questions/:id/status', aiAssistedController.updateQuestionStatus);
     router.put('/questions/:id', aiAssistedController.updateQuestion);
@@ -43,7 +43,7 @@ module.exports = (db) => {
     router.post('/exams', async (req, res) => {
         try {
             const { ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai } = req.body;
-            
+
             const [result] = await dbPromise.query(
                 `INSERT INTO exams (ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -95,12 +95,12 @@ module.exports = (db) => {
         try {
             const examId = req.params.exam_id;
             const { mssv } = req.body;
-            
+
             connection = await dbPromise.getConnection();
             const [exams] = await connection.query(`SELECT * FROM exams WHERE id = ?`, [examId]);
             const exam = exams[0];
             if (!exam) return res.status(404).json({ success: false, message: 'Không tìm thấy kỳ thi' });
-            
+
             const now = new Date();
             if (now < new Date(exam.thoi_gian_bat_dau)) return res.status(400).json({ success: false, message: 'Chưa tới giờ thi' });
             if (now > new Date(exam.thoi_gian_ket_thuc)) return res.status(400).json({ success: false, message: 'Đã quá giờ thi' });
@@ -169,7 +169,7 @@ module.exports = (db) => {
         try {
             const { attempt_id, answers } = req.body;
             let correctCount = 0;
-            
+
             for (const ans of answers) {
                 let isCorrect = false;
                 if (ans.selected_option_id) {
@@ -179,16 +179,16 @@ module.exports = (db) => {
                         correctCount++;
                     }
                 }
-                
+
                 await dbPromise.query(
                     `INSERT INTO exam_attempt_answers (attempt_id, question_id, selected_option_id, la_dap_an_dung) VALUES (?, ?, ?, ?)`,
                     [attempt_id, ans.question_id, ans.selected_option_id || null, isCorrect ? 1 : 0]
                 );
             }
-            
+
             const score = answers.length > 0 ? (correctCount / answers.length) * 10 : 0;
             await dbPromise.query(`UPDATE exam_attempts SET diem_so = ?, thoi_gian_nop_bai = CURRENT_TIMESTAMP, trang_thai = 'Submitted' WHERE id = ?`, [score, attempt_id]);
-            
+
             res.json({ success: true, score });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });

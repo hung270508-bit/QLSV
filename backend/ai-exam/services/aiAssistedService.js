@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const { extractTextFromDocx } = require('../aiService');
+const { extractTextFromDocx } = require('./aiService');
 
 module.exports = (repo) => {
     // Helper tạo OpenAI client theo API Key
@@ -33,7 +33,7 @@ module.exports = (repo) => {
     // Hàm sinh 1 batch câu hỏi (tối đa 10 câu/lần)
     const generateBatch = async (sessionId, document, soCauYeuCau, doKho, chuDe) => {
         const { client, model } = getOpenAIClient();
-        
+
         // Lấy thông tin session hiện tại
         const session = await repo.getSessionById(sessionId);
         if (!session) throw new Error('Không tìm thấy phiên sinh AI');

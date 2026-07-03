@@ -263,8 +263,8 @@ function TeacherManagement() {
           age--;
         }
         
-        if (age < 18) {
-          newErrors.NgaySinh = 'Ngày sinh không hợp lệ (giảng viên phải từ 18 tuổi trở lên)';
+        if (age < 22) {
+          newErrors.NgaySinh = 'Ngày sinh không hợp lệ (giảng viên phải từ 22 tuổi trở lên)';
         } else if (age > 100) {
           newErrors.NgaySinh = 'Ngày sinh không hợp lệ';
         }

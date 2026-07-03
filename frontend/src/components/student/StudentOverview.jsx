@@ -1,6 +1,6 @@
 import { StudentOverviewSkeleton } from '../common/StudentSkeleton';
 // npm install recharts lệnh cài thư viện vẽ biểu đồ, lưu ý không xóa nó 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import API_URL from '../../api';
 import { motion } from 'framer-motion';
 import {
@@ -57,7 +57,8 @@ function StudentOverview({ user, setActiveMenu }) {
     tongHocKy: 0,
     tongTinChi: 0,
     maxGPA: '0.00',
-    currentGPA: '0.00'
+    currentGPA: '0.00',
+    tinChiYeuCau: 120
   });
 
   const [chartData, setChartData] = useState([]);
@@ -70,19 +71,16 @@ function StudentOverview({ user, setActiveMenu }) {
   const [recentGrades, setRecentGrades] = useState([]);
   const [recentRequests, setRecentRequests] = useState([]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [user]);
-
-  async function fetchDashboardData() {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const [gradesRes, scheduleRes, pointsRes, announcementsRes, supportRes] = await Promise.all([
+      const [gradesRes, scheduleRes, pointsRes, announcementsRes, supportRes, detailsRes] = await Promise.all([
         axios.get(`${API_URL}/api/grades/student/${user?.username}`),
         axios.get(`${API_URL}/api/students/${user.id}/schedule`),
         axios.get(`${API_URL}/api/training-points/student/${user?.username}`).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/api/announcements/student/${user?.username}`).catch(() => ({ data: [] })),
-        axios.get(`${API_URL}/api/support/student/${user?.username}`).catch(() => ({ data: [] }))
+        axios.get(`${API_URL}/api/support/student/${user?.username}`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/api/students/${user?.username}/details`).catch(() => ({ data: [] }))
       ]);
 
       const grades = gradesRes.data;
@@ -90,6 +88,9 @@ function StudentOverview({ user, setActiveMenu }) {
       const pointsData = pointsRes.data || [];
       const announcementsData = announcementsRes.data || [];
       const supportData = supportRes.data || [];
+      
+      const studentDetails = detailsRes.data && detailsRes.data.length > 0 ? detailsRes.data[0] : {};
+      const requiredCredits = studentDetails.TinChiYeuCau || 120;
 
       setRecentRequests(supportData.slice(0, 2));
       setRecentAnnouncements(announcementsData.slice(0, 3));
@@ -122,6 +123,7 @@ function StudentOverview({ user, setActiveMenu }) {
       let highestSemGPA = 0;
 
       const processedChartData = [];
+      const passedSubjects = new Set();
 
       sortedSemesters.forEach(hk => {
         let semAttemptedCredits = 0;
@@ -140,7 +142,10 @@ function StudentOverview({ user, setActiveMenu }) {
             totalGradePointsAttempted += gpa * tinChi;
 
             if (grade.DiemChu !== 'F' && grade.DiemChu !== 'F+') {
-              totalAccumulatedCredits += tinChi;
+              if (!passedSubjects.has(grade.MaMonHoc)) {
+                totalAccumulatedCredits += tinChi;
+                passedSubjects.add(grade.MaMonHoc);
+              }
             }
           }
         });
@@ -158,13 +163,16 @@ function StudentOverview({ user, setActiveMenu }) {
         });
       });
 
-      const currentCumGPA = totalCreditsAttempted > 0 ? (totalGradePointsAttempted / totalCreditsAttempted).toFixed(2) : '0.00';
+      const finalGPA = totalCreditsAttempted > 0 ? (totalGradePointsAttempted / totalCreditsAttempted).toFixed(2) : '0.00';
+
+      setChartData(processedChartData);
 
       setStats({
         tongHocKy: sortedSemesters.length,
         tongTinChi: totalAccumulatedCredits,
         maxGPA: highestSemGPA.toFixed(2),
-        currentGPA: currentCumGPA
+        currentGPA: finalGPA,
+        tinChiYeuCau: requiredCredits
       });
 
       setChartData(processedChartData);
@@ -205,11 +213,15 @@ function StudentOverview({ user, setActiveMenu }) {
       setTodayClasses(classesToday);
 
     } catch (error) {
-      console.error('Lỗi khi tải dữ liệu tổng quan:', error);
+      console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   if (loading) {
     return <StudentOverviewSkeleton />;
@@ -238,9 +250,12 @@ function StudentOverview({ user, setActiveMenu }) {
           <p className="text-[#6B7280] font-bold text-[10px] sm:text-xs uppercase tracking-wide mt-1 text-center">GPA tích lũy</p>
         </motion.div>
 
-        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
-          <h3 className="text-2xl sm:text-3xl font-extrabold mb-1 text-black">{stats.tongTinChi}</h3>
+        <motion.div onClick={() => setActiveMenu('xemdiem')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors w-full">
+          <h3 className="text-2xl sm:text-3xl font-extrabold mb-1 text-black">{stats.tongTinChi}<span className="text-sm text-gray-400 font-medium tracking-normal ml-1">/{stats.tinChiYeuCau}</span></h3>
           <p className="text-[#6B7280] font-bold text-[10px] sm:text-xs uppercase tracking-wide mt-1 text-center">Tín chỉ tích lũy</p>
+          <div className="w-full bg-gray-100 rounded-full h-1.5 mt-3 overflow-hidden">
+            <div className="bg-amber-500 h-1.5 rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.min((stats.tongTinChi / (stats.tinChiYeuCau || 120)) * 100, 100)}%` }}></div>
+          </div>
         </motion.div>
 
         <motion.div onClick={() => setActiveMenu('renluyen')} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
