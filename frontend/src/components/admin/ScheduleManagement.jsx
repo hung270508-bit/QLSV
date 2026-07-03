@@ -306,6 +306,20 @@ const VietnameseDatePicker = ({ value, onChange, error }) => {
 };
 
 // ================================================================
+// HÀM HỖ TRỢ TÌM KIẾM KHÔNG DẤU
+// ================================================================
+const removeVietnameseTones = (str) => {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+};
+
+// ================================================================
 // COMPONENT CHÍNH
 // ================================================================
 function ScheduleManagement() {
@@ -316,6 +330,7 @@ function ScheduleManagement() {
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [editingLhpSchedule, setEditingLhpSchedule] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [warningPopup, setWarningPopup] = useState({ show: false, title: '', message: '' });
   const [expandedGroups, setExpandedGroups] = useState({});
 
@@ -463,11 +478,14 @@ function ScheduleManagement() {
   }, [isRecurring, formData, selectedLHPInfo]);
 
   const groupedSchedules = useMemo(() => {
-    const filtered = schedules.filter(s =>
-      s.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.TenGiangVien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.MaLopHocPhan?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const query = removeVietnameseTones(searchTerm);
+    const filtered = schedules.filter(s => {
+      if (!query) return true;
+      const tenMon = removeVietnameseTones(s.TenMonHoc);
+      const tenGV = removeVietnameseTones(s.TenGiangVien);
+      const maLHP = removeVietnameseTones(s.MaLopHocPhan);
+      return tenMon.includes(query) || tenGV.includes(query) || maLHP.includes(query);
+    });
     const groups = {};
     filtered.forEach(s => {
       const lhpKey = s.MaLopHocPhan || 'Chưa xác định LHP';
@@ -1067,11 +1085,43 @@ function ScheduleManagement() {
       </div>
 
       <div className="flex flex-col md:flex-row items-center gap-4">
-        <div className="relative w-full md:flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-          <input type="text" placeholder="Tìm kiếm mã lớp học phần, tên môn..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl shadow-sm outline-none focus:border-[#F4C542] text-sm font-medium"
-          />
+        <div className="relative w-full md:flex-1 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm mã lớp học phần, tên môn..."
+              value={searchInput}
+              onChange={e => {
+                setSearchInput(e.target.value);
+                if (e.target.value === '') setSearchTerm('');
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') setSearchTerm(searchInput);
+              }}
+              className="w-full pl-12 pr-10 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl shadow-sm outline-none focus:border-[#F4C542] text-sm font-medium"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchTerm(searchInput)}
+            className="bg-[#F4C542] text-[#152238] px-6 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:brightness-105 transition-all shrink-0"
+          >
+            <Search className="w-4 h-4" />
+            Tìm kiếm
+          </button>
         </div>
         <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
           <button onClick={toggleExpandAll} className="w-full md:w-auto bg-[#F7F8FA] text-[#4B5563] px-4 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-[#E5E7EB] hover:bg-gray-200 transition-all shadow-sm">

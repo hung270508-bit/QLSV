@@ -6,6 +6,20 @@ import { TableSkeleton } from '../common/AdminSkeleton';
 import ModalPortal, { ConfirmDialog, SuccessDialog, ErrorDialog, Toast } from '../common/ModalPortal';
 import API_URL from '../../api';
 
+// ================================================================
+// HÀM HỖ TRỢ TÌM KIẾM KHÔNG DẤU
+// ================================================================
+const removeVietnameseTones = (str) => {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+};
+
 function TeachingAssignment() {
   const [assignments, setAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -19,7 +33,7 @@ function TeachingAssignment() {
 
   // Search State
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchGV, setSearchGV] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   // Dialog & Toast State
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -169,22 +183,31 @@ function TeachingAssignment() {
       }
     }
 
-    // Ràng buộc: Lớp sinh hoạt phải có >= 20 sinh viên
+    // Ràng buộc: Lớp sinh hoạt phải có >= 20 sinh viên và xác định sĩ số tối thiểu
+    let minSiSo = 20;
     if (formData.MaLop) {
       const selectedClass = classes.find(c => String(c.MaLop).trim() === String(formData.MaLop).trim());
-      if (selectedClass && selectedClass.SoSinhVien < 20) {
-        errors.MaLop = `Lớp này chỉ có ${selectedClass.SoSinhVien} sinh viên, không đủ điều kiện (tối thiểu 20 sinh viên).`;
+      if (selectedClass) {
+        if (selectedClass.SoSinhVien < 20) {
+          errors.MaLop = `Lớp này chỉ có ${selectedClass.SoSinhVien} sinh viên, không đủ điều kiện (tối thiểu 20 sinh viên).`;
+        } else {
+          minSiSo = selectedClass.SoSinhVien;
+        }
       }
     }
 
-    // Ràng buộc Sĩ số: Phải là SỐ NGUYÊN và nằm trong khoảng 20 - 80
+    // Ràng buộc Sĩ số: Phải là SỐ NGUYÊN và nằm trong khoảng minSiSo - 80
     const siSo = Number(formData.SoLuongToiDa);
     if (!formData.SoLuongToiDa || isNaN(siSo)) {
       errors.SoLuongToiDa = 'Vui lòng nhập Sĩ số.';
     } else if (!Number.isInteger(siSo)) {
       errors.SoLuongToiDa = 'Sĩ số bắt buộc phải là số nguyên.';
-    } else if (siSo < 20 || siSo > 80) {
-      errors.SoLuongToiDa = 'Sĩ số phải từ 20 đến 80 sinh viên.';
+    } else if (siSo < minSiSo || siSo > 80) {
+      if (minSiSo > 20 && siSo < minSiSo) {
+        errors.SoLuongToiDa = `Sĩ số lớp học phần (${siSo}) không được nhỏ hơn số sinh viên thực tế của lớp ${formData.MaLop} (${minSiSo} SV).`;
+      } else {
+        errors.SoLuongToiDa = `Sĩ số phải từ ${minSiSo} đến 80 sinh viên.`;
+      }
     }
 
     if (!hocKySo || hocKySo < 1 || hocKySo > 3) errors.HocKy = 'Vui lòng chọn Học kỳ hợp lệ.';
@@ -318,20 +341,17 @@ function TeachingAssignment() {
     setFormErrors({});
   };
 
-  const filteredAssignments = assignments.filter(a => {
-    const searchStr = searchTerm.toLowerCase();
-    const gvStr = searchGV.toLowerCase();
-
-    const matchSearch =
-      (a.TenMonHoc && a.TenMonHoc.toLowerCase().includes(searchStr)) ||
-      (a.MaLopHocPhan && a.MaLopHocPhan.toLowerCase().includes(searchStr));
-
-    const matchGV =
-      !searchGV ||
-      (a.TenGiangVien && a.TenGiangVien.toLowerCase().includes(gvStr));
-
-    return matchSearch && matchGV;
-  });
+  const filteredAssignments = useMemo(() => {
+    const query = removeVietnameseTones(searchTerm);
+    return assignments.filter(a => {
+      if (!query) return true;
+      const tenMon = removeVietnameseTones(a.TenMonHoc);
+      const maLHP = removeVietnameseTones(a.MaLopHocPhan);
+      const tenGV = removeVietnameseTones(a.TenGiangVien);
+      const maLop = removeVietnameseTones(a.MaLop);
+      return tenMon.includes(query) || maLHP.includes(query) || tenGV.includes(query) || maLop.includes(query);
+    });
+  }, [assignments, searchTerm]);
 
   if (loading) {
     return <TableSkeleton columns={7} rows={5} />;
@@ -374,15 +394,43 @@ function TeachingAssignment() {
 
       {/* Box Tìm Kiếm */}
       <div className="bg-[#FFFFFF] rounded-2xl shadow-md border border-[#E5E7EB] p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-            <input type="text" placeholder="Tìm theo Mã LHP hoặc Tên Môn..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-all text-gray-700" />
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm Mã LHP, Tên môn, Giảng viên, Lớp..."
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                if (e.target.value === '') setSearchTerm('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setSearchTerm(searchInput);
+              }}
+              className="w-full pl-12 pr-10 py-3.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-all text-gray-700 font-medium"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <div className="relative flex-1">
-            <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-            <input type="text" placeholder="Lọc theo Tên Giảng Viên..." value={searchGV} onChange={(e) => setSearchGV(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] focus:bg-[#FFFFFF] transition-all text-gray-700" />
-          </div>
+          <button
+            type="button"
+            onClick={() => setSearchTerm(searchInput)}
+            className="w-full md:w-auto bg-[#F4C542] text-[#152238] px-6 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:brightness-105 transition-all shrink-0 cursor-pointer"
+          >
+            <Search className="w-4 h-4" />
+            Tìm kiếm
+          </button>
         </div>
       </div>
 
@@ -572,7 +620,16 @@ function TeachingAssignment() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
-                      <select disabled={!formData.MaMonHoc} value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all disabled:opacity-50 text-gray-700 font-medium cursor-pointer">
+                      <select disabled={!formData.MaMonHoc} value={formData.MaLop} onChange={e => {
+                        const selectedLop = e.target.value;
+                        const foundClass = classes.find(c => String(c.MaLop).trim() === String(selectedLop).trim());
+                        let newSiSo = formData.SoLuongToiDa;
+                        if (foundClass && Number(newSiSo) < foundClass.SoSinhVien) {
+                          newSiSo = Math.min(80, Math.max(foundClass.SoSinhVien, Number(newSiSo)));
+                        }
+                        setFormData({ ...formData, MaLop: selectedLop, SoLuongToiDa: newSiSo });
+                        setFormErrors(prev => ({ ...prev, MaLop: '', SoLuongToiDa: '' }));
+                      }} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all disabled:opacity-50 text-gray-700 font-medium cursor-pointer">
                         <option value="">
                           {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMonHoc === 'Đại cương'
                             ? '-- Lớp tự do (Mở cho toàn trường không giới hạn) --'
@@ -605,9 +662,20 @@ function TeachingAssignment() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#6B7280] uppercase mb-2">Sĩ số (20 - 80) <span className="text-[#EF4444]">*</span></label>
-                        <input type="number" min="20" max="80" step="1" onKeyDown={(e) => { if (e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => { setFormData({ ...formData, SoLuongToiDa: e.target.value }); setFormErrors({ ...formErrors, SoLuongToiDa: '' }) }} className={`w-full p-3 bg-[#FFFFFF] border-2 rounded-xl font-bold text-[#F4C542] outline-none focus:border-[#F4C542] ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
-                        {formErrors.SoLuongToiDa && <p className="text-[#EF4444] text-sm mt-1">{formErrors.SoLuongToiDa}</p>}
+                        {(() => {
+                          const selectedClass = classes.find(c => String(c.MaLop).trim() === String(formData.MaLop || '').trim());
+                          const minSiSo = selectedClass ? Math.max(20, selectedClass.SoSinhVien) : 20;
+                          return (
+                            <>
+                              <label className="block text-xs font-bold text-[#6B7280] uppercase mb-2">
+                                Sĩ số ({minSiSo} - 80) <span className="text-[#EF4444]">*</span>
+                              </label>
+                              <input type="number" min={minSiSo} max="80" step="1" onKeyDown={(e) => { if (e.key === '.' || e.key === ',' || e.key === 'e') e.preventDefault(); }} value={formData.SoLuongToiDa} onChange={e => { setFormData({ ...formData, SoLuongToiDa: e.target.value }); setFormErrors({ ...formErrors, SoLuongToiDa: '' }) }} className={`w-full p-3 bg-[#FFFFFF] border-2 rounded-xl font-bold text-[#F4C542] outline-none focus:border-[#F4C542] ${formErrors.SoLuongToiDa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB]'}`} />
+                              {selectedClass && <p className="text-xs text-[#3B82F6] font-medium mt-1">Lớp {selectedClass.MaLop} có {selectedClass.SoSinhVien} SV (sĩ số tối thiểu là {minSiSo}).</p>}
+                              {formErrors.SoLuongToiDa && <p className="text-[#EF4444] text-sm mt-1">{formErrors.SoLuongToiDa}</p>}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 

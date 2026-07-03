@@ -1509,13 +1509,14 @@ app.post('/api/teaching-assignments', (req, res) => {
     const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
     const finalPhamVi = PhamViDangKy || 'THEO_KHOA';
 
-    db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, PhamViDangKy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40, finalPhamVi], (err) => {
-        if (err) {
-            if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(409).json({ success: false, message: 'Mã lớp học phần đã tồn tại, vui lòng thử lại!' });
+    const proceedInsert = () => {
+        db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, PhamViDangKy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40, finalPhamVi], (err) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.status(409).json({ success: false, message: 'Mã lớp học phần đã tồn tại, vui lòng thử lại!' });
+                }
+                return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
             }
-            return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
-        }
 
             if (finalMaLop) {
                 db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
@@ -1531,6 +1532,19 @@ app.post('/api/teaching-assignments', (req, res) => {
                 res.json({ success: true, message: 'Tạo Lớp tự do thành công (Sinh viên phải tự đăng ký)!' });
             }
         });
+    };
+
+    if (finalMaLop) {
+        db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
+            const svCount = resCount && resCount[0] ? resCount[0].count : 0;
+            if (Number(SoLuongToiDa || 40) < svCount) {
+                return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+            }
+            proceedInsert();
+        });
+    } else {
+        proceedInsert();
+    }
 });
 
 app.put('/api/teaching-assignments/:id/toggle-lock', (req, res) => {
@@ -1558,22 +1572,36 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
         const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
         const finalPhamVi = PhamViDangKy || 'THEO_KHOA';
 
-        db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=?, PhamViDangKy=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, finalPhamVi, req.params.id], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+        const proceedUpdate = () => {
+            db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=?, PhamViDangKy=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, finalPhamVi, req.params.id], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
 
-            db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
-                if (finalMaLop) {
-                    db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
-                        if (!err && students.length > 0) {
-                            students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); });
-                        }
-                        res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách mới thành công!' });
-                    });
-                } else {
-                    res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' });
-                }
+                db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
+                    if (finalMaLop) {
+                        db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
+                            if (!err && students.length > 0) {
+                                students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); });
+                            }
+                            res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách mới thành công!' });
+                        });
+                    } else {
+                        res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' });
+                    }
+                });
             });
-        });
+        };
+
+        if (finalMaLop) {
+            db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
+                const svCount = resCount && resCount[0] ? resCount[0].count : 0;
+                if (Number(SoLuongToiDa || 40) < svCount) {
+                    return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+                }
+                proceedUpdate();
+            });
+        } else {
+            proceedUpdate();
+        }
     });
 });
 
