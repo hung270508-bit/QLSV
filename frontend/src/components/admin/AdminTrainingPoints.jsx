@@ -227,7 +227,7 @@ function AdminTrainingPoints() {
 
   const handleNgayChange = (field, value) => {
     setPeriodFormErrors(prev => ({ ...prev, [field]: '' }));
-    
+
     // Luôn cập nhật giá trị vào state để UI cho phép chọn ngày
     setPeriodForm(prev => ({ ...prev, [field]: value }));
 
@@ -463,8 +463,8 @@ function AdminTrainingPoints() {
   // Tạo map chi tiết tiêu chí sinh viên tự đánh giá để hiển thị breakdown
   const detailsMap = {};
   recordDetails.forEach(d => {
-    detailsMap[d.MaTieuChi] = { 
-      diem: d.DiemChon, 
+    detailsMap[d.MaTieuChi] = {
+      diem: d.DiemChon,
       index: d.ChiSoOption,
       Files: d.MinhChung ? JSON.parse(d.MinhChung) : []
     };
@@ -865,7 +865,7 @@ function AdminTrainingPoints() {
                         {periodFormErrors.NgayKetThuc ? (
                           <p className="text-[#EF4444] text-xs mt-1.5 font-medium flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayKetThuc}</p>
                         ) : (
-                          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Phải sau hoặc bằng Ngày bắt đầu.</p>
+                          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> Phải sau ngày bắt đầu ít nhất 1 ngày.</p>
                         )}
                       </div>
                     </div>

@@ -648,7 +648,7 @@ const hasActiveFilters = filters.facultyFilter || searchTerm;
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" onKeyDown={(e) => {
+            <form noValidate onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto" onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
                 handleSubmit(e);
