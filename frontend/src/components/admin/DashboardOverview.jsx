@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, BookOpen, Building2, GraduationCap, Activity, ArrowUpRight } from 'lucide-react';
 import axios from 'axios';
+import Pagination from '../common/Pagination';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer
@@ -10,13 +11,13 @@ import {
 
 /* ─── Animation variants ─────────────────────────────────────────── */
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.45, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] } })
+  hidden: { opacity: 0, y: 20 },
+  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.35, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] } })
 };
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.92 },
-  show: (i = 0) => ({ opacity: 1, scale: 1, transition: { duration: 0.4, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] } })
+  show: (i = 0) => ({ opacity: 1, scale: 1, transition: { duration: 0.3, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] } })
 };
 
 /* ─── Custom Tooltip ──────────────────────────────────────────────── */
@@ -63,17 +64,23 @@ const StatCard = ({ stat, index, onNavigate }) => {
       variants={scaleIn}
       initial="hidden"
       animate="show"
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={{ y: -6, boxShadow: "0 15px 30px -5px rgba(0, 0, 0, 0.05)" }}
+      whileTap={{ scale: 0.96 }}
       onClick={() => onNavigate?.(stat.menuId)}
-      className="relative bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] overflow-hidden cursor-pointer group"
+      className="relative bg-[#FFFFFF] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-[#E5E7EB] overflow-hidden cursor-pointer group transition-all duration-300"
     >
-      <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-4 ${stat.bgColor}`}>
-        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.iconColor}`} />
+      <div className="flex justify-between items-start">
+        <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-4 ${stat.bgColor} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+          <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.iconColor}`} />
+        </div>
+        <div className="bg-gray-50 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+          <ArrowUpRight className="w-4 h-4 text-gray-400" />
+        </div>
       </div>
 
-      <p className="text-xl sm:text-3xl font-extrabold text-[#1F2937] tracking-tight">{stat.value}</p>
-      <p className="text-xs text-gray-300 font-medium mt-0.5 sm:mt-1 leading-tight">{stat.title}</p>
+      <p className="text-xl sm:text-3xl font-extrabold text-[#1F2937] tracking-tight group-hover:text-[#F4C542] transition-colors duration-300">{stat.value}</p>
+      <p className="text-xs text-gray-400 font-medium mt-0.5 sm:mt-1 leading-tight">{stat.title}</p>
+      <div className="absolute bottom-0 left-0 h-1 bg-[#F4C542] w-0 group-hover:w-full transition-all duration-500 ease-out" />
     </motion.div>
   );
 };
@@ -93,14 +100,65 @@ const Skeleton = () => (
   </div>
 );
 
+/* ─── Custom Bar Shape ────────────────────────────────────────────── */
+const BouncyBarSegment = (props) => {
+  const { x, y, width, height, fill, index, radius, isBouncy = true, isInitialRender = true } = props;
+  const r = radius && Array.isArray(radius) ? radius[0] : 0;
+  
+  if (width == null || height == null || height === 0) return null;
+
+  const yBottom = y + height;
+  const rSafe = Math.min(r, width / 2, height / 2);
+
+  const initialD = `M${x},${yBottom} L${x},${yBottom} Q${x},${yBottom} ${x + rSafe},${yBottom} L${x + width - rSafe},${yBottom} Q${x + width},${yBottom} ${x + width},${yBottom} L${x + width},${yBottom} Z`;
+
+  const animateD = `M${x},${yBottom} L${x},${y + rSafe} Q${x},${y} ${x + rSafe},${y} L${x + width - rSafe},${y} Q${x + width},${y} ${x + width},${y + rSafe} L${x + width},${yBottom} Z`;
+
+  const initialPath = isInitialRender ? initialD : animateD;
+
+  return (
+    <motion.path
+      fill={fill}
+      initial={{ d: initialPath }}
+      animate={{ d: animateD }}
+      transition={isBouncy ? {
+        type: 'spring',
+        stiffness: 250,
+        damping: 14,
+        delay: 0.3 + index * 0.12
+      } : {
+        duration: 0.5,
+        ease: "easeOut",
+        delay: 0.3 + index * 0.12
+      }}
+    />
+  );
+};
+
 /* ─── Main Component ─────────────────────────────────────────────── */
 function DashboardOverview({ onNavigate }) {
   const [stats, setStats] = useState({ totalStudents: 0, totalSubjects: 0, totalClasses: 0, totalTeachers: 0 });
   const [facultyStats, setFacultyStats] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
-  const [activeTab, setActiveTab] = useState('students');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('students');
+  const [listCurrentPage, setListCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const [isInitialRender, setIsInitialRender] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialRender(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setListCurrentPage(1);
+  };
 
   useEffect(() => { fetchDashboardData(); }, []);
 
@@ -166,6 +224,11 @@ function DashboardOverview({ onNavigate }) {
     { label: 'Lớp học', color: 'bg-yellow-400', show: hasLopHoc },
   ].filter(item => item.show);
 
+  const currentList = activeTab === 'students' ? students : teachers;
+  const totalPages = Math.ceil(currentList.length / itemsPerPage);
+  const currentStudents = students.slice((listCurrentPage - 1) * itemsPerPage, listCurrentPage * itemsPerPage);
+  const currentTeachers = teachers.slice((listCurrentPage - 1) * itemsPerPage, listCurrentPage * itemsPerPage);
+
   if (loading) return <Skeleton />;
 
   return (
@@ -217,7 +280,7 @@ function DashboardOverview({ onNavigate }) {
           </div>
 
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%" debounce={200}>
+            <ResponsiveContainer width="100%" height="100%" debounce={10}>
               <BarChart data={top5ChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="20%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                 <XAxis
@@ -230,9 +293,9 @@ function DashboardOverview({ onNavigate }) {
                 />
                 <YAxis tick={false} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(28,28,30,0.04)' }} />
-                <Bar dataKey="lopHoc" stackId="a" fill="#8697A6" name="Lớp học" isAnimationActive={true} animationDuration={800} barSize={40} />
-                <Bar dataKey="giangVien" stackId="a" fill="#152238" name="Giảng viên" isAnimationActive={true} animationDuration={800} />
-                <Bar dataKey="sinhVien" stackId="a" fill="#F4C542" name="Sinh viên" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={800} />
+                <Bar dataKey="lopHoc" stackId="a" fill="#8697A6" name="Lớp học" shape={<BouncyBarSegment isBouncy={false} isInitialRender={isInitialRender} />} isAnimationActive={false} barSize={40} />
+                <Bar dataKey="giangVien" stackId="a" fill="#152238" name="Giảng viên" shape={<BouncyBarSegment isBouncy={false} isInitialRender={isInitialRender} />} isAnimationActive={false} />
+                <Bar dataKey="sinhVien" stackId="a" fill="#F4C542" name="Sinh viên" radius={[8, 8, 0, 0]} shape={<BouncyBarSegment isBouncy={true} isInitialRender={isInitialRender} />} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -252,27 +315,31 @@ function DashboardOverview({ onNavigate }) {
           <div className="flex h-72 gap-4">
             {/* Pie */}
             <div className="w-[45%] relative">
-              <ResponsiveContainer width="100%" height="100%" debounce={200}>
-                <PieChart>
-                  <Pie
-                    data={facultyStudentData}
-                    cx="50%" cy="50%"
-                    outerRadius={90} innerRadius={52}
-                    dataKey="value"
-                    labelLine={false}
-                    isAnimationActive
-                    animationBegin={200}
-                    animationDuration={900}
-                    animationEasing="ease-out"
-                    stroke="none"
-                  >
-                    {facultyStudentData.map((entry, i) => (
-                      <Cell key={`cell-${i}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomPieTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
+              <motion.div 
+                className="w-full h-full"
+                initial={isInitialRender ? { scale: 0, rotate: -120 } : { scale: 1, rotate: 0 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 150, damping: 14, delay: 0.3 }}
+              >
+                <ResponsiveContainer width="100%" height="100%" debounce={10}>
+                  <PieChart>
+                    <Pie
+                      data={facultyStudentData}
+                      cx="50%" cy="50%"
+                      outerRadius={90} innerRadius={55}
+                      dataKey="value"
+                      labelLine={false}
+                      isAnimationActive={false}
+                      stroke="none"
+                    >
+                      {facultyStudentData.map((entry, i) => (
+                        <Cell key={`cell-${i}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </motion.div>
             </div>
 
             {/* Legend */}
@@ -282,7 +349,7 @@ function DashboardOverview({ onNavigate }) {
                 return (
                   <motion.div
                     key={i}
-                    initial={{ opacity: 0, x: 12 }}
+                    initial={isInitialRender ? { opacity: 0, x: 12 } : { opacity: 1, x: 0 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.04 }}
                     className="flex items-center gap-2 group"
@@ -299,7 +366,7 @@ function DashboardOverview({ onNavigate }) {
                           style={{ backgroundColor: item.color }}
                           initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.6, delay: 0.4 + i * 0.04 }}
+                          transition={{ duration: 0.4, delay: 0.2 + i * 0.03, ease: 'easeOut' }}
                         />
                       </div>
                     </div>
@@ -329,7 +396,7 @@ function DashboardOverview({ onNavigate }) {
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`relative px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors duration-200 ${activeTab === tab.id ? 'text-[#F4C542]' : 'text-[#6B7280] hover:text-gray-700'
                   }`}
               >
@@ -357,14 +424,14 @@ function DashboardOverview({ onNavigate }) {
             >
               {/* Mobile: card list */}
               <div className="block sm:hidden">
-                {students.length > 0 ? students.slice(0, 10).map((student, i) => (
-                  <div key={student.MSSV} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors">
-                    <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0">{student.MSSV}</span>
+                {currentStudents.length > 0 ? currentStudents.map((student, i) => (
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} key={student.MSSV} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors group cursor-pointer">
+                    <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0 group-hover:bg-[#F4C542] group-hover:text-white transition-colors">{student.MSSV}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-700 truncate">{student.HoTen}</p>
+                      <p className="text-sm font-semibold text-gray-700 truncate group-hover:text-[#F4C542] transition-colors">{student.HoTen}</p>
                       <p className="text-xs text-[#6B7280]">{student.TenLop || '—'} · {student.GioiTinh || '—'}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 )) : <p className="py-8 text-center text-gray-300 text-sm">Chưa có sinh viên nào</p>}
               </div>
               {/* Desktop: table */}
@@ -378,12 +445,12 @@ function DashboardOverview({ onNavigate }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.length > 0 ? (
-                    students.slice(0, 10).map((student, i) => (
+                  {currentStudents.length > 0 ? (
+                    currentStudents.map((student, i) => (
                       <motion.tr key={student.MSSV} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150">
-                        <td className="py-3.5 px-6"><span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg">{student.MSSV}</span></td>
-                        <td className="py-3.5 px-6 text-sm font-semibold text-gray-700">{student.HoTen}</td>
+                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150 group cursor-pointer">
+                        <td className="py-3.5 px-6"><span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg group-hover:bg-[#F4C542] group-hover:text-white transition-colors">{student.MSSV}</span></td>
+                        <td className="py-3.5 px-6 text-sm font-semibold text-gray-700 group-hover:text-[#F4C542] transition-colors">{student.HoTen}</td>
                         <td className="py-3.5 px-6 text-sm text-[#6B7280]">{student.TenLop || '—'}</td>
                         <td className="py-3.5 px-6">
                           <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${student.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-[#3B82F6]' : 'bg-pink-50 text-pink-600'}`}>{student.GioiTinh || '—'}</span>
@@ -406,14 +473,14 @@ function DashboardOverview({ onNavigate }) {
             >
               {/* Mobile: card list */}
               <div className="block sm:hidden">
-                {teachers.length > 0 ? teachers.slice(0, 10).map((teacher, i) => (
-                  <div key={teacher.MaGiangVien} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors">
-                    <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0">{teacher.MaGiangVien}</span>
+                {currentTeachers.length > 0 ? currentTeachers.map((teacher, i) => (
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} key={teacher.MaGiangVien} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors group cursor-pointer">
+                    <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0 group-hover:bg-[#F4C542] group-hover:text-white transition-colors">{teacher.MaGiangVien}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-700 truncate">{teacher.HoTen}</p>
+                      <p className="text-sm font-semibold text-gray-700 truncate group-hover:text-[#F4C542] transition-colors">{teacher.HoTen}</p>
                       <p className="text-xs text-[#6B7280] truncate">{teacher.TenKhoa || '—'} · {teacher.Email || '—'}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 )) : <p className="py-8 text-center text-gray-300 text-sm">Chưa có giảng viên nào</p>}
               </div>
               {/* Desktop: table */}
@@ -427,12 +494,12 @@ function DashboardOverview({ onNavigate }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {teachers.length > 0 ? (
-                    teachers.slice(0, 10).map((teacher, i) => (
+                  {currentTeachers.length > 0 ? (
+                    currentTeachers.map((teacher, i) => (
                       <motion.tr key={teacher.MaGiangVien} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150">
-                        <td className="py-3.5 px-6"><span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg">{teacher.MaGiangVien}</span></td>
-                        <td className="py-3.5 px-6 text-sm font-semibold text-gray-700">{teacher.HoTen}</td>
+                        className="border-b border-gray-50 hover:bg-[#FFF7D6]/40 transition-colors duration-150 group cursor-pointer">
+                        <td className="py-3.5 px-6"><span className="font-mono text-sm font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-0.5 rounded-lg group-hover:bg-[#F4C542] group-hover:text-white transition-colors">{teacher.MaGiangVien}</span></td>
+                        <td className="py-3.5 px-6 text-sm font-semibold text-gray-700 group-hover:text-[#F4C542] transition-colors">{teacher.HoTen}</td>
                         <td className="py-3.5 px-6">
                           <span className="text-xs bg-[#F4C542]/20 text-[#B45309] px-2.5 py-1 rounded-full font-semibold border border-[#FFF7D6]">{teacher.TenKhoa || '—'}</span>
                         </td>
@@ -447,6 +514,17 @@ function DashboardOverview({ onNavigate }) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Pagination control */}
+        {totalPages > 1 && (
+          <div className="border-t border-gray-100 bg-gray-50/50">
+            <Pagination 
+              currentPage={listCurrentPage} 
+              totalPages={totalPages} 
+              onPageChange={setListCurrentPage} 
+            />
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
