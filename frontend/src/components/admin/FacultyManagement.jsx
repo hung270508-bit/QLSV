@@ -599,6 +599,12 @@ function FacultyManagement() {
                         setFormData(prev => ({ ...prev, TinChiYeuCau: val }));
                       }
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        validateAndConfirm();
+                      }
+                    }}
                     onFocus={() => setErrors(prev => ({ ...prev, TinChiYeuCau: '' }))}
                     className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${errors.TinChiYeuCau ? 'border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
                   />
