@@ -1608,17 +1608,17 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
 app.delete('/api/teaching-assignments/:id', (req, res) => {
     db.query('SELECT TrangThaiLich FROM lophocphan WHERE MaLopHocPhan = ?', [req.params.id], (errLock, resLock) => {
         const isChot = resLock && resLock.length > 0 && resLock[0].TrangThaiLich === 'DA_CHOT';
+        if (isChot) {
+            return res.status(400).json({ success: false, message: 'Lớp học phần này ĐÃ CHỐT LỊCH, không thể xóa!' });
+        }
         db.query('SELECT COUNT(*) as count FROM lichhoc WHERE MaLopHocPhan = ?', [req.params.id], (errLich, resLich) => {
             const hasLich = resLich && resLich.length > 0 && resLich[0].count > 0;
-            db.query("SELECT COUNT(*) as count FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối')", [req.params.id], (errDk, resDk) => {
-                const hasDk = resDk && resDk.length > 0 && resDk[0].count > 0;
-                if (isChot || hasLich || hasDk) {
-                    return res.status(400).json({ success: false, message: 'Lớp đã có sinh viên đăng ký hoặc đã được xếp lịch, không được xóa!' });
-                }
-                db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
-                    db.query('DELETE FROM dangky_hocphan WHERE MaLopHocPhan = ?', [req.params.id], () => {
-                        executeDelete('DELETE FROM lophocphan WHERE MaLopHocPhan=?', [req.params.id], res, 'Xóa Lớp HP thành công!', 'Lỗi xóa!');
-                    });
+            if (hasLich) {
+                return res.status(400).json({ success: false, message: 'Lớp học phần này đang được xếp lịch học. Vui lòng xóa lịch học trước khi xóa lớp!' });
+            }
+            db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
+                db.query('DELETE FROM dangky_hocphan WHERE MaLopHocPhan = ?', [req.params.id], () => {
+                    executeDelete('DELETE FROM lophocphan WHERE MaLopHocPhan=?', [req.params.id], res, 'Xóa Lớp HP thành công!', 'Lỗi xóa!');
                 });
             });
         });
@@ -1683,6 +1683,7 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
         )
         AND (
           COALESCE(lhp.PhamViDangKy, 'THEO_KHOA') = 'TOAN_TRUONG'
+          OR mh.LoaiMonHoc = 'Đại cương'
           OR (COALESCE(lhp.PhamViDangKy, 'THEO_KHOA') = 'THEO_KHOA' AND (
                 (lhp.MaLop IS NULL AND mh.MaKhoa = (
                   SELECT l.MaKhoa 

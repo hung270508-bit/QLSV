@@ -501,8 +501,16 @@ function ScheduleManagement() {
         return parsePeriods(a.CaHoc).start - parsePeriods(b.CaHoc).start;
       });
     });
-    // Sắp xếp các nhóm LHP theo Mã lớp học phần
-    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    // Sắp xếp các nhóm LHP theo ID/thời gian mới nhất (nhóm nào vừa thêm lịch học mới sẽ nhảy lên đầu tiên)
+    return Object.entries(groups).sort((a, b) => {
+      const maxIdA = Math.max(...a[1].map(item => Number(item.MaLichHoc) || 0));
+      const maxIdB = Math.max(...b[1].map(item => Number(item.MaLichHoc) || 0));
+      if (maxIdB !== maxIdA) return maxIdB - maxIdA;
+      const timeA = Math.max(...a[1].map(item => new Date(item.NgayTao || 0).getTime()));
+      const timeB = Math.max(...b[1].map(item => new Date(item.NgayTao || 0).getTime()));
+      if (timeB !== timeA) return timeB - timeA;
+      return a[0].localeCompare(b[0]);
+    });
   }, [schedules, searchTerm]);
 
   const toggleGroup = (lhpKey) => {
@@ -523,16 +531,6 @@ function ScheduleManagement() {
       setExpandedGroups(all);
     }
   };
-
-  const hasInitialized = useRef(false);
-  useEffect(() => {
-    if (groupedSchedules.length > 0 && !hasInitialized.current) {
-      hasInitialized.current = true;
-      const initial = {};
-      groupedSchedules.slice(0, 3).forEach(([key]) => { initial[key] = true; });
-      setExpandedGroups(initial);
-    }
-  }, [groupedSchedules]);
 
   // Xóa trắng lỗi Real-time khi User bắt đầu sửa
   const handleFieldChange = (field, value) => {
@@ -1144,11 +1142,22 @@ function ScheduleManagement() {
                 onClick={() => toggleGroup(lhpKey)}
                 className={`px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-gradient-to-r from-amber-50/80 to-yellow-50/40 border-b border-[#E5E7EB]' : 'bg-[#F7F8FA] hover:bg-gray-100/80'}`}
               >
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="font-mono text-xs font-black text-[#B45309] bg-[#FFF7D6] px-3 py-1 rounded-lg border border-[#F4C542]/40 shadow-2xs">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-mono text-xs font-black text-[#B45309] bg-[#FFF7D6] px-3 py-1 rounded-lg border border-[#F4C542]/40 shadow-2xs shrink-0 whitespace-nowrap">
                     {lhpKey}
                   </span>
-                  <h3 className="font-bold text-[#1F2937] text-base">
+                  {first.TrangThaiLich === 'DA_CHOT' ? (
+                    <span className="bg-red-50 text-red-600 text-[11px] font-bold px-2.5 py-0.5 rounded-md border border-red-200 shrink-0 whitespace-nowrap flex items-center gap-1 shadow-2xs" title="Lớp học phần này đã được chốt lịch">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                      Đã chốt
+                    </span>
+                  ) : (
+                    <span className="bg-emerald-50 text-emerald-600 text-[11px] font-bold px-2.5 py-0.5 rounded-md border border-emerald-200 shrink-0 whitespace-nowrap flex items-center gap-1 shadow-2xs" title="Lớp học phần này chưa chốt lịch">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Chưa chốt
+                    </span>
+                  )}
+                  <h3 className="font-bold text-[#1F2937] text-base ml-1">
                     {first.TenMonHoc || 'Môn học chưa xác định'}
                   </h3>
                   {first.SoTinChi ? (
@@ -1163,11 +1172,6 @@ function ScheduleManagement() {
 
                 <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
                   <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
-                    {first.TrangThaiLich === 'DA_CHOT' && (
-                      <span className="bg-red-50 text-red-700 px-2.5 py-1 rounded-md border border-red-200 shadow-2xs">
-                        Đã chốt
-                      </span>
-                    )}
                     <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md border border-gray-200">
                       {first.TenLop || first.MaLop || 'Lớp tự do'} ({first.SiSoThucTe || 0}/{first.SoLuongToiDa || 40} SV)
                     </span>

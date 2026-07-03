@@ -123,16 +123,12 @@ function TeachingAssignment() {
     return teachers.filter(t => t.TrangThai === 'Đang dạy' && String(t.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
   }, [formData.MaKhoa, teachers]);
 
-  // LỌC LỚP:
-  // - Môn Đại cương -> cho phép chọn toàn bộ lớp trong trường (hoặc lớp tự do)
-  // - Môn Chuyên ngành -> chỉ lọc các lớp thuộc đúng khoa phụ trách
+  // LỌC LỚP: Luôn hiển thị chuẩn xác danh sách lớp thuộc đúng khoa đang phụ trách
   const filteredClasses = useMemo(() => {
-    if (formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMonHoc === 'Đại cương' || formData.MaKhoa === 'DAI_CUONG') {
-      return classes;
-    }
     if (!formData.MaKhoa) return [];
+    if (formData.MaKhoa === 'DAI_CUONG') return classes;
     return classes.filter(c => String(c.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
-  }, [formData.PhamViDangKy, formData.LoaiMonHoc, formData.MaKhoa, classes]);
+  }, [formData.MaKhoa, classes]);
 
   // RÀNG BUỘC CỐ ĐỊNH NĂM 2026
   useEffect(() => {
@@ -314,7 +310,7 @@ function TeachingAssignment() {
         setConfirmDialog({
           show: true,
           title: 'Cảnh báo xóa vĩnh viễn (Bước 2/2)',
-          message: 'Hành động này không thể hoàn tác! Bạn có chắc chắn 100% muốn xóa lớp học phần này? (Lưu ý: Chỉ xóa được khi lớp chưa có sinh viên đăng ký và chưa được xếp lịch học)',
+          message: 'Hành động này không thể hoàn tác! Bạn có chắc chắn 100% muốn xóa lớp học phần này? (Lưu ý: Chỉ xóa được khi lớp chưa chốt lịch và đã xóa hết lịch học)',
           action: async () => {
             if (isSubmitting) return;
             setIsSubmitting(true);
@@ -354,7 +350,7 @@ function TeachingAssignment() {
   }, [assignments, searchTerm]);
 
   if (loading) {
-    return <TableSkeleton columns={7} rows={5} />;
+    return <TableSkeleton columns={8} rows={5} />;
   }
 
   return (
@@ -368,20 +364,26 @@ function TeachingAssignment() {
         onClose={() => setToast({ ...toast, show: false })} 
       />
 
-      {/* Header Panel */}
-      <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl shadow-amber-500/10">
-        <div className="flex items-center justify-between">
-          <div className="text-[#152238]">
-            <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
-              <ClipboardCheck className="w-8 h-8" />
-              Quản lý phân công
-            </h2>
-            <p className="text-[#152238]/70 text-lg">Tạo lớp học phần mới và quản lý quy mô sinh viên</p>
+      {/* Header & Stats Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#F4C542] via-[#F5D061] to-[#E5B533] p-8 shadow-xl">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full bg-white/20 blur-2xl pointer-events-none"></div>
+        <div className="absolute bottom-0 right-1/3 -mb-10 w-40 h-40 rounded-full bg-black/5 blur-xl pointer-events-none"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-[#FFFFFF] flex items-center justify-center shadow-lg shrink-0">
+              <ClipboardCheck className="w-8 h-8 text-[#D97706]" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-[#152238] tracking-tight">Quản lý phân công</h1>
+              <p className="text-[#152238]/80 text-sm font-medium mt-1">Tạo lớp học phần mới và quản lý quy mô sinh viên</p>
+            </div>
           </div>
-          <div className="flex gap-3">
+          
+          <div className="flex items-center gap-4 shrink-0">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setShowModal(true)}
               className="flex items-center gap-2 bg-[#FFFFFF] text-[#F4C542] px-6 py-3 rounded-xl font-semibold shadow-lg transition-all"
             >
@@ -441,6 +443,7 @@ function TeachingAssignment() {
             <thead className="bg-gradient-to-r from-amber-50 to-amber-100/60 border-b border-[#FFF7D6]">
               <tr>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Mã LHP</th>
+                <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Trạng thái</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Môn học</th>
                 <th className="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">HK / Năm học</th>
                 <th className="text-center py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Sĩ số</th>
@@ -456,18 +459,23 @@ function TeachingAssignment() {
                     key={assign.MaLopHocPhan}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03 }}
                     className="hover:bg-[#FFF7D6]/40 transition-colors"
                   >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-[#F4C542] bg-[#FFF7D6] px-2.5 py-1 rounded-lg text-sm">{assign.MaLopHocPhan}</span>
-                        {assign.TrangThaiLich === 'DA_CHOT' && (
-                          <span className="bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 flex items-center gap-1" title="Lớp học phần này đã được chốt lịch">
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <span className="font-semibold text-[#152238] bg-[#FFF7D6] border border-[#F4C542]/40 px-3 py-1.5 rounded-lg text-sm shrink-0 whitespace-nowrap">{assign.MaLopHocPhan}</span>
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap text-center">
+                      {assign.TrangThaiLich === 'DA_CHOT' ? (
+                        <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 text-xs font-bold px-3 py-1 rounded-md border border-red-200 shadow-2xs" title="Lớp học phần này đã được chốt lịch">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
                           Đã chốt
-                          </span>
-                        )}
-                      </div>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 text-xs font-bold px-3 py-1 rounded-md border border-emerald-200 shadow-2xs" title="Lớp học phần này chưa chốt lịch">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                          Chưa chốt
+                        </span>
+                      )}
                     </td>
                     <td className="py-4 px-6">
                       <div className="font-semibold text-[#1F2937]">{assign.TenMonHoc}</div>
