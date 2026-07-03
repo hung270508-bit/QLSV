@@ -53,6 +53,7 @@ function TeachingAssignment() {
   });
 
   const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -89,36 +90,35 @@ function TeachingAssignment() {
     return k || { MaKhoa: mon.MaKhoa, TenKhoa: mon.TenKhoa || mon.MaKhoa };
   };
 
-  // Toàn bộ Môn học, gom nhóm theo Khoa phụ trách để dễ tìm (không còn lọc theo Khoa trước)
-  const subjectsByKhoa = useMemo(() => {
-    const groups = {};
-    subjects.forEach(s => {
-      const k = getKhoaCuaMonHoc(s);
-      const key = k ? k.TenKhoa : 'Tất cả khoa (Đại cương)';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(s);
-    });
-    return groups;
-  }, [subjects, khoas]);
+  // LỌC MÔN HỌC THEO KHOA ĐÃ CHỌN
+  const filteredSubjects = useMemo(() => {
+    if (!formData.MaKhoa) return [];
+    if (formData.MaKhoa === 'DAI_CUONG') {
+      return subjects.filter(s => !s.MaKhoa || String(s.MaKhoa).trim() === '');
+    }
+    return subjects.filter(s => String(s.MaKhoa || '').trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
+  }, [formData.MaKhoa, subjects]);
 
   // LỌC GIẢNG VIÊN THEO KHOA PHỤ TRÁCH CỦA MÔN HỌC
   // Lấy đúng giảng viên thuộc khoa của môn học đó, không lấy lung tung từ các khoa khác
   const filteredTeachers = useMemo(() => {
-    if (!formData.MaMonHoc) return [];
-    if (!formData.MaKhoa) return teachers.filter(t => t.TrangThai === 'Đang dạy');
+    if (!formData.MaKhoa) return [];
+    if (formData.MaKhoa === 'DAI_CUONG') {
+      return teachers.filter(t => t.TrangThai === 'Đang dạy');
+    }
     return teachers.filter(t => t.TrangThai === 'Đang dạy' && String(t.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
-  }, [formData.MaMonHoc, formData.MaKhoa, teachers]);
+  }, [formData.MaKhoa, teachers]);
 
   // LỌC LỚP:
   // - Môn Đại cương -> cho phép chọn toàn bộ lớp trong trường (hoặc lớp tự do)
   // - Môn Chuyên ngành -> chỉ lọc các lớp thuộc đúng khoa phụ trách
   const filteredClasses = useMemo(() => {
-    if (formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMon === 'Đại cương' || formData.LoaiMonHoc === 'Đại cương') {
+    if (formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMonHoc === 'Đại cương' || formData.MaKhoa === 'DAI_CUONG') {
       return classes;
     }
     if (!formData.MaKhoa) return [];
     return classes.filter(c => String(c.MaKhoa).trim().toUpperCase() === String(formData.MaKhoa).trim().toUpperCase());
-  }, [formData.PhamViDangKy, formData.LoaiMon, formData.LoaiMonHoc, formData.MaKhoa, classes]);
+  }, [formData.PhamViDangKy, formData.LoaiMonHoc, formData.MaKhoa, classes]);
 
   // RÀNG BUỘC CỐ ĐỊNH NĂM 2026
   useEffect(() => {
@@ -152,8 +152,8 @@ function TeachingAssignment() {
 
   const validateForm = () => {
     const errors = {};
+    if (!formData.MaKhoa) errors.MaKhoa = 'Vui lòng chọn Khoa phụ trách.';
     if (!formData.MaMonHoc) errors.MaMonHoc = 'Vui lòng chọn Môn học.';
-    else if (formData.LoaiMonHoc !== 'Đại cương' && !formData.MaKhoa) errors.MaKhoa = 'Không xác định được Khoa phụ trách của môn học này. Vui lòng kiểm tra lại cấu hình Môn học.';
     if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn Giảng viên.';
 
     // Ràng buộc: Giảng viên không được dạy lại chính lớp A cho cùng 1 môn
@@ -161,10 +161,11 @@ function TeachingAssignment() {
       const isDuplicate = assignments.some(a =>
         String(a.MaGiangVien).trim().toLowerCase() === String(formData.MaGiangVien).trim().toLowerCase() &&
         String(a.MaLop).trim().toLowerCase() === String(formData.MaLop).trim().toLowerCase() &&
-        String(a.MaMonHoc).trim().toLowerCase() === String(formData.MaMonHoc).trim().toLowerCase()
+        String(a.MaMonHoc).trim().toLowerCase() === String(formData.MaMonHoc).trim().toLowerCase() &&
+        String(a.HocKy || '').trim().toLowerCase() === String(formData.HocKy || '').trim().toLowerCase()
       );
       if (isDuplicate) {
-        errors.MaLop = 'Giảng viên này đã được phân công dạy môn này cho lớp đã chọn.';
+        errors.MaLop = 'Giảng viên này đã được phân công dạy môn này cho lớp đã chọn trong học kỳ này.';
       }
     }
 
@@ -192,27 +193,53 @@ function TeachingAssignment() {
     return Object.keys(errors).length === 0;
   };
 
-  // Khi chọn Môn học: tự động suy ra Khoa phụ trách + Loại môn + Phạm vi đăng ký
-  // (Đại cương -> Toàn trường, Chuyên ngành -> Theo Khoa), đồng thời reset GV/Lớp đã chọn trước đó.
+  const handleKhoaChange = (e) => {
+    const maKhoaSelected = e.target.value;
+    if (maKhoaSelected === 'DAI_CUONG') {
+      setFormData(prev => ({
+        ...prev,
+        MaKhoa: 'DAI_CUONG',
+        TenKhoa: 'Tất cả khoa (Đại cương)',
+        LoaiMonHoc: 'Đại cương',
+        PhamViDangKy: 'TOAN_TRUONG',
+        MaMonHoc: '',
+        MaLopHocPhan: '',
+        MaGiangVien: '',
+        MaLop: ''
+      }));
+    } else {
+      const khoaObj = khoas.find(k => String(k.MaKhoa).trim().toUpperCase() === String(maKhoaSelected).trim().toUpperCase());
+      setFormData(prev => ({
+        ...prev,
+        MaKhoa: maKhoaSelected,
+        TenKhoa: khoaObj ? khoaObj.TenKhoa : maKhoaSelected,
+        LoaiMonHoc: '',
+        PhamViDangKy: '',
+        MaMonHoc: '',
+        MaLopHocPhan: '',
+        MaGiangVien: '',
+        MaLop: ''
+      }));
+    }
+    setFormErrors(prev => ({ ...prev, MaKhoa: '', MaMonHoc: '', MaGiangVien: '', MaLop: '' }));
+  };
+
   const handleMonHocChange = (e) => {
     const maMon = e.target.value;
     const mon = subjects.find(s => s.MaMonHoc === maMon);
-    const khoa = getKhoaCuaMonHoc(mon);
-    const loaiMon = mon?.LoaiMonHoc || 'Đại cương';
-    const phamVi = loaiMon === 'Đại cương' ? 'TOAN_TRUONG' : 'THEO_KHOA';
+    const loaiMon = mon?.LoaiMonHoc || mon?.LoaiMon || (formData.MaKhoa === 'DAI_CUONG' ? 'Đại cương' : 'Chuyên ngành');
+    const phamVi = (loaiMon === 'Đại cương' || formData.MaKhoa === 'DAI_CUONG') ? 'TOAN_TRUONG' : 'THEO_KHOA';
 
     setFormData(prev => ({
       ...prev,
       MaMonHoc: maMon,
-      MaKhoa: khoa?.MaKhoa || '',
-      TenKhoa: khoa ? khoa.TenKhoa : (maMon ? 'Tất cả khoa' : ''),
       LoaiMonHoc: maMon ? loaiMon : '',
       PhamViDangKy: maMon ? phamVi : '',
       MaLopHocPhan: '',
       MaGiangVien: '',
       MaLop: ''
     }));
-    setFormErrors(prev => ({ ...prev, MaMonHoc: '', MaKhoa: '', MaGiangVien: '', MaLop: '' }));
+    setFormErrors(prev => ({ ...prev, MaMonHoc: '', MaGiangVien: '', MaLop: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -235,7 +262,8 @@ function TeachingAssignment() {
       title: 'Xác nhận phân công',
       message: 'Bạn có chắc chắn muốn thêm phân công giảng dạy này không?',
       action: async () => {
-        setConfirmDialog({ show: false, action: null });
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
           await axios.post(`${API_URL}/api/teaching-assignments`, payload);
           showToast('Thêm phân công giảng dạy thành công.', 'success');
@@ -243,6 +271,9 @@ function TeachingAssignment() {
           handleCloseModal();
         } catch (error) {
           showToast(error.response?.data?.message || 'Có lỗi xảy ra khi lưu!', 'error');
+        } finally {
+          setIsSubmitting(false);
+          setConfirmDialog({ show: false, action: null });
         }
       }
     });
@@ -260,15 +291,19 @@ function TeachingAssignment() {
         setConfirmDialog({
           show: true,
           title: 'Cảnh báo xóa vĩnh viễn (Bước 2/2)',
-          message: 'Hành động này không thể hoàn tác! Bạn có chắc chắn 100% muốn xóa lớp học phần này? (Lưu ý: Chỉ xóa được khi lớp chưa có sinh viên đăng ký)',
+          message: 'Hành động này không thể hoàn tác! Bạn có chắc chắn 100% muốn xóa lớp học phần này? (Lưu ý: Chỉ xóa được khi lớp chưa có sinh viên đăng ký và chưa được xếp lịch học)',
           action: async () => {
-            setConfirmDialog({ show: false, action: null });
+            if (isSubmitting) return;
+            setIsSubmitting(true);
             try {
               await axios.delete(`${API_URL}/api/teaching-assignments/${id}`);
               showToast('Xóa phân công giảng dạy thành công.', 'success');
               fetchData();
             } catch (error) {
               showToast(error.response?.data?.message || 'Lớp HP đã có dữ liệu ràng buộc, không thể xóa!', 'error');
+            } finally {
+              setIsSubmitting(false);
+              setConfirmDialog({ show: false, action: null });
             }
           }
         });
@@ -398,7 +433,12 @@ function TeachingAssignment() {
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-700 font-medium">
-                      {assign.TenGiangVien}
+                      <div>{assign.TenGiangVien}</div>
+                      {(() => {
+                        const gv = teachers.find(t => t.MaGiangVien === assign.MaGiangVien);
+                        const capBac = assign.CapBacGiangVien || gv?.CapBac;
+                        return capBac ? <span className="inline-block text-xs text-gray-500 font-normal mt-0.5">{capBac}</span> : null;
+                      })()}
                     </td>
                     <td className="py-4 px-6 text-sm text-[#6B7280]">
                       {assign.TenLop || 'Lớp tự do'}
@@ -409,6 +449,10 @@ function TeachingAssignment() {
                           onClick={() => {
                             if (assign.TrangThaiLich === 'DA_CHOT') {
                               showToast('Lớp đã được xếp lịch, không được xóa!', 'error');
+                              return;
+                            }
+                            if (assign.DaXepLich) {
+                              showToast('Lớp đã có lịch học (chưa chốt), vui lòng xóa lịch học trước khi xóa phân công!', 'error');
                               return;
                             }
                             handleDelete(assign.MaLopHocPhan);
@@ -456,25 +500,53 @@ function TeachingAssignment() {
               <div className="p-6 overflow-y-auto custom-scrollbar">
                 <form id="assignment-form" onSubmit={handleSubmit} noValidate className="space-y-6">
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học giảng dạy <span className="text-[#EF4444]">*</span></label>
-                    <select value={formData.MaMonHoc} onChange={handleMonHocChange} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all ${formErrors.MaMonHoc ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
-                      <option value="">-- Chọn Môn học --</option>
-                      {Object.entries(subjectsByKhoa).map(([tenKhoa, subs]) => (
-                        <optgroup key={tenKhoa} label={tenKhoa}>
-                          {subs.map(sub => <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc} ({sub.SoTinChi || 0} TC - {sub.LoaiMonHoc || sub.LoaiMon || 'Đại cương'})</option>)}
-                        </optgroup>
-                      ))}
-                    </select>
-                    {formErrors.MaMonHoc && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaMonHoc}</p>}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa phụ trách <span className="text-[#EF4444]">*</span></label>
+                      <select value={formData.MaKhoa} onChange={handleKhoaChange} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all ${formErrors.MaKhoa ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
+                        <option value="">-- Chọn Khoa --</option>
+                        {khoas.map(k => <option key={k.MaKhoa} value={k.MaKhoa}>[{k.MaKhoa}] {k.TenKhoa}</option>)}
+                      </select>
+                      {formErrors.MaKhoa && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaKhoa}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học giảng dạy <span className="text-[#EF4444]">*</span></label>
+                      <select disabled={!formData.MaKhoa} value={formData.MaMonHoc} onChange={handleMonHocChange} className={`w-full px-4 py-3 bg-[#F7F8FA] border-2 rounded-xl outline-none transition-all disabled:opacity-50 ${formErrors.MaMonHoc ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}>
+                        <option value="">{formData.MaKhoa ? '-- Chọn Môn học --' : '-- Vui lòng chọn Khoa trước --'}</option>
+                        {(() => {
+                          const daiCuongSubs = filteredSubjects.filter(s => (s.LoaiMonHoc || s.LoaiMon) === 'Đại cương');
+                          const chuyenNganhSubs = filteredSubjects.filter(s => (s.LoaiMonHoc || s.LoaiMon) !== 'Đại cương');
+                          return (
+                            <>
+                              {daiCuongSubs.length > 0 && (
+                                <optgroup label="Môn Đại cương (Học toàn trường)">
+                                  {daiCuongSubs.map(sub => (
+                                    <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc} ({sub.SoTinChi || 0} TC)</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {chuyenNganhSubs.length > 0 && (
+                                <optgroup label="Môn Chuyên ngành">
+                                  {chuyenNganhSubs.map(sub => (
+                                    <option key={sub.MaMonHoc} value={sub.MaMonHoc}>[{sub.MaMonHoc}] {sub.TenMonHoc} ({sub.SoTinChi || 0} TC)</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </select>
+                      {formErrors.MaMonHoc && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaMonHoc}</p>}
+                    </div>
                   </div>
 
                   {formData.MaMonHoc && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Khoa</label>
-                        <div className="w-full px-4 py-3 bg-gray-100 border-2 border-[#E5E7EB] rounded-xl text-gray-500 font-medium flex items-center gap-2">
-                          {formData.TenKhoa || '—'}
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Phạm vi đăng ký</label>
+                        <div className="w-full px-4 py-3 bg-gray-100 border-2 border-[#E5E7EB] rounded-xl text-gray-700 font-semibold flex items-center gap-2">
+                          {formData.PhamViDangKy === 'TOAN_TRUONG' ? 'Toàn trường (Mọi SV)' : `Theo khoa (${formData.TenKhoa || 'Chuyên ngành'})`}
                         </div>
                       </div>
                       <div>
@@ -493,7 +565,7 @@ function TeachingAssignment() {
                         {filteredTeachers.length === 0 && formData.MaMonHoc
                           ? <option value="" disabled>{formData.LoaiMonHoc === 'Đại cương' ? 'Chưa có giảng viên nào đang dạy' : 'Khoa này chưa có giảng viên'}</option>
                           : <option value="">-- Chọn giảng viên --</option>}
-                        {filteredTeachers.map(t => (<option key={t.MaGiangVien} value={t.MaGiangVien}>[{t.MaKhoa}] {t.HoTen}</option>))}
+                        {filteredTeachers.map(t => (<option key={t.MaGiangVien} value={t.MaGiangVien}>[{t.MaKhoa}] {t.HoTen} - {t.CapBac || 'Thạc sĩ'}</option>))}
                       </select>
                       {formErrors.MaGiangVien && <p className="text-[#EF4444] text-sm mt-1">{formErrors.MaGiangVien}</p>}
                     </div>
@@ -502,13 +574,13 @@ function TeachingAssignment() {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Lớp sinh hoạt tham gia (Tùy chọn)</label>
                       <select disabled={!formData.MaMonHoc} value={formData.MaLop} onChange={e => { setFormData({ ...formData, MaLop: e.target.value }); setFormErrors(prev => ({ ...prev, MaLop: '' })) }} className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl outline-none focus:border-[#F4C542] transition-all disabled:opacity-50 text-gray-700 font-medium cursor-pointer">
                         <option value="">
-                          {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMon === 'Đại cương' || formData.LoaiMonHoc === 'Đại cương'
+                          {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMonHoc === 'Đại cương'
                             ? '-- Lớp tự do (Mở cho toàn trường không giới hạn) --'
                             : `-- Toàn bộ SV Khoa ${formData.TenKhoa || ''} --`}
                         </option>
                         {filteredClasses.map(c => <option key={c.MaLop} value={c.MaLop}>{c.TenLop} ({c.MaLop}) - {c.SoSinhVien || 0} SV</option>)}
                       </select>
-                      {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMon === 'Đại cương' || formData.LoaiMonHoc === 'Đại cương' ? (
+                      {formData.PhamViDangKy === 'TOAN_TRUONG' || formData.LoaiMonHoc === 'Đại cương' ? (
                         <p className="text-[#3B82F6] text-xs font-medium mt-1.5 flex items-center gap-1">
                           <span></span>Dù chọn Lớp hay Lớp tự do, sinh viên toàn trường đều có thể thấy và đăng ký học.
                         </p>
@@ -551,8 +623,8 @@ function TeachingAssignment() {
                 <button type="button" onClick={handleCloseModal} className="flex-1 py-3 bg-[#FFFFFF] border border-[#E5E7EB] text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-sm">
                   Hủy
                 </button>
-                <button form="assignment-form" type="submit" disabled={!!hocKyError} className="flex-1 py-3 bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                  Xác nhận phân công
+                <button form="assignment-form" type="submit" disabled={!!hocKyError || isSubmitting} className="flex-1 py-3 bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {isSubmitting ? 'Đang xử lý...' : 'Xác nhận phân công'}
                 </button>
               </div>
             </motion.div>
@@ -565,8 +637,9 @@ function TeachingAssignment() {
         show={confirmDialog.show}
         title={confirmDialog.title}
         message={confirmDialog.message}
-        onConfirm={() => confirmDialog.action && confirmDialog.action()}
-        onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+        isSubmitting={isSubmitting}
+        onConfirm={() => confirmDialog.action && !isSubmitting && confirmDialog.action()}
+        onCancel={() => !isSubmitting && setConfirmDialog({ show: false, title: '', message: '', action: null })}
       />
 
       <style dangerouslySetInnerHTML={{
