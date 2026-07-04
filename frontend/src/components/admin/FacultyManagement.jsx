@@ -156,8 +156,14 @@ function FacultyManagement() {
 
     // Kiểm tra tính hợp lệ cơ bản
     const error = validateFacultyName(tenKhoa);
-    if (formData.TinChiYeuCau < 0 || formData.TinChiYeuCau > 300 || !formData.TinChiYeuCau) {
-      tinChiError = 'Tín chỉ yêu cầu phải là số lớn hơn 0 và nhỏ hơn 300';
+    const tinChiStr = String(formData.TinChiYeuCau).trim();
+    if (!tinChiStr) {
+      tinChiError = 'Tín chỉ không được để trống';
+    } else {
+      const tinChi = parseInt(tinChiStr, 10);
+      if (isNaN(tinChi) || tinChi < 120 || tinChi > 150) {
+        tinChiError = 'Tín chỉ yêu cầu phải là số nguyên từ 120 đến 150';
+      }
     }
 
     if (error || tinChiError) {
@@ -248,27 +254,27 @@ function FacultyManagement() {
   };
 
   const filteredAndSortedFaculties = [...faculties]
-    .filter(f => {
-      const searchLower = debouncedSearchTerm.toLowerCase().trim();
-      const searchNoTones = removeVietnameseTones(searchLower);
-      const nameLower = f.TenKhoa.toLowerCase();
-      const nameNoTones = removeVietnameseTones(nameLower);
-      const codeLower = f.MaKhoa.toLowerCase();
+      .filter(f => {
+        const searchLower = debouncedSearchTerm.toLowerCase().trim();
+        const searchNoTones = removeVietnameseTones(searchLower);
+        const nameLower = f.TenKhoa.toLowerCase();
+        const nameNoTones = removeVietnameseTones(nameLower);
+        const codeLower = f.MaKhoa.toLowerCase();
 
-      // If search term is completely empty (not just spaces), show all results
-      if (debouncedSearchTerm === '') return true;
-      // If search term is only spaces, show no results
-      if (!searchLower) return false;
+        // If search term is completely empty (not just spaces), show all results
+        if (debouncedSearchTerm === '') return true;
+        // If search term is only spaces, show no results
+        if (!searchLower) return false;
 
-      return nameLower.includes(searchLower) ||
-        nameNoTones.includes(searchNoTones) ||
-        codeLower.includes(searchLower);
-    })
-    .sort((a, b) => {
-      if (sortBy === 'asc') return a.TenKhoa.localeCompare(b.TenKhoa);
-      if (sortBy === 'desc') return b.TenKhoa.localeCompare(a.TenKhoa);
-      return 0;
-    });
+        return nameLower.includes(searchLower) ||
+          nameNoTones.includes(searchNoTones) ||
+          codeLower.includes(searchLower);
+      })
+      .sort((a, b) => {
+        if (sortBy === 'asc') return a.TenKhoa.localeCompare(b.TenKhoa);
+        if (sortBy === 'desc') return b.TenKhoa.localeCompare(a.TenKhoa);
+        return 0;
+      });
 
   const handleClearSearch = () => {
     setSearchTerm('');
@@ -588,10 +594,22 @@ function FacultyManagement() {
                     Tín chỉ yêu cầu
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="VD: 120"
                     value={formData.TinChiYeuCau}
-                    onChange={(e) => setFormData(prev => ({ ...prev, TinChiYeuCau: parseInt(e.target.value) || '' }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^\d*$/.test(val)) {
+                        setFormData(prev => ({ ...prev, TinChiYeuCau: val }));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        validateAndConfirm();
+                      }
+                    }}
                     onFocus={() => setErrors(prev => ({ ...prev, TinChiYeuCau: '' }))}
                     className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${errors.TinChiYeuCau ? 'border-red-500' : 'border-[#E5E7EB] focus:border-[#F4C542]'}`}
                   />

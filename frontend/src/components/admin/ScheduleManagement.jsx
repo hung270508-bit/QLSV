@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar as CalendarIcon, Plus, Edit, Trash2, Search, X,
@@ -120,7 +120,13 @@ const VietnameseDatePicker = ({ value, onChange, error }) => {
   const [view, setView] = React.useState(getInitialView);
 
   React.useEffect(() => {
-    setTextVal(toDisplay(value));
+    const formatted = toDisplay(value);
+    if (!value && textVal && textVal.length > 0 && textVal.length < 10) {
+      return;
+    }
+    if (formatted !== textVal) {
+      setTextVal(formatted);
+    }
     if (value) {
       const d = new Date(value);
       if (!isNaN(d.getTime())) setView({ year: d.getFullYear(), month: d.getMonth() });
@@ -142,17 +148,18 @@ const VietnameseDatePicker = ({ value, onChange, error }) => {
     setTextVal(input);
     const cleaned = input.replace(/[-.]/g, '/').trim();
     const parts = cleaned.split('/');
-    if (parts.length === 3) {
+    if (parts.length === 3 && parts[2].length === 4) {
       const d = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10);
-      let y = parseInt(parts[2], 10);
-      if (y < 100) y += 2000;
-      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2020 && y <= 2050) {
+      const y = parseInt(parts[2], 10);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
         const yyyymmdd = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         onChange(yyyymmdd);
         setView({ year: y, month: m - 1 });
+      } else {
+        onChange('');
       }
-    } else if (!input) {
+    } else {
       onChange('');
     }
   };
@@ -208,7 +215,7 @@ const VietnameseDatePicker = ({ value, onChange, error }) => {
     <div className="relative w-full" ref={dropdownRef}>
       <input
         type="text"
-        placeholder="dd/mm/yyyy (vd: 07/02/2026)"
+        placeholder="dd/mm/yyyy"
         value={textVal}
         onChange={handleTextChange}
         className={`w-full p-2.5 pr-10 bg-[#FFFFFF] border rounded-lg outline-none text-sm font-bold text-[#111827] focus:border-[#F4C542] ${error ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}
@@ -299,6 +306,20 @@ const VietnameseDatePicker = ({ value, onChange, error }) => {
 };
 
 // ================================================================
+// HÀM HỖ TRỢ TÌM KIẾM KHÔNG DẤU
+// ================================================================
+const removeVietnameseTones = (str) => {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+};
+
+// ================================================================
 // COMPONENT CHÍNH
 // ================================================================
 function ScheduleManagement() {
@@ -309,11 +330,13 @@ function ScheduleManagement() {
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [editingLhpSchedule, setEditingLhpSchedule] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSchedules, setSelectedSchedules] = useState([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [warningPopup, setWarningPopup] = useState({ show: false, title: '', message: '' });
   const [expandedGroups, setExpandedGroups] = useState({});
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // STATE NHẬN DỮ LIỆU CẤU HÌNH TỪ API
   const [sysConfig, setSysConfig] = useState({
@@ -394,11 +417,11 @@ function ScheduleManagement() {
 
   const previewSchedule = useMemo(() => {
     if (!isRecurring || !formData.NgayBatDau || !formData.MaLopHocPhan || !selectedLHPInfo) return [];
-    if (formData.tanSuat === 1 && (!formData.thu1 || !formData.tietBatDau1 || !formData.soTiet1)) return [];
-    if (formData.tanSuat === 2 && (!formData.thu2 || !formData.tietBatDau2 || !formData.soTiet2)) return [];
+    if (Number(formData.tanSuat) === 1 && (!formData.thu1 || !formData.tietBatDau1 || !formData.soTiet1)) return [];
+    if (Number(formData.tanSuat) === 2 && (!formData.thu2 || !formData.tietBatDau2 || !formData.soTiet2)) return [];
 
     const s1 = parseInt(formData.soTiet1);
-    const s2 = formData.tanSuat === 2 ? parseInt(formData.soTiet2) : s1;
+    const s2 = Number(formData.tanSuat) === 2 ? parseInt(formData.soTiet2) : s1;
     if (isNaN(s1) || s1 <= 0) return [];
 
     const startDate = new Date(formData.NgayBatDau + 'T00:00:00');
@@ -420,7 +443,7 @@ function ScheduleManagement() {
     };
 
     const sessions = [];
-    if (formData.tanSuat === 1) {
+    if (Number(formData.tanSuat) === 1) {
       let curr = findFirst(startDate, jsDay1);
       while (remaining > 0) {
         const tietToHoc = Math.min(s1, remaining);
@@ -455,11 +478,14 @@ function ScheduleManagement() {
   }, [isRecurring, formData, selectedLHPInfo]);
 
   const groupedSchedules = useMemo(() => {
-    const filtered = schedules.filter(s =>
-      s.TenMonHoc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.TenGiangVien?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.MaLopHocPhan?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const query = removeVietnameseTones(searchTerm);
+    const filtered = schedules.filter(s => {
+      if (!query) return true;
+      const tenMon = removeVietnameseTones(s.TenMonHoc);
+      const tenGV = removeVietnameseTones(s.TenGiangVien);
+      const maLHP = removeVietnameseTones(s.MaLopHocPhan);
+      return tenMon.includes(query) || tenGV.includes(query) || maLHP.includes(query);
+    });
     const groups = {};
     filtered.forEach(s => {
       const lhpKey = s.MaLopHocPhan || 'Chưa xác định LHP';
@@ -475,8 +501,16 @@ function ScheduleManagement() {
         return parsePeriods(a.CaHoc).start - parsePeriods(b.CaHoc).start;
       });
     });
-    // Sắp xếp các nhóm LHP theo Mã lớp học phần
-    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    // Sắp xếp các nhóm LHP theo ID/thời gian mới nhất (nhóm nào vừa thêm lịch học mới sẽ nhảy lên đầu tiên)
+    return Object.entries(groups).sort((a, b) => {
+      const maxIdA = Math.max(...a[1].map(item => Number(item.MaLichHoc) || 0));
+      const maxIdB = Math.max(...b[1].map(item => Number(item.MaLichHoc) || 0));
+      if (maxIdB !== maxIdA) return maxIdB - maxIdA;
+      const timeA = Math.max(...a[1].map(item => new Date(item.NgayTao || 0).getTime()));
+      const timeB = Math.max(...b[1].map(item => new Date(item.NgayTao || 0).getTime()));
+      if (timeB !== timeA) return timeB - timeA;
+      return a[0].localeCompare(b[0]);
+    });
   }, [schedules, searchTerm]);
 
   const toggleGroup = (lhpKey) => {
@@ -498,14 +532,6 @@ function ScheduleManagement() {
     }
   };
 
-  useEffect(() => {
-    if (groupedSchedules.length > 0 && Object.keys(expandedGroups).length === 0) {
-      const initial = {};
-      groupedSchedules.slice(0, 3).forEach(([key]) => { initial[key] = true; });
-      setExpandedGroups(initial);
-    }
-  }, [groupedSchedules]);
-
   // Xóa trắng lỗi Real-time khi User bắt đầu sửa
   const handleFieldChange = (field, value) => {
     if (field === 'MaLopHocPhan') {
@@ -520,7 +546,7 @@ function ScheduleManagement() {
       return;
     }
 
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: field === 'tanSuat' ? Number(value) : value }));
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
     let errorMsg = '';
@@ -599,7 +625,7 @@ function ScheduleManagement() {
 
       soTiet1 = validateTiet(formData.tietBatDau1, formData.soTiet1, 'buoi1');
 
-      if (formData.tanSuat === 2) {
+      if (Number(formData.tanSuat) === 2) {
         if (!formData.thu2) errors.thu2 = 'Chọn thứ học buổi 2';
         if (formData.thu1 && formData.thu2 && formData.thu1 === formData.thu2) {
           // Cho phép chọn cùng 1 thứ, nhưng phải kiểm tra không được trùng tiết
@@ -631,7 +657,13 @@ function ScheduleManagement() {
       }
       soTiet1 = validateTiet(formData.tietBatDau1, formData.soTiet1, 'buoi1');
 
-      if (selectedLHPInfo && soTiet1 > 0 && !isRecurring) {
+      if (editingSchedule && editingSchedule.TrangThaiLich === 'DA_CHOT') {
+        const pOrig = parsePeriods(editingSchedule.CaHoc);
+        const origSoTiet = pOrig.start > 0 ? (pOrig.end - pOrig.start + 1) : (Number(editingSchedule.SoTiet) || 0);
+        if (soTiet1 !== origSoTiet) {
+          errors.buoi1 = `Lớp học phần đã chốt lịch: Bắt buộc giữ nguyên số tiết của buổi học (${origSoTiet} tiết), không được tăng hay giảm!`;
+        }
+      } else if (selectedLHPInfo && soTiet1 > 0 && !isRecurring) {
         if (soTiet1 > selectedLHPInfo.tietConLai) {
           errors.buoi1 = `Số tiết của buổi học (${soTiet1} tiết) vượt quá số tiết còn lại của môn (${selectedLHPInfo.tietConLai} tiết).`;
         }
@@ -737,7 +769,8 @@ function ScheduleManagement() {
         ? `Lưu thay đổi cho lịch học này?`
         : `Hệ thống sẽ tạo ${sessionsPayload.length} buổi học. Lưu vào Database?`,
       action: async () => {
-        setConfirmDialog({ show: false, title: '', message: '', action: null });
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         let nguoiTao = 'Admin (Hệ thống)';
         try {
           const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
@@ -756,23 +789,39 @@ function ScheduleManagement() {
             showToast('Cập nhật lịch học thành công!', 'success');
           } else {
             if (editingLhpSchedule) {
-              const oldSessions = schedules.filter(s => String(s.MaLopHocPhan).trim().toLowerCase() === String(editingLhpSchedule).trim().toLowerCase());
-              await Promise.all(oldSessions.map(s => axios.delete(`${API_URL}/api/schedules/${s.MaLichHoc}`)));
-            }
-            for (const session of sessionsPayload) {
-              await axios.post(`${API_URL}/api/schedules`, {
-                MaLopHocPhan: formData.MaLopHocPhan, // ✅ FIX
+              const payload = sessionsPayload.map(session => ({
+                MaLopHocPhan: formData.MaLopHocPhan,
                 NguoiTao: nguoiTao,
                 ...session
+              }));
+              await axios.put(`${API_URL}/api/schedules/lophocphan/${editingLhpSchedule}/reschedule`, {
+                sessions: payload
               });
+              showToast('Cập nhật lại lịch học định kỳ môn thành công!', 'success');
+            } else {
+              for (const session of sessionsPayload) {
+                await axios.post(`${API_URL}/api/schedules`, {
+                  MaLopHocPhan: formData.MaLopHocPhan, // ✅ FIX
+                  NguoiTao: nguoiTao,
+                  ...session
+                });
+              }
+              showToast('Lưu lịch học thành công!', 'success');
             }
-            showToast(editingLhpSchedule ? 'Cập nhật lại lịch học định kỳ môn thành công!' : 'Lưu lịch học thành công!', 'success');
           }
           fetchData();
           handleCloseModal();
         } catch (err) {
-          const msg = err.response?.data?.message || 'Có lỗi xảy ra khi lưu lịch học!';
+          let msg = err.response?.data?.message;
+          if (!msg) {
+            if (err.response?.status === 404) msg = 'Lỗi 404: Không tìm thấy đường dẫn API trên máy chủ (chưa cập nhật/khởi động lại Backend)!';
+            else if (err.response?.status === 500) msg = 'Lỗi 500: Lỗi hệ thống nội bộ từ phía máy chủ!';
+            else msg = err.message || 'Có lỗi xảy ra khi lưu lịch học!';
+          }
           showToast(msg, 'error');
+        } finally {
+          setIsSubmitting(false);
+          setConfirmDialog({ show: false, title: '', message: '', action: null });
         }
       }
     });
@@ -784,63 +833,68 @@ function ScheduleManagement() {
       title: 'Xác nhận xóa',
       message: 'Bạn có chắc chắn muốn xóa buổi học này không? Hành động không thể hoàn tác.',
       action: async () => {
-        setConfirmDialog({ show: false, action: null });
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
           await axios.delete(`${API_URL}/api/schedules/${id}`);
           showToast('Xóa lịch học thành công!', 'success');
           fetchData();
         } catch { showToast('Lỗi khi xóa lịch!', 'error'); }
-      }
-    });
-  };
-
-  const handleDeleteSelected = () => {
-    setConfirmDialog({
-      show: true,
-      title: 'Xác nhận xóa hàng loạt',
-      message: `Bạn có chắc chắn muốn xóa ${selectedSchedules.length} buổi học đã chọn không? Hành động không thể hoàn tác.`,
-      action: async () => {
-        setConfirmDialog({ show: false, action: null });
-        try {
-          await Promise.all(selectedSchedules.map(id => axios.delete(`${API_URL}/api/schedules/${id}`)));
-          showToast(`Đã xóa thành công ${selectedSchedules.length} buổi học!`, 'success');
-          setSelectedSchedules([]);
-          fetchData();
-        } catch {
-          showToast('Có lỗi khi xóa một số lịch!', 'error');
-          fetchData();
+        finally {
+          setIsSubmitting(false);
+          setConfirmDialog({ show: false, action: null });
         }
       }
     });
   };
 
-  const handleToggleLock = (maLHP, currentStatus) => {
+
+  const handleToggleLock = (maLHP, currentStatus, tongTiet = 0, tietQuyDinh = 0) => {
     if (currentStatus === 'DA_CHOT') {
       showToast('Lớp học phần này đã được chốt lịch, không thể thao tác lại!', 'error');
       return;
     }
+    if (tietQuyDinh > 0 && tongTiet < tietQuyDinh) {
+      const thieu = tietQuyDinh - tongTiet;
+      setWarningPopup({
+        show: true,
+        title: 'Chưa đủ điều kiện chốt lịch!',
+        message: `Lớp học phần "${maLHP}" có quy định là ${tietQuyDinh} tiết học (theo số tín chỉ), nhưng hiện tại mới chỉ xếp được ${tongTiet} tiết.\n\n⚠️ Bạn còn thiếu ${thieu} tiết học nữa. Vui lòng xếp bổ sung cho đủ số tiết quy định trước khi chốt lịch!`
+      });
+      return;
+    }
     setConfirmDialog({
       show: true,
-      title: 'Xác nhận chốt lịch học',
-      message: `Bạn có chắc chắn muốn CHỐT LỊCH HỌC cho lớp học phần "${maLHP}"?\n\nSau khi chốt, hệ thống sẽ chặn vĩnh viễn không cho phép sửa thông tin hay xếp thêm/chỉnh sửa lịch học nữa.`,
-      action: async () => {
-        setConfirmDialog({ show: false, action: null });
-        try {
-          setLoading(true);
-          const res = await axios.put(`${API_URL}/api/teaching-assignments/${maLHP}/toggle-lock`, { TrangThaiLich: 'DA_CHOT' });
-          if (res.data.success) {
-            showToast(res.data.message, 'success');
-            setLhpList(prev => prev.map(item => item.MaLopHocPhan === maLHP ? { ...item, TrangThaiLich: 'DA_CHOT' } : item));
-            setSchedules(prev => prev.map(item => item.MaLopHocPhan === maLHP ? { ...item, TrangThaiLich: 'DA_CHOT' } : item));
-            fetchData();
-          } else {
-            showToast(res.data.message || 'Lỗi cập nhật trạng thái!', 'error');
+      title: 'Xác nhận chốt lịch học (Bước 1/2)',
+      message: `Bạn có chắc chắn muốn CHỐT LỊCH HỌC cho lớp học phần "${maLHP}"?\n\nHiện tại lớp đã xếp đủ ${tongTiet}/${tietQuyDinh || tongTiet} tiết học.`,
+      action: () => {
+        setConfirmDialog({
+          show: true,
+          title: '⚠️ Xác nhận lần cuối (Bước 2/2)',
+          message: `Sau khi chốt lịch cho "${maLHP}", hệ thống sẽ KHÔNG cho phép xóa lịch hay xếp thêm buổi mới (chỉ cho phép sửa để chuyển đổi ngày/giờ dạy khi cần thiết).\n\nBạn có thực sự chắc chắn muốn chốt ngay bây giờ không?`,
+          action: async () => {
+            if (isSubmitting) return;
+            setIsSubmitting(true);
+            try {
+              setLoading(true);
+              const res = await axios.put(`${API_URL}/api/teaching-assignments/${maLHP}/toggle-lock`, { TrangThaiLich: 'DA_CHOT' });
+              if (res.data.success) {
+                showToast(res.data.message, 'success');
+                setLhpList(prev => prev.map(item => item.MaLopHocPhan === maLHP ? { ...item, TrangThaiLich: 'DA_CHOT' } : item));
+                setSchedules(prev => prev.map(item => item.MaLopHocPhan === maLHP ? { ...item, TrangThaiLich: 'DA_CHOT' } : item));
+                fetchData();
+              } else {
+                showToast(res.data.message || 'Lỗi cập nhật trạng thái!', 'error');
+              }
+            } catch (err) {
+              showToast(err.response?.data?.message || 'Lỗi kết nối khi cập nhật chốt lịch!', 'error');
+            } finally {
+              setLoading(false);
+              setIsSubmitting(false);
+              setConfirmDialog({ show: false, action: null });
+            }
           }
-        } catch (err) {
-          showToast(err.response?.data?.message || 'Lỗi kết nối khi cập nhật chốt lịch!', 'error');
-        } finally {
-          setLoading(false);
-        }
+        });
       }
     });
   };
@@ -851,13 +905,12 @@ function ScheduleManagement() {
       title: 'Xác nhận xóa lịch của lớp',
       message: `Bạn có chắc chắn muốn xóa toàn bộ ${items.length} buổi học của lớp học phần "${maLHP}" không?\n\nSau khi xóa, lớp học phần này sẽ tự động được MỞ KHÓA bên Phân công giảng dạy.`,
       action: async () => {
-        setConfirmDialog({ show: false, action: null });
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
           setLoading(true);
           const res = await axios.delete(`${API_URL}/api/schedules/lophocphan/${maLHP}`);
           if (res.data.success) {
-            showToast(`Đã xóa lịch học và mở khóa lớp "${maLHP}" bên Phân công giảng dạy!`, 'success');
-            setSelectedSchedules(prev => prev.filter(id => !items.some(s => s.MaLichHoc === id)));
             setLhpList(prev => prev.map(item => item.MaLopHocPhan === maLHP ? { ...item, TrangThaiLich: 'CHUA_CHOT' } : item));
             setSchedules(prev => prev.filter(s => s.MaLopHocPhan !== maLHP));
             fetchData();
@@ -869,6 +922,8 @@ function ScheduleManagement() {
           fetchData();
         } finally {
           setLoading(false);
+          setIsSubmitting(false);
+          setConfirmDialog({ show: false, action: null });
         }
       }
     });
@@ -904,7 +959,7 @@ function ScheduleManagement() {
         tanSuatVal = 2;
         const d2 = new Date(secondSession.NgayHoc);
         const dayIdx2 = d2.getDay();
-        thu2Val = String(dayIdx2 === 0 ? 8 : dayIdx2 + 1);
+        thu2Val = String(dayIdx2);
         const p2 = parsePeriods(secondSession.CaHoc);
         tietBatDau2Val = String(p2.start || 1);
         soTiet2Val = String(p2.start > 0 ? (p2.end - p2.start + 1) : 3);
@@ -915,7 +970,7 @@ function ScheduleManagement() {
     if (firstSession && firstSession.NgayHoc) {
       const d1 = new Date(firstSession.NgayHoc);
       const dayIdx1 = d1.getDay();
-      thu1Val = String(dayIdx1 === 0 ? 8 : dayIdx1 + 1);
+      thu1Val = String(dayIdx1);
     }
 
     setFormData({
@@ -975,9 +1030,45 @@ function ScheduleManagement() {
         show={confirmDialog.show}
         title={confirmDialog.title}
         message={confirmDialog.message}
-        onConfirm={() => confirmDialog.action && confirmDialog.action()}
-        onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })}
+        isSubmitting={isSubmitting}
+        onConfirm={() => confirmDialog.action && !isSubmitting && confirmDialog.action()}
+        onCancel={() => !isSubmitting && setConfirmDialog({ show: false, title: '', message: '', action: null })}
       />
+
+      {/* Warning Popup Modal khi chưa xếp đủ tiết */}
+      <AnimatePresence>
+        {warningPopup.show && (
+          <ModalPortal>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-md shadow-2xl border-2 border-red-500"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-red-100 rounded-full p-3">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#1F2937]">{warningPopup.title}</h3>
+                </div>
+                <p className="text-[#4B5563] mb-6 whitespace-pre-line leading-relaxed font-medium text-sm">{warningPopup.message}</p>
+                <button
+                  onClick={() => setWarningPopup({ show: false, title: '', message: '' })}
+                  className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg transition-all"
+                >
+                  Đã hiểu / Xếp bổ sung
+                </button>
+              </motion.div>
+            </motion.div>
+          </ModalPortal>
+        )}
+      </AnimatePresence>
       <div className="bg-[#F4C542] rounded-2xl p-8 shadow-xl text-[#152238] flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-white/40 p-3 rounded-full shrink-0"><CalendarIcon className="w-6 h-6 text-white" /></div>
@@ -992,22 +1083,49 @@ function ScheduleManagement() {
       </div>
 
       <div className="flex flex-col md:flex-row items-center gap-4">
-        <div className="relative w-full md:flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-          <input type="text" placeholder="Tìm kiếm mã lớp học phần, tên môn..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl shadow-sm outline-none focus:border-[#F4C542] text-sm font-medium"
-          />
+        <div className="relative w-full md:flex-1 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm mã lớp học phần, tên môn..."
+              value={searchInput}
+              onChange={e => {
+                setSearchInput(e.target.value);
+                if (e.target.value === '') setSearchTerm('');
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') setSearchTerm(searchInput);
+              }}
+              className="w-full pl-12 pr-10 py-3.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl shadow-sm outline-none focus:border-[#F4C542] text-sm font-medium"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchTerm(searchInput)}
+            className="bg-[#F4C542] text-[#152238] px-6 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:brightness-105 transition-all shrink-0"
+          >
+            <Search className="w-4 h-4" />
+            Tìm kiếm
+          </button>
         </div>
         <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
           <button onClick={toggleExpandAll} className="w-full md:w-auto bg-[#F7F8FA] text-[#4B5563] px-4 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-[#E5E7EB] hover:bg-gray-200 transition-all shadow-sm">
             {isAllExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             {isAllExpanded ? 'Thu gọn tất cả' : 'Mở rộng tất cả'}
           </button>
-          {selectedSchedules.length > 0 && (
-            <button onClick={handleDeleteSelected} className="w-full md:w-auto shrink-0 bg-red-100 text-[#DC2626] px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 border border-red-200 hover:bg-[#EF4444]/100 hover:text-white transition-all shadow-sm">
-              <Trash2 className="w-5 h-5" /> Xóa {selectedSchedules.length} mục đã chọn
-            </button>
-          )}
         </div>
       </div>
 
@@ -1017,9 +1135,6 @@ function ScheduleManagement() {
           const isExpanded = !!expandedGroups[lhpKey];
           const tongTiet = items.reduce((sum, s) => sum + (Number(s.SoTiet) || 0), 0);
           const tietQuyDinh = (Number(first.SoTinChi) || 0) * TC_TO_TIET;
-          const lhpScheduleIds = items.map(s => s.MaLichHoc);
-          const isAllLhpSelected = lhpScheduleIds.length > 0 && lhpScheduleIds.every(id => selectedSchedules.includes(id));
-
           return (
             <div key={lhpKey} className="bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm transition-all hover:border-[#F4C542]/50">
               {/* HEADER NÚT BẤM COLLAPSED/EXPANDED */}
@@ -1027,11 +1142,22 @@ function ScheduleManagement() {
                 onClick={() => toggleGroup(lhpKey)}
                 className={`px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-gradient-to-r from-amber-50/80 to-yellow-50/40 border-b border-[#E5E7EB]' : 'bg-[#F7F8FA] hover:bg-gray-100/80'}`}
               >
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="font-mono text-xs font-black text-[#B45309] bg-[#FFF7D6] px-3 py-1 rounded-lg border border-[#F4C542]/40 shadow-2xs">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-mono text-xs font-black text-[#B45309] bg-[#FFF7D6] px-3 py-1 rounded-lg border border-[#F4C542]/40 shadow-2xs shrink-0 whitespace-nowrap">
                     {lhpKey}
                   </span>
-                  <h3 className="font-bold text-[#1F2937] text-base">
+                  {first.TrangThaiLich === 'DA_CHOT' ? (
+                    <span className="bg-red-50 text-red-600 text-[11px] font-bold px-2.5 py-0.5 rounded-md border border-red-200 shrink-0 whitespace-nowrap flex items-center gap-1 shadow-2xs" title="Lớp học phần này đã được chốt lịch">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                      Đã chốt
+                    </span>
+                  ) : (
+                    <span className="bg-emerald-50 text-emerald-600 text-[11px] font-bold px-2.5 py-0.5 rounded-md border border-emerald-200 shrink-0 whitespace-nowrap flex items-center gap-1 shadow-2xs" title="Lớp học phần này chưa chốt lịch">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Chưa chốt
+                    </span>
+                  )}
+                  <h3 className="font-bold text-[#1F2937] text-base ml-1">
                     {first.TenMonHoc || 'Môn học chưa xác định'}
                   </h3>
                   {first.SoTinChi ? (
@@ -1046,11 +1172,6 @@ function ScheduleManagement() {
 
                 <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
                   <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
-                    {first.TrangThaiLich === 'DA_CHOT' && (
-                      <span className="bg-red-50 text-red-700 px-2.5 py-1 rounded-md border border-red-200 shadow-2xs">
-                        Đã chốt
-                      </span>
-                    )}
                     <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md border border-gray-200">
                       {first.TenLop || first.MaLop || 'Lớp tự do'} ({first.SiSoThucTe || 0}/{first.SoLuongToiDa || 40} SV)
                     </span>
@@ -1097,25 +1218,10 @@ function ScheduleManagement() {
                       </div>
                     </div>
 
-                    {/* THANH CÔNG CỤ CHỌN NHANH TRONG LHP */}
+                    {/* THANH CÔNG CỤ TRONG LHP */}
                     <div className="bg-[#FFFDF5] px-4 py-2.5 border-b border-amber-100 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-gray-700">
-                      <label className="flex items-center gap-2 cursor-pointer select-none hover:text-[#B45309]">
-                        <input
-                          type="checkbox"
-                          checked={isAllLhpSelected}
-                          onChange={() => {
-                            if (isAllLhpSelected) {
-                              setSelectedSchedules(prev => prev.filter(id => !lhpScheduleIds.includes(id)));
-                            } else {
-                              setSelectedSchedules(prev => [...new Set([...prev, ...lhpScheduleIds])]);
-                            }
-                          }}
-                          className="w-4 h-4 text-[#F4C542] rounded border-gray-300 focus:ring-amber-500 cursor-pointer"
-                        />
-                        <span>Chọn tất cả {items.length} buổi học của lớp này</span>
-                      </label>
+                      <span className="text-gray-500 italic font-medium"> Nhấn vào nút "Sửa" ở từng buổi bên dưới để chuyển đổi ngày/giờ dạy khi cần</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400 italic hidden sm:inline mr-2">Nhấn vào từng buổi bên dưới để chỉnh sửa</span>
                         {first.TrangThaiLich !== 'DA_CHOT' && (
                           <>
                             <button
@@ -1146,7 +1252,7 @@ function ScheduleManagement() {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (first.TrangThaiLich === 'DA_CHOT') return;
-                            handleToggleLock(first.MaLopHocPhan, first.TrangThaiLich);
+                            handleToggleLock(first.MaLopHocPhan, first.TrangThaiLich, tongTiet, tietQuyDinh);
                           }}
                           className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all ${
                             first.TrangThaiLich === 'DA_CHOT'
@@ -1166,18 +1272,6 @@ function ScheduleManagement() {
                         const soTietHienThi = s.SoTiet || (p.start > 0 ? (p.end - p.start + 1) : '?');
                         return (
                           <div key={s.MaLichHoc} className="p-4 flex flex-col md:flex-row items-center gap-4 hover:bg-[#F7F8FA] transition-colors">
-                            <div className="flex items-center justify-center w-full md:w-auto md:pl-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedSchedules.includes(s.MaLichHoc)}
-                                onChange={(e) => {
-                                  if (e.target.checked) setSelectedSchedules(prev => [...prev, s.MaLichHoc]);
-                                  else setSelectedSchedules(prev => prev.filter(id => id !== s.MaLichHoc));
-                                }}
-                                className="w-5 h-5 text-[#F4C542] rounded border-gray-300 focus:ring-amber-500 cursor-pointer"
-                              />
-                            </div>
-
                             <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 items-center w-full">
                               <div>
                                 <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Buổi & Ngày học</span>
@@ -1228,9 +1322,11 @@ function ScheduleManagement() {
                               <button onClick={() => handleEdit(s)} className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#FFFFFF] border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:text-[#F4C542] hover:border-amber-400 transition-all shadow-2xs hover:shadow-sm">
                                 <Edit className="w-3.5 h-3.5" /> Sửa
                               </button>
-                              <button onClick={() => handleDelete(s.MaLichHoc)} className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#FFFFFF] border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:text-[#EF4444] hover:border-red-400 transition-all shadow-2xs hover:shadow-sm">
-                                <Trash2 className="w-3.5 h-3.5" /> Xóa
-                              </button>
+                              {first.TrangThaiLich !== 'DA_CHOT' && (
+                                <button onClick={() => handleDelete(s.MaLichHoc)} className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#FFFFFF] border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:text-[#EF4444] hover:border-red-400 transition-all shadow-2xs hover:shadow-sm">
+                                  <Trash2 className="w-3.5 h-3.5" /> Xóa
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -1368,7 +1464,7 @@ function ScheduleManagement() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Tần suất học / Tuần <span className="text-[#EF4444]">*</span></label>
-                            <select value={formData.tanSuat} onChange={e => setFormData(p => ({ ...p, tanSuat: parseInt(e.target.value), thu2: '', tietBatDau2: '', soTiet2: '' }))} className="w-full p-2.5 bg-[#FFFFFF] border border-gray-300 rounded-lg outline-none text-sm font-bold text-gray-700">
+                            <select value={formData.tanSuat} onChange={e => handleFieldChange('tanSuat', Number(e.target.value))} className="w-full p-2.5 bg-[#FFFFFF] border border-gray-300 rounded-lg outline-none text-sm font-bold text-gray-700">
                               {sysConfig.tanSuat.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                             </select>
                           </div>
@@ -1390,12 +1486,11 @@ function ScheduleManagement() {
                               <p className="text-[#EF4444] text-[11px] mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {formErrors.NgayBatDau}</p>
                             ) : formData.NgayBatDau ? (
                               <p className="text-[#3B82F6] text-[11px] mt-1.5 font-bold flex items-center gap-1">
-                                <CalendarDays className="w-3.5 h-3.5" /> Ngày bắt đầu: {getDayAndDateStr(formData.NgayBatDau)}
                                 {(() => {
                                   if (!sysConfig.thuList || sysConfig.thuList.length === 0) return null;
                                   const label1 = sysConfig.thuList.find(t => String(t.value) === String(formData.thu1))?.label;
                                   const label2 = sysConfig.thuList.find(t => String(t.value) === String(formData.thu2))?.label;
-                                  if (formData.tanSuat === 2) {
+                                  if (Number(formData.tanSuat) === 2) {
                                     if (label1 && label2) return ` (Học vào ${label1} và ${label2} hàng tuần)`;
                                     if (label1) return ` (Học vào ${label1} và ... hàng tuần)`;
                                     if (label2) return ` (Học vào ... và ${label2} hàng tuần)`;
@@ -1447,13 +1542,13 @@ function ScheduleManagement() {
                             </div>
                             <div>
                               <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
-                              <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`} />
+                              <input type="number" min="1" max="5" placeholder="VD: 3" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`} />
                             </div>
                           </div>
                           {formErrors.buoi1 && <p className="text-[#EF4444] text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {formErrors.buoi1}</p>}
                         </div>
 
-                        {formData.tanSuat === 2 && (
+                        {Number(formData.tanSuat) === 2 && (
                           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="p-4 border border-[#E5E7EB] rounded-lg bg-[#FFFFFF] space-y-3">
                             <label className="block text-sm font-bold text-[#F4C542] uppercase border-b pb-2 mb-3">Buổi 2</label>
                             <div className="grid grid-cols-3 gap-3">
@@ -1474,7 +1569,7 @@ function ScheduleManagement() {
                               </div>
                               <div>
                                 <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
-                                <input type="number" min="2" max="5" placeholder="VD: 3" value={formData.soTiet2} onChange={e => handleFieldChange('soTiet2', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`} />
+                                <input type="number" min="1" max="5" placeholder="VD: 3" value={formData.soTiet2} onChange={e => handleFieldChange('soTiet2', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`} />
                               </div>
                             </div>
                             {formErrors.buoi2 && <p className="text-[#EF4444] text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {formErrors.buoi2}</p>}
@@ -1512,8 +1607,27 @@ function ScheduleManagement() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
-                            <input type="number" min="2" max="5" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`} />
+                            <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">
+                              Số tiết học <span className="text-[#EF4444]">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              disabled={editingSchedule?.TrangThaiLich === 'DA_CHOT'}
+                              value={formData.soTiet1}
+                              onChange={e => handleFieldChange('soTiet1', e.target.value)}
+                              className={`w-full p-2.5 border rounded-lg text-sm ${
+                                editingSchedule?.TrangThaiLich === 'DA_CHOT'
+                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300'
+                                  : formErrors.buoi1 ? 'border-red-500 bg-white' : 'border-gray-300 bg-white'
+                              }`}
+                            />
+                            {editingSchedule?.TrangThaiLich === 'DA_CHOT' && (
+                              <p className="text-[11px] text-amber-600 font-bold mt-1.5 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 shrink-0" /> Lịch đã chốt: Bắt buộc giữ nguyên số tiết, chỉ được đổi ngày học/tiết bắt đầu/phòng học.
+                              </p>
+                            )}
                           </div>
                           {formErrors.buoi1 && <div className="col-span-2 text-[#EF4444] text-[11px] font-bold"><AlertCircle className="w-3 h-3 inline" /> {formErrors.buoi1}</div>}
                         </div>
@@ -1528,7 +1642,7 @@ function ScheduleManagement() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={(!!selectedLHPInfo?.hoanThanh || selectedLHPInfo?.lhp?.TrangThaiLich === 'DA_CHOT') && !editingSchedule && !editingLhpSchedule}
+                  disabled={isSubmitting || ((!!selectedLHPInfo?.hoanThanh || selectedLHPInfo?.lhp?.TrangThaiLich === 'DA_CHOT') && !editingSchedule && !editingLhpSchedule)}
                   className="px-5 py-2 bg-[#F4C542] text-[#152238] rounded-lg text-sm font-bold hover:bg-[#F4C542]/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingSchedule || editingLhpSchedule ? 'Lưu thay đổi' : 'Xác nhận xếp lịch'}

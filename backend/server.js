@@ -75,121 +75,8 @@ db.getConnection((err, connection) => {
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
 
-    // Tự động tạo bảng lưu trạng thái RFID nếu chưa có
-    const createRfidTable = `
-        CREATE TABLE IF NOT EXISTS rfid_state (
-            id INT PRIMARY KEY DEFAULT 1,
-            mode VARCHAR(50) DEFAULT 'ATTENDANCE',
-            targetMSSV VARCHAR(20) DEFAULT NULL,
-            capturedUid VARCHAR(50) DEFAULT NULL
-        )
-    `;
-    connection.query(createRfidTable, (errTbl) => {
-        if (!errTbl) {
-            connection.query('INSERT IGNORE INTO rfid_state (id, mode) VALUES (1, "ATTENDANCE")');
-        }
-    });
-
-    // Tự động tạo bảng thẻ sinh viên the_sv nếu chưa có
-    const createTheSvTable = `
-        CREATE TABLE IF NOT EXISTS the_sv (
-          uid varchar(20) NOT NULL,
-          MSSV varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-          PRIMARY KEY (uid),
-          KEY fk_the_sv_sinhvien (MSSV),
-          CONSTRAINT fk_the_sv_sinhvien FOREIGN KEY (MSSV) REFERENCES sinhvien (MSSV) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `;
-    connection.query(createTheSvTable, (errTheSv) => {
-        if (errTheSv) {
-            console.error('Lỗi tự động tạo bảng the_sv:', errTheSv);
-        }
-    });
-
-    const createYCHTTable = `
-        CREATE TABLE IF NOT EXISTS yeucau_hotro (
-            MaYeuCau INT AUTO_INCREMENT PRIMARY KEY,
-            MSSV VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
-            MaGiangVien VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
-            LoaiYeuCau VARCHAR(100) NOT NULL,
-            ChuDe VARCHAR(255) NOT NULL,
-            NoiDung TEXT NOT NULL,
-            NgayGui DATETIME NOT NULL,
-            TrangThai VARCHAR(50) NOT NULL,
-            PhanHoi TEXT NULL,
-            NgayPhanHoi DATETIME NULL,
-            FOREIGN KEY (MSSV) REFERENCES sinhvien(MSSV) ON DELETE CASCADE,
-            FOREIGN KEY (MaGiangVien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `;
-    connection.query(createYCHTTable, (errYCHT) => {
-        if (errYCHT) {
-            console.error('Lỗi tự động tạo bảng yeucau_hotro:', errYCHT);
-        }
-    });
-
-    // Tự động thêm cột LanDiemDanh vào bảng diemdanh nếu chưa có
-    connection.query("SHOW COLUMNS FROM diemdanh LIKE 'LanDiemDanh'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE diemdanh ADD COLUMN LanDiemDanh INT DEFAULT 1", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột LanDiemDanh:", errAlter);
-                else console.log("Đã tự động thêm cột LanDiemDanh vào bảng diemdanh.");
-            });
-        }
-    });
-
-    // Tự động thêm cột Avatar vào bảng users nếu chưa có
-    connection.query("SHOW COLUMNS FROM users LIKE 'Avatar'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE users ADD COLUMN Avatar LONGTEXT", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột Avatar:", errAlter);
-                else console.log("Đã tự động thêm cột Avatar vào bảng users.");
-            });
-        }
-    });
-
-    // Tự động thêm cột LoaiMonHoc vào bảng monhoc nếu chưa có
-    connection.query("SHOW COLUMNS FROM monhoc LIKE 'LoaiMonHoc'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE monhoc ADD COLUMN LoaiMonHoc VARCHAR(255) DEFAULT 'Đại cương'", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột LoaiMonHoc:", errAlter);
-                else {
-                    console.log("Đã tự động thêm cột LoaiMonHoc vào bảng monhoc.");
-                    connection.query("UPDATE monhoc SET LoaiMonHoc = 'Chuyên ngành' WHERE MaKhoa IS NOT NULL AND MaKhoa != ''");
-                }
-            });
-        }
-    });
-
-    // Tự động thêm cột CapBac vào bảng giangvien nếu chưa có
-    connection.query("SHOW COLUMNS FROM giangvien LIKE 'CapBac'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE giangvien ADD COLUMN CapBac VARCHAR(255) DEFAULT 'Thạc sĩ'", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột CapBac:", errAlter);
-                else console.log("Đã tự động thêm cột CapBac vào bảng giangvien.");
-            });
-        }
-    });
-
-    // Tự động thêm cột PhamViDangKy vào bảng lophocphan nếu chưa có
-    connection.query("SHOW COLUMNS FROM lophocphan LIKE 'PhamViDangKy'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE lophocphan ADD COLUMN PhamViDangKy VARCHAR(20) DEFAULT 'THEO_KHOA'", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột PhamViDangKy:", errAlter);
-                else console.log("Đã tự động thêm cột PhamViDangKy vào bảng lophocphan.");
-            });
-        }
-    });
-
-    // Tự động thêm cột TinChiYeuCau vào bảng khoa nếu chưa có
-    connection.query("SHOW COLUMNS FROM khoa LIKE 'TinChiYeuCau'", (err, results) => {
-        if (!err && results.length === 0) {
-            connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120", (errAlter) => {
-                if (errAlter) console.error("Lỗi thêm cột TinChiYeuCau:", errAlter);
-                else console.log("Đã tự động thêm cột TinChiYeuCau vào bảng khoa.");
-            });
-        }
-    });
+    // Đã gỡ bỏ các đoạn code tự động CREATE/ALTER TABLE ở đây (Migration)
+    // để tối ưu hóa triệt để tốc độ khởi động (Cold Start) trên Vercel Serverless.
 
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.release();
@@ -1053,6 +940,10 @@ app.post('/api/students', async (req, res) => {
             );
         });
 
+        // Tự động đồng bộ sinh viên mới vào danh sách lớp học phần của lớp hành chính
+        db.query("INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) SELECT ?, lhp.MaLopHocPhan, lhp.HocKy FROM lophocphan lhp WHERE lhp.MaLop = ?", [MSSV, MaLop], () => {});
+        db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) SELECT ?, lhp.MaLopHocPhan, lhp.HocKy, 'Đã duyệt', NOW() FROM lophocphan lhp WHERE lhp.MaLop = ?", [MSSV, MaLop], () => {});
+
         // Nếu lúc thêm sinh viên có quẹt thẻ, lưu luôn thẻ đó vào database
         if (req.body.UID) {
             await new Promise((resolve, reject) => {
@@ -1566,12 +1457,15 @@ app.get('/api/classes/:maLop/grade-stats', (req, res) => {
 
 // ==================== LỚP HỌC PHẦN ====================
 app.get('/api/teaching-assignments', (req, res) => {
+    db.query("INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
+    db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy, 'Đã duyệt', NOW() FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
     const query = `
         SELECT 
-            lhp.*, mh.TenMonHoc, mh.SoTinChi, gv.HoTen AS TenGiangVien, l.TenLop, k.TenKhoa,
+            lhp.*, mh.TenMonHoc, mh.SoTinChi, gv.HoTen AS TenGiangVien, gv.CapBac AS CapBacGiangVien, l.TenLop, k.TenKhoa,
             (mh.SoTinChi * 9) AS TongTiet,
             COALESCE((SELECT SUM(SoTiet) FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan), 0) AS TietDaXep,
-            (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS tmp) AS SiSoThucTe
+            EXISTS(SELECT 1 FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS DaXepLich,
+            (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan UNION SELECT MSSV FROM sinhvien WHERE MaLop = lhp.MaLop AND lhp.MaLop IS NOT NULL AND lhp.MaLop != '') AS tmp) AS SiSoThucTe
         FROM lophocphan lhp
         LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
         LEFT JOIN khoa k ON mh.MaKhoa = k.MaKhoa
@@ -1580,11 +1474,13 @@ app.get('/api/teaching-assignments', (req, res) => {
     `;
     executeQuery(query, [], res, 'Lỗi lấy danh sách lớp học phần!');
 });
-app.get('/api/lophocphan/teacher/:maGV', (req, res) => executeQuery("SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop, (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS tmp) AS SiSoThucTe FROM lophocphan lhp LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaGiangVien = ?", [req.params.maGV], res, 'Lỗi!'));
-app.get('/api/course-sections/teacher/:maGV', (req, res) => executeQuery("SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop, gv.HoTen as TenGiangVien, (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS tmp) AS SiSoThucTe FROM lophocphan lhp LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien WHERE lhp.MaGiangVien = ?", [req.params.maGV], res, 'Lỗi!'));
-app.get('/api/course-sections/:maLhp/students', (req, res) => executeQuery('SELECT DISTINCT s.MSSV, s.HoTen, s.MaLop FROM diem d JOIN sinhvien s ON d.MSSV = s.MSSV WHERE d.MaLopHocPhan = ?', [req.params.maLhp], res, 'Lỗi!'));
+app.get('/api/lophocphan/teacher/:maGV', (req, res) => executeQuery("SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop, EXISTS(SELECT 1 FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS DaXepLich, (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan UNION SELECT MSSV FROM sinhvien WHERE MaLop = lhp.MaLop AND lhp.MaLop IS NOT NULL AND lhp.MaLop != '') AS tmp) AS SiSoThucTe FROM lophocphan lhp LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaGiangVien = ?", [req.params.maGV], res, 'Lỗi!'));
+app.get('/api/course-sections/teacher/:maGV', (req, res) => executeQuery("SELECT lhp.*, mh.TenMonHoc, mh.SoTinChi, l.TenLop, gv.HoTen as TenGiangVien, EXISTS(SELECT 1 FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS DaXepLich, (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan UNION SELECT MSSV FROM sinhvien WHERE MaLop = lhp.MaLop AND lhp.MaLop IS NOT NULL AND lhp.MaLop != '') AS tmp) AS SiSoThucTe FROM lophocphan lhp LEFT JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien WHERE lhp.MaGiangVien = ?", [req.params.maGV], res, 'Lỗi!'));
+app.get('/api/course-sections/:maLhp/students', (req, res) => executeQuery("SELECT DISTINCT s.MSSV, s.HoTen, s.MaLop FROM sinhvien s WHERE s.MSSV IN (SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) ORDER BY s.MSSV", [req.params.maLhp, req.params.maLhp, req.params.maLhp], res, 'Lỗi!'));
 
 app.get('/api/course-sections', (req, res) => {
+    db.query("INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
+    db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy, 'Đã duyệt', NOW() FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
     const query = `
         SELECT
             lhp.*,
@@ -1594,7 +1490,8 @@ app.get('/api/course-sections', (req, res) => {
             l.TenLop,
             gv.HoTen     AS TenGiangVien,
             k.TenKhoa,
-            (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS tmp) AS SiSoThucTe
+            EXISTS(SELECT 1 FROM lichhoc WHERE MaLopHocPhan = lhp.MaLopHocPhan) AS DaXepLich,
+            (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan UNION SELECT MSSV FROM sinhvien WHERE MaLop = lhp.MaLop AND lhp.MaLop IS NOT NULL AND lhp.MaLop != '') AS tmp) AS SiSoThucTe
         FROM lophocphan lhp
         LEFT JOIN monhoc   mh ON lhp.MaMonHoc   = mh.MaMonHoc
         LEFT JOIN lophoc   l  ON lhp.MaLop       = l.MaLop
@@ -1612,8 +1509,14 @@ app.post('/api/teaching-assignments', (req, res) => {
     const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
     const finalPhamVi = PhamViDangKy || 'THEO_KHOA';
 
-    db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, PhamViDangKy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40, finalPhamVi], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
+    const proceedInsert = () => {
+        db.query('INSERT INTO lophocphan (MaLopHocPhan, MaMonHoc, MaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, PhamViDangKy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [maLHP, MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa || 40, finalPhamVi], (err) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.status(409).json({ success: false, message: 'Mã lớp học phần đã tồn tại, vui lòng thử lại!' });
+                }
+                return res.status(500).json({ success: false, message: 'Lỗi tạo Lớp HP!', error: err.message });
+            }
 
             if (finalMaLop) {
                 db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
@@ -1629,6 +1532,19 @@ app.post('/api/teaching-assignments', (req, res) => {
                 res.json({ success: true, message: 'Tạo Lớp tự do thành công (Sinh viên phải tự đăng ký)!' });
             }
         });
+    };
+
+    if (finalMaLop) {
+        db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
+            const svCount = resCount && resCount[0] ? resCount[0].count : 0;
+            if (Number(SoLuongToiDa || 40) < svCount) {
+                return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+            }
+            proceedInsert();
+        });
+    } else {
+        proceedInsert();
+    }
 });
 
 app.put('/api/teaching-assignments/:id/toggle-lock', (req, res) => {
@@ -1656,32 +1572,49 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
         const finalMaLop = (MaLop && MaLop.trim() !== '') ? MaLop.trim() : null;
         const finalPhamVi = PhamViDangKy || 'THEO_KHOA';
 
-        db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=?, PhamViDangKy=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, finalPhamVi, req.params.id], (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+        const proceedUpdate = () => {
+            db.query('UPDATE lophocphan SET MaMonHoc=?, MaLop=?, MaGiangVien=?, HocKy=?, NamHoc=?, SoLuongToiDa=?, PhamViDangKy=? WHERE MaLopHocPhan=?', [MaMonHoc, finalMaLop, MaGiangVien, HocKy, NamHoc, SoLuongToiDa, finalPhamVi, req.params.id], (err) => {
+                if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
 
-            db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
-                if (finalMaLop) {
-                    db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
-                        if (!err && students.length > 0) {
-                            students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); });
-                        }
-                        res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách mới thành công!' });
-                    });
-                } else {
-                    res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' });
-                }
+                db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
+                    if (finalMaLop) {
+                        db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
+                            if (!err && students.length > 0) {
+                                students.forEach(sv => { db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, req.params.id, HocKy]); });
+                            }
+                            res.json({ success: true, message: 'Cập nhật Lớp HP và đồng bộ danh sách mới thành công!' });
+                        });
+                    } else {
+                        res.json({ success: true, message: 'Đã chuyển thành Lớp tự do thành công (Hủy nạp sinh viên ép buộc)!' });
+                    }
+                });
             });
-        });
+        };
+
+        if (finalMaLop) {
+            db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
+                const svCount = resCount && resCount[0] ? resCount[0].count : 0;
+                if (Number(SoLuongToiDa || 40) < svCount) {
+                    return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+                }
+                proceedUpdate();
+            });
+        } else {
+            proceedUpdate();
+        }
     });
 });
 
 app.delete('/api/teaching-assignments/:id', (req, res) => {
     db.query('SELECT TrangThaiLich FROM lophocphan WHERE MaLopHocPhan = ?', [req.params.id], (errLock, resLock) => {
         const isChot = resLock && resLock.length > 0 && resLock[0].TrangThaiLich === 'DA_CHOT';
+        if (isChot) {
+            return res.status(400).json({ success: false, message: 'Lớp học phần này ĐÃ CHỐT LỊCH, không thể xóa!' });
+        }
         db.query('SELECT COUNT(*) as count FROM lichhoc WHERE MaLopHocPhan = ?', [req.params.id], (errLich, resLich) => {
             const hasLich = resLich && resLich.length > 0 && resLich[0].count > 0;
-            if (isChot || hasLich) {
-                return res.status(400).json({ success: false, message: 'Lớp đã được xếp lịch, không được xóa!' });
+            if (hasLich) {
+                return res.status(400).json({ success: false, message: 'Lớp học phần này đang được xếp lịch học. Vui lòng xóa lịch học trước khi xóa lớp!' });
             }
             db.query('DELETE FROM diem WHERE MaLopHocPhan = ?', [req.params.id], () => {
                 db.query('DELETE FROM dangky_hocphan WHERE MaLopHocPhan = ?', [req.params.id], () => {
@@ -1721,12 +1654,7 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
     const [rows] = await db.promise().query(`
       SELECT 
         lhp.MaLopHocPhan, lhp.HocKy, lhp.NamHoc, lhp.MaLop, lhp.PhamViDangKy, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, lhp.SoLuongToiDa,
-        COALESCE(
-          (SELECT COUNT(*) FROM dangky_hocphan dk2
-           WHERE dk2.MaLopHocPhan = lhp.MaLopHocPhan
-             AND dk2.TrangThai NOT IN ('Da huy', 'Tu choi')),
-          0
-        ) AS DaDangKy,
+        (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan UNION SELECT MSSV FROM sinhvien WHERE MaLop = lhp.MaLop AND lhp.MaLop IS NOT NULL AND lhp.MaLop != '') AS tmp) AS DaDangKy,
         gv.HoTen AS TenGiangVien,
         MIN(lh.NgayHoc) AS NgayBatDau,
         MAX(lh.NgayHoc) AS NgayKetThuc,
@@ -1755,6 +1683,7 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
         )
         AND (
           COALESCE(lhp.PhamViDangKy, 'THEO_KHOA') = 'TOAN_TRUONG'
+          OR mh.LoaiMonHoc = 'Đại cương'
           OR (COALESCE(lhp.PhamViDangKy, 'THEO_KHOA') = 'THEO_KHOA' AND (
                 (lhp.MaLop IS NULL AND mh.MaKhoa = (
                   SELECT l.MaKhoa 
@@ -1828,7 +1757,7 @@ app.post('/api/enrollment', async (req, res) => {
     const [[lhp]] = await conn.query(`SELECT lhp.MaLopHocPhan, lhp.MaMonHoc, lhp.HocKy, lhp.NamHoc, lhp.SoLuongToiDa, mh.TenMonHoc, mh.SoTinChi FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ? FOR UPDATE`, [MaLopHocPhan]);
     if (!lhp) throw new Error('Lớp học phần không tồn tại.');
 
-    const [[siSo]] = await conn.query(`SELECT COUNT(*) AS DaDangKy FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi')`, [MaLopHocPhan]);
+      const [[siSo]] = await conn.query(`SELECT COUNT(DISTINCT MSSV) AS DaDangKy FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) AS tmp`, [MaLopHocPhan, MaLopHocPhan, MaLopHocPhan]);
     if (siSo.DaDangKy >= (lhp.SoLuongToiDa || 40)) throw new Error('Lớp học phần đã đủ sĩ số.');
 
     const [[trungMon]] = await conn.query(`SELECT dk.MaLopHocPhan FROM dangky_hocphan dk JOIN lophocphan lhp2 ON dk.MaLopHocPhan = lhp2.MaLopHocPhan WHERE dk.MSSV = ? AND lhp2.MaMonHoc = ? AND lhp2.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi') LIMIT 1`, [MSSV, lhp.MaMonHoc, lhp.HocKy]);
@@ -1903,7 +1832,7 @@ app.post('/api/enrollment/batch', async (req, res) => {
       const [[lhp]] = await conn.query(`SELECT lhp.MaLopHocPhan, lhp.MaMonHoc, lhp.HocKy, lhp.NamHoc, lhp.SoLuongToiDa, mh.TenMonHoc, mh.SoTinChi FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ? FOR UPDATE`, [MaLopHocPhan]);
       if (!lhp) throw new Error(`Lớp học phần ${MaLopHocPhan} không tồn tại.`);
 
-      const [[siSo]] = await conn.query(`SELECT COUNT(*) AS DaDangKy FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi')`, [MaLopHocPhan]);
+        const [[siSo]] = await conn.query(`SELECT COUNT(DISTINCT MSSV) AS DaDangKy FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) AS tmp`, [MaLopHocPhan, MaLopHocPhan, MaLopHocPhan]);
       if (siSo.DaDangKy >= (lhp.SoLuongToiDa || 40)) throw new Error(`Lớp ${MaLopHocPhan} đã đủ sĩ số.`);
 
       const [[trungMon]] = await conn.query(`SELECT dk.MaLopHocPhan FROM dangky_hocphan dk JOIN lophocphan lhp2 ON dk.MaLopHocPhan = lhp2.MaLopHocPhan WHERE dk.MSSV = ? AND lhp2.MaMonHoc = ? AND lhp2.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi') LIMIT 1`, [MSSV, lhp.MaMonHoc, lhp.HocKy]);
@@ -1974,7 +1903,8 @@ app.get('/api/schedules', (req, res) => {
             gv.HoTen AS TenGiangVien,
             mh.TenMonHoc, mh.SoTinChi,
             l.TenLop,
-            (SELECT COALESCE(SUM(lh2.SoTiet), 0) FROM lichhoc lh2 WHERE lh2.MaLopHocPhan = lh.MaLopHocPhan) AS TongTietDaHoc
+            (SELECT COALESCE(SUM(lh2.SoTiet), 0) FROM lichhoc lh2 WHERE lh2.MaLopHocPhan = lh.MaLopHocPhan) AS TongTietDaHoc,
+            (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan UNION SELECT MSSV FROM sinhvien WHERE MaLop = lhp.MaLop AND lhp.MaLop IS NOT NULL AND lhp.MaLop != '') AS tmp) AS SiSoThucTe
         FROM lichhoc lh
         LEFT JOIN lophocphan lhp ON lh.MaLopHocPhan = lhp.MaLopHocPhan
         LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
@@ -2070,6 +2000,93 @@ app.delete('/api/schedules/lophocphan/:maLHP', (req, res) => {
         db.query("UPDATE lophocphan SET TrangThaiLich = 'CHUA_CHOT' WHERE MaLopHocPhan = ?", [maLHP], (errUpdate) => {
             if (errUpdate) return res.status(500).json({ success: false, message: 'Đã xóa lịch nhưng lỗi mở khóa lớp HP!' });
             res.json({ success: true, message: 'Xóa toàn bộ lịch của lớp và mở khóa phân công thành công!' });
+        });
+    });
+});
+
+app.put('/api/schedules/lophocphan/:maLHP/reschedule', async (req, res) => {
+    const maLHP = req.params.maLHP;
+    const { sessions } = req.body;
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+        return res.status(400).json({ success: false, message: 'Danh sách buổi học mới không được để trống!' });
+    }
+
+    db.query('SELECT mh.SoTinChi, lhp.TrangThaiLich FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ?', [maLHP], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra thông tin môn học!' });
+        if (!results || results.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin môn học!' });
+        const lhpInfo = results[0];
+        if (lhpInfo.TrangThaiLich === 'DA_CHOT') {
+            return res.status(400).json({ success: false, message: 'Lớp học phần này đã CHỐT LỊCH HỌC, không thể xếp lại lịch!' });
+        }
+
+        const tongTietMonHoc = lhpInfo.SoTinChi * 9;
+        const tongTietMoi = sessions.reduce((sum, s) => sum + (parseInt(s.SoTiet) || 0), 0);
+        if (tongTietMoi > tongTietMonHoc) {
+            return res.status(400).json({ success: false, message: `Tổng số tiết mới (${tongTietMoi}) vượt quá số tiết quy định của môn học (${tongTietMonHoc}).` });
+        }
+
+        for (const session of sessions) {
+            const soTietHoc = parseInt(session.SoTiet);
+            const tietBD = parseInt(session.TietBatDau);
+            if (!soTietHoc || soTietHoc < 1 || soTietHoc > 5) return res.status(400).json({ success: false, message: 'Số tiết học của buổi phải từ 1 đến 5 tiết!' });
+            if (!tietBD || tietBD < 1 || tietBD > 12) return res.status(400).json({ success: false, message: 'Tiết bắt đầu không hợp lệ!' });
+            if (tietBD + soTietHoc - 1 > 12) return res.status(400).json({ success: false, message: 'Tiết kết thúc không được vượt quá 12!' });
+        }
+
+        db.getConnection((errConn, conn) => {
+            if (errConn) return res.status(500).json({ success: false, message: 'Lỗi kết nối cơ sở dữ liệu!' });
+            conn.beginTransaction((errBegin) => {
+                if (errBegin) {
+                    conn.release();
+                    return res.status(500).json({ success: false, message: 'Lỗi bắt đầu giao dịch!' });
+                }
+
+                conn.query('DELETE FROM lichhoc WHERE MaLopHocPhan = ?', [maLHP], (errDel) => {
+                    if (errDel) {
+                        return conn.rollback(() => {
+                            conn.release();
+                            res.status(500).json({ success: false, message: 'Lỗi khi xóa lịch học cũ!' });
+                        });
+                    }
+
+                    const insertPromises = sessions.map(session => {
+                        const soTietHoc = parseInt(session.SoTiet);
+                        const tietBD = parseInt(session.TietBatDau);
+                        const tietKetThuc = tietBD + soTietHoc - 1;
+                        const caHocStr = `${tietBD}-${tietKetThuc}`;
+                        const nguoiTaoVal = session.NguoiTao || 'Admin (Hệ thống)';
+                        return new Promise((resolve, reject) => {
+                            conn.query('INSERT INTO lichhoc (MaLopHocPhan, NgayHoc, CaHoc, SoTiet, PhongHoc, NguoiTao, NgayTao) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                                [maLHP, session.NgayHoc, caHocStr, soTietHoc, session.PhongHoc, nguoiTaoVal],
+                                (errIns) => {
+                                    if (errIns) reject(errIns);
+                                    else resolve();
+                                }
+                            );
+                        });
+                    });
+
+                    Promise.all(insertPromises)
+                        .then(() => {
+                            conn.commit((errCommit) => {
+                                if (errCommit) {
+                                    return conn.rollback(() => {
+                                        conn.release();
+                                        res.status(500).json({ success: false, message: 'Lỗi commit giao dịch!' });
+                                    });
+                                }
+                                conn.release();
+                                res.json({ success: true, message: 'Cập nhật lại lịch học định kỳ môn thành công!' });
+                            });
+                        })
+                        .catch(() => {
+                            conn.rollback(() => {
+                                conn.release();
+                                res.status(500).json({ success: false, message: 'Lỗi khi tạo lịch học mới, đã hoàn tác thay đổi!' });
+                            });
+                        });
+                });
+            });
         });
     });
 });

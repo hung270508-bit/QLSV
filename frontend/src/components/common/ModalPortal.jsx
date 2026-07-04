@@ -87,7 +87,7 @@ export const Toast = ({ show, message, type = 'success', onClose }) => {
 };
 
 // Confirmation Dialog Component
-export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xác nhận', requireCountdown = false }) => {
+export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xác nhận', requireCountdown = false, isSubmitting = false }) => {
   const [countdown, setCountdown] = useState(requireCountdown ? 5 : 0);
 
   useEffect(() => {
@@ -138,25 +138,30 @@ export const ConfirmDialog = ({ show, message, onConfirm, onCancel, title = 'Xá
               <p className="text-[#6B7280] mb-6">{message}</p>
               <div className="flex gap-3">
                 <motion.button
-                  whileHover={countdown === 0 ? { scale: 1.05 } : {}}
-                  whileTap={countdown === 0 ? { scale: 0.95 } : {}}
+                  whileHover={countdown === 0 && !isSubmitting ? { scale: 1.05 } : {}}
+                  whileTap={countdown === 0 && !isSubmitting ? { scale: 0.95 } : {}}
                   onClick={() => {
-                    if (countdown === 0) onConfirm();
+                    if (countdown === 0 && !isSubmitting) onConfirm();
                   }}
-                  disabled={countdown > 0}
+                  disabled={countdown > 0 || isSubmitting}
                   className={`flex-1 py-3 rounded-xl font-semibold shadow-lg transition-all flex items-center justify-center gap-2 ${
-                    countdown > 0 
-                      ? 'bg-orange-300 text-white cursor-not-allowed'
+                    countdown > 0 || isSubmitting
+                      ? 'bg-orange-300 text-white cursor-not-allowed opacity-70'
                       : 'bg-[#F4C542] text-white'
                   }`}
                 >
-                  {countdown > 0 ? `Chờ ${countdown}s` : 'Xác nhận'}
+                  {countdown > 0 ? `Chờ ${countdown}s` : isSubmitting ? 'Đang xử lý...' : 'Xác nhận'}
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={onCancel}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                  whileHover={!isSubmitting ? { scale: 1.02 } : {}}
+                  whileTap={!isSubmitting ? { scale: 0.98 } : {}}
+                  onClick={() => {
+                    if (!isSubmitting) onCancel();
+                  }}
+                  disabled={isSubmitting}
+                  className={`flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors ${
+                    isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   Hủy
                 </motion.button>
