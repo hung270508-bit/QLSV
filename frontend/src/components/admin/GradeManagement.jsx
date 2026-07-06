@@ -10,7 +10,8 @@ import {
 import axios from 'axios';
 import { GradeSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 // ================================================================
 // STORAGE KEY
@@ -257,6 +258,7 @@ function GradeManagement() {
 
   const [showModal, setShowModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
   const [submitConfirmModal, setSubmitConfirmModal] = useState({ show: false, payload: null, isEdit: false, isBulk: false });
   const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
@@ -272,6 +274,11 @@ function GradeManagement() {
   const [bulkKhoa, setBulkKhoa] = useState('');
   const [bulkSection, setBulkSection] = useState('');
   const [bulkGrades, setBulkGrades] = useState([]);
+
+  // Export modal state
+  const [exportFilters, setExportFilters] = useState({ namHoc: '', hocKy: '', khoaFilter: '', sectionFilter: '', xepLoai: '', coGrade: 'all' });
+  const [exportPreviewPage, setExportPreviewPage] = useState(1);
+  const EXPORT_PAGE_SIZE = 8;
 
 
 
@@ -590,49 +597,181 @@ function GradeManagement() {
   };
 
   const handleExport = () => {
-    const data = [];
-    grades.filter(g => filteredSections.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).forEach(g => {
+    setExportFilters({ namHoc: '', hocKy: '', khoaFilter: '', sectionFilter: '', xepLoai: '', coGrade: 'all' });
+    setExportPreviewPage(1);
+    setShowExportModal(true);
+  };
+
+  // Compute export preview data based on exportFilters
+  const exportPreviewData = useMemo(() => {
+    let filteredSecs = courseSections;
+    if (exportFilters.namHoc) filteredSecs = filteredSecs.filter(cs => String(cs.NamHoc) === exportFilters.namHoc);
+    if (exportFilters.hocKy) filteredSecs = filteredSecs.filter(cs => String(cs.HocKy) === exportFilters.hocKy);
+    if (exportFilters.khoaFilter) filteredSecs = filteredSecs.filter(cs => extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(exportFilters.khoaFilter).trim().toUpperCase());
+    if (exportFilters.sectionFilter) filteredSecs = filteredSecs.filter(cs => cs.MaLopHocPhan === exportFilters.sectionFilter);
+
+    const rows = [];
+    grades.filter(g => filteredSecs.some(cs => cs.MaLopHocPhan === g.MaLopHocPhan)).forEach(g => {
       const cfg = getActiveConfig(g.MaLopHocPhan);
       const scored = hasAnyScore(g.DiemChuyenCan, g.DiemBaiTap, g.DiemGiuaKy, g.DiemCuoiKy);
-      
-      const getExportVal = (key) => {
-        const comp = cfg.find(c => c.key === key);
-        if (!comp || !comp.enabled || Number(comp.weight) === 0) return '0';
-        return g[key] ?? '-';
-      };
+      const t10 = scored ? (g.DiemTong != null ? parseFloat(g.DiemTong) : parseFloat(calcTotal10(g, cfg))) : null;
+      const gpa = t10 != null ? convertToGPA(t10) : null;
 
-      if (!scored) {
-        data.push({
-          'MSSV': g.MSSV, 'Sinh viên': g.TenSinhVien || 'N/A', 'Môn học': g.TenMonHoc || 'N/A', 'Khoa': g.TenKhoa || '', 'Học kỳ': g.HocKy || '',
-          'Chuyên cần': '-', 'Bài tập': '-', 'Giữa kỳ': '-', 'Cuối kỳ': '-',
-          'Điểm TB': 'Chưa có điểm', 'GPA': '', 'Điểm chữ': '', 'Xếp loại': ''
-        });
-      } else {
-        const t10 = calcTotal10(g, cfg);
-        const gpa = convertToGPA(t10);
-        data.push({
-          'MSSV': g.MSSV, 'Sinh viên': g.TenSinhVien || 'N/A', 'Môn học': g.TenMonHoc || 'N/A', 'Khoa': g.TenKhoa || '', 'Học kỳ': g.HocKy || '',
-          'Chuyên cần': getExportVal('DiemChuyenCan'), 'Bài tập': getExportVal('DiemBaiTap'), 'Giữa kỳ': getExportVal('DiemGiuaKy'), 'Cuối kỳ': getExportVal('DiemCuoiKy'),
-          'Điểm TB': Number(g.DiemTong || t10), 'GPA': Number(g.DiemGPA ?? gpa.gpa.toFixed(1)), 'Điểm chữ': g.DiemChu || gpa.letter, 'Xếp loại': gpa.text
-        });
-      }
+      if (exportFilters.coGrade === 'yes' && !scored) return;
+      if (exportFilters.coGrade === 'no' && scored) return;
+      if (exportFilters.xepLoai && gpa?.letter !== exportFilters.xepLoai) return;
+
+      rows.push({ g, cfg, scored, t10, gpa });
     });
+    return rows;
+  }, [exportFilters, grades, courseSections, activeConfigs]);
 
-    if(data.length === 0) {
-       showNotification('error', 'Không có dữ liệu điểm để xuất!');
-       return;
+  const executeExport = async () => {
+    if (exportPreviewData.length === 0) { showNotification('error', 'Không có dữ liệu điểm để xuất!'); return; }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Bảng Điểm Sinh Viên');
+
+      const today = new Date();
+      const dateTimeStr = `${today.toLocaleDateString('vi-VN')} ${today.toLocaleTimeString('vi-VN')}`;
+
+      // ── 1. Build filter info string ──
+      const filterParts = [];
+      if (exportFilters.namHoc)       filterParts.push(`Năm học: ${exportFilters.namHoc}`);
+      if (exportFilters.hocKy)        filterParts.push(`Học kỳ: ${exportFilters.hocKy}`);
+      if (exportFilters.khoaFilter)   filterParts.push(`Khoa: ${faculties.find(f => f.MaKhoa === exportFilters.khoaFilter)?.TenKhoa || exportFilters.khoaFilter}`);
+      if (exportFilters.sectionFilter) filterParts.push(`Lớp HP: ${exportFilters.sectionFilter}`);
+      if (exportFilters.coGrade === 'yes') filterParts.push('Chỉ SV đã có điểm');
+      if (exportFilters.coGrade === 'no')  filterParts.push('Chỉ SV chưa có điểm');
+      if (exportFilters.xepLoai)      filterParts.push(`Xếp loại: ${exportFilters.xepLoai}`);
+      const filterInfo = filterParts.length > 0
+        ? `Ngày xuất: ${dateTimeStr} | ${filterParts.join(' | ')}`
+        : `Ngày xuất: ${dateTimeStr}`;
+
+      // ── 2. Column definitions ──
+      worksheet.columns = [
+        { key: 'stt',     width: 7  },
+        { key: 'mssv',    width: 14 },
+        { key: 'hoTen',   width: 28 },
+        { key: 'monHoc',  width: 30 },
+        { key: 'khoa',    width: 22 },
+        { key: 'hocKy',   width: 12 },
+        { key: 'cc',      width: 9  },
+        { key: 'bt',      width: 10 },
+        { key: 'gk',      width: 10 },
+        { key: 'ck',      width: 10 },
+        { key: 'diemTB',  width: 16 },
+        { key: 'gpa',     width: 12 },
+        { key: 'diemChu', width: 12 },
+        { key: 'xepLoai', width: 18 },
+      ];
+
+      // ── 3. Title row ──
+      worksheet.mergeCells(`A1:M1`);
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = 'BẢNG ĐIỂM SINH VIÊN';
+      titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF152238' } };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(1).height = 40;
+
+      // ── 4. Date/filter info row ──
+      worksheet.mergeCells(`A2:N2`);
+      const dateCell = worksheet.getCell('A2');
+      dateCell.value = filterInfo;
+      dateCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF4B5563' } };
+      dateCell.alignment = { vertical: 'middle', horizontal: 'right' };
+      worksheet.getRow(2).height = 22;
+
+      // ── 5. Blank row ──
+      worksheet.getRow(3).height = 8;
+
+      // ── 6. Header row ──
+      const headers = ['STT', 'MSSV', 'Họ và tên', 'Môn học', 'Khoa', 'Học kỳ',
+        'Chuyên cần', 'Bài tập', 'Giữa kỳ', 'Cuối kỳ', 'Điểm TB (Hệ 10)', 'GPA (Hệ 4)', 'Điểm chữ', 'Xếp loại'];
+      const headerRow = worksheet.addRow(headers);
+      headerRow.height = 28;
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004080' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+        cell.border = {
+          top:    { style: 'thin' },
+          left:   { style: 'thin' },
+          bottom: { style: 'thin' },
+          right:  { style: 'thin' },
+        };
+      });
+
+      // ── 7. Data rows ──
+      exportPreviewData.forEach(({ g, cfg, scored, t10, gpa }, index) => {
+        const getVal = (key) => {
+          const comp = cfg.find(c => c.key === key);
+          if (!comp || !comp.enabled || Number(comp.weight) === 0) return '-';
+          return g[key] != null && g[key] !== '' ? Number(g[key]) : '-';
+        };
+
+        const row = worksheet.addRow({
+          stt:     index + 1,
+          mssv:    g.MSSV || '',
+          hoTen:   g.TenSinhVien || 'N/A',
+          monHoc:  g.TenMonHoc || 'N/A',
+          khoa:    (() => {
+            const sec = courseSections.find(cs => cs.MaLopHocPhan === g.MaLopHocPhan);
+            const maKhoa = sec?.MaKhoa || extractKhoa(undefined, g.MaMonHoc || sec?.MaMonHoc);
+            return faculties.find(f => f.MaKhoa === maKhoa)?.TenKhoa || g.TenKhoa || maKhoa || '';
+          })(),
+          hocKy:   g.HocKy || '',
+          cc:      scored ? getVal('DiemChuyenCan') : '-',
+          bt:      scored ? getVal('DiemBaiTap') : '-',
+          gk:      scored ? getVal('DiemGiuaKy') : '-',
+          ck:      scored ? getVal('DiemCuoiKy') : '-',
+          diemTB:  scored ? Number(t10) : 'Chưa có điểm',
+          gpa:     scored ? Number(g.DiemGPA ?? gpa.gpa.toFixed(1)) : '',
+          diemChu: scored ? (g.DiemChu || gpa.letter) : '',
+          xepLoai: scored ? gpa.text : '',
+        });
+
+        const isEven = index % 2 === 0;
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          // Alignment by column
+          const centerCols = [1, 2, 4, 6, 7, 8, 9, 10, 11, 12, 13]; // STT, MSSV, HK, scores
+          cell.font = { name: 'Arial', size: 11, color: { argb: 'FF000000' } };
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: centerCols.includes(colNumber) ? 'center' : 'left',
+          };
+          if (!isEven) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+          }
+          cell.border = {
+            top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right:  { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          };
+        });
+      });
+
+      // ── 8. Save file ──
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+      const nameParts = [
+        exportFilters.namHoc || 'TatCaNamHoc',
+        exportFilters.hocKy ? `HK${exportFilters.hocKy}` : 'TatCaHK',
+        exportFilters.khoaFilter || '',
+        exportFilters.sectionFilter || '',
+        exportFilters.xepLoai || '',
+      ].filter(Boolean).join('_');
+      saveAs(blob, `DiemSinhVien_${nameParts}_${today.getTime()}.xlsx`);
+
+      setShowExportModal(false);
+      showNotification('success', `Đã xuất ${exportPreviewData.length} bản ghi thành công!`);
+    } catch (error) {
+      console.error('Export error:', error);
+      showNotification('error', 'Lỗi khi xuất file Excel!');
     }
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "DiemSinhVien");
-    
-    const keys = Object.keys(data[0]);
-    const wscols = keys.map(k => ({ wch: Math.max(k.length, 12) }));
-    ws['!cols'] = wscols;
-
-    const fileName = `DiemSinhVien_${displayFilters.namHoc || 'TatCa'}_${displayFilters.hocKy || 'TatCa'}.xlsx`;
-    XLSX.writeFile(wb, fileName);
   };
 
   const activeCfgModal = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
@@ -1280,6 +1419,280 @@ function GradeManagement() {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      {/* ============================================================
+          EXPORT MODAL
+      ============================================================ */}
+      <AnimatePresence>
+        {showExportModal && (() => {
+          const totalRecords = exportPreviewData.length;
+          const scoredCount = exportPreviewData.filter(r => r.scored).length;
+          const unscoredCount = totalRecords - scoredCount;
+          const avgScore = scoredCount > 0
+            ? (exportPreviewData.filter(r => r.scored).reduce((s, r) => s + (r.t10 || 0), 0) / scoredCount).toFixed(2)
+            : '—';
+          const totalPages = Math.ceil(totalRecords / EXPORT_PAGE_SIZE);
+          const pagedRows = exportPreviewData.slice((exportPreviewPage - 1) * EXPORT_PAGE_SIZE, exportPreviewPage * EXPORT_PAGE_SIZE);
+          const exportSections = courseSections.filter(cs =>
+            (!exportFilters.namHoc || String(cs.NamHoc) === exportFilters.namHoc) &&
+            (!exportFilters.hocKy || String(cs.HocKy) === exportFilters.hocKy) &&
+            (!exportFilters.khoaFilter || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === String(exportFilters.khoaFilter).trim().toUpperCase())
+          );
+          return (
+            <div className="fixed inset-0 flex items-center justify-center z-[9995] p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setShowExportModal(false)} />
+              <motion.div
+                initial={{ scale: 0.95, y: 16, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 16, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+                className="bg-white rounded-[2rem] w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl relative z-10 overflow-hidden"
+              >
+                {/* Header */}
+                <div className="bg-gradient-to-r from-[#22C55E] to-emerald-600 px-8 py-6 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-white/20 rounded-2xl">
+                      <Download className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-white tracking-tight">Xuất dữ liệu điểm Excel</h3>
+                      <p className="text-emerald-100 text-sm font-medium mt-0.5">Thiết lập bộ lọc — xem trước — xuất file</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowExportModal(false)}
+                    className="p-2.5 bg-white/20 hover:bg-white/30 rounded-full transition-colors">
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  {/* Filter Section */}
+                  <div className="px-8 pt-7 pb-5">
+                    <div className="flex items-center gap-2 mb-5">
+                      <Filter className="w-4 h-4 text-emerald-600" />
+                      <h4 className="font-black text-[#1F2937] text-sm uppercase tracking-wider">Bộ lọc xuất dữ liệu</h4>
+                      <span className="text-xs text-[#6B7280] font-medium ml-1">— có thể kết hợp nhiều bộ lọc cùng lúc</span>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Năm học */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Năm học</label>
+                        <select value={exportFilters.namHoc}
+                          onChange={e => { setExportFilters(f => ({ ...f, namHoc: e.target.value, sectionFilter: '' })); setExportPreviewPage(1); }}
+                          className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#22C55E] font-semibold text-sm text-[#1F2937] transition-colors">
+                          <option value="">Tất cả năm học</option>
+                          {[...new Set(courseSections.map(cs => cs.NamHoc).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Học kỳ */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Học kỳ</label>
+                        <select value={exportFilters.hocKy}
+                          onChange={e => { setExportFilters(f => ({ ...f, hocKy: e.target.value, sectionFilter: '' })); setExportPreviewPage(1); }}
+                          className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#22C55E] font-semibold text-sm text-[#1F2937] transition-colors">
+                          <option value="">Tất cả học kỳ</option>
+                          {[...new Set(courseSections.map(cs => cs.HocKy).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b))).map(hk => (
+                            <option key={hk} value={hk}>{String(hk).toLowerCase().includes('hk') || String(hk).toLowerCase().includes('học kỳ') ? hk : `Học kỳ ${hk}`}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Khoa */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Khoa</label>
+                        <select value={exportFilters.khoaFilter}
+                          onChange={e => { setExportFilters(f => ({ ...f, khoaFilter: e.target.value, sectionFilter: '' })); setExportPreviewPage(1); }}
+                          className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#22C55E] font-semibold text-sm text-[#1F2937] transition-colors">
+                          <option value="">Tất cả khoa</option>
+                          {faculties.map(f => <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>)}
+                        </select>
+                      </div>
+                      {/* Lớp học phần */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Lớp học phần</label>
+                        <select value={exportFilters.sectionFilter}
+                          onChange={e => { setExportFilters(f => ({ ...f, sectionFilter: e.target.value })); setExportPreviewPage(1); }}
+                          className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#22C55E] font-semibold text-sm text-[#1F2937] transition-colors">
+                          <option value="">Tất cả lớp học phần</option>
+                          {exportSections.map(cs => (
+                            <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan}>{cs.TenMonHoc} — {cs.MaLopHocPhan}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Trạng thái điểm */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Trạng thái điểm</label>
+                        <select value={exportFilters.coGrade}
+                          onChange={e => { setExportFilters(f => ({ ...f, coGrade: e.target.value, xepLoai: '' })); setExportPreviewPage(1); }}
+                          className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#22C55E] font-semibold text-sm text-[#1F2937] transition-colors">
+                          <option value="all">Tất cả (có và chưa có điểm)</option>
+                          <option value="yes">Chỉ SV đã có điểm</option>
+                          <option value="no">Chỉ SV chưa có điểm</option>
+                        </select>
+                      </div>
+                      {/* Xếp loại */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Xếp loại (Điểm chữ)</label>
+                        <select value={exportFilters.xepLoai}
+                          onChange={e => { setExportFilters(f => ({ ...f, xepLoai: e.target.value, coGrade: e.target.value ? 'yes' : f.coGrade })); setExportPreviewPage(1); }}
+                          className="w-full px-4 py-3 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#22C55E] font-semibold text-sm text-[#1F2937] transition-colors">
+                          <option value="">Tất cả xếp loại</option>
+                          {['A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'F+', 'F'].map(l => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    {/* Reset filters */}
+                    {(exportFilters.namHoc || exportFilters.hocKy || exportFilters.khoaFilter || exportFilters.sectionFilter || exportFilters.xepLoai || exportFilters.coGrade !== 'all') && (
+                      <button onClick={() => { setExportFilters({ namHoc: '', hocKy: '', khoaFilter: '', sectionFilter: '', xepLoai: '', coGrade: 'all' }); setExportPreviewPage(1); }}
+                        className="mt-4 flex items-center gap-2 text-sm font-bold text-red-500 hover:text-red-700 transition-colors px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200">
+                        <XCircle className="w-4 h-4" /> Xóa tất cả bộ lọc
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Stats Bar */}
+                  <div className="px-8 pb-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-gradient-to-br from-emerald-50 to-green-100 border border-green-200 rounded-2xl p-4 text-center">
+                        <p className="text-3xl font-black text-emerald-700">{totalRecords}</p>
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mt-1">Tổng bản ghi</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-4 text-center">
+                        <p className="text-3xl font-black text-blue-700">{scoredCount}</p>
+                        <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mt-1">Đã có điểm</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-amber-50 to-yellow-100 border border-yellow-200 rounded-2xl p-4 text-center">
+                        <p className="text-3xl font-black text-amber-700">{unscoredCount}</p>
+                        <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mt-1">Chưa có điểm</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-purple-50 to-indigo-100 border border-indigo-200 rounded-2xl p-4 text-center">
+                        <p className="text-3xl font-black text-purple-700">{avgScore}</p>
+                        <p className="text-xs font-bold text-purple-600 uppercase tracking-wider mt-1">Điểm TB hệ 10</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preview Table */}
+                  <div className="px-8 pb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-[#3B82F6]" />
+                        <h4 className="font-black text-[#1F2937] text-sm uppercase tracking-wider">Xem trước dữ liệu xuất</h4>
+                      </div>
+                      {totalRecords > 0 && (
+                        <span className="text-xs text-[#6B7280] font-medium bg-gray-100 px-3 py-1.5 rounded-lg border border-[#E5E7EB]">
+                          Hiển thị {(exportPreviewPage - 1) * EXPORT_PAGE_SIZE + 1}–{Math.min(exportPreviewPage * EXPORT_PAGE_SIZE, totalRecords)} / {totalRecords}
+                        </span>
+                      )}
+                    </div>
+
+                    {totalRecords === 0 ? (
+                      <div className="py-16 text-center border-2 border-dashed border-[#E5E7EB] rounded-2xl bg-gray-50">
+                        <Search className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                        <p className="font-bold text-[#6B7280] text-base">Không có bản ghi nào khớp với bộ lọc</p>
+                        <p className="text-sm text-gray-400 mt-1">Thử thay đổi hoặc xóa bộ lọc</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="border-2 border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[700px] text-left">
+                              <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-[#E5E7EB]">
+                                <tr>
+                                  <th className="py-3.5 px-4 text-[11px] font-black text-[#6B7280] uppercase tracking-wider">#</th>
+                                  <th className="py-3.5 px-4 text-[11px] font-black text-[#6B7280] uppercase tracking-wider">MSSV</th>
+                                  <th className="py-3.5 px-4 text-[11px] font-black text-[#6B7280] uppercase tracking-wider">Sinh viên</th>
+                                  <th className="py-3.5 px-4 text-[11px] font-black text-[#6B7280] uppercase tracking-wider">Môn học</th>
+                                  <th className="py-3.5 px-3 text-[11px] font-black text-[#6B7280] uppercase tracking-wider text-center">Học kỳ</th>
+                                  <th className="py-3.5 px-3 text-[11px] font-black text-[#1F2937] uppercase tracking-wider text-center bg-gray-100/60">Hệ 10</th>
+                                  <th className="py-3.5 px-3 text-[11px] font-black text-[#152238] uppercase tracking-wider text-center bg-amber-50/60">GPA</th>
+                                  <th className="py-3.5 px-3 text-[11px] font-black text-[#6B7280] uppercase tracking-wider text-center">Xếp loại</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {pagedRows.map(({ g, scored, t10, gpa }, idx) => (
+                                  <tr key={g.MSSV + g.MaLopHocPhan}
+                                    className={`transition-colors ${!scored ? 'bg-amber-50/40' : 'hover:bg-gray-50/80'}`}>
+                                    <td className="py-3 px-4 text-xs text-gray-400 font-bold">{(exportPreviewPage - 1) * EXPORT_PAGE_SIZE + idx + 1}</td>
+                                    <td className="py-3 px-4 text-sm font-bold text-[#1F2937] font-mono">{g.MSSV}</td>
+                                    <td className="py-3 px-4 text-sm font-medium text-[#1F2937]">{g.TenSinhVien || '—'}</td>
+                                    <td className="py-3 px-4 text-sm text-[#6B7280] font-medium max-w-[160px] truncate" title={g.TenMonHoc}>{g.TenMonHoc || '—'}</td>
+                                    <td className="py-3 px-3 text-xs text-center font-bold text-[#6B7280]">{g.HocKy || '—'}</td>
+                                    <td className="py-3 px-3 text-sm text-center font-black text-[#1F2937] bg-gray-50/60">
+                                      {scored ? <span className="bg-gray-100 px-2 py-0.5 rounded-lg">{t10}</span> : <span className="text-amber-500 text-xs font-bold">Chưa có</span>}
+                                    </td>
+                                    <td className="py-3 px-3 text-sm text-center font-black bg-amber-50/40">
+                                      {gpa ? <span className={`font-black ${getLetterColor(gpa.letter)}`}>{gpa.gpa.toFixed(1)}</span> : <span className="text-gray-300">—</span>}
+                                    </td>
+                                    <td className="py-3 px-3 text-center">
+                                      {gpa ? (
+                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border
+                                          ${gpa.letter === 'A' ? 'bg-green-50 text-green-700 border-green-200' :
+                                            gpa.letter?.startsWith('B') ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                            gpa.letter?.startsWith('C') ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                            gpa.letter?.startsWith('D') ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                            'bg-red-50 text-red-700 border-red-200'}`}>
+                                          {gpa.letter} — {gpa.text}
+                                        </span>
+                                      ) : <span className="text-gray-300 text-xs">—</span>}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-center gap-2 mt-4">
+                            <button onClick={() => setExportPreviewPage(p => Math.max(1, p - 1))} disabled={exportPreviewPage === 1}
+                              className="px-3.5 py-2 rounded-xl text-sm font-bold border border-[#E5E7EB] bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                              ‹ Trước
+                            </button>
+                            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                              let page;
+                              if (totalPages <= 7) page = i + 1;
+                              else if (exportPreviewPage <= 4) page = i + 1;
+                              else if (exportPreviewPage >= totalPages - 3) page = totalPages - 6 + i;
+                              else page = exportPreviewPage - 3 + i;
+                              return (
+                                <button key={page} onClick={() => setExportPreviewPage(page)}
+                                  className={`w-9 h-9 rounded-xl text-sm font-bold border transition-colors
+                                    ${page === exportPreviewPage ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'border-[#E5E7EB] bg-white hover:bg-gray-50 text-[#1F2937]'}`}>
+                                  {page}
+                                </button>
+                              );
+                            })}
+                            <button onClick={() => setExportPreviewPage(p => Math.min(totalPages, p + 1))} disabled={exportPreviewPage === totalPages}
+                              className="px-3.5 py-2 rounded-xl text-sm font-bold border border-[#E5E7EB] bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                              Sau ›
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="px-8 py-5 border-t-2 border-[#E5E7EB] bg-[#F7F8FA]/60 flex gap-4 shrink-0">
+                  <button onClick={() => setShowExportModal(false)}
+                    className="flex-1 py-3.5 bg-white border-2 border-[#E5E7EB] text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors text-base">
+                    Hủy bỏ
+                  </button>
+                  <button onClick={executeExport} disabled={totalRecords === 0}
+                    className="flex-2 flex items-center justify-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-bold shadow-lg hover:from-emerald-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-emerald-500/30 hover:-translate-y-0.5 text-base">
+                    <Download className="w-5 h-5" />
+                    Xuất Excel ({totalRecords} bản ghi)
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       <AnimatePresence>
