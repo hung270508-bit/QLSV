@@ -166,16 +166,15 @@ function TeachingAssignment() {
     if (!formData.MaMonHoc) errors.MaMonHoc = 'Vui lòng chọn Môn học.';
     if (!formData.MaGiangVien) errors.MaGiangVien = 'Vui lòng chọn Giảng viên.';
 
-    // Ràng buộc: Giảng viên không được dạy lại chính lớp A cho cùng 1 môn
-    if (formData.MaLop && formData.MaGiangVien && formData.MaMonHoc) {
-      const isDuplicate = assignments.some(a =>
-        String(a.MaGiangVien).trim().toLowerCase() === String(formData.MaGiangVien).trim().toLowerCase() &&
+    // Ràng buộc: Lớp hành chính chỉ được phân công học 1 môn 1 lần duy nhất trong toàn bộ chương trình học (không được mở 2 LHP cùng môn cho cùng 1 lớp hành chính dù khác giảng viên hay khác học kỳ)
+    if (formData.MaLop && formData.MaMonHoc) {
+      const existingAssign = assignments.find(a =>
+        a && a.MaLop &&
         String(a.MaLop).trim().toLowerCase() === String(formData.MaLop).trim().toLowerCase() &&
-        String(a.MaMonHoc).trim().toLowerCase() === String(formData.MaMonHoc).trim().toLowerCase() &&
-        String(a.HocKy || '').trim().toLowerCase() === String(formData.HocKy || '').trim().toLowerCase()
+        String(a.MaMonHoc).trim().toLowerCase() === String(formData.MaMonHoc).trim().toLowerCase()
       );
-      if (isDuplicate) {
-        errors.MaLop = 'Giảng viên này đã được phân công dạy môn này cho lớp đã chọn trong học kỳ này.';
+      if (existingAssign) {
+        errors.MaLop = `Lớp "${formData.MaLop}" đã được phân công học môn này tại LHP [${existingAssign.MaLopHocPhan} - Học kỳ ${existingAssign.HocKy || ''}]. Không thể mở LHP trùng môn cho cùng lớp hành chính (SV thi rớt/học cải thiện vui lòng mở Lớp tự do).`;
       }
     }
 

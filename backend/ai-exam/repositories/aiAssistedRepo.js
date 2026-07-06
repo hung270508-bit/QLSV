@@ -1,4 +1,14 @@
 module.exports = (dbPromise) => {
+    // Tự động kiểm tra và tạo cột session_id nếu chưa có (tương thích mọi phiên bản MySQL)
+    dbPromise.query(`
+        SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'question_banks' AND COLUMN_NAME = 'session_id'
+    `).then(([rows]) => {
+        if (rows.length === 0) {
+            return dbPromise.query(`ALTER TABLE question_banks ADD COLUMN session_id INT NULL`);
+        }
+    }).catch(err => console.error('Migration error:', err));
+
     return {
         // 1. Quản lý tài liệu Word tải lên
         saveDocument: async ({ ma_mon_hoc, ma_giang_vien, tieu_de, file_name, file_url, text_content }) => {
@@ -87,29 +97,67 @@ module.exports = (dbPromise) => {
                 connection = await dbPromise.getConnection();
                 await connection.beginTransaction();
 
+                // Kiểm tra 1 lần xem các cột mới đã tồn tại chưa (tránh lỗi nếu chưa chạy migration)
+                const [colCheck] = await connection.query(`
+                    SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ai_generated_questions'
+                    AND COLUMN_NAME IN ('bloom_level', 'chapter', 'question_type', 'keywords')
+                `);
+                const newCols = new Set(colCheck.map(r => r.COLUMN_NAME));
+                const hasNewCols = newCols.has('bloom_level') && newCols.has('chapter') && newCols.has('question_type') && newCols.has('keywords');
+
                 let addedCount = 0;
                 for (const q of questions) {
-                    const [qRes] = await connection.query(
-                        `INSERT INTO ai_generated_questions (session_id, document_id, chu_de, noi_dung, giai_thich, do_kho, trang_thai) 
-                         VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`,
-                        [session_id, document_id, q.topic || 'Chung', q.question, q.explanation || '', q.difficulty || 'Medium']
-                    );
-                    const qId = qRes.insertId;
-                    addedCount++;
-
-                    if (q.options && Array.isArray(q.options)) {
-                        for (const opt of q.options) {
-                            await connection.query(
-                                `INSERT INTO ai_generated_options (question_id, noi_dung, la_dap_an_dung) 
-                                 VALUES (?, ?, ?)`,
-                                [qId, opt.text, opt.is_correct ? 1 : 0]
-                            );
+                    if (hasNewCols) {
+                        // Schema mới: lưu đầy đủ các field metadata
+                        const [qRes] = await connection.query(
+                            `INSERT INTO ai_generated_questions
+                                (session_id, document_id, chu_de, noi_dung, giai_thich, do_kho, trang_thai, bloom_level, chapter, question_type, keywords)
+                             VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?)`,
+                            [
+                                session_id, document_id,
+                                q.topic || q.chu_de || 'Chung',
+                                q.question,
+                                q.explanation || '',
+                                q.difficulty || 'Medium',
+                                q.bloom_level || null,
+                                q.chapter     || null,
+                                q.question_type || null,
+                                q.keywords ? JSON.stringify(q.keywords) : null
+                            ]
+                        );
+                        addedCount++;
+                        const qId = qRes.insertId;
+                        if (q.options && Array.isArray(q.options)) {
+                            for (const opt of q.options) {
+                                await connection.query(
+                                    `INSERT INTO ai_generated_options (question_id, noi_dung, la_dap_an_dung) VALUES (?, ?, ?)`,
+                                    [qId, opt.text, opt.is_correct ? 1 : 0]
+                                );
+                            }
+                        }
+                    } else {
+                        // Schema cũ: fallback về các cột cũ (backward compat)
+                        const [qRes] = await connection.query(
+                            `INSERT INTO ai_generated_questions (session_id, document_id, chu_de, noi_dung, giai_thich, do_kho, trang_thai)
+                             VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`,
+                            [session_id, document_id, q.topic || 'Chung', q.question, q.explanation || '', q.difficulty || 'Medium']
+                        );
+                        addedCount++;
+                        const qId = qRes.insertId;
+                        if (q.options && Array.isArray(q.options)) {
+                            for (const opt of q.options) {
+                                await connection.query(
+                                    `INSERT INTO ai_generated_options (question_id, noi_dung, la_dap_an_dung) VALUES (?, ?, ?)`,
+                                    [qId, opt.text, opt.is_correct ? 1 : 0]
+                                );
+                            }
                         }
                     }
                 }
 
                 await connection.query(
-                    `UPDATE ai_generation_sessions 
+                    `UPDATE ai_generation_sessions
                      SET so_cau_da_sinh = (SELECT COUNT(*) FROM ai_generated_questions WHERE session_id = ?),
                          trang_thai = IF(so_cau_da_sinh >= so_cau_yeu_cau, 'COMPLETED', 'READY')
                      WHERE id = ?`,
@@ -152,11 +200,39 @@ module.exports = (dbPromise) => {
         },
 
         getExistingQuestionsSummary: async (session_id) => {
-            const [rows] = await dbPromise.query(
-                `SELECT noi_dung, chu_de FROM ai_generated_questions WHERE session_id = ?`,
-                [session_id]
-            );
-            return rows;
+            // Backward compat: thử SELECT thêm các field mới,
+            // nếu cột chưa tồn tại (migration chưa chạy) thì fallback về schema cũ.
+            try {
+                const [rows] = await dbPromise.query(
+                    `SELECT noi_dung, chu_de, chapter, question_type, keywords
+                     FROM ai_generated_questions WHERE session_id = ?`,
+                    [session_id]
+                );
+                return rows.map(r => ({
+                    noi_dung:      r.noi_dung || '',
+                    chu_de:        r.chu_de || 'Chung',
+                    topic:         r.chu_de || 'Chung',
+                    chapter:       r.chapter || 'Chung',
+                    question_type: r.question_type || null,
+                    keywords:      r.keywords
+                        ? (typeof r.keywords === 'string' ? JSON.parse(r.keywords) : r.keywords)
+                        : []
+                }));
+            } catch (err) {
+                // Fallback: schema cũ, cột mới chưa tồn tại
+                const [rows] = await dbPromise.query(
+                    `SELECT noi_dung, chu_de FROM ai_generated_questions WHERE session_id = ?`,
+                    [session_id]
+                );
+                return rows.map(r => ({
+                    noi_dung:      r.noi_dung || '',
+                    chu_de:        r.chu_de || 'Chung',
+                    topic:         r.chu_de || 'Chung',
+                    chapter:       'Chung',
+                    question_type: null,
+                    keywords:      []
+                }));
+            }
         },
 
         updateQuestionStatus: async (id, trang_thai) => {
@@ -189,37 +265,96 @@ module.exports = (dbPromise) => {
 
                 const [opts] = await connection.query(`SELECT * FROM ai_generated_options WHERE question_id = ?`, [questionId]);
 
-                const bankTitle = session.tieu_de || `Bộ đề AI - ${session.TenMonHoc || session.ma_mon_hoc}`;
+                const [colCheck] = await connection.query(`
+                    SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'question_banks' AND COLUMN_NAME = 'session_id'
+                `);
+                if (colCheck.length === 0) {
+                    await connection.query(`ALTER TABLE question_banks ADD COLUMN session_id INT NULL`);
+                }
+                const baseTitle = session.doc_tieu_de || `Bộ đề AI - ${session.TenMonHoc || session.ma_mon_hoc}`;
                 let bankId;
                 const [existingBanks] = await connection.query(
-                    `SELECT id FROM question_banks WHERE ma_mon_hoc = ? AND ma_giang_vien = ? AND tieu_de = ? LIMIT 1`,
-                    [session.ma_mon_hoc, session.ma_giang_vien, bankTitle]
+                    `SELECT id FROM question_banks WHERE session_id = ? OR (session_id IS NULL AND ma_mon_hoc = ? AND ma_giang_vien = ? AND tieu_de = ?) LIMIT 1`,
+                    [session.id, session.ma_mon_hoc, session.ma_giang_vien, baseTitle]
                 );
 
                 if (existingBanks.length > 0) {
                     bankId = existingBanks[0].id;
+                    await connection.query(`UPDATE question_banks SET session_id = ? WHERE id = ?`, [session.id, bankId]).catch(()=>{});
                 } else {
-                    const [newBank] = await connection.query(
-                        `INSERT INTO question_banks (ma_mon_hoc, ma_giang_vien, tieu_de, tong_so_cau, trang_thai) 
-                         VALUES (?, ?, ?, 0, 'Approved')`,
-                        [session.ma_mon_hoc, session.ma_giang_vien, bankTitle]
+                    const [existingRows] = await connection.query(`SELECT id FROM question_banks ORDER BY id ASC`);
+                    let targetBankId = 1;
+                    const idsSet = new Set(existingRows.map(r => r.id));
+                    while (idsSet.has(targetBankId)) {
+                        targetBankId++;
+                    }
+                    await connection.query(
+                        `INSERT INTO question_banks (id, ma_mon_hoc, ma_giang_vien, tieu_de, tong_so_cau, trang_thai, session_id) 
+                         VALUES (?, ?, ?, ?, 0, 'Approved', ?)`,
+                        [targetBankId, session.ma_mon_hoc, session.ma_giang_vien, baseTitle, session.id]
                     );
-                    bankId = newBank.insertId;
+                    bankId = targetBankId;
+
+                    const [maxRes] = await connection.query(`SELECT MAX(id) as maxId FROM question_banks`);
+                    const nextAuto = (maxRes[0].maxId || 0) + 1;
+                    await connection.query(`ALTER TABLE question_banks AUTO_INCREMENT = ${nextAuto}`).catch(()=>{});
                 }
+
+                // Kiểm tra bảng questions có các cột metadata mới không
+                const [bankColCheck] = await connection.query(`
+                    SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'questions'
+                    AND COLUMN_NAME IN ('bloom_level', 'chapter', 'question_type', 'keywords')
+                `);
+                const bankNewCols = new Set(bankColCheck.map(r => r.COLUMN_NAME));
+                const bankHasNewCols = bankNewCols.has('bloom_level') && bankNewCols.has('chapter') && bankNewCols.has('question_type') && bankNewCols.has('keywords');
 
                 let realQId = stagingQ.bank_question_id;
                 if (!realQId) {
-                    const [resQ] = await connection.query(
-                        `INSERT INTO questions (bank_id, chu_de, noi_dung, giai_thich, do_kho, ai_generated, trang_thai) 
-                         VALUES (?, ?, ?, ?, ?, 1, 'Approved')`,
-                        [bankId, stagingQ.chu_de || 'Chung', stagingQ.noi_dung, stagingQ.giai_thich, stagingQ.do_kho]
-                    );
-                    realQId = resQ.insertId;
+                    if (bankHasNewCols) {
+                        // Copy đầy đủ 4 field metadata sang bank — không để mất công sức phân loại Bloom
+                        const [resQ] = await connection.query(
+                            `INSERT INTO questions (bank_id, chu_de, noi_dung, giai_thich, do_kho, ai_generated, trang_thai, bloom_level, chapter, question_type, keywords)
+                             VALUES (?, ?, ?, ?, ?, 1, 'Approved', ?, ?, ?, ?)`,
+                            [
+                                bankId,
+                                stagingQ.chu_de || 'Chung',
+                                stagingQ.noi_dung,
+                                stagingQ.giai_thich,
+                                stagingQ.do_kho,
+                                stagingQ.bloom_level || null,
+                                stagingQ.chapter     || null,
+                                stagingQ.question_type || null,
+                                stagingQ.keywords     || null
+                            ]
+                        );
+                        realQId = resQ.insertId;
+                    } else {
+                        // Fallback schema cũ
+                        const [resQ] = await connection.query(
+                            `INSERT INTO questions (bank_id, chu_de, noi_dung, giai_thich, do_kho, ai_generated, trang_thai)
+                             VALUES (?, ?, ?, ?, ?, 1, 'Approved')`,
+                            [bankId, stagingQ.chu_de || 'Chung', stagingQ.noi_dung, stagingQ.giai_thich, stagingQ.do_kho]
+                        );
+                        realQId = resQ.insertId;
+                    }
                 } else {
-                    await connection.query(
-                        `UPDATE questions SET chu_de = ?, noi_dung = ?, giai_thich = ?, do_kho = ?, trang_thai = 'Approved' WHERE id = ?`,
-                        [stagingQ.chu_de || 'Chung', stagingQ.noi_dung, stagingQ.giai_thich, stagingQ.do_kho, realQId]
-                    );
+                    if (bankHasNewCols) {
+                        await connection.query(
+                            `UPDATE questions SET chu_de = ?, noi_dung = ?, giai_thich = ?, do_kho = ?,
+                                bloom_level = ?, chapter = ?, question_type = ?, keywords = ?,
+                                trang_thai = 'Approved' WHERE id = ?`,
+                            [stagingQ.chu_de || 'Chung', stagingQ.noi_dung, stagingQ.giai_thich, stagingQ.do_kho,
+                             stagingQ.bloom_level || null, stagingQ.chapter || null,
+                             stagingQ.question_type || null, stagingQ.keywords || null, realQId]
+                        );
+                    } else {
+                        await connection.query(
+                            `UPDATE questions SET chu_de = ?, noi_dung = ?, giai_thich = ?, do_kho = ?, trang_thai = 'Approved' WHERE id = ?`,
+                            [stagingQ.chu_de || 'Chung', stagingQ.noi_dung, stagingQ.giai_thich, stagingQ.do_kho, realQId]
+                        );
+                    }
                     await connection.query(`DELETE FROM question_options WHERE question_id = ?`, [realQId]);
                 }
 
@@ -297,8 +432,8 @@ module.exports = (dbPromise) => {
                     const [sRows] = await connection.query(`SELECT DISTINCT session_id FROM ai_generated_questions WHERE bank_question_id IN (${qs.map(q => q.id).join(',')})`);
                     sessionIds = sRows.map(r => r.session_id).filter(Boolean);
                 }
-                if (bank) {
-                    const [matchS] = await connection.query(`SELECT s.id FROM ai_generation_sessions s LEFT JOIN documents d ON s.document_id = d.id WHERE d.tieu_de = ? OR d.tieu_de LIKE ?`, [bank.tieu_de, `%${bank.tieu_de}%`]);
+                if (sessionIds.length === 0 && bank) {
+                    const [matchS] = await connection.query(`SELECT s.id FROM ai_generation_sessions s LEFT JOIN documents d ON s.document_id = d.id WHERE d.tieu_de = ?`, [bank.tieu_de]);
                     for (const ms of matchS) {
                         if (!sessionIds.includes(ms.id)) sessionIds.push(ms.id);
                     }
@@ -326,6 +461,12 @@ module.exports = (dbPromise) => {
                 }
                 await connection.query(`DELETE FROM questions WHERE bank_id = ?`, [bankId]);
                 await connection.query(`DELETE FROM question_banks WHERE id = ?`, [bankId]);
+                
+                const [maxB] = await connection.query(`SELECT MAX(id) as maxId FROM question_banks`);
+                await connection.query(`ALTER TABLE question_banks AUTO_INCREMENT = ${(maxB[0].maxId || 0) + 1}`).catch(()=>{});
+
+                const [maxS] = await connection.query(`SELECT MAX(id) as maxId FROM ai_generation_sessions`);
+                await connection.query(`ALTER TABLE ai_generation_sessions AUTO_INCREMENT = ${(maxS[0].maxId || 0) + 1}`).catch(()=>{});
 
                 await connection.commit();
             } catch (error) {
@@ -453,6 +594,56 @@ module.exports = (dbPromise) => {
                 throw error;
             } finally {
                 if (connection) connection.release();
+            }
+        },
+
+        // ================================================================
+        // KG Cache — tiết kiệm token Groq: không build lại KG mỗi lần resumeSession
+        // ================================================================
+
+        /**
+         * Lấy Knowledge Graph đã cache theo document_id.
+         * @param {number} documentId
+         * @returns {Promise<object|null>} KG object hoặc null nếu chưa có
+         */
+        getKnowledgeGraphByDocument: async (documentId) => {
+            try {
+                const [rows] = await dbPromise.query(
+                    `SELECT kg_json FROM document_knowledge_graph WHERE document_id = ?`,
+                    [documentId]
+                );
+                if (rows.length === 0) return null;
+                const raw = rows[0].kg_json;
+                return typeof raw === 'string' ? JSON.parse(raw) : raw;
+            } catch (err) {
+                // Bảng chưa tồn tại (migration chưa chạy) → trả null, sẽ build lại
+                if (err.code === 'ER_NO_SUCH_TABLE') return null;
+                console.error('[Repo] getKnowledgeGraphByDocument error:', err.message);
+                return null;
+            }
+        },
+
+        /**
+         * Lưu (upsert) Knowledge Graph cho document_id.
+         * @param {number} documentId
+         * @param {object} kg
+         */
+        saveKnowledgeGraph: async (documentId, kg) => {
+            try {
+                const kgJson = typeof kg === 'string' ? kg : JSON.stringify(kg);
+                await dbPromise.query(
+                    `INSERT INTO document_knowledge_graph (document_id, kg_json)
+                     VALUES (?, ?)
+                     ON DUPLICATE KEY UPDATE kg_json = VALUES(kg_json)`,
+                    [documentId, kgJson]
+                );
+            } catch (err) {
+                // Bảng chưa tồn tại → log cảnh báo, không throw (không chặn luồng chính)
+                if (err.code === 'ER_NO_SUCH_TABLE') {
+                    console.warn('[Repo] document_knowledge_graph chưa tồn tại — hãy chạy migrate_ai_exam.sql');
+                    return;
+                }
+                console.error('[Repo] saveKnowledgeGraph error:', err.message);
             }
         }
     };
