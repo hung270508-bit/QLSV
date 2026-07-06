@@ -1109,7 +1109,7 @@ function StudentManagement() {
     return classes.find(cls => cls.MaLop === formData.MaLop);
   }, [classes, formData.MaLop]);
 
-  const isClassFull = selectedClassInfo && selectedClassInfo.SoSinhVien >= 60;
+  const isClassFull = selectedClassInfo && selectedClassInfo.SoSinhVien >= 80;
 
 
 
@@ -2235,9 +2235,9 @@ function StudentManagement() {
 
                         {filteredClassesForForm.map((cls) => (
 
-                          <option key={cls.MaLop} value={cls.MaLop} disabled={cls.SoSinhVien >= 60}>
+                          <option key={cls.MaLop} value={cls.MaLop} disabled={cls.SoSinhVien >= 80}>
 
-                            {cls.TenLop} ({cls.SoSinhVien || 0}/60)
+                            {cls.TenLop} ({cls.SoSinhVien || 0}/80)
 
                           </option>
 
@@ -2252,11 +2252,10 @@ function StudentManagement() {
                           {isClassFull ? (
                             <span className="flex items-center gap-1">
                               <AlertCircle className="w-4 h-4" />
-                              Lớp đã đủ sĩ số (60/60). Vui lòng chọn lớp khác.
+                              Lớp đã đủ sĩ số (80/80). Vui lòng chọn lớp khác.
                             </span>
-                          ) : (
-                            <span>Sĩ số hiện tại: {selectedClassInfo.SoSinhVien || 0}/60</span>
-                          )}
+                          ) : null
+                        }
                         </div>
                       )}
 
