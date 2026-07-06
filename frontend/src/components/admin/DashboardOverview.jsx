@@ -352,7 +352,22 @@ function DashboardOverview({ onNavigate }) {
             {/* Legend */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-amber-100">
               {facultyStudentData.map((item, i) => {
-                const pct = totalStudents > 0 ? ((item.value / totalStudents) * 100).toFixed(1) : 0;
+                // Calculate percentages ensuring total is exactly 100%
+                let pct;
+                if (totalStudents > 0) {
+                  if (i === facultyStudentData.length - 1) {
+                    // Last item: calculate to make total exactly 100%
+                    const previousSum = facultyStudentData.slice(0, i).reduce((sum, prev) => {
+                      const prevPct = ((prev.value / totalStudents) * 100).toFixed(1);
+                      return sum + parseFloat(prevPct);
+                    }, 0);
+                    pct = (100 - previousSum).toFixed(1);
+                  } else {
+                    pct = ((item.value / totalStudents) * 100).toFixed(1);
+                  }
+                } else {
+                  pct = 0;
+                }
                 return (
                   <motion.div
                     key={i}
@@ -436,7 +451,7 @@ function DashboardOverview({ onNavigate }) {
                     <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0 group-hover:bg-[#F4C542] group-hover:text-white transition-colors">{student.MSSV}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-700 truncate group-hover:text-[#F4C542] transition-colors">{student.HoTen}</p>
-                      <p className="text-xs text-[#6B7280]">{student.TenLop || '—'} · {student.GioiTinh || '—'}</p>
+                      <p className="text-xs text-[#6B7280]">{student.TenLop || '—'} · {student.TenKhoa || '—'} · {student.GioiTinh || '—'}</p>
                     </div>
                   </motion.div>
                 )) : <p className="py-8 text-center text-gray-300 text-sm">Chưa có sinh viên nào</p>}
@@ -448,6 +463,7 @@ function DashboardOverview({ onNavigate }) {
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">MSSV</th>
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Họ tên</th>
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Lớp</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Khoa</th>
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Giới tính</th>
                   </tr>
                 </thead>
@@ -460,12 +476,15 @@ function DashboardOverview({ onNavigate }) {
                         <td className="py-3.5 px-6 text-sm font-semibold text-gray-700 group-hover:text-[#F4C542] transition-colors">{student.HoTen}</td>
                         <td className="py-3.5 px-6 text-sm text-[#6B7280]">{student.TenLop || '—'}</td>
                         <td className="py-3.5 px-6">
+                          <span className="text-xs bg-[#F4C542]/20 text-[#B45309] px-2.5 py-1 rounded-full font-semibold border border-[#FFF7D6]">{student.TenKhoa || '—'}</span>
+                        </td>
+                        <td className="py-3.5 px-6">
                           <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${student.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-[#3B82F6]' : 'bg-pink-50 text-pink-600'}`}>{student.GioiTinh || '—'}</span>
                         </td>
                       </motion.tr>
                     ))
                   ) : (
-                    <tr><td colSpan="4" className="py-12 text-center text-gray-300 text-sm">Chưa có sinh viên nào</td></tr>
+                    <tr><td colSpan="5" className="py-12 text-center text-gray-300 text-sm">Chưa có sinh viên nào</td></tr>
                   )}
                 </tbody>
               </table>
@@ -485,7 +504,7 @@ function DashboardOverview({ onNavigate }) {
                     <span className="font-mono text-xs font-semibold text-[#F4C542] bg-[#FFF7D6] px-2 py-1 rounded-lg flex-shrink-0 group-hover:bg-[#F4C542] group-hover:text-white transition-colors">{teacher.MaGiangVien}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-700 truncate group-hover:text-[#F4C542] transition-colors">{teacher.HoTen}</p>
-                      <p className="text-xs text-[#6B7280] truncate">{teacher.TenKhoa || '—'} · {teacher.Email || '—'}</p>
+                      <p className="text-xs text-[#6B7280] truncate">{teacher.TenKhoa || '—'} · {teacher.GioiTinh || '—'} · {teacher.CapBac || '—'}</p>
                     </div>
                   </motion.div>
                 )) : <p className="py-8 text-center text-gray-300 text-sm">Chưa có giảng viên nào</p>}
@@ -497,7 +516,8 @@ function DashboardOverview({ onNavigate }) {
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Mã GV</th>
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Họ tên</th>
                     <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Khoa</th>
-                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Email</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Giới tính</th>
+                    <th className="text-left py-3 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Cấp bậc</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -510,11 +530,22 @@ function DashboardOverview({ onNavigate }) {
                         <td className="py-3.5 px-6">
                           <span className="text-xs bg-[#F4C542]/20 text-[#B45309] px-2.5 py-1 rounded-full font-semibold border border-[#FFF7D6]">{teacher.TenKhoa || '—'}</span>
                         </td>
-                        <td className="py-3.5 px-6 text-sm text-[#6B7280]">{teacher.Email || '—'}</td>
+                        <td className="py-3.5 px-6">
+                          <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-semibold ${teacher.GioiTinh === 'Nam' ? 'bg-[#3B82F6]/10 text-[#3B82F6]' : 'bg-pink-50 text-pink-600'}`}>{teacher.GioiTinh || '—'}</span>
+                        </td>
+                        <td className="py-3.5 px-6">
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
+                            teacher.CapBac === 'Thạc sĩ' 
+                              ? 'bg-green-50 text-green-700 border-green-200' 
+                              : teacher.CapBac === 'Tiến sĩ'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-[#152238]/10 text-[#152238] border-[#152238]/20'
+                          }`}>{teacher.CapBac || '—'}</span>
+                        </td>
                       </motion.tr>
                     ))
                   ) : (
-                    <tr><td colSpan="4" className="py-12 text-center text-gray-300 text-sm">Chưa có giảng viên nào</td></tr>
+                    <tr><td colSpan="5" className="py-12 text-center text-gray-300 text-sm">Chưa có giảng viên nào</td></tr>
                   )}
                 </tbody>
               </table>
