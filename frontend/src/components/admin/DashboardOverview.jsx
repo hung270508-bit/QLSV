@@ -162,11 +162,12 @@ function DashboardOverview({ onNavigate }) {
 
   const fetchDashboardData = async () => {
     try {
+      const timestamp = Date.now();
       const [statsRes, facultyRes, teachersRes, allStudentsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/dashboard/stats`),
-        axios.get(`${API_URL}/api/dashboard/stats-by-faculty`),
-        axios.get(`${API_URL}/api/teachers`),
-        axios.get(`${API_URL}/api/students`)
+        axios.get(`${API_URL}/api/dashboard/stats?t=${timestamp}`),
+        axios.get(`${API_URL}/api/dashboard/stats-by-faculty?t=${timestamp}`),
+        axios.get(`${API_URL}/api/teachers?t=${timestamp}`),
+        axios.get(`${API_URL}/api/students?t=${timestamp}`)
       ]);
       setStats(statsRes.data);
       setFacultyStats(facultyRes.data);
