@@ -11,16 +11,14 @@ import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
 
 function QuestionBankManagement() {
-    const [activeTab, setActiveTab] = useState('studio'); // 'studio' (Tạo đề AI Trợ lý), 'history' (Lịch sử phiên & Ngân hàng chính thức)
+    const [activeTab, setActiveTab] = useState('studio'); 
     const [loading, setLoading] = useState(false);
     const [subjects, setSubjects] = useState([]);
     const [assignments, setAssignments] = useState([]);
     
-    // Auth info
     const currentUser = JSON.parse(localStorage.getItem('user')) || {};
     const teacherId = currentUser.role === 'admin' ? '' : (currentUser.id || 'GVCNTT001');
 
-    // UI Feedback State
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
     const [renameDialog, setRenameDialog] = useState({ show: false, bank: null, newTitle: '' });
@@ -36,15 +34,15 @@ function QuestionBankManagement() {
         showToast(message, 'error');
     };
 
-    // --- STATE CHO AI ASSISTED QUESTION BANK ---
     const [sessions, setSessions] = useState([]);
     const [currentSession, setCurrentSession] = useState(null);
     const [stagingQuestions, setStagingQuestions] = useState([]);
     const [officialBanks, setOfficialBanks] = useState([]);
     
-    // Form upload & Khởi tạo phiên AI
+    // Cập nhật State để bắt được Lớp học phần
     const [uploadForm, setUploadForm] = useState({
         ma_mon_hoc: '',
+        ma_lop_hoc_phan: '',
         tieu_de: '',
         so_cau_yeu_cau: 10,
         do_kho: 'Mixed',
@@ -57,16 +55,13 @@ function QuestionBankManagement() {
     const [isResuming, setIsResuming] = useState(false);
     const [isApprovingAll, setIsApprovingAll] = useState(false);
 
-    // Bộ lọc Staging Questions
-    const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'PENDING', 'APPROVED', 'REJECTED'
-    const [filterDifficulty, setFilterDifficulty] = useState('All'); // 'All', 'Easy', 'Medium', 'Hard'
+    const [filterStatus, setFilterStatus] = useState('All'); 
+    const [filterDifficulty, setFilterDifficulty] = useState('All'); 
     const [searchKeyword, setSearchKeyword] = useState('');
 
-    // Modal chỉnh sửa câu hỏi Staging trước khi duyệt
     const [editingQuestion, setEditingQuestion] = useState(null);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-    // Modal xem Ngân hàng câu hỏi chính thức
     const [viewingBank, setViewingBank] = useState(null);
     const [bankQuestions, setBankQuestions] = useState([]);
     const [loadingBankQs, setLoadingBankQs] = useState(false);
@@ -127,12 +122,11 @@ function QuestionBankManagement() {
             const res = await axios.get(`${API_URL}/api/ai-exams/sessions/teacher/${teacherId}`);
             const list = res.data?.data || [];
             setSessions(list);
-            // Nếu chưa chọn session nào và có danh sách, tự động chọn session mới nhất
             if (!currentSession && list.length > 0) {
                 setCurrentSession(list[0]);
             }
         } catch (error) {
-            console.error('Lỗi lấy danh sách phiên AI:', error);
+            console.error('Lỗi lấy danh sách đề AI:', error);
         }
     };
 
@@ -154,11 +148,10 @@ function QuestionBankManagement() {
             const res = await axios.get(`${API_URL}/api/ai-exams/sessions/${sessionId}/questions`, { params });
             setStagingQuestions(res.data?.data || []);
         } catch (error) {
-            console.error('Lỗi lấy câu hỏi phiên AI:', error);
+            console.error('Lỗi lấy câu hỏi đề AI:', error);
         }
     };
 
-    // --- HÀM XỬ LÝ UPLOAD & KHỞI TẠO AI ---
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -183,13 +176,42 @@ function QuestionBankManagement() {
     const handleStartAISession = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
 
+        if (isUploading || isResuming) {
+            return showCustomAlert(
+                'Hệ thống đang trong quá trình tải tài liệu hoặc sinh câu hỏi cho bộ đề hiện tại. Vui lòng chờ quá trình hoàn tất trước khi thao tác tiếp!',
+                '⏳ Đang xử lý tạo đề'
+            );
+        }
+
+        if (currentSession) {
+            return showCustomAlert(
+                `Bạn đang mở và làm việc với Đề #${currentSession.id} (${currentSession.doc_tieu_de || currentSession.tieu_de || 'AI Session'}). Vui lòng hoàn tất kiểm tra, duyệt câu hỏi vào Ngân hàng hoặc bấm nút "Đóng" đề làm việc hiện tại bên dưới trước khi khởi tạo bộ đề mới!`,
+                '⚠️ Đang mở một đề làm việc'
+            );
+        }
+
+        const runningSession = sessions.find(s => s.trang_thai === 'RUNNING');
+        if (runningSession) {
+            return showCustomAlert(
+                `Hệ thống đang ngầm sinh câu hỏi AI cho Đề #${runningSession.id} (${runningSession.doc_tieu_de || runningSession.tieu_de || 'AI Session'}). Vui lòng chờ quá trình sinh đề đó hoàn tất trước khi tạo đề mới!`,
+                '⏳ Đang có đề AI đang sinh câu hỏi'
+            );
+        }
+
+        const unfinishedSession = sessions.find(s => s.trang_thai !== 'COMPLETED' && (s.so_cau_da_sinh || 0) < (s.so_cau_yeu_cau || 0));
+        if (unfinishedSession) {
+            return showCustomAlert(
+                `Bạn đang có Đề #${unfinishedSession.id} (${unfinishedSession.doc_tieu_de || unfinishedSession.tieu_de || 'AI Session'}) chưa hoàn thành tạo đủ số câu hỏi (${unfinishedSession.so_cau_da_sinh || 0}/${unfinishedSession.so_cau_yeu_cau} câu). Vui lòng hoàn tất hoặc nhấn vào đề đó để sinh tiếp trước khi mở đề mới!`,
+                '⚠️ Đang có bộ đề chưa tạo xong'
+            );
+        }
+
         const errors = {};
         const tieuDe = (uploadForm.tieu_de || '').trim();
         const chuDe = (uploadForm.chu_de || '').trim();
         const forbiddenChars = /[@#$%^&*!~`+=|<>?]/;
         const soCau = Number(uploadForm.so_cau_yeu_cau);
 
-        // Kiểm tra trống toàn bộ
         if (!uploadForm.ma_mon_hoc && !tieuDe && !uploadForm.file) {
             errors.ma_mon_hoc = 'Vui lòng chọn Môn học / Lớp học phần được phân công!';
             errors.tieu_de = 'Vui lòng nhập tiêu đề bộ đề / tài liệu!';
@@ -198,19 +220,16 @@ function QuestionBankManagement() {
             return showCustomAlert('Vui lòng nhập đầy đủ thông tin: Chọn môn học, nhập tiêu đề bộ đề và tải lên file Word (.doc, .docx)!', '⚠️ Thiếu thông tin bắt buộc');
         }
 
-        // 1. Kiểm tra Môn học
         if (!uploadForm.ma_mon_hoc) {
             errors.ma_mon_hoc = 'Vui lòng chọn Môn học / Lớp học phần được phân công!';
         }
 
-        // 2. Kiểm tra Tiêu đề bộ đề (Min 10, Max 50, không có ký tự đặc biệt như @#$%^&*!)
         if (!tieuDe || tieuDe.length < 10 || tieuDe.length > 50) {
             errors.tieu_de = 'Tiêu đề bộ đề / tài liệu phải từ 10 đến 50 ký tự!';
         } else if (forbiddenChars.test(tieuDe)) {
             errors.tieu_de = 'Tiêu đề bộ đề không được chứa ký tự đặc biệt (@, #, $, %, ...)!';
         }
 
-        // 3. Kiểm tra File Word
         if (!uploadForm.file) {
             errors.file = 'Bắt buộc định dạng Word (.doc, .docx). Không hỗ trợ ảnh hay PDF.';
         } else {
@@ -220,7 +239,6 @@ function QuestionBankManagement() {
             }
         }
 
-        // 4. Kiểm tra Chủ đề / Chương (nếu khác mặc định hoặc rỗng)
         if (chuDe && chuDe !== 'Toàn bộ') {
             if (chuDe.length < 10 || chuDe.length > 50) {
                 errors.chu_de = 'Chủ đề / Chương phải từ 10 đến 50 ký tự!';
@@ -229,7 +247,6 @@ function QuestionBankManagement() {
             }
         }
 
-        // 5. Kiểm tra Số lượng câu hỏi
         if (!soCau || isNaN(soCau) || soCau < 1 || soCau > 100) {
             errors.so_cau_yeu_cau = 'Tổng số câu hỏi muốn tạo phải là số từ 1 đến tối đa 100 câu!';
         }
@@ -248,12 +265,16 @@ function QuestionBankManagement() {
 
         setIsUploading(true);
         try {
-            // Bước 1: Upload file Word & Phân tích nội dung
+            // Nối thêm LHP vào tiêu đề nếu có chọn LHP để phân biệt rạch ròi
+            const finalTieuDe = uploadForm.ma_lop_hoc_phan 
+                ? `${tieuDe} [${uploadForm.ma_lop_hoc_phan}]` 
+                : tieuDe;
+
             const formData = new FormData();
             formData.append('file', uploadForm.file);
             formData.append('ma_mon_hoc', uploadForm.ma_mon_hoc);
             formData.append('ma_giang_vien', teacherId || 'GVCNTT001');
-            formData.append('tieu_de', tieuDe);
+            formData.append('tieu_de', finalTieuDe);
 
             showToast('Đang tải lên tài liệu và trích xuất nội dung Word...', 'info');
             const uploadRes = await axios.post(`${API_URL}/api/ai-exams/documents/upload`, formData, {
@@ -266,7 +287,6 @@ function QuestionBankManagement() {
 
             const docId = uploadRes.data.data.id;
 
-            // Bước 2: Khởi tạo bộ đề AI (Batch đầu tiên 10 câu)
             showToast('Tài liệu sẵn sàng! AI đang phân tích và tạo batch 10 câu hỏi đầu tiên...', 'info');
             const startRes = await axios.post(`${API_URL}/api/ai-exams/sessions/start`, {
                 document_id: docId,
@@ -283,9 +303,9 @@ function QuestionBankManagement() {
                 setSessions(prev => [newSession, ...prev]);
                 setCurrentSession(newSession);
                 
-                // Reset form file
                 setUploadForm({
                     ma_mon_hoc: '',
+                    ma_lop_hoc_phan: '',
                     tieu_de: '',
                     so_cau_yeu_cau: 10,
                     do_kho: 'Mixed',
@@ -294,7 +314,7 @@ function QuestionBankManagement() {
                     file_name: ''
                 });
             } else {
-                throw new Error(startRes.data?.message || 'Lỗi khởi tạo phiên AI');
+                throw new Error(startRes.data?.message || 'Lỗi khởi tạo đề AI');
             }
         } catch (error) {
             console.error('Lỗi khởi tạo AI Session:', error);
@@ -304,7 +324,6 @@ function QuestionBankManagement() {
         }
     };
 
-    // --- HÀM RESUME (SINH TIẾP 10 CÂU) ---
     const handleResumeSession = async () => {
         if (!currentSession) return;
         setIsResuming(true);
@@ -328,7 +347,6 @@ function QuestionBankManagement() {
         }
     }; 
 
-    // --- HÀM CHỌN PHIÊN TỪ LỊCH SỬ ---
     const handleSelectSessionFromHistory = async (s) => {
         try {
             const res = await axios.get(`${API_URL}/api/ai-exams/sessions/${s.id}/questions`);
@@ -354,7 +372,6 @@ function QuestionBankManagement() {
         }
     }; 
 
-    // --- HÀM DUYỆT / TỪ CHỐI / XÓA CÂU HỎI ---
     const handleUpdateStatus = async (questionId, status) => {
         try {
             const res = await axios.put(`${API_URL}/api/ai-exams/questions/${questionId}/status`, {
@@ -383,7 +400,6 @@ function QuestionBankManagement() {
                         showToast('🗑️ Đã xóa câu hỏi thành công!', 'success');
                         if (currentSession) {
                             fetchStagingQuestions(currentSession.id);
-                            // Cập nhật lại số lượng câu trong session local
                             setCurrentSession(prev => prev ? { ...prev, so_cau_da_sinh: Math.max(0, prev.so_cau_da_sinh - 1) } : null);
                         }
                     }
@@ -425,9 +441,7 @@ function QuestionBankManagement() {
         });
     };
 
-    // --- HÀM CHỈNH SỬA CÂU HỎI TRƯỚC KHI DUYỆT ---
     const handleOpenEditModal = (question) => {
-        // Tạo bản sao sâu để chỉnh sửa
         setEditingQuestion({
             ...question,
             options: question.options ? question.options.map(o => ({ ...o })) : [
@@ -497,7 +511,6 @@ function QuestionBankManagement() {
         setEditingQuestion({ ...editingQuestion, options: newOpts });
     };
 
-    // --- HÀM XEM CHI TIẾT NGÂN HÀNG CHÍNH THỨC ---
     const handleViewBank = async (bank) => {
         setViewingBank(bank);
         setLoadingBankQs(true);
@@ -598,7 +611,6 @@ function QuestionBankManagement() {
         }
     };
 
-    // --- HELPERS HIỂN THỊ TIẾNG VIỆT ---
     const getStatusBadgeVN = (status) => {
         switch (status) {
             case 'PENDING':
@@ -645,9 +657,8 @@ function QuestionBankManagement() {
         return { text: 'Sẵn sàng / Chờ sinh tiếp', color: 'text-amber-700 bg-amber-100 border-amber-300' };
     };
 
-    // Lọc danh sách câu hỏi theo từ khóa tìm kiếm và ẩn câu đã duyệt khỏi Studio
     const displayedQuestions = stagingQuestions.filter(q => {
-        if (q.trang_thai === 'APPROVED') return false; // Khi duyệt xong thì biến mất khỏi danh sách nháp Studio
+        if (q.trang_thai === 'APPROVED') return false; 
         if (!searchKeyword.trim()) return true;
         const kw = searchKeyword.toLowerCase();
         return (
@@ -655,6 +666,21 @@ function QuestionBankManagement() {
             (q.chu_de && q.chu_de.toLowerCase().includes(kw))
         );
     });
+
+    // LOGIC GOM NHÓM THEO MÔN HỌC
+    const groupedSessions = sessions.reduce((groups, s) => {
+        const subjectKey = s.TenMonHoc ? `${s.TenMonHoc} (${s.ma_mon_hoc})` : (s.ma_mon_hoc || 'Môn học khác');
+        if (!groups[subjectKey]) groups[subjectKey] = [];
+        groups[subjectKey].push(s);
+        return groups;
+    }, {});
+
+    const groupedOfficialBanks = officialBanks.reduce((groups, b) => {
+        const subjectKey = b.TenMonHoc ? `${b.TenMonHoc} (${b.ma_mon_hoc})` : (b.ma_mon_hoc || 'Môn học khác');
+        if (!groups[subjectKey]) groups[subjectKey] = [];
+        groups[subjectKey].push(b);
+        return groups;
+    }, {});
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -673,7 +699,6 @@ function QuestionBankManagement() {
                 />
             )}
 
-            {/* MODAL THÔNG BÁO LỖI / CẢNH BÁO KIỂM TRA DỮ LIỆU (THAY THẾ LOCALHOST PROMPT) */}
             <AnimatePresence>
                 {popupAlert.show && (
                     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -707,7 +732,6 @@ function QuestionBankManagement() {
                 )}
             </AnimatePresence>
 
-            {/* MODAL ĐỔI TÊN NGÂN HÀNG (POPUP CUSTOM KHÔNG DÙNG LOCALHOST PROMPT) */}
             <AnimatePresence>
                 {renameDialog.show && (
                     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -722,7 +746,10 @@ function QuestionBankManagement() {
                                     <Edit className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-extrabold text-gray-900">Đổi Tên Ngân Hàng Câu Hỏi</h3>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-lg font-extrabold text-gray-900">Đổi Tên Ngân Hàng Câu Hỏi</h3>
+                                        {renameDialog.bank && <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 font-extrabold text-xs rounded-lg">[Đề #{renameDialog.bank.id}]</span>}
+                                    </div>
                                     <p className="text-xs text-gray-500">Nhập tên mới cho bộ đề chính thức</p>
                                 </div>
                             </div>
@@ -818,15 +845,20 @@ function QuestionBankManagement() {
                         </div>
 
                         <form onSubmit={handleStartAISession} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* CHỌN MÔN HỌC / LỚP HỌC PHẦN TỪ PHÂN CÔNG GIẢNG DẠY */}
                             <div className="space-y-2 lg:col-span-1">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Môn học / Lớp học phần được phân công <span className="text-red-500">*</span>
                                 </label>
                                 <select
-                                    value={uploadForm.ma_mon_hoc}
+                                    value={uploadForm.ma_lop_hoc_phan ? `${uploadForm.ma_mon_hoc}|${uploadForm.ma_lop_hoc_phan}` : uploadForm.ma_mon_hoc}
                                     onChange={e => {
-                                        setUploadForm({ ...uploadForm, ma_mon_hoc: e.target.value });
+                                        const val = e.target.value;
+                                        if (val.includes('|')) {
+                                            const [mon, lop] = val.split('|');
+                                            setUploadForm({ ...uploadForm, ma_mon_hoc: mon, ma_lop_hoc_phan: lop });
+                                        } else {
+                                            setUploadForm({ ...uploadForm, ma_mon_hoc: val, ma_lop_hoc_phan: '' });
+                                        }
                                         setFormErrors(prev => ({ ...prev, ma_mon_hoc: '' }));
                                     }}
                                     className={`w-full p-3.5 bg-gray-50 border rounded-2xl focus:ring-2 focus:bg-white transition-all text-sm font-medium ${
@@ -836,8 +868,8 @@ function QuestionBankManagement() {
                                     <option value="">-- Chọn môn học từ phân công --</option>
                                     {assignments.length > 0 ? (
                                         assignments.map(a => (
-                                            <option key={`${a.MaMonHoc}-${a.MaLopHocPhan || Math.random()}`} value={a.MaMonHoc}>
-                                                {a.TenMonHoc} {a.MaLopHocPhan ? `(${a.MaLopHocPhan})` : ''}
+                                            <option key={`${a.MaMonHoc}-${a.MaLopHocPhan || Math.random()}`} value={a.MaLopHocPhan ? `${a.MaMonHoc}|${a.MaLopHocPhan}` : a.MaMonHoc}>
+                                                {a.TenMonHoc} {a.MaLopHocPhan ? `(Lớp: ${a.MaLopHocPhan})` : ''}
                                             </option>
                                         ))
                                     ) : (
@@ -855,7 +887,6 @@ function QuestionBankManagement() {
                                 )}
                             </div>
 
-                            {/* TIÊU ĐỀ BỘ ĐỀ */}
                             <div className="space-y-2 lg:col-span-1">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Tiêu đề bộ đề / tài liệu <span className="text-red-500">*</span>
@@ -872,12 +903,13 @@ function QuestionBankManagement() {
                                         formErrors.tieu_de ? 'border-red-500 focus:ring-red-500 bg-red-50/30 font-semibold text-red-900' : 'border-gray-200 focus:ring-indigo-500'
                                     }`}
                                 />
-                                {formErrors.tieu_de && (
+                                {formErrors.tieu_de ? (
                                     <p className="text-xs text-red-600 font-bold animate-pulse">❌ {formErrors.tieu_de}</p>
+                                ) : (
+                                    <p className="text-xs text-emerald-600 font-bold">✨ Tên LHP sẽ được tự động nối vào tiêu đề nếu có chọn.</p>
                                 )}
                             </div>
 
-                            {/* TẢI FILE WORD */}
                             <div className="space-y-2 lg:col-span-1">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     File tài liệu Word (.doc, .docx) <span className="text-red-500">*</span>
@@ -916,7 +948,6 @@ function QuestionBankManagement() {
                                 </p>
                             </div>
 
-                            {/* SỐ LƯỢNG CÂU HỎI */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Tổng số câu hỏi muốn AI hỗ trợ tạo (Tối đa 100 câu)
@@ -948,7 +979,6 @@ function QuestionBankManagement() {
                                 )}
                             </div>
 
-                            {/* ĐỘ KHÓ */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Cấu trúc mức độ độ khó
@@ -965,7 +995,6 @@ function QuestionBankManagement() {
                                 </select>
                             </div>
 
-                            {/* CHỦ ĐỀ / CHƯƠNG */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Chủ đề / Chương (Mặc định Toàn bộ)
@@ -987,7 +1016,6 @@ function QuestionBankManagement() {
                                 )}
                             </div>
 
-                            {/* SUBMIT BUTTON */}
                             <div className="md:col-span-2 lg:col-span-3 pt-2 flex justify-end">
                                 <button
                                     type="button"
@@ -1011,7 +1039,7 @@ function QuestionBankManagement() {
                         </form>
                     </div>
 
-                    {/* DANH SÁCH CÁC BỘ ĐỀ TẠO ĐỀ AI TRƯỚC ĐÓ (HIỆN TRONG STUDIO - ĐẨY LÊN TRÊN) */}
+                    {/* DANH SÁCH CÁC BỘ ĐỀ TẠO ĐỀ AI - HIỂN THỊ GOM NHÓM THEO MÔN */}
                     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 space-y-6">
                         <div className="flex items-center justify-between border-b pb-4">
                             <div className="flex items-center gap-3">
@@ -1020,7 +1048,7 @@ function QuestionBankManagement() {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold text-gray-900">🕒 Lịch Sử Các Bộ Đề Tải Lên & Sinh Đề Nháp ({sessions.length})</h2>
-                                    <p className="text-sm text-gray-500">Chọn một bộ đề bên dưới để mở trong Studio hoặc xem Ngân hàng chính thức</p>
+                                    <p className="text-sm text-gray-500">Các đề được phân loại rõ ràng theo từng Môn học</p>
                                 </div>
                             </div>
                             <button
@@ -1032,53 +1060,64 @@ function QuestionBankManagement() {
                             </button>
                         </div>
 
-                        {sessions.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                                {sessions.map(s => {
-                                    const statusVN = getSessionStatusVN(s);
-                                    const isSelected = currentSession && currentSession.id === s.id;
-                                    return (
-                                        <div
-                                            key={s.id}
-                                            onClick={() => handleSelectSessionFromHistory(s)}
-                                            className="p-5 rounded-2xl border bg-white border-gray-200 hover:border-indigo-400 hover:shadow-lg cursor-pointer transition-all transform hover:-translate-y-1"
-                                        >
-                                            <div className="flex items-center justify-between gap-2 mb-3">
-                                                <span className="text-xs font-extrabold text-indigo-600 uppercase bg-indigo-50 px-2.5 py-1 rounded-lg">
-                                                    Bộ đề #{s.id}
-                                                </span>
-                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${statusVN.color}`}>
-                                                    {statusVN.text}
-                                                </span>
+                        {Object.keys(groupedSessions).length > 0 ? (
+                            <div className="space-y-8">
+                                {Object.entries(groupedSessions).map(([subjectName, sessionList]) => (
+                                    <div key={subjectName} className="bg-gray-50/50 rounded-3xl p-6 border border-gray-100">
+                                        <div className="flex items-center gap-3 mb-5 border-b border-gray-200/60 pb-3">
+                                            <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
+                                                <BookOpen className="w-5 h-5" />
                                             </div>
-
-                                            <h4 className="font-bold text-gray-900 text-base line-clamp-1 mb-1">
-                                                {s.doc_tieu_de || s.tieu_de || 'Tài liệu không tên'}
-                                            </h4>
-                                            <p className="text-xs text-gray-500 mb-4 line-clamp-1">
-                                                Môn: <span className="font-bold text-gray-700">{s.TenMonHoc || s.ma_mon_hoc}</span>
-                                            </p>
-
-                                            <div className="space-y-1.5">
-                                                <div className="flex justify-between text-xs font-bold text-gray-600">
-                                                    <span>Tiến độ tạo:</span>
-                                                    <span>{s.so_cau_da_sinh || 0} / {s.so_cau_yeu_cau || 10} câu ({Math.round(((s.so_cau_da_sinh || 0) / (s.so_cau_yeu_cau || 10)) * 100)}%)</span>
-                                                </div>
-                                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                    <div
-                                                        style={{ width: `${Math.min(100, ((s.so_cau_da_sinh || 0) / (s.so_cau_yeu_cau || 10)) * 100)}%` }}
-                                                        className="h-full bg-indigo-600 rounded-full"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-indigo-600">
-                                                <span>{s.trang_thai === 'COMPLETED' ? '✓ Đã vào Ngân Hàng (Xem)' : 'Nhấn để mở / Tiếp tục tạo'}</span>
-                                                <ChevronRight className="w-4 h-4" />
-                                            </div>
+                                            <h3 className="text-lg font-extrabold text-gray-800">{subjectName}</h3>
+                                            <span className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-lg shadow-sm">
+                                                {sessionList.length} đề tải lên
+                                            </span>
                                         </div>
-                                    );
-                                })}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                                            {sessionList.map(s => {
+                                                const statusVN = getSessionStatusVN(s);
+                                                return (
+                                                    <div
+                                                        key={s.id}
+                                                        onClick={() => handleSelectSessionFromHistory(s)}
+                                                        className="p-5 rounded-2xl border bg-white border-gray-200 hover:border-indigo-400 hover:shadow-lg cursor-pointer transition-all transform hover:-translate-y-1"
+                                                    >
+                                                        <div className="flex items-center justify-between gap-2 mb-3">
+                                                            <span className="text-xs font-extrabold text-indigo-600 uppercase bg-indigo-50 px-2.5 py-1 rounded-lg">
+                                                                Đề #{s.id}
+                                                            </span>
+                                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${statusVN.color}`}>
+                                                                {statusVN.text}
+                                                            </span>
+                                                        </div>
+
+                                                        <h4 className="font-bold text-gray-900 text-base line-clamp-2 mb-4" title={s.doc_tieu_de || s.tieu_de}>
+                                                            {s.doc_tieu_de || s.tieu_de || 'Tài liệu không tên'}
+                                                        </h4>
+
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex justify-between text-xs font-bold text-gray-600">
+                                                                <span>Tiến độ tạo:</span>
+                                                                <span>{s.so_cau_da_sinh || 0} / {s.so_cau_yeu_cau || 10} câu ({Math.round(((s.so_cau_da_sinh || 0) / (s.so_cau_yeu_cau || 10)) * 100)}%)</span>
+                                                            </div>
+                                                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                                <div
+                                                                    style={{ width: `${Math.min(100, ((s.so_cau_da_sinh || 0) / (s.so_cau_yeu_cau || 10)) * 100)}%` }}
+                                                                    className="h-full bg-indigo-600 rounded-full"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+                                                            <span>{s.trang_thai === 'COMPLETED' ? '✓ Đã vào Ngân Hàng (Xem)' : 'Nhấn để mở / Tiếp tục tạo'}</span>
+                                                            <ChevronRight className="w-4 h-4" />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         ) : (
                             <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-2xl">
@@ -1110,7 +1149,6 @@ function QuestionBankManagement() {
                                         <span>{getSessionStatusVN(currentSession).text}</span>
                                     </span>
 
-                                    {/* NÚT SINH TIẾP 10 CÂU */}
                                     {currentSession.so_cau_da_sinh < currentSession.so_cau_yeu_cau && currentSession.trang_thai !== 'COMPLETED' && (
                                         <button
                                             onClick={handleResumeSession}
@@ -1122,7 +1160,6 @@ function QuestionBankManagement() {
                                         </button>
                                     )}
 
-                                    {/* NÚT DUYỆT TẤT CẢ CÂU HỎI CHỜ DUYỆT */}
                                     {stagingQuestions.some(q => q.trang_thai === 'PENDING') && (
                                         <button
                                             onClick={handleApproveAll}
@@ -1136,7 +1173,6 @@ function QuestionBankManagement() {
                                 </div>
                             </div>
 
-                            {/* THANH TIẾN ĐỘ */}
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center text-sm font-bold">
                                     <span className="text-gray-700">Tiến độ tạo câu hỏi từ trợ lý AI:</span>
@@ -1222,7 +1258,6 @@ function QuestionBankManagement() {
                                 </div>
                             </div>
 
-                            {/* DANH SÁCH STAGING CARDS */}
                             {displayedQuestions.length > 0 ? (
                                 <div className="space-y-4">
                                     {displayedQuestions.map((q, idx) => {
@@ -1260,7 +1295,6 @@ function QuestionBankManagement() {
                                                             {q.noi_dung}
                                                         </p>
 
-                                                        {/* 4 ĐÁP ÁN */}
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                                                             {q.options && q.options.map((opt, oIdx) => (
                                                                 <div
@@ -1284,7 +1318,6 @@ function QuestionBankManagement() {
                                                             ))}
                                                         </div>
 
-                                                        {/* GIẢI THÍCH */}
                                                         {q.giai_thich && (
                                                             <div className="mt-3 p-3.5 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs text-indigo-900">
                                                                 <span className="font-bold">💡 Giải thích từ AI: </span>
@@ -1293,7 +1326,6 @@ function QuestionBankManagement() {
                                                         )}
                                                     </div>
 
-                                                    {/* CÁC NÚT THAO TÁC (DUYỆT, SỬA, TỪ CHỐI, XÓA) */}
                                                     <div className="flex md:flex-col items-center gap-2 self-end md:self-start pt-3 md:pt-0 border-t md:border-t-0 w-full md:w-auto justify-end">
                                                         {q.trang_thai !== 'APPROVED' && (
                                                             <button
@@ -1340,7 +1372,7 @@ function QuestionBankManagement() {
                                         );
                                     })}
                                 </div>
-                                ) : (
+                            ) : (
                                 <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-2xl">
                                     <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                                     <p className="text-base font-semibold">Không tìm thấy câu hỏi nào phù hợp với bộ lọc hiện tại</p>
@@ -1350,9 +1382,8 @@ function QuestionBankManagement() {
                     )}
                 </div>
             ) : (
-                /* TAB 2: NGÂN HÀNG CHÍNH THỨC */
+                /* TAB 2: NGÂN HÀNG CHÍNH THỨC - ĐÃ GOM NHÓM HIỂN THỊ TRỰC QUAN THEO MÔN */
                 <div className="space-y-8">
-                    {/* DANH SÁCH NGÂN HÀNG CÂU HỎI CHÍNH THỨC */}
                     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 space-y-6">
                         <div className="flex items-center justify-between border-b pb-4">
                             <div className="flex items-center gap-3">
@@ -1361,58 +1392,96 @@ function QuestionBankManagement() {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold text-gray-900">Ngân Hàng Câu Hỏi Chính Thức ({officialBanks.length})</h2>
-                                    <p className="text-sm text-gray-500">Các bộ đề đã được Giảng viên duyệt hoàn tất, sẵn sàng tích hợp vào Kỳ thi Online</p>
+                                    <p className="text-sm text-gray-500">Các bộ đề đã được phân loại chi tiết theo từng môn học</p>
                                 </div>
                             </div>
                         </div>
 
-                        {officialBanks.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {officialBanks.map(b => (
-                                    <div key={b.id} className="p-6 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50/50 hover:border-emerald-300 hover:shadow-lg transition-all flex flex-col justify-between space-y-4">
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-extrabold rounded-lg border border-emerald-300">
-                                                    ✓ Đã Duyệt Chính Thức
-                                                </span>
+                        {Object.keys(groupedOfficialBanks).length > 0 ? (
+                            <div className="space-y-8">
+                                {Object.entries(groupedOfficialBanks).map(([subjectName, banks]) => (
+                                    <div key={subjectName} className="bg-gray-50/50 rounded-3xl p-6 border border-gray-100">
+                                        <div className="flex items-center gap-3 mb-5 border-b border-gray-200/60 pb-3">
+                                            <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                                                <BookOpen className="w-5 h-5" />
                                             </div>
-                                            <div className="flex items-start justify-between gap-2">
-                                                <h4 className="font-extrabold text-gray-900 text-lg line-clamp-2 flex-1">{b.tieu_de}</h4>
-                                                <button
-                                                    onClick={() => handleEditOfficialBankTitle(b)}
-                                                    className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-all shrink-0"
-                                                    title="Đổi tên Ngân hàng"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                            <p className="text-sm text-gray-600">
-                                                Môn học: <span className="font-bold text-gray-900">{b.TenMonHoc || b.ma_mon_hoc}</span>
-                                            </p>
+                                            <h3 className="text-xl font-extrabold text-gray-800">{subjectName}</h3>
+                                            <span className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-lg shadow-sm">
+                                                {banks.length} bộ đề
+                                            </span>
                                         </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {banks.map(b => (
+                                                <div key={b.id} className="p-6 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50/50 hover:border-emerald-400 hover:shadow-lg transition-all flex flex-col justify-between space-y-4 transform hover:-translate-y-1">
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-extrabold rounded-lg border border-emerald-300">
+                                                                ✓ Đã Duyệt Chính Thức
+                                                            </span>
+                                                            <span className="text-xs font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
+                                                                ID #{b.id}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-start justify-between gap-2 pt-1">
+                                                            <h4 className="font-extrabold text-gray-900 text-lg line-clamp-2 flex-1 leading-snug" title={b.tieu_de}>
+                                                                <span className="text-emerald-700 font-black mr-1.5 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-sm">[Đề #{b.id}]</span>
+                                                                <span>{b.tieu_de}</span>
+                                                            </h4>
+                                                            <button
+                                                                onClick={() => handleEditOfficialBankTitle(b)}
+                                                                className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-all shrink-0"
+                                                                title="Đổi tên Ngân hàng"
+                                                            >
+                                                                <Edit className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                        <div className="space-y-1.5 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs text-gray-600">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-gray-500 font-medium">Môn học:</span>
+                                                                <span className="font-bold text-gray-800 line-clamp-1 text-right max-w-[160px]" title={b.TenMonHoc || b.ma_mon_hoc}>{b.TenMonHoc || b.ma_mon_hoc}</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-gray-500 font-medium">Lớp HP:</span>
+                                                                <span className="font-extrabold text-indigo-600 font-mono">{b.ma_mon_hoc}</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-gray-500 font-medium">Giảng viên:</span>
+                                                                <span className="font-bold text-gray-800">{b.ma_giang_vien}</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-gray-500 font-medium">Ngày tạo:</span>
+                                                                <span className="font-semibold text-gray-700">
+                                                                    {b.created_at ? `${new Date(b.created_at).toLocaleDateString('vi-VN')} ${new Date(b.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}` : 'Vừa mới tạo'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                                        <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                                            <div className="text-sm">
-                                                <span className="font-bold text-emerald-700">{b.tong_so_cau || 0}</span>
-                                                <span className="text-gray-500"> câu hỏi</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => handleViewBank(b)}
-                                                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl font-bold text-xs flex items-center gap-1 transition-all"
-                                                    title="Xem chi tiết câu hỏi trong Ngân hàng"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                    <span>Xem</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteOfficialBank(b)}
-                                                    className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs transition-all"
-                                                    title="Xóa bộ đề"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                                    <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                                                        <div className="text-sm">
+                                                            <span className="font-extrabold text-emerald-600 text-lg">{b.tong_so_cau || 0}</span>
+                                                            <span className="text-gray-500 font-semibold"> câu hỏi</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => handleViewBank(b)}
+                                                                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                                                                title="Xem chi tiết câu hỏi"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                                <span>Xem</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteOfficialBank(b)}
+                                                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs transition-all"
+                                                                title="Xóa bộ đề"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 ))}
@@ -1565,9 +1634,12 @@ function QuestionBankManagement() {
                         >
                             <div className="flex items-center justify-between border-b pb-4">
                                 <div>
-                                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Ngân hàng đã duyệt</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Ngân hàng đã duyệt</span>
+                                        <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">ID #{viewingBank.id}</span>
+                                    </div>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <h3 className="text-xl font-extrabold text-gray-900">{viewingBank.tieu_de}</h3>
+                                        <h3 className="text-xl font-extrabold text-gray-900"><span className="text-emerald-600 mr-1.5">[Đề #{viewingBank.id}]</span>{viewingBank.tieu_de}</h3>
                                         <button
                                             onClick={() => handleEditOfficialBankTitle(viewingBank)}
                                             className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg font-bold text-xs transition-all"
@@ -1576,7 +1648,9 @@ function QuestionBankManagement() {
                                             <Edit className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">Môn học: {viewingBank.TenMonHoc || viewingBank.ma_mon_hoc} • Tổng số: {bankQuestions.length} câu</p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Môn học: <strong className="text-gray-700">{viewingBank.TenMonHoc || viewingBank.ma_mon_hoc}</strong> • Lớp HP: <strong className="text-indigo-600 font-mono">{viewingBank.ma_mon_hoc}</strong> • Giảng viên: <strong className="text-gray-700">{viewingBank.ma_giang_vien}</strong> • Tổng số: <strong className="text-emerald-600">{bankQuestions.length} câu</strong>
+                                    </p>
                                 </div>
                                 <button onClick={() => setViewingBank(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-xl">
                                     <X className="w-6 h-6" />

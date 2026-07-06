@@ -83,7 +83,63 @@ db.getConnection((err, connection) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
+
+    // ================================================================
+    // AUTO-MIGRATION: AI Exam Refactor
+    // Chạy 1 lần khi server khởi động, idempotent (an toàn chạy lại nhiều lần).
+    // Bỏ qua trên Vercel để tránh ảnh hưởng cold start.
+    // ================================================================
+    if (!isVercel) {
+        runAiExamMigration(db.promise()).catch(err =>
+            console.error('[Migration] AI Exam migration lỗi (server vẫn chạy bình thường):', err.message)
+        );
+    }
 });
+
+/**
+ * Auto-migration cho module AI Exam — chạy không đồng bộ, không block server start.
+ * Kiểm tra INFORMATION_SCHEMA trước mỗi ALTER → chạy lại nhiều lần không lỗi.
+ */
+async function runAiExamMigration(pool) {
+    // Tạo bảng Knowledge Graph cache
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS document_knowledge_graph (
+            document_id INT PRIMARY KEY,
+            kg_json     JSON NOT NULL,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `).catch(() => {}); // Bảng documents chưa tồn tại → bỏ qua, tạo lại khi cần
+
+    // Helper: thêm cột nếu chưa có
+    const addColIfMissing = async (table, col, definition) => {
+        const [rows] = await pool.query(
+            `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+            [table, col]
+        );
+        if (rows[0].cnt === 0) {
+            await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN ${col} ${definition}`);
+            console.log(`[Migration] Đã thêm cột ${table}.${col}`);
+        }
+    };
+
+    // Thêm 4 cột mới vào bảng STAGING (ai_generated_questions)
+    await addColIfMissing('ai_generated_questions', 'bloom_level',   'VARCHAR(20) NULL');
+    await addColIfMissing('ai_generated_questions', 'chapter',       'VARCHAR(255) NULL');
+    await addColIfMissing('ai_generated_questions', 'question_type', 'VARCHAR(50) NULL');
+    await addColIfMissing('ai_generated_questions', 'keywords',      'JSON NULL');
+
+    // Thêm 4 cột mới vào bảng BANK chính thức (questions)
+    await addColIfMissing('questions', 'bloom_level',   'VARCHAR(20) NULL');
+    await addColIfMissing('questions', 'chapter',       'VARCHAR(255) NULL');
+    await addColIfMissing('questions', 'question_type', 'VARCHAR(50) NULL');
+    await addColIfMissing('questions', 'keywords',      'JSON NULL');
+
+    console.log('[Migration] AI Exam schema: sẵn sàng ✓');
+}
+
+
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
@@ -1532,12 +1588,18 @@ app.post('/api/teaching-assignments', (req, res) => {
     };
 
     if (finalMaLop) {
-        db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
-            const svCount = resCount && resCount[0] ? resCount[0].count : 0;
-            if (Number(SoLuongToiDa || 40) < svCount) {
-                return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+        db.query('SELECT lhp.MaLopHocPhan, lhp.HocKy, mh.TenMonHoc, l.TenLop FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaMonHoc = ? AND lhp.MaLop = ? LIMIT 1', [MaMonHoc, finalMaLop], (errCheck, resCheck) => {
+            if (resCheck && resCheck.length > 0) {
+                const ex = resCheck[0];
+                return res.status(400).json({ success: false, message: `Lớp hành chính "${ex.TenLop || finalMaLop}" đã được phân công học môn "${ex.TenMonHoc || MaMonHoc}" tại LHP [${ex.MaLopHocPhan} - Học kỳ ${ex.HocKy || ''}]. Không thể mở LHP trùng môn cho cùng lớp hành chính! (Sinh viên học cải thiện/rớt môn vui lòng mở Lớp tự do).` });
             }
-            proceedInsert();
+            db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
+                const svCount = resCount && resCount[0] ? resCount[0].count : 0;
+                if (Number(SoLuongToiDa || 40) < svCount) {
+                    return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+                }
+                proceedInsert();
+            });
         });
     } else {
         proceedInsert();
@@ -1589,12 +1651,18 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
         };
 
         if (finalMaLop) {
-            db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
-                const svCount = resCount && resCount[0] ? resCount[0].count : 0;
-                if (Number(SoLuongToiDa || 40) < svCount) {
-                    return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+            db.query('SELECT lhp.MaLopHocPhan, lhp.HocKy, mh.TenMonHoc, l.TenLop FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc LEFT JOIN lophoc l ON lhp.MaLop = l.MaLop WHERE lhp.MaMonHoc = ? AND lhp.MaLop = ? AND lhp.MaLopHocPhan != ? LIMIT 1', [MaMonHoc, finalMaLop, req.params.id], (errCheck, resCheck) => {
+                if (resCheck && resCheck.length > 0) {
+                    const ex = resCheck[0];
+                    return res.status(400).json({ success: false, message: `Lớp hành chính "${ex.TenLop || finalMaLop}" đã được phân công học môn "${ex.TenMonHoc || MaMonHoc}" tại LHP [${ex.MaLopHocPhan} - Học kỳ ${ex.HocKy || ''}]. Không thể mở LHP trùng môn cho cùng lớp hành chính! (Sinh viên học cải thiện/rớt môn vui lòng mở Lớp tự do).` });
                 }
-                proceedUpdate();
+                db.query('SELECT COUNT(*) as count FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, resCount) => {
+                    const svCount = resCount && resCount[0] ? resCount[0].count : 0;
+                    if (Number(SoLuongToiDa || 40) < svCount) {
+                        return res.status(400).json({ success: false, message: `Sĩ số tối đa (${SoLuongToiDa}) không được nhỏ hơn số sinh viên thực tế của lớp ${finalMaLop} (${svCount} SV)!` });
+                    }
+                    proceedUpdate();
+                });
             });
         } else {
             proceedUpdate();

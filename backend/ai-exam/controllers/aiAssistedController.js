@@ -40,7 +40,7 @@ module.exports = (service, dbPromise) => {
             try {
                 const { document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de } = req.body;
                 if (!document_id || !ma_mon_hoc || !ma_giang_vien) {
-                    return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc để khởi tạo phiên sinh câu hỏi.' });
+                    return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc để khởi tạo đề sinh câu hỏi.' });
                 }
 
                 const session = await service.startSession({
@@ -74,7 +74,7 @@ module.exports = (service, dbPromise) => {
             try {
                 const { ma_giang_vien } = req.params;
                 const sessions = await service.getSessionsByTeacher(ma_giang_vien);
-                res.json({ success: true, data: sessions, message: 'Lấy danh sách phiên sinh câu hỏi thành công' });
+                res.json({ success: true, data: sessions, message: 'Lấy danh sách đề sinh câu hỏi thành công' });
             } catch (error) {
                 res.status(500).json({ success: false, message: error.message });
             }
@@ -154,6 +154,8 @@ module.exports = (service, dbPromise) => {
         getTeacherQuestionBanks: async (req, res) => {
             try {
                 const { ma_giang_vien } = req.params;
+                await dbPromise.query(`UPDATE question_banks SET tieu_de = REGEXP_REPLACE(tieu_de, ' \\\\((Phiên|Đề) #[0-9]+\\\\)$', '') WHERE tieu_de REGEXP ' \\\\((Phiên|Đề) #[0-9]+\\\\)$'`).catch(()=>{});
+
                 const [rows] = await dbPromise.query(
                     `SELECT b.*, m.TenMonHoc 
                      FROM question_banks b 
