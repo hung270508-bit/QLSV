@@ -272,6 +272,11 @@ function StudentTrainingPoints({ user }) {
   };
 
   const handleOpenNew = (hocKy) => {
+    const period = activePeriods.find(p => p.HocKy === hocKy);
+    if (period && getDaysLeft(period.NgayKetThuc) < 0) {
+      showToast('Đợt đánh giá đã hết hạn, không thể khai báo!', 'error');
+      return;
+    }
     setSelectedSemester(hocKy);
     setEditingRecord(null);
     setFormScores({});
@@ -280,9 +285,13 @@ function StudentTrainingPoints({ user }) {
   };
 
   const handleEdit = async (record) => {
-    const isPeriodActive = activePeriods.some(ap => ap.HocKy === record.HocKy);
-    if (!isPeriodActive) {
+    const period = activePeriods.find(ap => ap.HocKy === record.HocKy);
+    if (!period) {
       showToast('Đợt đánh giá đã đóng, không thể chỉnh sửa!', 'error');
+      return;
+    }
+    if (getDaysLeft(period.NgayKetThuc) < 0) {
+      showToast('Đợt đánh giá đã hết hạn, không thể chỉnh sửa!', 'error');
       return;
     }
     setEditingRecord(record);
@@ -503,7 +512,8 @@ function StudentTrainingPoints({ user }) {
               </div>
               <button
                 onClick={() => handleOpenNew(period.HocKy)}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-rose-100 shrink-0"
+                disabled={daysLeft !== null && daysLeft < 0}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:shadow-none text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-rose-100 shrink-0"
               >
                 Khai báo ngay
               </button>
@@ -584,13 +594,13 @@ function StudentTrainingPoints({ user }) {
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider">
-                  <th className="p-5 font-bold">Học kỳ</th>
-                  <th className="p-5 font-bold text-center">SV ĐG</th>
-                  <th className="p-5 font-bold text-center">Khoa ĐG</th>
-                  <th className="p-5 font-bold text-center">Điểm chốt</th>
-                  <th className="p-5 font-bold text-center">Xếp loại</th>
-                  <th className="p-5 font-bold">Trạng thái</th>
-                  <th className="p-5 font-bold text-center">Tác vụ</th>
+                  <th className="p-5 font-bold whitespace-nowrap">Học kỳ</th>
+                  <th className="p-5 font-bold text-center whitespace-nowrap">SV ĐG</th>
+                  <th className="p-5 font-bold text-center whitespace-nowrap">Khoa ĐG</th>
+                  <th className="p-5 font-bold text-center whitespace-nowrap">Điểm chốt</th>
+                  <th className="p-5 font-bold text-center whitespace-nowrap">Xếp loại</th>
+                  <th className="p-5 font-bold whitespace-nowrap">Trạng thái</th>
+                  <th className="p-5 font-bold text-center whitespace-nowrap">Tác vụ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -602,11 +612,11 @@ function StudentTrainingPoints({ user }) {
                   
                   return (
                     <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-5 font-bold text-slate-700">{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</td>
-                      <td className="p-5 text-center font-bold text-[#3B82F6]"><span className="bg-[#3B82F6]/10 px-3 py-1 rounded-md">{p.DiemTuDanhGia}đ</span></td>
-                      <td className="p-5 text-center text-slate-500 font-semibold">{p.DiemKhoaDanhGia || '0'}đ</td>
-                      <td className="p-5 text-center font-black text-[#F4C542] text-lg">{p.TongDiem || p.DiemTuDanhGia}đ</td>
-                      <td className="p-5 text-center">
+                      <td className="p-5 font-bold text-slate-700 whitespace-nowrap">{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</td>
+                      <td className="p-5 text-center font-bold text-[#3B82F6] whitespace-nowrap"><span className="bg-[#3B82F6]/10 px-3 py-1 rounded-md">{p.DiemTuDanhGia}đ</span></td>
+                      <td className="p-5 text-center text-slate-500 font-semibold whitespace-nowrap">{p.DiemKhoaDanhGia || '0'}đ</td>
+                      <td className="p-5 text-center font-black text-[#F4C542] text-lg whitespace-nowrap">{p.TongDiem || p.DiemTuDanhGia}đ</td>
+                      <td className="p-5 text-center whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getXepLoaiBadge(p.XepLoai)}`}>
                           {p.XepLoai || 'Chưa xếp'}
                         </span>
@@ -622,7 +632,7 @@ function StudentTrainingPoints({ user }) {
                           </span>
                         )}
                       </td>
-                      <td className="p-5 text-center text-nowrap">
+                      <td className="p-5 text-center whitespace-nowrap">
                         <div className="inline-flex gap-2 justify-center items-center">
                           {/* Nút Xem chi tiết */}
                           <button 
@@ -634,7 +644,7 @@ function StudentTrainingPoints({ user }) {
                           </button>
 
                           {/* Nút Sửa (chỉ khi chưa duyệt và đợt còn mở) */}
-                          {p.TrangThai !== 'Đã xác nhận' && activePeriods.some(ap => ap.HocKy === p.HocKy) && (
+                          {p.TrangThai !== 'Đã xác nhận' && activePeriods.some(ap => ap.HocKy === p.HocKy && getDaysLeft(ap.NgayKetThuc) >= 0) && (
                             <button 
                               onClick={() => handleEdit(p)} 
                               className="p-2 bg-[#FFFFFF] border border-blue-200 text-[#3B82F6] hover:bg-[#3B82F6]/10 rounded-lg shadow-sm"

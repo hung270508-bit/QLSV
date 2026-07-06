@@ -160,8 +160,6 @@ function DashboardOverview({ onNavigate }) {
     setListCurrentPage(1);
   };
 
-  useEffect(() => { fetchDashboardData(); }, []);
-
   const fetchDashboardData = async () => {
     try {
       const [statsRes, facultyRes, teachersRes, allStudentsRes] = await Promise.all([
@@ -180,6 +178,15 @@ function DashboardOverview({ onNavigate }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDashboardData();
+    // Set up polling interval for real-time data updates
+    const intervalId = setInterval(() => {
+      fetchDashboardData();
+    }, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const COLORS = [
     '#F4C542', '#152238', '#e5e7eb', '#9ca3af', '#4b5563', '#6b7280'
