@@ -62,6 +62,7 @@ CREATE TABLE `dangky_hocphan` (
   PRIMARY KEY (`MaDangKy`),
   KEY `MSSV` (`MSSV`),
   KEY `MaLopHocPhan` (`MaLopHocPhan`),
+  UNIQUE KEY `idx_unique_mssv_malhp` (`MSSV`, `MaLopHocPhan`),
   CONSTRAINT `dangky_hocphan_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE,
   CONSTRAINT `dangky_hocphan_ibfk_2` FOREIGN KEY (`MaLopHocPhan`) REFERENCES `lophocphan` (`MaLopHocPhan`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -114,6 +115,7 @@ CREATE TABLE `diem` (
   PRIMARY KEY (`MaDiem`),
   KEY `MSSV` (`MSSV`),
   KEY `MaLopHocPhan` (`MaLopHocPhan`),
+  UNIQUE KEY `idx_unique_mssv_malhp` (`MSSV`, `MaLopHocPhan`),
   CONSTRAINT `diem_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -289,6 +291,7 @@ CREATE TABLE `khoa` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `MaKhoa` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `TenKhoa` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `TinChiYeuCau` int DEFAULT 120,
   PRIMARY KEY (`MaKhoa`),
   UNIQUE KEY `ID` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

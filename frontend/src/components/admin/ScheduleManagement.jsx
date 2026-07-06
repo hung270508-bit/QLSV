@@ -546,7 +546,13 @@ function ScheduleManagement() {
       return;
     }
 
-    setFormData(prev => ({ ...prev, [field]: field === 'tanSuat' ? Number(value) : value }));
+    let cleanVal = value;
+    if (field === 'soTiet1' || field === 'soTiet2') {
+      if (value !== '') {
+        cleanVal = value.toString().replace(/[^0-9]/g, '');
+      }
+    }
+    setFormData(prev => ({ ...prev, [field]: field === 'tanSuat' ? Number(cleanVal) : cleanVal }));
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
     let errorMsg = '';
@@ -859,7 +865,7 @@ function ScheduleManagement() {
       setWarningPopup({
         show: true,
         title: 'Chưa đủ điều kiện chốt lịch!',
-        message: `Lớp học phần "${maLHP}" có quy định là ${tietQuyDinh} tiết học (theo số tín chỉ), nhưng hiện tại mới chỉ xếp được ${tongTiet} tiết.\n\n⚠️ Bạn còn thiếu ${thieu} tiết học nữa. Vui lòng xếp bổ sung cho đủ số tiết quy định trước khi chốt lịch!`
+        message: `Lớp học phần "${maLHP}" có quy định là ${tietQuyDinh} tiết học (theo số tín chỉ), nhưng hiện tại mới chỉ xếp được ${tongTiet} tiết.\n\n⚠️ Bạn còn thiếu ${thieu} tiết học nữa.\n\n💡 Cách khắc phục: Hãy bấm nút "+ Xếp thêm buổi" màu vàng ngay trên thanh công cụ của môn học để tạo thêm buổi học mới cho ${thieu} tiết còn thiếu, sau đó mới bấm "Chốt lịch học"!`
       });
       return;
     }
@@ -1228,6 +1234,27 @@ function ScheduleManagement() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                handleCloseModal();
+                                const remainingPeriods = tietQuyDinh > tongTiet ? Math.min(5, tietQuyDinh - tongTiet) : 3;
+                                setFormData(prev => ({
+                                  ...prev,
+                                  MaLopHocPhan: first.MaLopHocPhan,
+                                  tanSuat: 1,
+                                  soTiet1: String(remainingPeriods),
+                                  NgayHoc: '',
+                                  PhongHoc: first.PhongHoc || ''
+                                }));
+                                setIsRecurring(false);
+                                setShowModal(true);
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl font-bold bg-[#FFF7D6] hover:bg-[#F4C542] text-[#152238] border border-amber-400 transition-all active:scale-95 shadow-sm text-xs flex items-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Xếp thêm buổi
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleEditLhpSchedule(first, items);
                               }}
                               className="px-3.5 py-1.5 rounded-xl font-bold bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 transition-all active:scale-95 shadow-sm text-xs"
@@ -1542,7 +1569,7 @@ function ScheduleManagement() {
                             </div>
                             <div>
                               <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
-                              <input type="number" min="1" max="5" placeholder="VD: 3" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`} />
+                              <input type="number" step="1" onKeyDown={(e) => { if (['.', ',', '-', 'e', 'E'].includes(e.key)) e.preventDefault(); }} min="1" max="5" placeholder="VD: 3" value={formData.soTiet1} onChange={e => handleFieldChange('soTiet1', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi1 ? 'border-red-500' : 'border-gray-300'}`} />
                             </div>
                           </div>
                           {formErrors.buoi1 && <p className="text-[#EF4444] text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {formErrors.buoi1}</p>}
@@ -1569,7 +1596,7 @@ function ScheduleManagement() {
                               </div>
                               <div>
                                 <label className="block text-xs font-bold text-[#6B7280] uppercase mb-1">Số tiết học <span className="text-[#EF4444]">*</span></label>
-                                <input type="number" min="1" max="5" placeholder="VD: 3" value={formData.soTiet2} onChange={e => handleFieldChange('soTiet2', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`} />
+                                <input type="number" step="1" onKeyDown={(e) => { if (['.', ',', '-', 'e', 'E'].includes(e.key)) e.preventDefault(); }} min="1" max="5" placeholder="VD: 3" value={formData.soTiet2} onChange={e => handleFieldChange('soTiet2', e.target.value)} className={`w-full p-2.5 bg-[#F7F8FA] border rounded-lg outline-none text-sm focus:border-[#F4C542] ${formErrors.buoi2 ? 'border-red-500' : 'border-gray-300'}`} />
                               </div>
                             </div>
                             {formErrors.buoi2 && <p className="text-[#EF4444] text-[11px] font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {formErrors.buoi2}</p>}
@@ -1612,6 +1639,8 @@ function ScheduleManagement() {
                             </label>
                             <input
                               type="number"
+                              step="1"
+                              onKeyDown={(e) => { if (['.', ',', '-', 'e', 'E'].includes(e.key)) e.preventDefault(); }}
                               min="1"
                               max="5"
                               disabled={editingSchedule?.TrangThaiLich === 'DA_CHOT'}

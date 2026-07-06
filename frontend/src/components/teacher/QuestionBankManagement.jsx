@@ -1340,7 +1340,7 @@ function QuestionBankManagement() {
                                         );
                                     })}
                                 </div>
-                            ) : (
+                                ) : (
                                 <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-2xl">
                                     <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                                     <p className="text-base font-semibold">Không tìm thấy câu hỏi nào phù hợp với bộ lọc hiện tại</p>

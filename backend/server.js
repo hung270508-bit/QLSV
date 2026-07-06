@@ -79,6 +79,7 @@ db.getConnection((err, connection) => {
     // để tối ưu hóa triệt để tốc độ khởi động (Cold Start) trên Vercel Serverless.
 
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
+        connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => {});
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
@@ -1457,8 +1458,6 @@ app.get('/api/classes/:maLop/grade-stats', (req, res) => {
 
 // ==================== LỚP HỌC PHẦN ====================
 app.get('/api/teaching-assignments', (req, res) => {
-    db.query("INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
-    db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy, 'Đã duyệt', NOW() FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
     const query = `
         SELECT 
             lhp.*, mh.TenMonHoc, mh.SoTinChi, gv.HoTen AS TenGiangVien, gv.CapBac AS CapBacGiangVien, l.TenLop, k.TenKhoa,
@@ -1479,8 +1478,6 @@ app.get('/api/course-sections/teacher/:maGV', (req, res) => executeQuery("SELECT
 app.get('/api/course-sections/:maLhp/students', (req, res) => executeQuery("SELECT DISTINCT s.MSSV, s.HoTen, s.MaLop FROM sinhvien s WHERE s.MSSV IN (SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) ORDER BY s.MSSV", [req.params.maLhp, req.params.maLhp, req.params.maLhp], res, 'Lỗi!'));
 
 app.get('/api/course-sections', (req, res) => {
-    db.query("INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
-    db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) SELECT s.MSSV, lhp.MaLopHocPhan, lhp.HocKy, 'Đã duyệt', NOW() FROM sinhvien s JOIN lophocphan lhp ON s.MaLop = lhp.MaLop WHERE lhp.MaLop IS NOT NULL AND lhp.MaLop != ''", () => {});
     const query = `
         SELECT
             lhp.*,
