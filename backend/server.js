@@ -1194,7 +1194,7 @@ app.get('/api/students/next-code/:maLop', (req, res) => {
         });
     });
 });
-app.get('/api/students/:mssv/details', (req, res) => executeQuery('SELECT s.*, l.TenLop, k.TenKhoa, k.TinChiYeuCau, u.Avatar FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa LEFT JOIN users u ON s.MSSV = u.TaiKhoan WHERE s.MSSV = ?', [req.params.mssv], res, 'Lỗi chi tiết SV!'));
+app.get('/api/students/:mssv/details', (req, res) => executeQuery('SELECT s.*, l.TenLop, l.MaKhoa, k.TenKhoa, k.TinChiYeuCau, u.Avatar FROM sinhvien s LEFT JOIN lophoc l ON s.MaLop = l.MaLop LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa LEFT JOIN users u ON s.MSSV = u.TaiKhoan WHERE s.MSSV = ?', [req.params.mssv], res, 'Lỗi chi tiết SV!'));
 app.get('/api/students/:mssv/schedule', (req, res) => executeQuery(`
     SELECT lh.*, lhp.MaMonHoc, lhp.MaLop, lhp.HocKy, mh.TenMonHoc, gv.HoTen as TenGiangVien 
     FROM diem d 
@@ -1324,7 +1324,7 @@ app.get('/api/faculties/:maKhoa/classes', (req, res) => executeQuery('SELECT l.*
 app.get('/api/subjects', (req, res) => executeQuery("SELECT mh.*, COALESCE(mh.LoaiMonHoc, 'Đại cương') AS LoaiMon, COALESCE(mh.LoaiMonHoc, 'Đại cương') AS LoaiMonHoc, k.TenKhoa FROM monhoc mh LEFT JOIN khoa k ON mh.MaKhoa = k.MaKhoa", [], res, 'Lỗi lấy môn!'));
 app.get('/api/subjects/next-code/:maKhoa', (req, res) => {
     const prefix = `${req.params.maKhoa}`;
-    db.query(`SELECT MaMonHoc FROM monhoc WHERE MaMonHoc LIKE ? ORDER BY MaMonHoc DESC LIMIT 1`, [`${prefix}%`], (err, results) => {
+    db.query(`SELECT MaMonHoc FROM monhoc WHERE MaMonHoc LIKE ? ORDER BY LENGTH(MaMonHoc) DESC, MaMonHoc DESC LIMIT 1`, [`${prefix}%`], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         let nextNum = 1;
         if (results.length > 0) { const match = results[0].MaMonHoc.match(/\d+$/); if (match) nextNum = parseInt(match[0], 10) + 1; }
