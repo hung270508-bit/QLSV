@@ -160,15 +160,14 @@ function DashboardOverview({ onNavigate }) {
     setListCurrentPage(1);
   };
 
-  useEffect(() => { fetchDashboardData(); }, []);
-
   const fetchDashboardData = async () => {
     try {
+      const timestamp = Date.now();
       const [statsRes, facultyRes, teachersRes, allStudentsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/dashboard/stats`),
-        axios.get(`${API_URL}/api/dashboard/stats-by-faculty`),
-        axios.get(`${API_URL}/api/teachers`),
-        axios.get(`${API_URL}/api/students`)
+        axios.get(`${API_URL}/api/dashboard/stats?t=${timestamp}`),
+        axios.get(`${API_URL}/api/dashboard/stats-by-faculty?t=${timestamp}`),
+        axios.get(`${API_URL}/api/teachers?t=${timestamp}`),
+        axios.get(`${API_URL}/api/students?t=${timestamp}`)
       ]);
       setStats(statsRes.data);
       setFacultyStats(facultyRes.data);
@@ -180,6 +179,15 @@ function DashboardOverview({ onNavigate }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDashboardData();
+    // Set up polling interval for real-time data updates
+    const intervalId = setInterval(() => {
+      fetchDashboardData();
+    }, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const COLORS = [
     '#F4C542', '#152238', '#e5e7eb', '#9ca3af', '#4b5563', '#6b7280'
@@ -345,7 +353,22 @@ function DashboardOverview({ onNavigate }) {
             {/* Legend */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-amber-100">
               {facultyStudentData.map((item, i) => {
-                const pct = totalStudents > 0 ? ((item.value / totalStudents) * 100).toFixed(1) : 0;
+                // Calculate percentages ensuring total is exactly 100%
+                let pct;
+                if (totalStudents > 0) {
+                  if (i === facultyStudentData.length - 1) {
+                    // Last item: calculate to make total exactly 100%
+                    const previousSum = facultyStudentData.slice(0, i).reduce((sum, prev) => {
+                      const prevPct = ((prev.value / totalStudents) * 100).toFixed(1);
+                      return sum + parseFloat(prevPct);
+                    }, 0);
+                    pct = (100 - previousSum).toFixed(1);
+                  } else {
+                    pct = ((item.value / totalStudents) * 100).toFixed(1);
+                  }
+                } else {
+                  pct = 0;
+                }
                 return (
                   <motion.div
                     key={i}

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App.jsx'
 import AutoUpdate from './components/common/AutoUpdate.jsx'
+import OfflineNotification from './components/common/OfflineNotification.jsx'
 import './index.css' // <-- BẮT BUỘC phải có dòng này để nhận giao diện đẹp
 import axios from 'axios'
 
@@ -31,7 +32,7 @@ const getRequestKey = (config) => {
     } else if (config.data) {
       dataKey = JSON.stringify(config.data);
     }
-  } catch (e) {
+  } catch {
     dataKey = 'fallback:' + Math.random();
   }
   return `${(config.method || 'get').toLowerCase()}_${config.url || ''}_${dataKey}`;
@@ -153,7 +154,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HashRouter>
       <AutoUpdate />
-      <App />
+      <OfflineNotification>
+        <App />
+      </OfflineNotification>
     </HashRouter>
   </React.StrictMode>,
 )

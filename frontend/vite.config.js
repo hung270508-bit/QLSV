@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import fs from 'fs'
 import path from 'path'
 
@@ -22,6 +23,32 @@ const versionGenerator = () => {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), versionGenerator()],
+  plugins: [
+    react(),
+    versionGenerator(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB limit
+      },
+      manifest: {
+        name: 'Quản Lý Sinh Viên',
+        short_name: 'QLSV',
+        description: 'Phần mềm Quản lý Sinh viên',
+        theme_color: '#ffffff',
+        icons: [
+          {
+            src: 'favicon.ico',
+            sizes: '64x64 32x32 24x24 16x16',
+            type: 'image/x-icon'
+          }
+        ]
+      }
+    })
+  ],
   base: '/QLSV/',
 })

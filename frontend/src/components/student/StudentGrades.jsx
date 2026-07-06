@@ -614,6 +614,27 @@ function StudentGrades({ user }) {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Inputs & Current Stats */}
               <div className="lg:col-span-4 space-y-6">
+                <div className="relative overflow-hidden bg-gradient-to-br from-[#152238] to-[#1e2f4c] p-6 rounded-2xl shadow-lg text-white group">
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+                  <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-[#F4C542]/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+                  <div className="relative z-10">
+                    <h4 className="font-bold text-[#F4C542] text-sm uppercase tracking-wider mb-4 border-b border-gray-700 pb-3 flex items-center gap-2">
+                      <Award className="w-4 h-4" />
+                      Hành trang hiện tại
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400 font-semibold mb-1 uppercase">GPA Tích lũy</p>
+                        <p className="text-3xl font-black text-white">{cumulativeGPA}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 font-semibold mb-1 uppercase">Số TC tích lũy</p>
+                        <p className="text-2xl font-bold text-white mt-1">{totalAccumulatedCredits} <span className="text-sm font-normal text-gray-400">/ {totalRequiredCredits} TC</span></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="bg-[#FFFFFF] border border-gray-200 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
                   <div className="relative z-10">
@@ -626,10 +647,8 @@ function StudentGrades({ user }) {
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Chọn nhanh xếp loại</label>
                         <div className="grid grid-cols-2 gap-2">
-                          <button onClick={() => setTargetGPA('3.8')} className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${targetGPA === '3.8' ? 'bg-gradient-to-r from-[#F4C542] to-[#f5d061] text-[#152238] shadow-md transform scale-[1.02]' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 hover:scale-[1.02]'}`}>Thủ khoa (3.8+)</button>
                           <button onClick={() => setTargetGPA('3.6')} className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${targetGPA === '3.6' ? 'bg-gradient-to-r from-[#F4C542] to-[#f5d061] text-[#152238] shadow-md transform scale-[1.02]' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 hover:scale-[1.02]'}`}>Xuất sắc (3.6+)</button>
                           <button onClick={() => setTargetGPA('3.2')} className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${targetGPA === '3.2' ? 'bg-gradient-to-r from-[#F4C542] to-[#f5d061] text-[#152238] shadow-md transform scale-[1.02]' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 hover:scale-[1.02]'}`}>Giỏi (3.2+)</button>
-                          <button onClick={() => setTargetGPA('3.0')} className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${targetGPA === '3.0' ? 'bg-gradient-to-r from-[#F4C542] to-[#f5d061] text-[#152238] shadow-md transform scale-[1.02]' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 hover:scale-[1.02]'}`}>An toàn (3.0+)</button>
                           <button onClick={() => setTargetGPA('2.5')} className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${targetGPA === '2.5' ? 'bg-gradient-to-r from-[#F4C542] to-[#f5d061] text-[#152238] shadow-md transform scale-[1.02]' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 hover:scale-[1.02]'}`}>Khá (2.5+)</button>
                           <button onClick={() => setTargetGPA('2.0')} className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${targetGPA === '2.0' ? 'bg-gradient-to-r from-[#F4C542] to-[#f5d061] text-[#152238] shadow-md transform scale-[1.02]' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 hover:scale-[1.02]'}`}>Trung bình (2.0+)</button>
                         </div>
@@ -647,27 +666,6 @@ function StudentGrades({ user }) {
                           placeholder="VD: 3.45"
                           className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-2xl font-black focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-[#152238] text-center transition-all"
                         />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative overflow-hidden bg-gradient-to-br from-[#152238] to-[#1e2f4c] p-6 rounded-2xl shadow-lg text-white group">
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
-                  <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-[#F4C542]/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
-                  <div className="relative z-10">
-                    <h4 className="font-bold text-[#F4C542] text-sm uppercase tracking-wider mb-4 border-b border-gray-700 pb-3 flex items-center gap-2">
-                      <Award className="w-4 h-4" />
-                      Hành trang hiện tại
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-400 font-semibold mb-1 uppercase">GPA Tích lũy</p>
-                        <p className="text-3xl font-black text-white">{cumulativeGPA}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400 font-semibold mb-1 uppercase">Số TC tích lũy</p>
-                        <p className="text-2xl font-bold text-white mt-1">{totalAccumulatedCredits} <span className="text-sm font-normal text-gray-400">/ {totalRequiredCredits} TC</span></p>
                       </div>
                     </div>
                   </div>
@@ -746,28 +744,16 @@ function StudentGrades({ user }) {
                       const averageCourses = Math.ceil(remainingCreditsToGrad / 3);
 
                       let safePlan = { aCount: 0, bPlusCount: 0, bCount: 0, cPlusCount: 0, cCount: 0 };
-                      let pushPlan = { aCount: 0, bPlusCount: 0, bCount: 0, cPlusCount: 0, cCount: 0 };
 
                       if (requiredAverage >= 3.5) {
                         safePlan.aCount = Math.ceil((requiredAverage - 3.5) * 2 * averageCourses);
                         safePlan.bPlusCount = Math.max(0, averageCourses - safePlan.aCount);
-
-                        pushPlan.aCount = Math.min(averageCourses, safePlan.aCount + 1);
-                        pushPlan.bCount = Math.max(0, averageCourses - pushPlan.aCount);
                       } else if (requiredAverage >= 3.0) {
                         safePlan.bPlusCount = Math.ceil((requiredAverage - 3.0) * 2 * averageCourses);
                         safePlan.bCount = Math.max(0, averageCourses - safePlan.bPlusCount);
-
-                        pushPlan.aCount = Math.ceil(safePlan.bPlusCount / 2);
-                        pushPlan.bPlusCount = Math.max(0, safePlan.bPlusCount - pushPlan.aCount);
-                        pushPlan.bCount = safePlan.bCount;
                       } else if (requiredAverage >= 2.5) {
                         safePlan.bCount = Math.ceil((requiredAverage - 2.5) * 2 * averageCourses);
                         safePlan.cPlusCount = Math.max(0, averageCourses - safePlan.bCount);
-
-                        pushPlan.bPlusCount = Math.ceil(safePlan.bCount / 2);
-                        pushPlan.bCount = Math.max(0, safePlan.bCount - pushPlan.bPlusCount);
-                        pushPlan.cPlusCount = safePlan.cPlusCount;
                       } else {
                         safePlan.cPlusCount = Math.ceil((requiredAverage - 2.0) * 2 * averageCourses);
                         safePlan.cCount = Math.max(0, averageCourses - safePlan.cPlusCount);
@@ -810,7 +796,7 @@ function StudentGrades({ user }) {
                               <Award className="w-5 h-5 text-amber-500" />
                               Lộ trình đề xuất (mỗi môn giả định ~3 TC)
                             </h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 gap-6 max-w-lg">
                               {/* Safe Plan */}
                               <div className="border border-gray-200 rounded-2xl p-5 hover:border-[#F4C542] hover:shadow-md transition-all bg-white relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
@@ -824,22 +810,6 @@ function StudentGrades({ user }) {
                                   {renderBadge('B', safePlan.bCount, 'bg-indigo-50', 'border-indigo-100', 'text-indigo-600')}
                                   {renderBadge('C+', safePlan.cPlusCount, 'bg-amber-50', 'border-amber-100', 'text-amber-600')}
                                   {renderBadge('C', safePlan.cCount, 'bg-gray-50', 'border-gray-200', 'text-gray-600')}
-                                </div>
-                              </div>
-
-                              {/* Push Plan */}
-                              <div className="border border-gray-200 rounded-2xl p-5 hover:border-emerald-400 hover:shadow-md transition-all bg-white relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
-                                  <TrendingUp className="w-24 h-24 text-emerald-500" />
-                                </div>
-                                <h6 className="font-bold text-gray-800 mb-1 text-base">Lộ trình bứt phá</h6>
-                                <p className="text-xs text-gray-500 mb-4">Tập trung môn điểm cao để bù đắp môn khó.</p>
-                                <div className="grid grid-cols-3 gap-2 relative z-10">
-                                  {renderBadge('A', pushPlan.aCount, 'bg-emerald-50', 'border-emerald-100', 'text-emerald-600')}
-                                  {renderBadge('B+', pushPlan.bPlusCount, 'bg-blue-50', 'border-blue-100', 'text-blue-600')}
-                                  {renderBadge('B', pushPlan.bCount, 'bg-indigo-50', 'border-indigo-100', 'text-indigo-600')}
-                                  {renderBadge('C+', pushPlan.cPlusCount, 'bg-amber-50', 'border-amber-100', 'text-amber-600')}
-                                  {renderBadge('C', pushPlan.cCount, 'bg-gray-50', 'border-gray-200', 'text-gray-600')}
                                 </div>
                               </div>
                             </div>

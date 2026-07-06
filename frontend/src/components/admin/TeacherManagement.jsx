@@ -114,10 +114,11 @@ function TeacherManagement() {
 
   const fetchData = async () => {
     try {
+      const timestamp = Date.now();
       const [teachersRes, facultiesRes, studentsRes] = await Promise.all([
-        axios.get(`${API_BASE}/teachers`),
-        axios.get(`${API_BASE}/faculties`),
-        axios.get(`${API_BASE}/students`)
+        axios.get(`${API_BASE}/teachers?t=${timestamp}`),
+        axios.get(`${API_BASE}/faculties?t=${timestamp}`),
+        axios.get(`${API_BASE}/students?t=${timestamp}`)
       ]);
       setTeachers(teachersRes.data);
       setFaculties(facultiesRes.data);
@@ -135,7 +136,8 @@ function TeacherManagement() {
     // Tự động cập nhật danh sách giảng viên mỗi 3 giây để thấy ảnh đại diện mới
     const interval = setInterval(async () => {
       try {
-        const res = await axios.get(`${API_BASE}/teachers`);
+        const timestamp = Date.now();
+        const res = await axios.get(`${API_BASE}/teachers?t=${timestamp}`);
         setTeachers(res.data);
       } catch (error) {
         console.error('Error auto-updating teachers:', error);

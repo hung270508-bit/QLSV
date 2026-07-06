@@ -287,11 +287,12 @@ function StudentManagement() {
 
   const fetchData = async () => {
     try {
+      const timestamp = Date.now();
       const [studentsRes, classesRes, facultiesRes, teachersRes] = await Promise.all([
-        axios.get(`${API_BASE}/students`),
-        axios.get(`${API_BASE}/classes`),
-        axios.get(`${API_BASE}/faculties`),
-        axios.get(`${API_BASE}/teachers`)
+        axios.get(`${API_BASE}/students?t=${timestamp}`),
+        axios.get(`${API_BASE}/classes?t=${timestamp}`),
+        axios.get(`${API_BASE}/faculties?t=${timestamp}`),
+        axios.get(`${API_BASE}/teachers?t=${timestamp}`)
       ]);
       setStudents(studentsRes.data);
       setClasses(classesRes.data);
@@ -310,7 +311,8 @@ function StudentManagement() {
     // Tự động cập nhật danh sách sinh viên mỗi 3 giây để thấy ảnh đại diện mới
     const interval = setInterval(async () => {
       try {
-        const res = await axios.get(`${API_BASE}/students`);
+        const timestamp = Date.now();
+        const res = await axios.get(`${API_BASE}/students?t=${timestamp}`);
         setStudents(res.data);
       } catch (error) {
         console.error('Error auto-updating students:', error);
@@ -1109,7 +1111,7 @@ function StudentManagement() {
     return classes.find(cls => cls.MaLop === formData.MaLop);
   }, [classes, formData.MaLop]);
 
-  const isClassFull = selectedClassInfo && selectedClassInfo.SoSinhVien >= 60;
+  const isClassFull = selectedClassInfo && selectedClassInfo.SoSinhVien >= 80;
 
 
 
@@ -2235,9 +2237,9 @@ function StudentManagement() {
 
                         {filteredClassesForForm.map((cls) => (
 
-                          <option key={cls.MaLop} value={cls.MaLop} disabled={cls.SoSinhVien >= 60}>
+                          <option key={cls.MaLop} value={cls.MaLop} disabled={cls.SoSinhVien >= 80}>
 
-                            {cls.TenLop} ({cls.SoSinhVien || 0}/60)
+                            {cls.TenLop} ({cls.SoSinhVien || 0}/80)
 
                           </option>
 
@@ -2252,11 +2254,10 @@ function StudentManagement() {
                           {isClassFull ? (
                             <span className="flex items-center gap-1">
                               <AlertCircle className="w-4 h-4" />
-                              Lớp đã đủ sĩ số (60/60). Vui lòng chọn lớp khác.
+                              Lớp đã đủ sĩ số (80/80). Vui lòng chọn lớp khác.
                             </span>
-                          ) : (
-                            <span>Sĩ số hiện tại: {selectedClassInfo.SoSinhVien || 0}/60</span>
-                          )}
+                          ) : null
+                        }
                         </div>
                       )}
 
