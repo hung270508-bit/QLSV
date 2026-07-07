@@ -51,7 +51,7 @@ function StudentManagement() {
     statusFilter: '',
     nienKhoaFilter: '',
     classFilter: '',
-    nameFilter: ''
+    nameSort: ''
 
   });
 
@@ -62,7 +62,7 @@ function StudentManagement() {
     statusFilter: '',
     nienKhoaFilter: '',
     classFilter: '',
-    nameFilter: ''
+    nameSort: ''
 
   });
 
@@ -1117,50 +1117,41 @@ function StudentManagement() {
 
 
 
-  const filteredStudents = students.filter(student => {
-    if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') return false;
+  const filteredStudents = useMemo(() => {
+    let result = students.filter(student => {
+      if (debouncedSearchTerm.length > 0 && debouncedSearchTerm.trim() === '') return false;
 
-    const searchLower = debouncedSearchTerm.toLowerCase();
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      const searchNoTones = removeVietnameseTones(searchLower);
+      const nameLower = student.HoTen?.toLowerCase() || '';
+      const nameNoTones = removeVietnameseTones(nameLower);
+      const idLower = student.MSSV?.toLowerCase() || '';
+      const emailLower = student.Email?.toLowerCase() || '';
+      const phoneLower = student.SoDienThoai?.toLowerCase() || '';
 
-    const searchNoTones = removeVietnameseTones(searchLower);
+      const matchesSearch =
+        nameLower.includes(searchLower) ||
+        nameNoTones.includes(searchNoTones) ||
+        idLower.includes(searchLower) ||
+        emailLower.includes(searchLower) ||
+        phoneLower.includes(searchLower);
 
-    const nameLower = student.HoTen?.toLowerCase() || '';
+      const matchesFaculty = !filters.facultyFilter || student.MaKhoa === filters.facultyFilter;
+      const matchesStatus = !filters.statusFilter || student.TrangThai === filters.statusFilter;
+      const matchesNienKhoa = !filters.nienKhoaFilter || student.NienKhoa === filters.nienKhoaFilter;
+      const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
 
-    const nameNoTones = removeVietnameseTones(nameLower);
+      return matchesSearch && matchesFaculty && matchesStatus && matchesNienKhoa && matchesClass;
+    });
 
-    const idLower = student.MSSV?.toLowerCase() || '';
+    if (filters.nameSort === 'asc') {
+      result.sort((a, b) => (a.HoTen || '').localeCompare(b.HoTen || '', 'vi'));
+    } else if (filters.nameSort === 'desc') {
+      result.sort((a, b) => (b.HoTen || '').localeCompare(a.HoTen || '', 'vi'));
+    }
 
-    const emailLower = student.Email?.toLowerCase() || '';
-
-    const phoneLower = student.SoDienThoai?.toLowerCase() || '';
-
-
-
-    const matchesSearch =
-
-      nameLower.includes(searchLower) ||
-
-      nameNoTones.includes(searchNoTones) ||
-
-      idLower.includes(searchLower) ||
-
-      emailLower.includes(searchLower) ||
-      phoneLower.includes(searchLower);
-
-
-
-    const matchesFaculty = !filters.facultyFilter || student.MaKhoa === filters.facultyFilter;
-
-    const matchesStatus = !filters.statusFilter || student.TrangThai === filters.statusFilter;
-    const matchesNienKhoa = !filters.nienKhoaFilter || student.NienKhoa === filters.nienKhoaFilter;
-    const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
-    const matchesName = !filters.nameFilter || removeVietnameseTones(student.HoTen).toLowerCase().startsWith(removeVietnameseTones(filters.nameFilter).toLowerCase());
-
-
-
-    return matchesSearch && matchesFaculty && matchesStatus && matchesNienKhoa && matchesClass && matchesName;
-
-  });
+    return result;
+  }, [students, debouncedSearchTerm, filters, removeVietnameseTones]);
 
 
 
@@ -1200,9 +1191,9 @@ function StudentManagement() {
 
   const clearFilters = () => {
 
-    setFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameFilter: '' });
+    setFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameSort: '' });
 
-    setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameFilter: '' });
+    setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameSort: '' });
 
     setSearchTerm('');
 
@@ -1227,9 +1218,9 @@ function StudentManagement() {
 
 
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (filters.nienKhoaFilter ? 1 : 0) + (filters.classFilter ? 1 : 0) + (filters.nameFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (filters.nienKhoaFilter ? 1 : 0) + (filters.classFilter ? 1 : 0) + (filters.nameSort ? 1 : 0) + (searchTerm ? 1 : 0);
 
-  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || filters.nienKhoaFilter || filters.classFilter || filters.nameFilter || searchTerm;
+  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || filters.nienKhoaFilter || filters.classFilter || filters.nameSort || searchTerm;
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1543,13 +1534,11 @@ function StudentManagement() {
 
                   className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
 
-                  disabled={!displayFilters.facultyFilter}
-
                 >
 
                   <option value="">Tất cả</option>
 
-                  {Array.from(new Set(classes.filter(c => c.MaKhoa === displayFilters.facultyFilter).map(c => c.NienKhoa))).sort().map((nienKhoa) => (
+                  {Array.from(new Set(classes.filter(c => !displayFilters.facultyFilter || c.MaKhoa === displayFilters.facultyFilter).map(c => c.NienKhoa))).sort().map((nienKhoa) => (
                     <option key={nienKhoa} value={nienKhoa}>
                       {nienKhoa}
                     </option>
@@ -1571,13 +1560,11 @@ function StudentManagement() {
 
                   className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
 
-                  disabled={!displayFilters.nienKhoaFilter}
-
                 >
 
                   <option value="">Tất cả</option>
 
-                  {classes.filter(c => c.MaKhoa === displayFilters.facultyFilter && c.NienKhoa === displayFilters.nienKhoaFilter).map((cls) => (
+                  {classes.filter(c => (!displayFilters.facultyFilter || c.MaKhoa === displayFilters.facultyFilter) && (!displayFilters.nienKhoaFilter || c.NienKhoa === displayFilters.nienKhoaFilter)).map((cls) => (
                     <option key={cls.MaLop} value={cls.MaLop}>
                       {cls.TenLop}
                     </option>
@@ -1589,23 +1576,21 @@ function StudentManagement() {
 
               <div>
 
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">Tên (A-Z)</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Sắp xếp theo tên</label>
 
                 <select
 
-                  value={displayFilters.nameFilter}
+                  value={displayFilters.nameSort}
 
-                  onChange={(e) => setDisplayFilters({ ...displayFilters, nameFilter: e.target.value })}
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, nameSort: e.target.value })}
 
                   className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
 
                 >
 
-                  <option value="">Tất cả</option>
-
-                  {['A', 'B', 'C', 'D', 'Đ', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'].map(letter => (
-                    <option key={letter} value={letter}>{letter}</option>
-                  ))}
+                  <option value="">Mặc định</option>
+                  <option value="asc">A - Z</option>
+                  <option value="desc">Z - A</option>
 
                 </select>
 
@@ -1637,7 +1622,7 @@ function StudentManagement() {
 
                 whileTap={{ scale: 0.99 }}
 
-                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameSort: '' })}
 
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
 
@@ -3098,11 +3083,10 @@ function StudentManagement() {
                       <select
                         value={exportOptions.nienKhoa}
                         onChange={(e) => setExportOptions({ ...exportOptions, nienKhoa: e.target.value, class: '' })}
-                        className="w-full px-3 py-2.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700 disabled:opacity-50"
-                        disabled={!exportOptions.faculty}
+                        className="w-full px-3 py-2.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
                       >
                         <option value="">Tất cả niên khóa</option>
-                        {Array.from(new Set(classes.filter(c => c.MaKhoa === exportOptions.faculty).map(c => c.NienKhoa))).sort().map((nienKhoa) => (
+                        {Array.from(new Set(classes.filter(c => !exportOptions.faculty || c.MaKhoa === exportOptions.faculty).map(c => c.NienKhoa))).sort().map((nienKhoa) => (
                           <option key={nienKhoa} value={nienKhoa}>
                             {nienKhoa}
                           </option>
@@ -3119,11 +3103,10 @@ function StudentManagement() {
                       <select
                         value={exportOptions.class}
                         onChange={(e) => setExportOptions({ ...exportOptions, class: e.target.value })}
-                        className="w-full px-3 py-2.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700 disabled:opacity-50"
-                        disabled={!exportOptions.nienKhoa}
+                        className="w-full px-3 py-2.5 bg-[#F7F8FA] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
                       >
                         <option value="">Tất cả lớp</option>
-                        {classes.filter(c => c.MaKhoa === exportOptions.faculty && c.NienKhoa === exportOptions.nienKhoa).map((cls) => (
+                        {classes.filter(c => (!exportOptions.faculty || c.MaKhoa === exportOptions.faculty) && (!exportOptions.nienKhoa || c.NienKhoa === exportOptions.nienKhoa)).map((cls) => (
                           <option key={cls.MaLop} value={cls.MaLop}>
                             {cls.TenLop}
                           </option>
