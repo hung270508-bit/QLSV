@@ -87,37 +87,23 @@ const StatCard = ({ stat, index, onNavigate }) => {
 
 /* ─── Loading skeleton ───────────────────────────────────────────── */
 const Skeleton = () => (
-  <div className="relative">
+  <div>
     {/* Skeleton Pattern */}
-    <div className="space-y-6 animate-pulse opacity-40 pointer-events-none">
-      <div className="h-32 bg-gradient-to-r from-[#FFF7D6] to-[#FFECA1] rounded-2xl" />
+    <div className="space-y-6 animate-pulse pointer-events-none">
+      <div className="h-32 bg-gradient-to-r from-[#FFF7D6] to-[#FFECA1] rounded-2xl shadow-sm" />
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-100 rounded-2xl" />)}
+        {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-96 bg-gray-100 rounded-2xl" />
-        <div className="h-96 bg-gray-100 rounded-2xl" />
+        <div className="h-96 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />
+        <div className="h-96 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />
       </div>
-      <div className="h-64 bg-gray-100 rounded-2xl" />
+      <div className="h-64 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />
     </div>
 
-    {/* Spinner Overlay */}
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white/90 backdrop-blur-md px-8 py-6 rounded-[2rem] shadow-2xl border border-white/50 flex flex-col items-center gap-4"
-      >
-        <div className="relative w-14 h-14 flex items-center justify-center">
-          <div className="absolute inset-0 border-4 border-gray-100 rounded-full" />
-          <div className="absolute inset-0 border-4 border-[#F4C542] border-t-transparent rounded-full animate-spin" />
-          <Loader2 className="w-5 h-5 text-[#152238] animate-pulse" />
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <h3 className="text-sm font-bold text-[#1F2937] tracking-wide uppercase">Đang tải dữ liệu</h3>
-          <p className="text-xs text-gray-400 font-medium animate-pulse">Vui lòng đợi trong giây lát...</p>
-        </div>
-      </motion.div>
+    {/* Fixed Centered Spinner */}
+    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none">
+      <Loader2 className="w-8 h-8 text-[#F4C542] animate-spin drop-shadow-md" />
     </div>
   </div>
 );
