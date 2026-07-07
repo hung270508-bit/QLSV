@@ -21,9 +21,9 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
-SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '0fcfb20c-6d7d-11f1-bdec-6e6f7ddf02a9:1-10595,
-4585fac6-63de-11f1-981c-06b3c0baae58:1-111,
-e51c4a2a-63f7-11f1-9ad9-ee12a9ba2a33:1-1474';
+-- SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '0fcfb20c-6d7d-11f1-bdec-6e6f7ddf02a9:1-10595,
+-- 4585fac6-63de-11f1-981c-06b3c0baae58:1-111,
+-- e51c4a2a-63f7-11f1-9ad9-ee12a9ba2a33:1-1474';
 
 --
 -- Table structure for table `ai_generated_options`
