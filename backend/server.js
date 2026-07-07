@@ -80,6 +80,7 @@ db.getConnection((err, connection) => {
 
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => {});
+        connection.query("ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;", () => {});
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
@@ -2671,7 +2672,7 @@ app.get('/api/admin/support-requests', (req, res) => {
             WHEN y.MSSV IS NOT NULL THEN (SELECT HoTen FROM sinhvien WHERE MSSV = y.MSSV)
             ELSE (SELECT HoTen FROM giangvien WHERE MaGiangVien = y.MaGiangVien)
         END as TenNguoiGui
-        FROM yeucau_hotro y ORDER BY y.NgayGui DESC
+        FROM yeucau_hotro y WHERE y.IsDeletedByAdmin = 0 ORDER BY y.NgayGui DESC
     `;
     executeQuery(query, [], res, 'Lỗi lấy yêu cầu!');
 });
@@ -2682,7 +2683,7 @@ app.put('/api/admin/support-requests/:id', (req, res) => {
 });
 
 app.delete('/api/admin/support-requests/:id', (req, res) => {
-    executeDelete('DELETE FROM yeucau_hotro WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
+    executeUpdate('UPDATE yeucau_hotro SET IsDeletedByAdmin = 1 WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
 });
 
 // Lấy chi tiết tiêu chí đã tích của 1 phiếu đánh giá (dùng chung cho SV xem lại / Admin xem breakdown)
