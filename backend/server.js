@@ -32,13 +32,14 @@ app.get('/api/health', (req, res) => {
 
 // Middleware CORS cho Express API
 app.use(cors({
-    origin: function (origin, callback) {
-        // Cho phép tất cả các domain
-        callback(null, true);
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: [
+        'http://localhost:3000',           // local
+        'https://hung270508-bit.github.io', // GitHub Pages
+        'https://qlsv-kappa.vercel.app'    // frontend vercel (nếu có)
+    ],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh/tệp Base64 lớn)
