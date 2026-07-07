@@ -3,7 +3,8 @@ import API_URL from '../../api';
 import {
   LayoutDashboard, UserCircle, CalendarDays, FileText, Award,
   BookPlus, HelpCircle, LogOut, ChevronRight, GraduationCap,
-  Bell, ClipboardCheck, Menu, X, MoreHorizontal
+  Bell, ClipboardCheck, Menu, X, MoreHorizontal,
+  Wallet
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +20,7 @@ import StudentTrainingPoints from './StudentTrainingPoints';
 import StudentCourseRegistration from './StudentCourseRegistration';
 import StudentAnnouncements from './StudentAnnouncements';
 import StudentOnlineExam from './StudentOnlineExam';
+import StudentTuition from './StudentTuition';
 
 const menuItems = [
   { id: 'dashboard', label: 'Trang chủ', icon: LayoutDashboard },
@@ -28,6 +30,7 @@ const menuItems = [
   { id: 'diemdanh', label: 'Điểm danh', icon: ClipboardCheck },
   { id: 'renluyen', label: 'Đánh giá rèn luyện', icon: Award },
   { id: 'dangky', label: 'Đăng ký môn học', icon: BookPlus },
+  { id: 'hocphi', label: 'Học phí', icon: Wallet },
   { id: 'thionline', label: 'Kỳ thi Online', icon: Award },
   { id: 'thongbao', label: 'Thông báo', icon: Bell },
   { id: 'hotro', label: 'Yêu cầu - Trợ giúp', icon: HelpCircle },
@@ -87,6 +90,7 @@ function StudentDashboard({ user, onLogout }) {
       case 'thionline': return <StudentOnlineExam user={user} />;
       case 'thongbao': return <StudentAnnouncements user={user} />;
       case 'hotro': return <StudentSupport user={user} profile={profile} />;
+      case 'hocphi': return <StudentTuition user={user} />;
       default: return <StudentOverview user={user} setActiveMenu={setActiveMenu} />;
     }
   };
@@ -121,8 +125,9 @@ function StudentDashboard({ user, onLogout }) {
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700">
         <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-2 px-2">Menu</p>
-        {menuItems.slice(0, 6).map((item) => {
-          const Icon = item.icon; const isActive = activeMenu === item.id;
+        {menuItems.slice(0, 7).map((item) => {   // slice(0,7) để bao gồm Học phí
+          const Icon = item.icon; 
+          const isActive = activeMenu === item.id;
           return (
             <button key={item.id} onClick={() => handleNavigate(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${isActive ? 'bg-[#F4C542] text-black shadow-md' : 'text-gray-300 hover:bg-[#1e2f4c] hover:text-[#F4C542]'}`}>
@@ -132,8 +137,9 @@ function StudentDashboard({ user, onLogout }) {
           );
         })}
         <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mt-6 mb-2 px-2">Khác</p>
-        {menuItems.slice(6).map((item) => {
-          const Icon = item.icon; const isActive = activeMenu === item.id;
+        {menuItems.slice(7).map((item) => {
+          const Icon = item.icon; 
+          const isActive = activeMenu === item.id;
           return (
             <button key={item.id} onClick={() => handleNavigate(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${isActive ? 'bg-[#F4C542] text-black shadow-md' : 'text-gray-300 hover:bg-[#1e2f4c] hover:text-[#F4C542]'}`}>
@@ -250,7 +256,8 @@ function StudentDashboard({ user, onLogout }) {
         {isMobile && (
           <div className="fixed bottom-0 left-0 right-0 h-16 bg-[#152238] border-t border-[#1e2f4c] flex items-center justify-around px-2 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
             {bottomNavItems.map((item) => {
-              const Icon = item.icon; const isActive = activeMenu === item.id;
+              const Icon = item.icon; 
+              const isActive = activeMenu === item.id;
               return (
                 <button key={item.id} onClick={() => handleNavigate(item.id)}
                   className={`flex flex-col items-center justify-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 flex-1 ${isActive ? 'text-[#F4C542]' : 'text-gray-400'}`}>
@@ -284,7 +291,8 @@ function StudentDashboard({ user, onLogout }) {
                     <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-3">Tất cả chức năng</p>
                     <div className="grid grid-cols-3 gap-2">
                       {menuItems.filter(m => !bottomNavItems.find(b => b.id === m.id)).map((item) => {
-                        const Icon = item.icon; const isActive = activeMenu === item.id;
+                        const Icon = item.icon; 
+                        const isActive = activeMenu === item.id;
                         return (
                           <button key={item.id} onClick={() => handleNavigate(item.id)}
                             className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-[#F4C542] text-black' : 'bg-[#1e2f4c] text-gray-300'}`}>

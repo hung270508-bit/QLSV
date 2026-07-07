@@ -21,9 +21,9 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
--- SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '0fcfb20c-6d7d-11f1-bdec-6e6f7ddf02a9:1-10595,
--- 4585fac6-63de-11f1-981c-06b3c0baae58:1-111,
--- e51c4a2a-63f7-11f1-9ad9-ee12a9ba2a33:1-1474';
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '0fcfb20c-6d7d-11f1-bdec-6e6f7ddf02a9:1-10595,
+4585fac6-63de-11f1-981c-06b3c0baae58:1-111,
+e51c4a2a-63f7-11f1-9ad9-ee12a9ba2a33:1-1474';
 
 --
 -- Table structure for table `ai_generated_options`
@@ -174,6 +174,7 @@ CREATE TABLE `dangky_hocphan` (
   PRIMARY KEY (`MaDangKy`),
   KEY `MSSV` (`MSSV`),
   KEY `MaLopHocPhan` (`MaLopHocPhan`),
+  UNIQUE KEY `idx_unique_mssv_malhp` (`MSSV`, `MaLopHocPhan`),
   CONSTRAINT `dangky_hocphan_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE,
   CONSTRAINT `dangky_hocphan_ibfk_2` FOREIGN KEY (`MaLopHocPhan`) REFERENCES `lophocphan` (`MaLopHocPhan`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4546 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -245,6 +246,7 @@ CREATE TABLE `diem` (
   PRIMARY KEY (`MaDiem`),
   KEY `MSSV` (`MSSV`),
   KEY `MaLopHocPhan` (`MaLopHocPhan`),
+  UNIQUE KEY `idx_unique_mssv_malhp` (`MSSV`, `MaLopHocPhan`),
   CONSTRAINT `diem_ibfk_1` FOREIGN KEY (`MSSV`) REFERENCES `sinhvien` (`MSSV`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4546 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -330,12 +332,15 @@ DROP TABLE IF EXISTS `dot_dangky`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `dot_dangky` (
   `MaDot` int NOT NULL AUTO_INCREMENT,
-  `TenDot` varchar(200) NOT NULL,
-  `HocKy` varchar(20) NOT NULL,
-  `NamHoc` varchar(20) NOT NULL,
-  `ThoiGianMo` datetime NOT NULL,
-  `ThoiGianDong` datetime NOT NULL,
-  `IsActive` tinyint(1) NOT NULL DEFAULT '1',
+  `TenDot` varchar(100) NOT NULL,
+  `MoTa` text DEFAULT NULL,
+  `HocKy` varchar(50) DEFAULT NULL,
+  `NamHoc` varchar(50) DEFAULT NULL,
+  `NienKhoa` varchar(50) DEFAULT NULL,
+  `NgayMo` datetime NOT NULL,
+  `NgayDong` datetime NOT NULL,
+  `TrangThai` varchar(20) DEFAULT 'Mo',
+  `NgayTao` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`MaDot`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -528,7 +533,11 @@ CREATE TABLE `khoa` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `MaKhoa` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `TenKhoa` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+<<<<<<< Updated upstream
+  `TinChiYeuCau` int DEFAULT 120,
+=======
   `TinChiYeuCau` int DEFAULT '120',
+>>>>>>> Stashed changes
   PRIMARY KEY (`MaKhoa`),
   UNIQUE KEY `ID` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
