@@ -194,11 +194,11 @@ function DashboardOverview({ onNavigate }) {
   ];
 
   const statCards = [
-    { title: 'Sinh viên', value: (stats.totalStudents || 0).toLocaleString('vi-VN'), icon: Users, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'sinhvien' },
-    { title: 'Giảng viên', value: (stats.totalTeachers || 0).toLocaleString('vi-VN'), icon: GraduationCap, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'giangvien' },
-    { title: 'Lớp học', value: (stats.totalClasses || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'lophoc' },
-    { title: 'Môn học', value: (stats.totalSubjects || 0).toLocaleString('vi-VN'), icon: BookOpen, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'monhoc' },
-    { title: 'Khoa', value: (facultyStats.length || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'khoa' },
+    { title: 'Sinh viên', value: Number(stats.totalStudents || 0).toLocaleString('vi-VN'), icon: Users, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'sinhvien' },
+    { title: 'Giảng viên', value: Number(stats.totalTeachers || 0).toLocaleString('vi-VN'), icon: GraduationCap, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'giangvien' },
+    { title: 'Lớp học', value: Number(stats.totalClasses || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'lophoc' },
+    { title: 'Môn học', value: Number(stats.totalSubjects || 0).toLocaleString('vi-VN'), icon: BookOpen, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'monhoc' },
+    { title: 'Khoa', value: Number(facultyStats.length || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'khoa' },
   ];
 
   const facultyStudentData = useMemo(() =>
