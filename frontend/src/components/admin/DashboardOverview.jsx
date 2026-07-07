@@ -34,7 +34,7 @@ const CustomBarTooltip = ({ active, payload, label }) => {
         <div key={i} className="flex items-center gap-2 mb-1">
           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.fill }} />
           <span className="text-xs text-[#6B7280]">{p.name}</span>
-          <span className="ml-auto text-xs font-bold text-[#1F2937]">{p.value}</span>
+          <span className="ml-auto text-xs font-bold text-[#1F2937]">{Number(p.value).toLocaleString('vi-VN')}</span>
         </div>
       ))}
     </div>
@@ -50,7 +50,7 @@ const CustomPieTooltip = ({ active, payload }) => {
         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
         <span className="text-xs font-semibold text-gray-700">{name}</span>
       </div>
-      <p className="text-lg font-bold text-[#1F2937]">{value} SV</p>
+      <p className="text-lg font-bold text-[#1F2937]">{Number(value).toLocaleString('vi-VN')} SV</p>
     </div>
   );
 };
@@ -194,11 +194,11 @@ function DashboardOverview({ onNavigate }) {
   ];
 
   const statCards = [
-    { title: 'Sinh viên', value: stats.totalStudents, icon: Users, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'sinhvien' },
-    { title: 'Giảng viên', value: stats.totalTeachers, icon: GraduationCap, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'giangvien' },
-    { title: 'Lớp học', value: stats.totalClasses, icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'lophoc' },
-    { title: 'Môn học', value: stats.totalSubjects, icon: BookOpen, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'monhoc' },
-    { title: 'Khoa', value: facultyStats.length, icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'khoa' },
+    { title: 'Sinh viên', value: (stats.totalStudents || 0).toLocaleString('vi-VN'), icon: Users, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'sinhvien' },
+    { title: 'Giảng viên', value: (stats.totalTeachers || 0).toLocaleString('vi-VN'), icon: GraduationCap, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'giangvien' },
+    { title: 'Lớp học', value: (stats.totalClasses || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'lophoc' },
+    { title: 'Môn học', value: (stats.totalSubjects || 0).toLocaleString('vi-VN'), icon: BookOpen, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'monhoc' },
+    { title: 'Khoa', value: (facultyStats.length || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'khoa' },
   ];
 
   const facultyStudentData = useMemo(() =>

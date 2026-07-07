@@ -50,7 +50,8 @@ function StudentManagement() {
 
     statusFilter: '',
     nienKhoaFilter: '',
-    classFilter: ''
+    classFilter: '',
+    nameFilter: ''
 
   });
 
@@ -60,7 +61,8 @@ function StudentManagement() {
 
     statusFilter: '',
     nienKhoaFilter: '',
-    classFilter: ''
+    classFilter: '',
+    nameFilter: ''
 
   });
 
@@ -1152,10 +1154,11 @@ function StudentManagement() {
     const matchesStatus = !filters.statusFilter || student.TrangThai === filters.statusFilter;
     const matchesNienKhoa = !filters.nienKhoaFilter || student.NienKhoa === filters.nienKhoaFilter;
     const matchesClass = !filters.classFilter || student.MaLop === filters.classFilter;
+    const matchesName = !filters.nameFilter || removeVietnameseTones(student.HoTen).toLowerCase().startsWith(removeVietnameseTones(filters.nameFilter).toLowerCase());
 
 
 
-    return matchesSearch && matchesFaculty && matchesStatus && matchesNienKhoa && matchesClass;
+    return matchesSearch && matchesFaculty && matchesStatus && matchesNienKhoa && matchesClass && matchesName;
 
   });
 
@@ -1197,9 +1200,9 @@ function StudentManagement() {
 
   const clearFilters = () => {
 
-    setFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '' });
+    setFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameFilter: '' });
 
-    setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '' });
+    setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameFilter: '' });
 
     setSearchTerm('');
 
@@ -1224,14 +1227,24 @@ function StudentManagement() {
 
 
 
-  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (filters.nienKhoaFilter ? 1 : 0) + (filters.classFilter ? 1 : 0) + (searchTerm ? 1 : 0);
+  const activeFilterCount = (filters.facultyFilter ? 1 : 0) + (filters.statusFilter ? 1 : 0) + (filters.nienKhoaFilter ? 1 : 0) + (filters.classFilter ? 1 : 0) + (filters.nameFilter ? 1 : 0) + (searchTerm ? 1 : 0);
 
-  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || filters.nienKhoaFilter || filters.classFilter || searchTerm;
+  const hasActiveFilters = filters.facultyFilter || filters.statusFilter || filters.nienKhoaFilter || filters.classFilter || filters.nameFilter || searchTerm;
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showModal) handleCloseModal();
+        if (showDetailModal) handleCloseDetailModal();
+        if (showExportModal) setShowExportModal(false);
+      }
+    };
 
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
   if (loading) {
-
     return <TableSkeleton columns={5} rows={7} />;
 
   }
@@ -1460,11 +1473,11 @@ function StudentManagement() {
 
           >
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
               <div>
 
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo khoa</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Khoa</label>
 
                 <select
 
@@ -1472,11 +1485,11 @@ function StudentManagement() {
 
                   onChange={(e) => setDisplayFilters({ ...displayFilters, facultyFilter: e.target.value, nienKhoaFilter: '', classFilter: '' })}
 
-                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+                  className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
 
                 >
 
-                  <option value="">Tất cả khoa</option>
+                  <option value="">Tất cả</option>
 
                   {faculties.map((faculty) => (
 
@@ -1494,7 +1507,7 @@ function StudentManagement() {
 
               <div>
 
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo trạng thái</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Trạng thái</label>
 
                 <select
 
@@ -1502,11 +1515,11 @@ function StudentManagement() {
 
                   onChange={(e) => setDisplayFilters({ ...displayFilters, statusFilter: e.target.value })}
 
-                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+                  className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
 
                 >
 
-                  <option value="">Tất cả trạng thái</option>
+                  <option value="">Tất cả</option>
 
                   <option value="Đang học">Đang học</option>
 
@@ -1520,7 +1533,7 @@ function StudentManagement() {
 
               <div>
 
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo niên khóa</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Niên khóa</label>
 
                 <select
 
@@ -1528,13 +1541,13 @@ function StudentManagement() {
 
                   onChange={(e) => setDisplayFilters({ ...displayFilters, nienKhoaFilter: e.target.value, classFilter: '' })}
 
-                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+                  className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
 
                   disabled={!displayFilters.facultyFilter}
 
                 >
 
-                  <option value="">Tất cả niên khóa</option>
+                  <option value="">Tất cả</option>
 
                   {Array.from(new Set(classes.filter(c => c.MaKhoa === displayFilters.facultyFilter).map(c => c.NienKhoa))).sort().map((nienKhoa) => (
                     <option key={nienKhoa} value={nienKhoa}>
@@ -1548,7 +1561,7 @@ function StudentManagement() {
 
               <div>
 
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Lọc theo lớp</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Lớp</label>
 
                 <select
 
@@ -1556,18 +1569,42 @@ function StudentManagement() {
 
                   onChange={(e) => setDisplayFilters({ ...displayFilters, classFilter: e.target.value })}
 
-                  className="w-full px-4 py-3 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-[#F4C542] transition-colors text-gray-700"
+                  className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
 
                   disabled={!displayFilters.nienKhoaFilter}
 
                 >
 
-                  <option value="">Tất cả lớp</option>
+                  <option value="">Tất cả</option>
 
                   {classes.filter(c => c.MaKhoa === displayFilters.facultyFilter && c.NienKhoa === displayFilters.nienKhoaFilter).map((cls) => (
                     <option key={cls.MaLop} value={cls.MaLop}>
                       {cls.TenLop}
                     </option>
+                  ))}
+
+                </select>
+
+              </div>
+
+              <div>
+
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Tên (A-Z)</label>
+
+                <select
+
+                  value={displayFilters.nameFilter}
+
+                  onChange={(e) => setDisplayFilters({ ...displayFilters, nameFilter: e.target.value })}
+
+                  className="w-full px-3 py-2 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#F4C542] transition-colors text-sm text-gray-700"
+
+                >
+
+                  <option value="">Tất cả</option>
+
+                  {['A', 'B', 'C', 'D', 'Đ', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'].map(letter => (
+                    <option key={letter} value={letter}>{letter}</option>
                   ))}
 
                 </select>
@@ -1586,11 +1623,11 @@ function StudentManagement() {
 
                 onClick={handleApplyFilters}
 
-                className="flex-1 bg-[#F4C542] text-[#152238] py-2.5 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm"
+                className="flex-1 bg-[#F4C542] text-[#152238] py-2.5 rounded-xl font-semibold hover:bg-[#F4C542]/90 transition-colors shadow-sm text-sm"
 
               >
 
-                Áp dụng bộ lọc
+                Áp dụng
 
               </motion.button>
 
@@ -1600,7 +1637,7 @@ function StudentManagement() {
 
                 whileTap={{ scale: 0.99 }}
 
-                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '' })}
+                onClick={() => setDisplayFilters({ facultyFilter: '', statusFilter: '', nienKhoaFilter: '', classFilter: '', nameFilter: '' })}
 
                 className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
 
@@ -1865,18 +1902,25 @@ function StudentManagement() {
 
 
       {/* Modal Add/Edit Form */}
-
+      <AnimatePresence>
       {showModal && (
 
         <ModalPortal>
 
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm"
+          >
 
             <motion.div
 
               initial={{ opacity: 0, scale: 0.92 }}
 
               animate={{ opacity: 1, scale: 1 }}
+              
+              exit={{ opacity: 0, scale: 0.92 }}
 
               className="bg-[#FFFFFF] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
 
@@ -2364,21 +2408,27 @@ function StudentManagement() {
 
             </motion.div>
 
-          </div>
+          </motion.div>
 
         </ModalPortal>
 
       )}
+      </AnimatePresence>
 
 
 
       {/* Detail Modal */}
-
+      <AnimatePresence>
       {showDetailModal && selectedStudent && (
 
         <ModalPortal>
 
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/40"
+          >
 
             <motion.div
 
@@ -2956,23 +3006,31 @@ function StudentManagement() {
           </div>
         </motion.div>
 
-          </div>
+          </motion.div>
 
         </ModalPortal>
 
       )}
+      </AnimatePresence>
 
 
 
 
 
       {/* Export Modal */}
+      <AnimatePresence>
       {showExportModal && (
         <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/40 backdrop-blur-sm"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
               className="bg-[#FFFFFF] rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
               {/* Modal Header */}
@@ -3175,9 +3233,10 @@ function StudentManagement() {
                 </div>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         </ModalPortal>
       )}
+      </AnimatePresence>
 
 
 
