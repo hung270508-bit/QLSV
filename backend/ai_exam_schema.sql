@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS question_banks (
     file_url VARCHAR(255),
     tong_so_cau INT DEFAULT 0,
     trang_thai ENUM('Draft', 'Approved') DEFAULT 'Draft',
+    session_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ma_mon_hoc) REFERENCES monhoc(MaMonHoc) ON DELETE CASCADE,
     FOREIGN KEY (ma_giang_vien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE

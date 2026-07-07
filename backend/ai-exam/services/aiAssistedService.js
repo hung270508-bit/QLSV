@@ -1,133 +1,251 @@
+'use strict';
+
 const OpenAI = require('openai');
 const { extractTextFromDocx } = require('./aiService');
+const { buildDocumentChunks } = require('./aiChunking');
+const { buildKnowledgeGraph } = require('./aiKnowledgeGraph');
+const {
+    buildAllocationPlan,
+    getNextAllocationTarget,
+    generateQuestionsForTarget
+} = require('./aiQuestionGeneration');
 
 module.exports = (repo) => {
-    // Helper tạo OpenAI client theo API Key
+
+    // ================================================================
+    // Helper: tạo OpenAI client theo API Key
+    // Trả thêm kgModel — model nhẹ hơn cho bước phân tích Knowledge Graph
+    // để tiết kiệm quota Groq Free Tier
+    // ================================================================
     const getOpenAIClient = () => {
-        const apiKey = process.env.OPENAI_API_KEY;
+        const apiKey = process.env.OPENAI_API_KEY || process.env.AI_MODEL_OVERRIDE;
         if (!apiKey) throw new Error('Chưa cấu hình OPENAI_API_KEY ở server.');
 
         let baseURL = undefined;
-        let model = 'gpt-4o-mini';
+        let model   = 'gpt-4o-mini';
+        let kgModel = 'gpt-4o-mini'; // mặc định: dùng cùng model chính
 
         if (apiKey.startsWith('xai-')) {
             baseURL = 'https://api.x.ai/v1';
-            model = 'grok-beta';
+            model   = 'grok-beta';
+            kgModel = 'grok-beta';
         } else if (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.')) {
             baseURL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
-            model = 'gemini-2.0-flash';
+            model   = 'gemini-2.0-flash';
+            kgModel = 'gemini-2.0-flash';
         } else if (apiKey.startsWith('sk-or-')) {
             baseURL = 'https://openrouter.ai/api/v1';
-            model = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+            model   = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+            kgModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
         } else if (apiKey.startsWith('gsk_')) {
+            // Groq Free Tier: dùng model nhẹ cho KG để tiết kiệm quota,
+            // giữ model mạnh cho bước sinh câu hỏi
             baseURL = 'https://api.groq.com/openai/v1';
-            model = 'llama-3.3-70b-versatile';
+            model   = process.env.AI_MODEL_OVERRIDE || 'llama-3.3-70b-versatile';
+            kgModel = 'llama-3.1-8b-instant'; // nhẹ hơn, nhanh hơn, đủ để phân tích KG
         }
 
         return {
             client: new OpenAI({ apiKey, baseURL }),
-            model
+            model,
+            kgModel
         };
     };
 
-    // Hàm sinh 1 batch câu hỏi (tối đa 10 câu/lần)
-    const generateBatch = async (sessionId, document, soCauYeuCau, doKho, chuDe) => {
-        const { client, model } = getOpenAIClient();
+    // ================================================================
+    // Helper: lấy hoặc build Knowledge Graph (có cache theo document_id)
+    // ĐÂY LÀ TIẾT KIỆM TOKEN QUAN TRỌNG NHẤT:
+    // resumeSession nhiều lần sẽ dùng cache, không gọi lại AI cho bước KG
+    // ================================================================
+    const getOrBuildKnowledgeGraph = async (client, kgModel, document, chunks) => {
+        // Bước 1: kiểm tra cache
+        const cached = await repo.getKnowledgeGraphByDocument(document.id);
+        if (cached && cached.chapters && cached.chapters.length > 0) {
+            console.log(`[KG] Dùng cache cho document_id=${document.id} (${cached.chapters.length} chương)`);
+            return cached;
+        }
 
-        // Lấy thông tin session hiện tại
+        // Bước 2: build mới từ AI
+        console.log(`[KG] Building Knowledge Graph cho document_id=${document.id}...`);
+        const kg = await buildKnowledgeGraph(client, kgModel, chunks);
+
+        // Bước 3: lưu cache (lỗi lưu không làm dừng luồng chính)
+        await repo.saveKnowledgeGraph(document.id, kg);
+        console.log(`[KG] Built and cached: ${kg.chapters.length} chương`);
+
+        return kg;
+    };
+
+    // ================================================================
+    // Helper: lọc Knowledge Graph theo chu_de người dùng chọn
+    // (Bổ sung 2: đảm bảo tính năng "sinh theo 1 chương cụ thể" không bị hỏng)
+    // ================================================================
+    const filterKgByChuDe = (kg, chuDe) => {
+        if (!chuDe || chuDe === 'Toàn bộ' || chuDe.trim() === '') return kg;
+
+        const needle = chuDe.toLowerCase().trim();
+        const filtered = kg.chapters.filter(c =>
+            c.title.toLowerCase().includes(needle) ||
+            needle.includes(c.title.toLowerCase()) ||
+            (c.topics || []).some(t => t.name.toLowerCase().includes(needle))
+        );
+
+        if (filtered.length === 0) {
+            // Fallback: không tìm thấy chương khớp → log cảnh báo + dùng toàn bộ KG
+            console.warn(`[KG] Không tìm thấy chương/chủ đề khớp "${chuDe}" trong KG → sinh toàn bộ`);
+            return kg;
+        }
+
+        return { chapters: filtered };
+    };
+
+    // ================================================================
+    // Helper: chuẩn hoá danh sách câu hỏi đã có cho phù hợp với module mới
+    // (xử lý trường hợp repo cũ chưa có các cột topic/chapter/keywords)
+    // ================================================================
+    const normalizeExistingQs = (existingQs) => {
+        return (existingQs || []).map(q => ({
+            noi_dung:      q.noi_dung || q.question || '',
+            question:      q.noi_dung || q.question || '',
+            chu_de:        q.chu_de || q.topic || 'Chung',
+            topic:         q.topic  || q.chu_de || 'Chung',
+            chapter:       q.chapter || 'Chung',
+            question_type: q.question_type || null,
+            keywords:      Array.isArray(q.keywords) ? q.keywords : []
+        }));
+    };
+
+    // ================================================================
+    // generateBatch — pipeline sinh câu hỏi AI mới hoàn toàn
+    // ================================================================
+    const generateBatch = async (sessionId, document, soCauYeuCau, doKho, chuDe) => {
+        const { client, model, kgModel } = getOpenAIClient();
+
+        // Lấy trạng thái session hiện tại
         const session = await repo.getSessionById(sessionId);
-        if (!session) throw new Error('Không tìm thấy phiên sinh AI');
+        if (!session) throw new Error('Không tìm thấy đề sinh AI');
 
         const daSinh = session.so_cau_da_sinh || 0;
-        const needed = Math.min(10, (soCauYeuCau || session.so_cau_yeu_cau) - daSinh);
-        if (needed <= 0) {
+        const totalNeeded = (soCauYeuCau || session.so_cau_yeu_cau) - daSinh;
+        if (totalNeeded <= 0) {
             await repo.updateSessionStatus(sessionId, 'COMPLETED');
             return [];
         }
 
-        // Lấy danh sách câu hỏi đã có trong session để chống lặp lại
-        const existingQs = await repo.getExistingQuestionsSummary(sessionId);
-        const existingText = existingQs.map((q, idx) => `${idx + 1}. [Chủ đề: ${q.chu_de || 'Chung'}] ${q.noi_dung}`).join('; ');
+        console.log(`[Batch] Session ${sessionId}: đã sinh ${daSinh}, cần thêm ${totalNeeded} câu`);
 
-        const diffInstruct = (doKho && doKho !== 'Mixed') ? `Độ khó bắt buộc cho tất cả các câu: ${doKho}.` : `Độ khó phân bổ hợp lý (Easy, Medium, Hard).`;
-        const topicInstruct = (chuDe && chuDe !== 'Toàn bộ') ? `Chỉ tập trung khai thác kiến thức thuộc chủ đề/chương: ${chuDe}.` : `Khai thác toàn diện các chủ đề trong tài liệu.`;
+        // ---- Bước 1: Clean + Chunk ----
+        const rawText = document.text_content || '';
+        const chunks  = buildDocumentChunks(rawText, { maxTokens: 1500 });
+        console.log(`[Batch] Chia thành ${chunks.length} chunk từ tài liệu "${document.tieu_de}"`);
 
-        const systemPrompt = `Bạn là một chuyên gia giáo dục và xây dựng đề thi trắc nghiệm. Dựa vào tài liệu được cung cấp, hãy tạo ra đúng ${needed} câu hỏi trắc nghiệm (Multiple Choice Questions) mới.
-Hãy trả về một JSON Object chứa duy nhất một thuộc tính "questions" là một mảng các câu hỏi.
-Cấu trúc JSON chuẩn:
-{
-  "questions": [
-    {
-      "question": "Nội dung câu hỏi",
-      "options": [
-        { "text": "Đáp án A", "is_correct": false },
-        { "text": "Đáp án B", "is_correct": true },
-        { "text": "Đáp án C", "is_correct": false },
-        { "text": "Đáp án D", "is_correct": false }
-      ],
-      "explanation": "Giải thích chi tiết tại sao đáp án lại đúng.",
-      "difficulty": "Easy", // chỉ được chọn: "Easy", "Medium", "Hard"
-      "topic": "Tên chủ đề hoặc chương"
-    }
-  ]
-}
-YÊU CẦU QUAN TRỌNG:
-- Luôn trả về đúng chuẩn JSON object như trên.
-- Phải có chính xác 4 đáp án cho mỗi câu hỏi và chỉ duy nhất 1 đáp án đúng (is_correct = true).
-- BẮT BUỘC PHẢI TẠO ĐÚNG ${needed} CÂU HỎI TRẮC NGHIỆM MỚI.
-- ${diffInstruct}
-- ${topicInstruct}
-- TUYỆT ĐỐI KHÔNG LẶP LẠI từ khóa hay nội dung của các câu hỏi đã có trước đó. Nếu tài liệu ngắn, hãy tự động suy luận, khai thác khía cạnh mới, ngoại lệ hoặc ứng dụng thực tế để đảm bảo đủ ${needed} câu hỏi mới!`;
+        // ---- Bước 2: Knowledge Graph (có cache) ----
+        const fullKg     = await getOrBuildKnowledgeGraph(client, kgModel, document, chunks);
 
-        const userPrompt = `Nội dung tài liệu:\n\n${document.text_content ? document.text_content.slice(0, 8000) : ''}\n\n` +
-            (existingText ? `CÁC CÂU HỎI ĐÃ SINH TRƯỚC ĐÓ (TUYỆT ĐỐI KHÔNG LẶP LẠI):\n${existingText}\n\n` : '') +
-            `HÃY TẠO TIẾP ĐÚNG ${needed} CÂU HỎI TRẮC NGHIỆM MỚI KHÁC NHAU.`;
+        // ---- Bước 3: Lọc KG theo chu_de nếu người dùng chỉ định ----
+        const kg         = filterKgByChuDe(fullKg, chuDe);
 
-        let attempts = 0;
-        let lastError = null;
+        // ---- Bước 4: Lấy câu hỏi đã sinh (để chống trùng và phân bổ đúng) ----
+        const rawExisting  = await repo.getExistingQuestionsSummary(sessionId);
+        const existingQs   = normalizeExistingQs(rawExisting);
 
-        while (attempts < 3) {
-            attempts++;
+        // ---- Bước 5: Lập kế hoạch phân bổ ----
+        const plan = buildAllocationPlan(kg, totalNeeded);
+        console.log(`[Batch] Kế hoạch: ${plan.map(p => `${p.topicName}(${p.allocated})`).join(', ')}`);
+
+        // ---- Bước 6: Vòng lặp sinh câu hỏi theo từng target ----
+        const allGenerated = [];
+        const recentTypesHistory = []; // theo dõi dạng câu hỏi gần nhất để đa dạng hoá
+
+        let batchLastError = null;
+        let remaining = totalNeeded;
+
+        while (remaining > 0) {
+            // Lấy target tiếp theo từ plan
+            const allCurrentQs = [...existingQs, ...allGenerated];
+            const result = getNextAllocationTarget(plan, allCurrentQs);
+
+            let target, needed;
+            if (result) {
+                target = result.target;
+                needed = Math.min(result.needed, remaining);
+            } else {
+                // Tất cả target đã đủ → fallback sinh nốt phần còn lại ở chương importance cao nhất
+                const topChapter = kg.chapters.reduce((best, c) => c.importance > best.importance ? c : best, kg.chapters[0]);
+                target = {
+                    chapterTitle: topChapter.title,
+                    topicName:    topChapter.topics?.[0]?.name || topChapter.title,
+                    importance:   topChapter.importance,
+                    keywords:     topChapter.topics?.[0]?.keywords || []
+                };
+                needed = remaining;
+            }
+
             try {
-                const response = await client.chat.completions.create({
-                    model: model,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt }
-                    ],
-                    response_format: { type: "json_object" },
-                    temperature: 0.7,
-                    max_tokens: 4096
+                const batch = await generateQuestionsForTarget({
+                    client,
+                    model,
+                    target,
+                    chunks,
+                    existingQs: [...existingQs, ...allGenerated],
+                    forcedDifficulty: (doKho && doKho !== 'Mixed') ? doKho : null,
+                    recentTypesHistory,
+                    needed
                 });
 
-                let jsonContent = response.choices[0].message.content || '{}';
-                if (jsonContent.includes('```json')) {
-                    jsonContent = jsonContent.split('```json')[1].split('```')[0].trim();
-                } else if (jsonContent.includes('```')) {
-                    jsonContent = jsonContent.split('```')[1].split('```')[0].trim();
+                // Cập nhật lịch sử dạng câu hỏi (dùng để đảm bảo không quá 2 liên tiếp)
+                for (const q of batch) {
+                    if (q.question_type) recentTypesHistory.push(q.question_type);
                 }
 
-                const parsed = JSON.parse(jsonContent);
-                const newQs = parsed.questions || [];
-                if (newQs.length === 0) {
-                    throw new Error('AI trả về danh sách câu hỏi trống');
+                allGenerated.push(...batch);
+                remaining -= batch.length;
+
+                // Lưu ngay batch này vào DB để không mất nếu batch sau lỗi
+                if (batch.length > 0) {
+                    await repo.saveStagingQuestions(sessionId, document.id, batch);
+                    console.log(`[Batch] Đã lưu ${batch.length} câu cho "${target.topicName}", còn lại ${remaining}`);
                 }
 
-                // Lưu vào database với trạng thái PENDING
-                await repo.saveStagingQuestions(sessionId, document.id, newQs);
-                return newQs;
+                // Nghỉ nhỏ giữa các lần gọi AI để tránh rate limit Groq
+                if (remaining > 0) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
+
             } catch (err) {
-                lastError = err;
-                console.warn(`AI generate batch attempt ${attempts} failed:`, err.message);
-                await new Promise(r => setTimeout(r, 1000 * attempts)); // Exponential backoff
+                batchLastError = err;
+                console.error(`[Batch] Lỗi khi sinh câu cho "${target?.topicName}":`, err.message);
+
+                // Nếu lỗi 429 (rate limit): dừng và mark FAILED để giữ các câu đã sinh
+                const isRateLimit = err.message?.includes('429') || err.message?.includes('rate') || err.message?.toLowerCase().includes('quota');
+                if (isRateLimit) {
+                    console.warn('[Batch] Rate limit 429 — dừng sinh, giữ nguyên câu hỏi đã có');
+                    break;
+                }
+
+                // Lỗi khác: thử tiếp target kế tiếp (không dừng toàn bộ)
+                // Nếu không còn câu nào và cũng không sinh được → break
+                if (allGenerated.length === 0) break;
+
+                // Giảm remaining xuống để tránh vòng lặp vô tận
+                remaining = Math.max(0, remaining - 1);
             }
         }
 
-        // Nếu thất bại sau 3 lần thử, cập nhật trạng thái FAILED để giữ lại dữ liệu cũ
-        await repo.updateSessionStatus(sessionId, 'FAILED', null, `Lỗi AI sau 3 lần thử: ${lastError.message}`);
-        throw new Error(`Không thể sinh câu hỏi từ AI: ${lastError.message}`);
+        // ---- Bước 7: Cập nhật trạng thái session ----
+        if (allGenerated.length === 0 && batchLastError) {
+            // Không sinh được câu nào → FAILED (giữ lại câu cũ đã có)
+            await repo.updateSessionStatus(sessionId, 'FAILED', null, `Lỗi AI: ${batchLastError.message}`);
+            throw new Error(`Không thể sinh câu hỏi từ AI: ${batchLastError.message}`);
+        }
+
+        // Nếu sinh được ít nhất 1 câu thì không FAILED (giữ nguyên hành vi code cũ)
+        return allGenerated;
     };
 
+    // ================================================================
+    // EXPORT: giữ nguyên 100% tên hàm và chữ ký so với code gốc
+    // ================================================================
     return {
         // 1. Upload file Word và lưu Document
         uploadDocument: async (file, { ma_mon_hoc, ma_giang_vien, tieu_de }) => {
@@ -144,7 +262,7 @@ YÊU CẦU QUAN TRỌNG:
                 ma_giang_vien,
                 tieu_de,
                 file_name: file.originalname,
-                file_url: file.path,
+                file_url:  file.path,
                 text_content: text
             });
 
@@ -165,21 +283,21 @@ YÊU CẦU QUAN TRỌNG:
                 chu_de
             });
 
-            // Thực hiện sinh batch đầu tiên (10 câu)
+            // Thực hiện sinh batch đầu tiên
             try {
                 await generateBatch(sessionId, document, Number(so_cau_yeu_cau) || 10, do_kho, chu_de);
             } catch (err) {
                 console.error('Initial batch generation error:', err.message);
-                // Vẫn trả về sessionId để frontend có thể bấm Resume (Tiếp tục sinh)
+                // Vẫn trả về sessionId để frontend có thể bấm Resume
             }
 
             return await repo.getSessionById(sessionId);
         },
 
-        // 3. Resume / Sinh thêm 10 câu cho session đang có
+        // 3. Resume / Sinh thêm câu hỏi cho session đang có
         resumeSession: async (sessionId) => {
             const session = await repo.getSessionById(sessionId);
-            if (!session) throw new Error('Không tìm thấy phiên sinh câu hỏi');
+            if (!session) throw new Error('Không tìm thấy đề sinh câu hỏi');
 
             if (session.so_cau_da_sinh >= session.so_cau_yeu_cau) {
                 await repo.updateSessionStatus(sessionId, 'COMPLETED');
@@ -190,6 +308,7 @@ YÊU CẦU QUAN TRỌNG:
             const document = await repo.getDocumentById(session.document_id);
 
             try {
+                // Knowledge Graph SẼ ĐƯỢC CACHE — không gọi lại AI cho bước KG
                 await generateBatch(sessionId, document, session.so_cau_yeu_cau, session.do_kho, session.chu_de);
             } catch (err) {
                 console.error('Resume batch generation error:', err.message);
@@ -199,7 +318,7 @@ YÊU CẦU QUAN TRỌNG:
             return await repo.getSessionById(sessionId);
         },
 
-        // 4. Các thao tác khác trên câu hỏi
+        // 4. Các thao tác còn lại — GIỮ NGUYÊN logic gốc
         getSessionsByTeacher: async (maGiangVien) => {
             return await repo.getSessionsByTeacher(maGiangVien);
         },
@@ -210,20 +329,20 @@ YÊU CẦU QUAN TRỌNG:
 
         approveQuestion: async (questionId) => {
             const sessionData = await repo.getSessionByQuestionId(questionId);
-            if (!sessionData) throw new Error('Không tìm thấy phiên sinh câu hỏi');
+            if (!sessionData) throw new Error('Không tìm thấy đề sinh câu hỏi');
             return await repo.approveAndMoveToBank(questionId, sessionData);
         },
 
         approveAllInSession: async (sessionId) => {
             const sessionData = await repo.getSessionById(sessionId);
-            if (!sessionData) throw new Error('Không tìm thấy phiên sinh câu hỏi');
+            if (!sessionData) throw new Error('Không tìm thấy đề sinh câu hỏi');
             return await repo.approveAllInSession(sessionId, sessionData);
         },
 
         updateQuestionStatus: async (questionId, status) => {
             if (status === 'APPROVED') {
                 const sessionData = await repo.getSessionByQuestionId(questionId);
-                if (!sessionData) throw new Error('Không tìm thấy phiên sinh câu hỏi');
+                if (!sessionData) throw new Error('Không tìm thấy đề sinh câu hỏi');
                 return await repo.approveAndMoveToBank(questionId, sessionData);
             } else {
                 return await repo.updateQuestionStatus(questionId, status);

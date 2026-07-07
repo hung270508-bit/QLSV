@@ -39,15 +39,15 @@ module.exports = (db) => {
     router.delete('/banks/:id', aiAssistedController.deleteOfficialBank);
     router.put('/banks/:id', aiAssistedController.updateOfficialBank);
 
-    // 7. Tạo kỳ thi (Giảng viên)
+  // 7. Tạo kỳ thi (Giảng viên)
     router.post('/exams', async (req, res) => {
         try {
-            const { ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai } = req.body;
+            const { ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai, bank_id } = req.body;
 
             const [result] = await dbPromise.query(
-                `INSERT INTO exams (ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai]
+                `INSERT INTO exams (ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai, bank_id) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [ma_lop_hoc_phan, ma_mon_hoc, ma_giang_vien, tieu_de, thoi_gian_thi_phut, tong_so_cau, so_cau_de, so_cau_tb, so_cau_kho, thoi_gian_bat_dau, thoi_gian_ket_thuc, cho_phep_thi_lai || false, bank_id || null]
             );
             res.json({ success: true, exam_id: result.insertId });
         } catch (error) {
@@ -118,13 +118,21 @@ module.exports = (db) => {
                 else if (diff === 'Hard') diffCond = "(q.do_kho = 'Hard' OR q.do_kho = 'Khó' OR q.do_kho = 'hard' OR q.do_kho = 'khó')";
                 else diffCond = "q.do_kho = ?";
 
+                // Ưu tiên lấy từ bank_id của kỳ thi, nếu không có thì lấy toàn môn
+                let bankCond = "b.ma_mon_hoc = ?";
+                let paramsArr = [exam.ma_mon_hoc, limit];
+                if (exam.bank_id) {
+                    bankCond = "b.id = ?";
+                    paramsArr = [exam.bank_id, limit];
+                }
+
                 const [qs] = await connection.query(`
                     SELECT q.id, q.noi_dung 
                     FROM questions q 
                     JOIN question_banks b ON q.bank_id = b.id 
-                    WHERE b.ma_mon_hoc = ? AND ${diffCond} AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved'
+                    WHERE ${bankCond} AND ${diffCond} AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved'
                     ORDER BY RAND() LIMIT ?
-                `, [exam.ma_mon_hoc, limit]);
+                `, paramsArr);
                 return qs;
             };
 
@@ -194,6 +202,66 @@ module.exports = (db) => {
             res.status(500).json({ success: false, message: error.message });
         }
     });
-
+    // Lấy lịch sử làm bài thi của sinh viên
+router.get('/exams/history/student/:mssv', async (req, res) => {
+    try {
+        const query = `
+            SELECT a.id as attempt_id, a.diem_so, a.thoi_gian_nop_bai, 
+                   e.tieu_de, e.thoi_gian_thi_phut, m.TenMonHoc
+            FROM exam_attempts a
+            JOIN exams e ON a.exam_id = e.id
+            JOIN monhoc m ON e.ma_mon_hoc = m.MaMonHoc
+            WHERE a.mssv = ? AND a.trang_thai = 'Submitted'
+            ORDER BY a.thoi_gian_nop_bai DESC
+        `;
+        const history = await execute(query, [req.params.mssv]);
+        res.json({ success: true, data: history });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+// Xóa kỳ thi
+router.delete('/exams/:id', async (req, res) => {
+    try {
+        const examId = req.params.id;
+        // Tùy thuộc vào CSDL, nếu có foreign key constraint, bạn có thể cần xóa ở bảng exam_attempts trước
+        await dbPromise.query(`DELETE FROM exams WHERE id = ?`, [examId]);
+        res.json({ success: true, message: 'Đã xóa kỳ thi thành công.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+// 11. Thống kê kết quả thi của một kỳ thi (Giảng viên xem)
+    router.get('/exams/:id/results', async (req, res) => {
+        try {
+            const examId = req.params.id;
+            
+            // Truy vấn lấy điểm, đếm câu đúng/sai và join với bảng sinh viên để lấy Lớp
+            // Lưu ý: Nếu trong SQL Server/MySQL của bạn bảng sinh viên có tên cột khác (VD: ma_sv, ho_ten, ma_lop), hãy sửa lại cho khớp nhé.
+            const query = `
+                SELECT 
+                    a.id as attempt_id, 
+                    a.mssv, 
+                    sv.HoTen, 
+                    sv.MaLop, 
+                    a.diem_so, 
+                    a.thoi_gian_nop_bai,
+                    SUM(CASE WHEN ans.la_dap_an_dung = 1 THEN 1 ELSE 0 END) as so_cau_dung,
+                    SUM(CASE WHEN ans.la_dap_an_dung = 0 THEN 1 ELSE 0 END) as so_cau_sai
+                FROM exam_attempts a
+                LEFT JOIN sinhvien sv ON a.mssv = sv.MSSV 
+                LEFT JOIN exam_attempt_answers ans ON a.id = ans.attempt_id
+                WHERE a.exam_id = ? AND a.trang_thai = 'Submitted'
+                GROUP BY a.id, a.mssv, sv.HoTen, sv.MaLop, a.diem_so, a.thoi_gian_nop_bai
+                ORDER BY sv.MaLop ASC, a.diem_so DESC
+            `;
+            
+            const results = await execute(query, [examId]);
+            res.json({ success: true, data: results });
+        } catch (error) {
+            console.error('Lỗi lấy điểm thi:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
     return router;
 };
