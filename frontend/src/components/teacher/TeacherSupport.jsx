@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HelpCircle, MessageSquare, FileText, Send,
-  Clock, CheckCircle2, ShieldAlert, GraduationCap,
+  Clock, CheckCircle2, ShieldAlert, GraduationCap, CalendarOff, CalendarClock,
   AlertCircle, ChevronDown, Loader2, X, Info
 } from 'lucide-react';
 import axios from 'axios';
@@ -200,13 +200,13 @@ function TeacherSupport({ user, profile }) {
                   </button>
                   <button onClick={() => handleQuickRequest('Đơn xin nghỉ phép / Vắng dạy')} className="group bg-[#FFFFFF] border-2 border-blue-200 hover:border-blue-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
                     <div className="w-16 h-16 rounded-full bg-blue-100 group-hover:bg-[#3B82F6]/100 flex items-center justify-center transition-colors">
-                      <ShieldAlert className="w-8 h-8 text-[#3B82F6] group-hover:text-white transition-colors" />
+                      <CalendarOff className="w-8 h-8 text-[#3B82F6] group-hover:text-white transition-colors" />
                     </div>
                     <span className="text-sm font-semibold text-gray-700 group-hover:text-[#3B82F6] transition-colors text-center">Đơn xin nghỉ phép / Vắng dạy</span>
                   </button>
                   <button onClick={() => handleQuickRequest('Phiếu đề nghị điều chỉnh thời khóa biểu')} className="group bg-[#FFFFFF] border-2 border-red-200 hover:border-red-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
                     <div className="w-16 h-16 rounded-full bg-[#EF4444]/20 group-hover:bg-[#EF4444]/100 flex items-center justify-center transition-colors">
-                      <AlertCircle className="w-8 h-8 text-[#EF4444] group-hover:text-white transition-colors" />
+                      <CalendarClock className="w-8 h-8 text-[#EF4444] group-hover:text-white transition-colors" />
                     </div>
                     <span className="text-sm font-semibold text-gray-700 group-hover:text-[#EF4444] transition-colors text-center">Phiếu đề nghị điều chỉnh thời khóa biểu</span>
                   </button>
