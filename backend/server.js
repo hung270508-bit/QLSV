@@ -81,6 +81,7 @@ db.getConnection((err, connection) => {
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
         connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => {});
         connection.query("ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;", () => {});
+        connection.query("ALTER TABLE ai_exams ADD COLUMN bank_id INT DEFAULT NULL;", () => {});
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
