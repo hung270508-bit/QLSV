@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HelpCircle, MessageSquare, FileText, Send,
-  Clock, CheckCircle2, ShieldAlert, GraduationCap, CalendarOff, CalendarClock,
+  Clock, CheckCircle2, ShieldAlert, GraduationCap, CalendarOff, CalendarClock, Monitor,
   AlertCircle, ChevronDown, Loader2, X, Info
 } from 'lucide-react';
 import axios from 'axios';
@@ -51,12 +51,12 @@ function TeacherSupport({ user, profile }) {
       new Date(req.NgayGui).getFullYear() === currentYear
     ).length;
     const limits = {
-      'Xác nhận công tác giảng dạy': 3,
-      'Đơn xin nghỉ phép / Vắng dạy': 5,
-      'Yêu cầu cấp lại tài khoản / Hỗ trợ kỹ thuật': 3,
+      'Đăng ký phòng học, thiết bị thực hành hoặc thiết bị thí nghiệm': 2,
+      'Đơn xin nghỉ phép / Vắng dạy': Infinity,
+      'Phiếu đề nghị điều chỉnh thời khóa biểu': Infinity,
     };
     const maxLimit = limits[chude] || 5;
-    if (requestCount >= maxLimit) {
+    if (maxLimit !== Infinity && requestCount >= maxLimit) {
       setToast({
         show: true,
         type: 'error',
@@ -192,11 +192,11 @@ function TeacherSupport({ user, profile }) {
                   <FileText className="w-5 h-5 text-[#F4C542]" /> Tạo yêu cầu mới
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <button onClick={() => handleQuickRequest('Xác nhận công tác giảng dạy')} className="group bg-[#FFFFFF] border-2 border-[#F4C542]/30 hover:border-[#F4C542] rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                  <button onClick={() => handleQuickRequest('Đăng ký phòng học, thiết bị thực hành hoặc thiết bị thí nghiệm')} className="group bg-[#FFFFFF] border-2 border-[#F4C542]/30 hover:border-[#F4C542] rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
                     <div className="w-16 h-16 rounded-full bg-[#FFF7D6] group-hover:bg-[#F4C542] flex items-center justify-center transition-colors">
-                      <GraduationCap className="w-8 h-8 text-[#F4C542] group-hover:text-white transition-colors" />
+                      <Monitor className="w-8 h-8 text-[#F4C542] group-hover:text-white transition-colors" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-700 group-hover:text-[#F4C542] transition-colors text-center">Xác nhận công tác giảng dạy</span>
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-[#F4C542] transition-colors text-center">Đăng ký phòng học, thiết bị thực hành hoặc thiết bị thí nghiệm</span>
                   </button>
                   <button onClick={() => handleQuickRequest('Đơn xin nghỉ phép / Vắng dạy')} className="group bg-[#FFFFFF] border-2 border-blue-200 hover:border-blue-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
                     <div className="w-16 h-16 rounded-full bg-blue-100 group-hover:bg-[#3B82F6]/100 flex items-center justify-center transition-colors">

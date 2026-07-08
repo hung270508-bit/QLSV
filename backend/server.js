@@ -79,9 +79,9 @@ db.getConnection((err, connection) => {
     // để tối ưu hóa triệt để tốc độ khởi động (Cold Start) trên Vercel Serverless.
 
     connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
-        connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => {});
-        connection.query("ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;", () => {});
-        connection.query("ALTER TABLE ai_exams ADD COLUMN bank_id INT DEFAULT NULL;", () => {});
+        connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => { });
+        connection.query("ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;", () => { });
+        connection.query("ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;", () => { });
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
@@ -111,7 +111,7 @@ async function runAiExamMigration(pool) {
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `).catch(() => {}); // Bảng documents chưa tồn tại → bỏ qua, tạo lại khi cần
+    `).catch(() => { }); // Bảng documents chưa tồn tại → bỏ qua, tạo lại khi cần
 
     // Helper: thêm cột nếu chưa có
     const addColIfMissing = async (table, col, definition) => {
@@ -127,16 +127,17 @@ async function runAiExamMigration(pool) {
     };
 
     // Thêm 4 cột mới vào bảng STAGING (ai_generated_questions)
-    await addColIfMissing('ai_generated_questions', 'bloom_level',   'VARCHAR(20) NULL');
-    await addColIfMissing('ai_generated_questions', 'chapter',       'VARCHAR(255) NULL');
+    await addColIfMissing('ai_generated_questions', 'bloom_level', 'VARCHAR(20) NULL');
+    await addColIfMissing('ai_generated_questions', 'chapter', 'VARCHAR(255) NULL');
     await addColIfMissing('ai_generated_questions', 'question_type', 'VARCHAR(50) NULL');
-    await addColIfMissing('ai_generated_questions', 'keywords',      'JSON NULL');
+    await addColIfMissing('ai_generated_questions', 'keywords', 'JSON NULL');
 
     // Thêm 4 cột mới vào bảng BANK chính thức (questions)
-    await addColIfMissing('questions', 'bloom_level',   'VARCHAR(20) NULL');
-    await addColIfMissing('questions', 'chapter',       'VARCHAR(255) NULL');
+    await addColIfMissing('questions', 'bloom_level', 'VARCHAR(20) NULL');
+    await addColIfMissing('questions', 'chapter', 'VARCHAR(255) NULL');
     await addColIfMissing('questions', 'question_type', 'VARCHAR(50) NULL');
-    await addColIfMissing('questions', 'keywords',      'JSON NULL');
+    await addColIfMissing('questions', 'keywords', 'JSON NULL');
+    await addColIfMissing('exams', 'bank_id', 'INT NULL');
 
     console.log('[Migration] AI Exam schema: sẵn sàng ✓');
 }
@@ -165,23 +166,23 @@ const verifyToken = (req, res, next) => {
     }
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        
+
         // Kiểm tra xem tài khoản có bị khóa trong database không
         db.query('SELECT TrangThai FROM users WHERE TaiKhoan = ?', [decoded.username], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: 'Lỗi server khi xác thực token!' });
-            
+
             if (results.length === 0) {
                 return res.status(401).json({ success: false, message: 'Tài khoản không tồn tại!' });
             }
-            
+
             if (results[0].TrangThai === 0 || results[0].TrangThai === false || results[0].TrangThai === 'Bị khóa') {
-                return res.status(403).json({ 
-                    success: false, 
-                    message: 'Tài khoản của bạn đã bị khóa! Bạn sẽ bị đăng xuất.', 
-                    isLocked: true 
+                return res.status(403).json({
+                    success: false,
+                    message: 'Tài khoản của bạn đã bị khóa! Bạn sẽ bị đăng xuất.',
+                    isLocked: true
                 });
             }
-            
+
             req.user = decoded;
             next();
         });
@@ -503,7 +504,7 @@ app.use((req, res, next) => {
                     message: `Tài khoản của bạn đã bị khóa tạm thời do nhập sai quá nhiều lần. Các thiết bị khác cũng bị buộc đăng xuất. Vui lòng thử lại sau ${remainingMinutes} phút.`
                 });
             }
-        } catch (error) {}
+        } catch (error) { }
     }
     next();
 });
@@ -1000,8 +1001,8 @@ app.post('/api/students', async (req, res) => {
         });
 
         // Tự động đồng bộ sinh viên mới vào danh sách lớp học phần của lớp hành chính
-        db.query("INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) SELECT ?, lhp.MaLopHocPhan, lhp.HocKy FROM lophocphan lhp WHERE lhp.MaLop = ?", [MSSV, MaLop], () => {});
-        db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) SELECT ?, lhp.MaLopHocPhan, lhp.HocKy, 'Đã duyệt', NOW() FROM lophocphan lhp WHERE lhp.MaLop = ?", [MSSV, MaLop], () => {});
+        db.query("INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) SELECT ?, lhp.MaLopHocPhan, lhp.HocKy FROM lophocphan lhp WHERE lhp.MaLop = ?", [MSSV, MaLop], () => { });
+        db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) SELECT ?, lhp.MaLopHocPhan, lhp.HocKy, 'Đã duyệt', NOW() FROM lophocphan lhp WHERE lhp.MaLop = ?", [MSSV, MaLop], () => { });
 
         // Nếu lúc thêm sinh viên có quẹt thẻ, lưu luôn thẻ đó vào database
         if (req.body.UID) {
@@ -1576,8 +1577,8 @@ app.post('/api/teaching-assignments', (req, res) => {
             if (finalMaLop) {
                 db.query('SELECT MSSV FROM sinhvien WHERE MaLop = ?', [finalMaLop], (err, students) => {
                     if (!err && students.length > 0) {
-                        students.forEach(sv => { 
-                            db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]); 
+                        students.forEach(sv => {
+                            db.query('INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)', [sv.MSSV, maLHP, HocKy]);
                             db.query("INSERT IGNORE INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Đã duyệt', NOW())", [sv.MSSV, maLHP, HocKy]);
                         });
                     }
@@ -1696,7 +1697,7 @@ app.delete('/api/teaching-assignments/:id', (req, res) => {
 
 // HELPER: Kiểm tra 2 khoảng tiết có overlap không
 function tietOverlap(start1, end1, start2, end2) {
-  return start1 <= end2 && end1 >= start2;
+    return start1 <= end2 && end1 >= start2;
 }
 
 // HELPER: Tìm đợt đăng ký đang mở khớp với năm học của lớp học phần (nếu có),
@@ -1705,79 +1706,79 @@ function tietOverlap(start1, end1, start2, end2) {
 // trong khoảng [NgayTao, NgayDong] — tránh trường hợp admin quên bấm nút "Đóng"
 // nhưng đã quá hạn NgayDong mà hệ thống vẫn cho đăng ký/sửa/xóa.
 async function getOpenPhaseId(conn, namHoc, nienKhoa) {
-  try {
-    const [[phase]] = await conn.query(
-      `SELECT MaDot FROM dot_dangky 
+    try {
+        const [[phase]] = await conn.query(
+            `SELECT MaDot FROM dot_dangky 
        WHERE TrangThai = 'Mo' 
          AND (NamHoc = ? OR NamHoc IS NULL) 
          AND (NienKhoa = ? OR NienKhoa IS NULL) 
          AND NOW() BETWEEN NgayTao AND NgayDong
        ORDER BY NgayTao DESC LIMIT 1`,
-      [namHoc || null, nienKhoa || null]
-    );
-    return phase ? phase.MaDot : null;
-  } catch (e) {
-    return null;
-  }
+            [namHoc || null, nienKhoa || null]
+        );
+        return phase ? phase.MaDot : null;
+    } catch (e) {
+        return null;
+    }
 }
 
 // 1. API Lấy danh sách LHP có thể đăng ký
 // 1. API Lấy danh sách LHP có thể đăng ký (Đã fix lỗi không hiện môn và thêm Debug)
 app.get('/api/enrollment/available/:mssv', async (req, res) => {
-  const { mssv } = req.params;
-  try {
-    // BƯỚC 1: Lấy Niên khóa của sinh viên (dùng LEFT JOIN đề phòng sinh viên chưa có lớp)
-    const [[studentInfo]] = await db.promise().query(
-      `SELECT lh.NienKhoa FROM sinhvien s LEFT JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`, 
-      [mssv]
-    );
-    const nienKhoa = studentInfo?.NienKhoa ? studentInfo.NienKhoa.trim() : null;
-    
-    console.log(`\n--- BẮT ĐẦU TẢI MÔN HỌC CHO MSSV: ${mssv} ---`);
-    console.log(`[DEBUG] 1. Niên khóa của sinh viên này là: "${nienKhoa}"`);
+    const { mssv } = req.params;
+    try {
+        // BƯỚC 1: Lấy Niên khóa của sinh viên (dùng LEFT JOIN đề phòng sinh viên chưa có lớp)
+        const [[studentInfo]] = await db.promise().query(
+            `SELECT lh.NienKhoa FROM sinhvien s LEFT JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
+            [mssv]
+        );
+        const nienKhoa = studentInfo?.NienKhoa ? studentInfo.NienKhoa.trim() : null;
 
-    if (!nienKhoa) {
-      console.log(`[DEBUG] ❌ Sinh viên chưa được gán Niên khóa hoặc chưa có Lớp học -> Trả về rỗng.`);
-      return res.json([]); 
-    }
+        console.log(`\n--- BẮT ĐẦU TẢI MÔN HỌC CHO MSSV: ${mssv} ---`);
+        console.log(`[DEBUG] 1. Niên khóa của sinh viên này là: "${nienKhoa}"`);
 
-    // BƯỚC 2: Tìm đợt đăng ký (Sử dụng TRIM() để loại bỏ khoảng trắng dư thừa ở 2 đầu)
-    // Chỉ tính là "đang mở" khi còn nằm trong khoảng [NgayTao, NgayDong] — tránh trường hợp
-    // đã quá hạn NgayDong nhưng admin quên bấm "Đóng" mà vẫn cho SV đăng ký thêm.
-    const [openPhases] = await db.promise().query(
-      `SELECT HocKy, NamHoc, NienKhoa FROM dot_dangky WHERE TrangThai = 'Mo' AND NOW() BETWEEN NgayTao AND NgayDong AND (TRIM(NienKhoa) = ? OR NienKhoa IS NULL OR NienKhoa = '')`, 
-      [nienKhoa]
-    );
-    
-    console.log(`[DEBUG] 2. Số đợt đăng ký đang MỞ phù hợp: ${openPhases.length}`, openPhases);
+        if (!nienKhoa) {
+            console.log(`[DEBUG] ❌ Sinh viên chưa được gán Niên khóa hoặc chưa có Lớp học -> Trả về rỗng.`);
+            return res.json([]);
+        }
 
-    if (openPhases.length === 0) {
-      console.log(`[DEBUG] ❌ Không có đợt nào khớp với Niên khóa "${nienKhoa}" -> Trả về rỗng.`);
-      return res.json([]); 
-    }
+        // BƯỚC 2: Tìm đợt đăng ký (Sử dụng TRIM() để loại bỏ khoảng trắng dư thừa ở 2 đầu)
+        // Chỉ tính là "đang mở" khi còn nằm trong khoảng [NgayTao, NgayDong] — tránh trường hợp
+        // đã quá hạn NgayDong nhưng admin quên bấm "Đóng" mà vẫn cho SV đăng ký thêm.
+        const [openPhases] = await db.promise().query(
+            `SELECT HocKy, NamHoc, NienKhoa FROM dot_dangky WHERE TrangThai = 'Mo' AND NOW() BETWEEN NgayTao AND NgayDong AND (TRIM(NienKhoa) = ? OR NienKhoa IS NULL OR NienKhoa = '')`,
+            [nienKhoa]
+        );
 
-    // BƯỚC 3: Lấy điểm cũ
-    const [diemCu] = await db.promise().query(`
+        console.log(`[DEBUG] 2. Số đợt đăng ký đang MỞ phù hợp: ${openPhases.length}`, openPhases);
+
+        if (openPhases.length === 0) {
+            console.log(`[DEBUG] ❌ Không có đợt nào khớp với Niên khóa "${nienKhoa}" -> Trả về rỗng.`);
+            return res.json([]);
+        }
+
+        // BƯỚC 3: Lấy điểm cũ
+        const [diemCu] = await db.promise().query(`
       SELECT lhp.MaMonHoc, d.DiemTong FROM diem d
       JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan
       WHERE d.MSSV = ? ORDER BY d.HocKy DESC
     `, [mssv]);
-    
-    const diemMap = {};
-    for (const d of diemCu) if (!(d.MaMonHoc in diemMap)) diemMap[d.MaMonHoc] = d.DiemTong;
 
-    // BƯỚC 4: Tạo điều kiện lọc Lớp học phần
-    // Bổ sung: lhp.NamHoc IS NULL để linh hoạt nếu môn học chưa được gán Năm học
-    // BƯỚC 4: Tạo điều kiện lọc Lớp học phần
-    // Đã thay thế dấu "=" bằng "LIKE CONCAT(?, '%')" để 'HK1' có thể khớp với 'HK1_2026_2027'
-    const phaseConditions = openPhases.map(() => 
-      `(lhp.HocKy LIKE CONCAT(?, '%') AND (lhp.NamHoc = ? OR lhp.NamHoc IS NULL OR lhp.NamHoc = ''))`
-    ).join(' OR ');
-    
-    const phaseParams = openPhases.flatMap(p => [p.HocKy, p.NamHoc]);
-    const queryParams = [mssv, mssv, mssv, mssv, mssv, ...phaseParams];
+        const diemMap = {};
+        for (const d of diemCu) if (!(d.MaMonHoc in diemMap)) diemMap[d.MaMonHoc] = d.DiemTong;
 
-    const [rows] = await db.promise().query(`
+        // BƯỚC 4: Tạo điều kiện lọc Lớp học phần
+        // Bổ sung: lhp.NamHoc IS NULL để linh hoạt nếu môn học chưa được gán Năm học
+        // BƯỚC 4: Tạo điều kiện lọc Lớp học phần
+        // Đã thay thế dấu "=" bằng "LIKE CONCAT(?, '%')" để 'HK1' có thể khớp với 'HK1_2026_2027'
+        const phaseConditions = openPhases.map(() =>
+            `(lhp.HocKy LIKE CONCAT(?, '%') AND (lhp.NamHoc = ? OR lhp.NamHoc IS NULL OR lhp.NamHoc = ''))`
+        ).join(' OR ');
+
+        const phaseParams = openPhases.flatMap(p => [p.HocKy, p.NamHoc]);
+        const queryParams = [mssv, mssv, mssv, mssv, mssv, ...phaseParams];
+
+        const [rows] = await db.promise().query(`
       SELECT 
         lhp.MaLopHocPhan, lhp.HocKy, lhp.NamHoc, lhp.MaLop, lhp.PhamViDangKy, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi, lhp.SoLuongToiDa,
         (SELECT COUNT(DISTINCT MSSV) FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = lhp.MaLopHocPhan AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = lhp.MaLopHocPhan UNION SELECT MSSV FROM sinhvien WHERE MaLop = lhp.MaLop AND lhp.MaLop IS NOT NULL AND lhp.MaLop != '') AS tmp) AS DaDangKy,
@@ -1804,33 +1805,33 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
       ORDER BY mh.TenMonHoc, lhp.MaLopHocPhan
     `, queryParams);
 
-    console.log(`[DEBUG] 3. Số Lớp học phần lọc ra được: ${rows.length}`);
+        console.log(`[DEBUG] 3. Số Lớp học phần lọc ra được: ${rows.length}`);
 
-    const result = rows.map(r => ({
-      ...r,
-      DiemCu: diemMap[r.MaMonHoc] !== undefined ? diemMap[r.MaMonHoc] : null,
-    }));
+        const result = rows.map(r => ({
+            ...r,
+            DiemCu: diemMap[r.MaMonHoc] !== undefined ? diemMap[r.MaMonHoc] : null,
+        }));
 
-    const filtered = result.filter(r => {
-      if (!r.DiemCu) return true; 
-      const diem = parseFloat(r.DiemCu);
-      if (isNaN(diem)) return true; 
-      if (diem < 4.0 || diem < 6.5) return true; 
-      return false; 
-    });
-    
-    console.log(`[DEBUG] 4. Báo cáo hoàn tất. Gửi về FE: ${filtered.length} môn.\n`);
-    res.json(filtered);
-  } catch (err) {
-    console.error('GET /available error:', err);
-    res.status(500).json({ message: 'Lỗi server khi tải danh sách môn học.', error: err.message });
-  }
+        const filtered = result.filter(r => {
+            if (!r.DiemCu) return true;
+            const diem = parseFloat(r.DiemCu);
+            if (isNaN(diem)) return true;
+            if (diem < 4.0 || diem < 6.5) return true;
+            return false;
+        });
+
+        console.log(`[DEBUG] 4. Báo cáo hoàn tất. Gửi về FE: ${filtered.length} môn.\n`);
+        res.json(filtered);
+    } catch (err) {
+        console.error('GET /available error:', err);
+        res.status(500).json({ message: 'Lỗi server khi tải danh sách môn học.', error: err.message });
+    }
 });
 // 2. API Lấy tiến trình đăng ký
 app.get('/api/enrollment/my-courses/:mssv', async (req, res) => {
-  const mssv = String(req.params.mssv || '').trim();
-  try {
-    const [rows] = await db.promise().query(`
+    const mssv = String(req.params.mssv || '').trim();
+    try {
+        const [rows] = await db.promise().query(`
       SELECT dk.*, lhp.MaMonHoc, lhp.NamHoc, mh.TenMonHoc, mh.SoTinChi 
       FROM dangky_hocphan dk 
       JOIN lophocphan lhp ON TRIM(dk.MaLopHocPhan) = TRIM(lhp.MaLopHocPhan) 
@@ -1839,29 +1840,29 @@ app.get('/api/enrollment/my-courses/:mssv', async (req, res) => {
       ORDER BY dk.NgayDangKy DESC
     `, [mssv]);
 
-    // Tính sẵn cho từng dòng: còn được sửa/xóa hay không.
-    // Điều kiện: chưa đóng tiền ("Chờ đóng tiền") VÀ đợt đăng ký tương ứng
-    // (theo NamHoc của lớp học phần + Niên khóa của SV) vẫn đang "Mở".
-    const [[studentCohort]] = await db.promise().query(
-      `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE TRIM(s.MSSV) = TRIM(?)`,
-      [mssv]
-    );
+        // Tính sẵn cho từng dòng: còn được sửa/xóa hay không.
+        // Điều kiện: chưa đóng tiền ("Chờ đóng tiền") VÀ đợt đăng ký tương ứng
+        // (theo NamHoc của lớp học phần + Niên khóa của SV) vẫn đang "Mở".
+        const [[studentCohort]] = await db.promise().query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE TRIM(s.MSSV) = TRIM(?)`,
+            [mssv]
+        );
 
-    const openPhaseCache = {};
-    for (const nh of new Set(rows.map(r => r.NamHoc))) {
-      openPhaseCache[nh] = await getOpenPhaseId(db.promise(), nh, studentCohort?.NienKhoa);
+        const openPhaseCache = {};
+        for (const nh of new Set(rows.map(r => r.NamHoc))) {
+            openPhaseCache[nh] = await getOpenPhaseId(db.promise(), nh, studentCohort?.NienKhoa);
+        }
+
+        const result = rows.map(r => ({
+            ...r,
+            CoTheXoa: r.TrangThai === 'Chờ đóng tiền' && !!openPhaseCache[r.NamHoc]
+        }));
+
+        res.json(result);
+    } catch (err) {
+        console.error('GET /api/enrollment/my-courses error:', err);
+        res.status(500).json({ message: 'Lỗi tải tiến trình đăng ký!' });
     }
-
-    const result = rows.map(r => ({
-      ...r,
-      CoTheXoa: r.TrangThai === 'Chờ đóng tiền' && !!openPhaseCache[r.NamHoc]
-    }));
-
-    res.json(result);
-  } catch (err) {
-    console.error('GET /api/enrollment/my-courses error:', err);
-    res.status(500).json({ message: 'Lỗi tải tiến trình đăng ký!' });
-  }
 });
 
 // 3. Danh sách tổng
@@ -1874,259 +1875,259 @@ app.get('/api/enrollments/all', (req, res) => {
 
 // 4. API ĐĂNG KÝ TRỰC TIẾP (Bấm là vào Database liền - Dành cho file Frontend bạn vừa tải lên)
 app.post('/api/enrollment', async (req, res) => {
-  const { MSSV, MaLopHocPhan } = req.body;
-  if (!MSSV || !MaLopHocPhan) return res.status(400).json({ message: 'Thiếu thông tin đăng ký.' });
+    const { MSSV, MaLopHocPhan } = req.body;
+    if (!MSSV || !MaLopHocPhan) return res.status(400).json({ message: 'Thiếu thông tin đăng ký.' });
 
-  const conn = await db.promise().getConnection();
-  try {
-    await conn.beginTransaction();
+    const conn = await db.promise().getConnection();
+    try {
+        await conn.beginTransaction();
 
-    // LẤY NIÊN KHÓA CỦA SINH VIÊN
-    const [[studentCohort]] = await conn.query(
-      `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
-      [MSSV]
-    );
-    if (!studentCohort || !studentCohort.NienKhoa) {
-      throw new Error('Không tìm thấy thông tin niên khóa của sinh viên.');
-    }
-
-    const [[lhp]] = await conn.query(`SELECT lhp.MaLopHocPhan, lhp.MaMonHoc, lhp.HocKy, lhp.NamHoc, lhp.SoLuongToiDa, mh.TenMonHoc, mh.SoTinChi FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ? FOR UPDATE`, [MaLopHocPhan]);
-    if (!lhp) throw new Error('Lớp học phần không tồn tại.');
-
-    // KIỂM TRA ĐỢT ĐĂNG KÝ THEO NIÊN KHÓA
-    const phaseId = await getOpenPhaseId(conn, lhp.NamHoc, studentCohort.NienKhoa);
-    if (!phaseId) {
-      throw new Error(`Hiện tại không có đợt đăng ký học phần nào đang mở dành cho niên khóa ${studentCohort.NienKhoa} của bạn.`);
-    }
-
-    const [[siSo]] = await conn.query(`SELECT COUNT(DISTINCT MSSV) AS DaDangKy FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) AS tmp`, [MaLopHocPhan, MaLopHocPhan, MaLopHocPhan]);
-    if (siSo.DaDangKy >= (lhp.SoLuongToiDa || 40)) throw new Error('Lớp học phần đã đủ sĩ số.');
-
-    const [[trungMon]] = await conn.query(`SELECT dk.MaLopHocPhan FROM dangky_hocphan dk JOIN lophocphan lhp2 ON dk.MaLopHocPhan = lhp2.MaLopHocPhan WHERE dk.MSSV = ? AND lhp2.MaMonHoc = ? AND lhp2.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi') LIMIT 1`, [MSSV, lhp.MaMonHoc, lhp.HocKy]);
-    if (trungMon) throw new Error(`Bạn đã đăng ký môn ${lhp.TenMonHoc} ở lớp ${trungMon.MaLopHocPhan}.`);
-
-    const [[diemCu]] = await conn.query(`SELECT DiemTong FROM diem d JOIN lophocphan lhp_check ON d.MaLopHocPhan = lhp_check.MaLopHocPhan WHERE d.MSSV = ? AND lhp_check.MaMonHoc = ? ORDER BY d.HocKy DESC LIMIT 1`, [MSSV, lhp.MaMonHoc]);
-    if (diemCu) {
-      if (diemCu.DiemTong === null) throw new Error(`Bạn đang học môn ${lhp.TenMonHoc} và chưa có điểm.`);
-      if (parseFloat(diemCu.DiemTong) >= 6.5) throw new Error(`Điểm môn ${lhp.TenMonHoc} đã đạt ${parseFloat(diemCu.DiemTong).toFixed(1)}. Không được cải thiện.`);
-    }
-
-    const parseCaHoc = (caStr) => {
-      if (!caStr) return { start: 0, end: 0 };
-      const match = String(caStr).match(/(\d+)\s*-\s*(\d+)/);
-      if (match) return { start: parseInt(match[1]), end: parseInt(match[2]) };
-      const ca = String(caStr).replace(/\D/g, '');
-      if (ca === '1') return {start: 1, end: 3}; if (ca === '2') return {start: 4, end: 6};
-      if (ca === '3') return {start: 7, end: 9}; if (ca === '4') return {start: 10, end: 12};
-      return { start: 0, end: 0 }; 
-    };
-
-    const [lichMoi] = await conn.query(`SELECT DATE_FORMAT(NgayHoc, '%Y-%m-%d') AS NgayHocStr, CaHoc FROM lichhoc WHERE MaLopHocPhan = ?`, [MaLopHocPhan]);
-    const [lichDaDK] = await conn.query(`SELECT DATE_FORMAT(lh.NgayHoc, '%Y-%m-%d') AS NgayHocStr, lh.CaHoc, dk.MaLopHocPhan AS MaLHPDaDK FROM lichhoc lh JOIN dangky_hocphan dk ON lh.MaLopHocPhan = dk.MaLopHocPhan JOIN lophocphan lhp3 ON dk.MaLopHocPhan = lhp3.MaLopHocPhan WHERE dk.MSSV = ? AND lhp3.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi')`, [MSSV, lhp.HocKy]);
-
-    for (const nm of lichMoi) {
-      const pMoi = parseCaHoc(nm.CaHoc);
-      if (pMoi.start === 0) continue;
-      for (const ld of lichDaDK) {
-        const pCu = parseCaHoc(ld.CaHoc);
-        if (pCu.start !== 0 && nm.NgayHocStr === ld.NgayHocStr && tietOverlap(pMoi.start, pMoi.end, pCu.start, pCu.end)) {
-          throw new Error(`Môn này trùng lịch với lớp ${ld.MaLHPDaDK} vào ngày ${nm.NgayHocStr.split('-').reverse().join('/')}.`);
+        // LẤY NIÊN KHÓA CỦA SINH VIÊN
+        const [[studentCohort]] = await conn.query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
+            [MSSV]
+        );
+        if (!studentCohort || !studentCohort.NienKhoa) {
+            throw new Error('Không tìm thấy thông tin niên khóa của sinh viên.');
         }
-      }
-    }
 
-    await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW())`, [MSSV, MaLopHocPhan, lhp.HocKy]);
-    // Lưu ý: KHÔNG insert vào bảng `diem` ở bước này nữa.
-    // Lịch học/kết quả chỉ được commit chính thức sau khi sinh viên đóng tiền
-    // (xem API POST /api/enrollment/:mssv/:maLhp/xac-nhan-thanh-toan).
+        const [[lhp]] = await conn.query(`SELECT lhp.MaLopHocPhan, lhp.MaMonHoc, lhp.HocKy, lhp.NamHoc, lhp.SoLuongToiDa, mh.TenMonHoc, mh.SoTinChi FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ? FOR UPDATE`, [MaLopHocPhan]);
+        if (!lhp) throw new Error('Lớp học phần không tồn tại.');
 
-    await conn.commit();
-    res.json({ success: true, message: `Đăng ký thành công lớp ${MaLopHocPhan}! Vui lòng hoàn tất đóng học phí để giữ chỗ.` });
+        // KIỂM TRA ĐỢT ĐĂNG KÝ THEO NIÊN KHÓA
+        const phaseId = await getOpenPhaseId(conn, lhp.NamHoc, studentCohort.NienKhoa);
+        if (!phaseId) {
+            throw new Error(`Hiện tại không có đợt đăng ký học phần nào đang mở dành cho niên khóa ${studentCohort.NienKhoa} của bạn.`);
+        }
 
-  } catch (err) {
-    await conn.rollback();
-    res.status(400).json({ message: err.message || 'Lỗi hệ thống khi đăng ký.' });
-  } finally { conn.release(); }
+        const [[siSo]] = await conn.query(`SELECT COUNT(DISTINCT MSSV) AS DaDangKy FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) AS tmp`, [MaLopHocPhan, MaLopHocPhan, MaLopHocPhan]);
+        if (siSo.DaDangKy >= (lhp.SoLuongToiDa || 40)) throw new Error('Lớp học phần đã đủ sĩ số.');
+
+        const [[trungMon]] = await conn.query(`SELECT dk.MaLopHocPhan FROM dangky_hocphan dk JOIN lophocphan lhp2 ON dk.MaLopHocPhan = lhp2.MaLopHocPhan WHERE dk.MSSV = ? AND lhp2.MaMonHoc = ? AND lhp2.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi') LIMIT 1`, [MSSV, lhp.MaMonHoc, lhp.HocKy]);
+        if (trungMon) throw new Error(`Bạn đã đăng ký môn ${lhp.TenMonHoc} ở lớp ${trungMon.MaLopHocPhan}.`);
+
+        const [[diemCu]] = await conn.query(`SELECT DiemTong FROM diem d JOIN lophocphan lhp_check ON d.MaLopHocPhan = lhp_check.MaLopHocPhan WHERE d.MSSV = ? AND lhp_check.MaMonHoc = ? ORDER BY d.HocKy DESC LIMIT 1`, [MSSV, lhp.MaMonHoc]);
+        if (diemCu) {
+            if (diemCu.DiemTong === null) throw new Error(`Bạn đang học môn ${lhp.TenMonHoc} và chưa có điểm.`);
+            if (parseFloat(diemCu.DiemTong) >= 6.5) throw new Error(`Điểm môn ${lhp.TenMonHoc} đã đạt ${parseFloat(diemCu.DiemTong).toFixed(1)}. Không được cải thiện.`);
+        }
+
+        const parseCaHoc = (caStr) => {
+            if (!caStr) return { start: 0, end: 0 };
+            const match = String(caStr).match(/(\d+)\s*-\s*(\d+)/);
+            if (match) return { start: parseInt(match[1]), end: parseInt(match[2]) };
+            const ca = String(caStr).replace(/\D/g, '');
+            if (ca === '1') return { start: 1, end: 3 }; if (ca === '2') return { start: 4, end: 6 };
+            if (ca === '3') return { start: 7, end: 9 }; if (ca === '4') return { start: 10, end: 12 };
+            return { start: 0, end: 0 };
+        };
+
+        const [lichMoi] = await conn.query(`SELECT DATE_FORMAT(NgayHoc, '%Y-%m-%d') AS NgayHocStr, CaHoc FROM lichhoc WHERE MaLopHocPhan = ?`, [MaLopHocPhan]);
+        const [lichDaDK] = await conn.query(`SELECT DATE_FORMAT(lh.NgayHoc, '%Y-%m-%d') AS NgayHocStr, lh.CaHoc, dk.MaLopHocPhan AS MaLHPDaDK FROM lichhoc lh JOIN dangky_hocphan dk ON lh.MaLopHocPhan = dk.MaLopHocPhan JOIN lophocphan lhp3 ON dk.MaLopHocPhan = lhp3.MaLopHocPhan WHERE dk.MSSV = ? AND lhp3.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi')`, [MSSV, lhp.HocKy]);
+
+        for (const nm of lichMoi) {
+            const pMoi = parseCaHoc(nm.CaHoc);
+            if (pMoi.start === 0) continue;
+            for (const ld of lichDaDK) {
+                const pCu = parseCaHoc(ld.CaHoc);
+                if (pCu.start !== 0 && nm.NgayHocStr === ld.NgayHocStr && tietOverlap(pMoi.start, pMoi.end, pCu.start, pCu.end)) {
+                    throw new Error(`Môn này trùng lịch với lớp ${ld.MaLHPDaDK} vào ngày ${nm.NgayHocStr.split('-').reverse().join('/')}.`);
+                }
+            }
+        }
+
+        await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW())`, [MSSV, MaLopHocPhan, lhp.HocKy]);
+        // Lưu ý: KHÔNG insert vào bảng `diem` ở bước này nữa.
+        // Lịch học/kết quả chỉ được commit chính thức sau khi sinh viên đóng tiền
+        // (xem API POST /api/enrollment/:mssv/:maLhp/xac-nhan-thanh-toan).
+
+        await conn.commit();
+        res.json({ success: true, message: `Đăng ký thành công lớp ${MaLopHocPhan}! Vui lòng hoàn tất đóng học phí để giữ chỗ.` });
+
+    } catch (err) {
+        await conn.rollback();
+        res.status(400).json({ message: err.message || 'Lỗi hệ thống khi đăng ký.' });
+    } finally { conn.release(); }
 });
 
 // 4b. API ĐĂNG KÝ BATCH (Nhiều môn cùng lúc)
 app.post('/api/enrollment/batch', async (req, res) => {
-  const { MSSV, cart } = req.body;
-  if (!MSSV || !cart || !Array.isArray(cart) || cart.length === 0) {
-    return res.status(400).json({ message: 'Thiếu thông tin đăng ký hoặc giỏ hàng trống.' });
-  }
-
-  const conn = await db.promise().getConnection();
-  try {
-    await conn.beginTransaction();
-
-    // LẤY NIÊN KHÓA CỦA SINH VIÊN
-    const [[studentCohort]] = await conn.query(
-      `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
-      [MSSV]
-    );
-    if (!studentCohort || !studentCohort.NienKhoa) {
-      throw new Error('Không tìm thấy thông tin niên khóa của sinh viên.');
+    const { MSSV, cart } = req.body;
+    if (!MSSV || !cart || !Array.isArray(cart) || cart.length === 0) {
+        return res.status(400).json({ message: 'Thiếu thông tin đăng ký hoặc giỏ hàng trống.' });
     }
 
-    const parseCaHoc = (caStr) => {
-      if (!caStr) return { start: 0, end: 0 };
-      const match = String(caStr).match(/(\d+)\s*-\s*(\d+)/);
-      if (match) return { start: parseInt(match[1]), end: parseInt(match[2]) };
-      const ca = String(caStr).replace(/\D/g, '');
-      if (ca === '1') return {start: 1, end: 3}; if (ca === '2') return {start: 4, end: 6};
-      if (ca === '3') return {start: 7, end: 9}; if (ca === '4') return {start: 10, end: 12};
-      return { start: 0, end: 0 }; 
-    };
+    const conn = await db.promise().getConnection();
+    try {
+        await conn.beginTransaction();
 
-    // [BƯỚC 1]: Khởi tạo biến để cộng dồn tín chỉ và lưu tên học kỳ
-    let tongTinChi = 0;
-    let hocKyHienTai = '';
-
-    for (const item of cart) {
-      const MaLopHocPhan = item.MaLopHocPhan;
-
-      const [[lhp]] = await conn.query(`SELECT lhp.MaLopHocPhan, lhp.MaMonHoc, lhp.HocKy, lhp.NamHoc, lhp.SoLuongToiDa, mh.TenMonHoc, mh.SoTinChi FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ? FOR UPDATE`, [MaLopHocPhan]);
-      if (!lhp) throw new Error(`Lớp học phần ${MaLopHocPhan} không tồn tại.`);
-
-      // [BƯỚC 2]: Cộng dồn tín chỉ của môn học này và gán học kỳ
-      tongTinChi += (lhp.SoTinChi || 0);
-      hocKyHienTai = lhp.HocKy; // Lấy học kỳ từ lớp học phần để lưu vào bảng học phí
-
-      // KIỂM TRA ĐỢT ĐĂNG KÝ THEO NIÊN KHÓA
-      const phaseId = await getOpenPhaseId(conn, lhp.NamHoc, studentCohort.NienKhoa);
-      if (!phaseId) {
-        throw new Error(`Hiện tại không có đợt đăng ký học phần nào đang mở dành cho niên khóa ${studentCohort.NienKhoa} của bạn.`);
-      }
-
-      const [[siSo]] = await conn.query(`SELECT COUNT(DISTINCT MSSV) AS DaDangKy FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) AS tmp`, [MaLopHocPhan, MaLopHocPhan, MaLopHocPhan]);
-      if (siSo.DaDangKy >= (lhp.SoLuongToiDa || 40)) throw new Error(`Lớp ${MaLopHocPhan} đã đủ sĩ số.`);
-
-      const [[trungMon]] = await conn.query(`SELECT dk.MaLopHocPhan FROM dangky_hocphan dk JOIN lophocphan lhp2 ON dk.MaLopHocPhan = lhp2.MaLopHocPhan WHERE dk.MSSV = ? AND lhp2.MaMonHoc = ? AND lhp2.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi') LIMIT 1`, [MSSV, lhp.MaMonHoc, lhp.HocKy]);
-      if (trungMon) throw new Error(`Bạn đã đăng ký môn ${lhp.TenMonHoc} ở lớp ${trungMon.MaLopHocPhan}.`);
-
-      const [[diemCu]] = await conn.query(`SELECT DiemTong FROM diem d JOIN lophocphan lhp_check ON d.MaLopHocPhan = lhp_check.MaLopHocPhan WHERE d.MSSV = ? AND lhp_check.MaMonHoc = ? ORDER BY d.HocKy DESC LIMIT 1`, [MSSV, lhp.MaMonHoc]);
-      if (diemCu) {
-        if (diemCu.DiemTong === null) throw new Error(`Bạn đang học môn ${lhp.TenMonHoc} và chưa có điểm.`);
-        if (parseFloat(diemCu.DiemTong) >= 6.5) throw new Error(`Điểm môn ${lhp.TenMonHoc} đã đạt ${parseFloat(diemCu.DiemTong).toFixed(1)}. Không được cải thiện.`);
-      }
-
-      const [lichMoi] = await conn.query(`SELECT DATE_FORMAT(NgayHoc, '%Y-%m-%d') AS NgayHocStr, CaHoc FROM lichhoc WHERE MaLopHocPhan = ?`, [MaLopHocPhan]);
-      const [lichDaDK] = await conn.query(`SELECT DATE_FORMAT(lh.NgayHoc, '%Y-%m-%d') AS NgayHocStr, lh.CaHoc, dk.MaLopHocPhan AS MaLHPDaDK FROM lichhoc lh JOIN dangky_hocphan dk ON lh.MaLopHocPhan = dk.MaLopHocPhan JOIN lophocphan lhp3 ON dk.MaLopHocPhan = lhp3.MaLopHocPhan WHERE dk.MSSV = ? AND lhp3.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi')`, [MSSV, lhp.HocKy]);
-
-      for (const nm of lichMoi) {
-        const pMoi = parseCaHoc(nm.CaHoc);
-        if (pMoi.start === 0) continue;
-        for (const ld of lichDaDK) {
-          const pCu = parseCaHoc(ld.CaHoc);
-          if (pCu.start !== 0 && nm.NgayHocStr === ld.NgayHocStr && tietOverlap(pMoi.start, pMoi.end, pCu.start, pCu.end)) {
-            throw new Error(`Môn ${lhp.TenMonHoc} trùng lịch với lớp ${ld.MaLHPDaDK} vào ngày ${nm.NgayHocStr.split('-').reverse().join('/')}.`);
-          }
-        }
-      }
-
-      await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW())`, [MSSV, MaLopHocPhan, lhp.HocKy]);
-    }
-
-    // [BƯỚC 3]: CẬP NHẬT HOẶC TẠO MỚI HỌC PHÍ DỰA TRÊN TỔNG TÍN CHỈ
-    if (tongTinChi > 0 && hocKyHienTai) {
-        const DON_GIA_TIN_CHI = 800000; // Bạn có thể thay đổi đơn giá ở đây (800k/tín)
-        const soTienMoi = tongTinChi * DON_GIA_TIN_CHI;
-
-        const [[existingTuition]] = await conn.query(
-            "SELECT * FROM hoc_phi WHERE ma_sinh_vien = ? AND hoc_ky = ?",
-            [MSSV, hocKyHienTai]
+        // LẤY NIÊN KHÓA CỦA SINH VIÊN
+        const [[studentCohort]] = await conn.query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
+            [MSSV]
         );
-
-        if (existingTuition) {
-            // Đã tồn tại công nợ trong kỳ này -> Cộng dồn tiền và chuyển thành Chưa đóng
-            await conn.query(
-                "UPDATE hoc_phi SET so_tien = so_tien + ?, trang_thai = 'Chưa đóng' WHERE ma_sinh_vien = ? AND hoc_ky = ?",
-                [soTienMoi, MSSV, hocKyHienTai]
-            );
-        } else {
-            // Tạo mới công nợ (Hạn nộp mặc định là 14 ngày sau)
-            const hanNop = new Date();
-            hanNop.setDate(hanNop.getDate() + 14);
-            
-            await conn.query(
-                "INSERT INTO hoc_phi (ma_sinh_vien, so_tien, han_nop, trang_thai, hoc_ky) VALUES (?, ?, ?, 'Chưa đóng', ?)",
-                [MSSV, soTienMoi, hanNop, hocKyHienTai]
-            );
+        if (!studentCohort || !studentCohort.NienKhoa) {
+            throw new Error('Không tìm thấy thông tin niên khóa của sinh viên.');
         }
-    }
 
-    await conn.commit();
-    res.json({ success: true, message: `Đăng ký thành công ${cart.length} môn học! Tổng số tín chỉ là ${tongTinChi}. Vui lòng hoàn tất đóng học phí để giữ chỗ.` });
+        const parseCaHoc = (caStr) => {
+            if (!caStr) return { start: 0, end: 0 };
+            const match = String(caStr).match(/(\d+)\s*-\s*(\d+)/);
+            if (match) return { start: parseInt(match[1]), end: parseInt(match[2]) };
+            const ca = String(caStr).replace(/\D/g, '');
+            if (ca === '1') return { start: 1, end: 3 }; if (ca === '2') return { start: 4, end: 6 };
+            if (ca === '3') return { start: 7, end: 9 }; if (ca === '4') return { start: 10, end: 12 };
+            return { start: 0, end: 0 };
+        };
 
-  } catch (err) {
-    await conn.rollback();
-    res.status(400).json({ message: err.message || 'Lỗi hệ thống khi đăng ký.' });
-  } finally { conn.release(); }
+        // [BƯỚC 1]: Khởi tạo biến để cộng dồn tín chỉ và lưu tên học kỳ
+        let tongTinChi = 0;
+        let hocKyHienTai = '';
+
+        for (const item of cart) {
+            const MaLopHocPhan = item.MaLopHocPhan;
+
+            const [[lhp]] = await conn.query(`SELECT lhp.MaLopHocPhan, lhp.MaMonHoc, lhp.HocKy, lhp.NamHoc, lhp.SoLuongToiDa, mh.TenMonHoc, mh.SoTinChi FROM lophocphan lhp JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc WHERE lhp.MaLopHocPhan = ? FOR UPDATE`, [MaLopHocPhan]);
+            if (!lhp) throw new Error(`Lớp học phần ${MaLopHocPhan} không tồn tại.`);
+
+            // [BƯỚC 2]: Cộng dồn tín chỉ của môn học này và gán học kỳ
+            tongTinChi += (lhp.SoTinChi || 0);
+            hocKyHienTai = lhp.HocKy; // Lấy học kỳ từ lớp học phần để lưu vào bảng học phí
+
+            // KIỂM TRA ĐỢT ĐĂNG KÝ THEO NIÊN KHÓA
+            const phaseId = await getOpenPhaseId(conn, lhp.NamHoc, studentCohort.NienKhoa);
+            if (!phaseId) {
+                throw new Error(`Hiện tại không có đợt đăng ký học phần nào đang mở dành cho niên khóa ${studentCohort.NienKhoa} của bạn.`);
+            }
+
+            const [[siSo]] = await conn.query(`SELECT COUNT(DISTINCT MSSV) AS DaDangKy FROM (SELECT MSSV FROM dangky_hocphan WHERE MaLopHocPhan = ? AND TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') UNION SELECT MSSV FROM diem WHERE MaLopHocPhan = ? UNION SELECT MSSV FROM sinhvien WHERE MaLop = (SELECT MaLop FROM lophocphan WHERE MaLopHocPhan = ? AND MaLop IS NOT NULL AND MaLop != '')) AS tmp`, [MaLopHocPhan, MaLopHocPhan, MaLopHocPhan]);
+            if (siSo.DaDangKy >= (lhp.SoLuongToiDa || 40)) throw new Error(`Lớp ${MaLopHocPhan} đã đủ sĩ số.`);
+
+            const [[trungMon]] = await conn.query(`SELECT dk.MaLopHocPhan FROM dangky_hocphan dk JOIN lophocphan lhp2 ON dk.MaLopHocPhan = lhp2.MaLopHocPhan WHERE dk.MSSV = ? AND lhp2.MaMonHoc = ? AND lhp2.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi') LIMIT 1`, [MSSV, lhp.MaMonHoc, lhp.HocKy]);
+            if (trungMon) throw new Error(`Bạn đã đăng ký môn ${lhp.TenMonHoc} ở lớp ${trungMon.MaLopHocPhan}.`);
+
+            const [[diemCu]] = await conn.query(`SELECT DiemTong FROM diem d JOIN lophocphan lhp_check ON d.MaLopHocPhan = lhp_check.MaLopHocPhan WHERE d.MSSV = ? AND lhp_check.MaMonHoc = ? ORDER BY d.HocKy DESC LIMIT 1`, [MSSV, lhp.MaMonHoc]);
+            if (diemCu) {
+                if (diemCu.DiemTong === null) throw new Error(`Bạn đang học môn ${lhp.TenMonHoc} và chưa có điểm.`);
+                if (parseFloat(diemCu.DiemTong) >= 6.5) throw new Error(`Điểm môn ${lhp.TenMonHoc} đã đạt ${parseFloat(diemCu.DiemTong).toFixed(1)}. Không được cải thiện.`);
+            }
+
+            const [lichMoi] = await conn.query(`SELECT DATE_FORMAT(NgayHoc, '%Y-%m-%d') AS NgayHocStr, CaHoc FROM lichhoc WHERE MaLopHocPhan = ?`, [MaLopHocPhan]);
+            const [lichDaDK] = await conn.query(`SELECT DATE_FORMAT(lh.NgayHoc, '%Y-%m-%d') AS NgayHocStr, lh.CaHoc, dk.MaLopHocPhan AS MaLHPDaDK FROM lichhoc lh JOIN dangky_hocphan dk ON lh.MaLopHocPhan = dk.MaLopHocPhan JOIN lophocphan lhp3 ON dk.MaLopHocPhan = lhp3.MaLopHocPhan WHERE dk.MSSV = ? AND lhp3.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi')`, [MSSV, lhp.HocKy]);
+
+            for (const nm of lichMoi) {
+                const pMoi = parseCaHoc(nm.CaHoc);
+                if (pMoi.start === 0) continue;
+                for (const ld of lichDaDK) {
+                    const pCu = parseCaHoc(ld.CaHoc);
+                    if (pCu.start !== 0 && nm.NgayHocStr === ld.NgayHocStr && tietOverlap(pMoi.start, pMoi.end, pCu.start, pCu.end)) {
+                        throw new Error(`Môn ${lhp.TenMonHoc} trùng lịch với lớp ${ld.MaLHPDaDK} vào ngày ${nm.NgayHocStr.split('-').reverse().join('/')}.`);
+                    }
+                }
+            }
+
+            await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW())`, [MSSV, MaLopHocPhan, lhp.HocKy]);
+        }
+
+        // [BƯỚC 3]: CẬP NHẬT HOẶC TẠO MỚI HỌC PHÍ DỰA TRÊN TỔNG TÍN CHỈ
+        if (tongTinChi > 0 && hocKyHienTai) {
+            const DON_GIA_TIN_CHI = 800000; // Bạn có thể thay đổi đơn giá ở đây (800k/tín)
+            const soTienMoi = tongTinChi * DON_GIA_TIN_CHI;
+
+            const [[existingTuition]] = await conn.query(
+                "SELECT * FROM hoc_phi WHERE ma_sinh_vien = ? AND hoc_ky = ?",
+                [MSSV, hocKyHienTai]
+            );
+
+            if (existingTuition) {
+                // Đã tồn tại công nợ trong kỳ này -> Cộng dồn tiền và chuyển thành Chưa đóng
+                await conn.query(
+                    "UPDATE hoc_phi SET so_tien = so_tien + ?, trang_thai = 'Chưa đóng' WHERE ma_sinh_vien = ? AND hoc_ky = ?",
+                    [soTienMoi, MSSV, hocKyHienTai]
+                );
+            } else {
+                // Tạo mới công nợ (Hạn nộp mặc định là 14 ngày sau)
+                const hanNop = new Date();
+                hanNop.setDate(hanNop.getDate() + 14);
+
+                await conn.query(
+                    "INSERT INTO hoc_phi (ma_sinh_vien, so_tien, han_nop, trang_thai, hoc_ky) VALUES (?, ?, ?, 'Chưa đóng', ?)",
+                    [MSSV, soTienMoi, hanNop, hocKyHienTai]
+                );
+            }
+        }
+
+        await conn.commit();
+        res.json({ success: true, message: `Đăng ký thành công ${cart.length} môn học! Tổng số tín chỉ là ${tongTinChi}. Vui lòng hoàn tất đóng học phí để giữ chỗ.` });
+
+    } catch (err) {
+        await conn.rollback();
+        res.status(400).json({ message: err.message || 'Lỗi hệ thống khi đăng ký.' });
+    } finally { conn.release(); }
 });
 
 // 5. API Hủy môn
 // Đặt đoạn này ngay phía trước API Hủy môn để tránh lỗi trùng route
 app.delete('/api/enrollment/phases/:id', async (req, res) => {
-  try {
-    // Chỉ xóa duy nhất trong bảng dot_dangky, không can thiệp bất cứ bảng nào khác
-    await db.promise().query(
-      'DELETE FROM dot_dangky WHERE MaDot = ?',
-      [req.params.id]
-    );
+    try {
+        // Chỉ xóa duy nhất trong bảng dot_dangky, không can thiệp bất cứ bảng nào khác
+        await db.promise().query(
+            'DELETE FROM dot_dangky WHERE MaDot = ?',
+            [req.params.id]
+        );
 
-    res.json({ success: true, message: 'Đã xóa đợt đăng ký thành công!' }); 
-  } catch (err) {
-    console.error("Lỗi khi xóa đợt đăng ký:", err);
-    res.status(500).json({ message: 'Lỗi xóa đợt đăng ký', error: err.message });
-  }
+        res.json({ success: true, message: 'Đã xóa đợt đăng ký thành công!' });
+    } catch (err) {
+        console.error("Lỗi khi xóa đợt đăng ký:", err);
+        res.status(500).json({ message: 'Lỗi xóa đợt đăng ký', error: err.message });
+    }
 });
 app.delete('/api/enrollment/:mssv/:maLhp', async (req, res) => {
-  const mssv = String(req.params.mssv || '').trim();
-  const maLhp = String(req.params.maLhp || '').trim();
-  const conn = await db.promise().getConnection();
-  try {
-    await conn.beginTransaction();
+    const mssv = String(req.params.mssv || '').trim();
+    const maLhp = String(req.params.maLhp || '').trim();
+    const conn = await db.promise().getConnection();
+    try {
+        await conn.beginTransaction();
 
-    // Lấy đăng ký hiện tại kèm HocKy/NamHoc của lớp học phần để xác định đợt tương ứng
-    // Dùng TRIM() ở cả 2 vế vì dữ liệu MSSV/MaLopHocPhan trong DB có thể dính khoảng trắng thừa
-    // (giống các query khác trong file này đã phải xử lý, ví dụ NienKhoa).
-    const [[dk]] = await conn.query(
-      `SELECT dk.MaDangKy, dk.TrangThai, lhp.NamHoc
+        // Lấy đăng ký hiện tại kèm HocKy/NamHoc của lớp học phần để xác định đợt tương ứng
+        // Dùng TRIM() ở cả 2 vế vì dữ liệu MSSV/MaLopHocPhan trong DB có thể dính khoảng trắng thừa
+        // (giống các query khác trong file này đã phải xử lý, ví dụ NienKhoa).
+        const [[dk]] = await conn.query(
+            `SELECT dk.MaDangKy, dk.TrangThai, lhp.NamHoc
        FROM dangky_hocphan dk
        JOIN lophocphan lhp ON TRIM(dk.MaLopHocPhan) = TRIM(lhp.MaLopHocPhan)
        WHERE TRIM(dk.MSSV) = TRIM(?) AND TRIM(dk.MaLopHocPhan) = TRIM(?)
        ORDER BY dk.MaDangKy DESC LIMIT 1 FOR UPDATE`,
-      [mssv, maLhp]
-    );
-    if (!dk) throw new Error('Không tìm thấy đăng ký của bạn cho lớp học phần này.');
+            [mssv, maLhp]
+        );
+        if (!dk) throw new Error('Không tìm thấy đăng ký của bạn cho lớp học phần này.');
 
-    // Chỉ được tự xóa khi còn "Chờ đóng tiền". Đã đóng tiền hoặc đã hủy/từ chối thì không cho xóa nữa.
-    if (dk.TrangThai !== 'Chờ đóng tiền') {
-      throw new Error('Học phần này đã đóng tiền hoặc đã bị hủy, không thể tự xóa.');
+        // Chỉ được tự xóa khi còn "Chờ đóng tiền". Đã đóng tiền hoặc đã hủy/từ chối thì không cho xóa nữa.
+        if (dk.TrangThai !== 'Chờ đóng tiền') {
+            throw new Error('Học phần này đã đóng tiền hoặc đã bị hủy, không thể tự xóa.');
+        }
+
+        // Chỉ được xóa khi đợt đăng ký tương ứng (theo niên khóa của SV) còn đang "Mở".
+        const [[studentCohort]] = await conn.query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE TRIM(s.MSSV) = TRIM(?)`,
+            [mssv]
+        );
+        const phaseId = await getOpenPhaseId(conn, dk.NamHoc, studentCohort?.NienKhoa);
+        if (!phaseId) {
+            throw new Error('Đợt đăng ký đã đóng, không thể sửa/xóa học phần đã đăng ký nữa.');
+        }
+
+        await conn.query(`DELETE FROM dangky_hocphan WHERE TRIM(MSSV) = TRIM(?) AND TRIM(MaLopHocPhan) = TRIM(?)`, [mssv, maLhp]);
+        await conn.query(`DELETE FROM diem WHERE TRIM(MSSV) = TRIM(?) AND TRIM(MaLopHocPhan) = TRIM(?)`, [mssv, maLhp]);
+
+        await conn.commit();
+        res.json({ success: true, message: 'Đã hủy đăng ký môn học.' });
+    } catch (err) {
+        await conn.rollback();
+        res.status(400).json({ message: err.message || 'Lỗi hủy môn!' });
+    } finally {
+        conn.release();
     }
-
-    // Chỉ được xóa khi đợt đăng ký tương ứng (theo niên khóa của SV) còn đang "Mở".
-    const [[studentCohort]] = await conn.query(
-      `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE TRIM(s.MSSV) = TRIM(?)`,
-      [mssv]
-    );
-    const phaseId = await getOpenPhaseId(conn, dk.NamHoc, studentCohort?.NienKhoa);
-    if (!phaseId) {
-      throw new Error('Đợt đăng ký đã đóng, không thể sửa/xóa học phần đã đăng ký nữa.');
-    }
-
-    await conn.query(`DELETE FROM dangky_hocphan WHERE TRIM(MSSV) = TRIM(?) AND TRIM(MaLopHocPhan) = TRIM(?)`, [mssv, maLhp]);
-    await conn.query(`DELETE FROM diem WHERE TRIM(MSSV) = TRIM(?) AND TRIM(MaLopHocPhan) = TRIM(?)`, [mssv, maLhp]);
-
-    await conn.commit();
-    res.json({ success: true, message: 'Đã hủy đăng ký môn học.' });
-  } catch (err) {
-    await conn.rollback();
-    res.status(400).json({ message: err.message || 'Lỗi hủy môn!' });
-  } finally {
-    conn.release();
-  }
 });
 
 // ------------------------------------------------------------------
@@ -2136,63 +2137,63 @@ app.delete('/api/enrollment/:mssv/:maLhp', async (req, res) => {
 // 6. Xác nhận sinh viên ĐÃ ĐÓNG TIỀN -> commit chính thức (tạo bản ghi `diem`
 //    để lịch học xuất hiện trên thời khóa biểu của sinh viên).
 app.post('/api/enrollment/:mssv/:maLhp/xac-nhan-thanh-toan', async (req, res) => {
-  const { mssv, maLhp } = req.params;
-  const conn = await db.promise().getConnection();
-  try {
-    await conn.beginTransaction();
+    const { mssv, maLhp } = req.params;
+    const conn = await db.promise().getConnection();
+    try {
+        await conn.beginTransaction();
 
-    const [[dk]] = await conn.query(
-      `SELECT MaDangKy, HocKy, TrangThai FROM dangky_hocphan WHERE MSSV = ? AND MaLopHocPhan = ? ORDER BY MaDangKy DESC LIMIT 1 FOR UPDATE`,
-      [mssv, maLhp]
-    );
-    if (!dk) throw new Error('Không tìm thấy đăng ký của sinh viên cho lớp học phần này.');
-    if (dk.TrangThai === 'Đã hủy' || dk.TrangThai === 'Từ chối' || dk.TrangThai === 'Da huy' || dk.TrangThai === 'Tu choi') {
-      throw new Error('Đăng ký này đã bị hủy, không thể xác nhận đóng tiền.');
-    }
+        const [[dk]] = await conn.query(
+            `SELECT MaDangKy, HocKy, TrangThai FROM dangky_hocphan WHERE MSSV = ? AND MaLopHocPhan = ? ORDER BY MaDangKy DESC LIMIT 1 FOR UPDATE`,
+            [mssv, maLhp]
+        );
+        if (!dk) throw new Error('Không tìm thấy đăng ký của sinh viên cho lớp học phần này.');
+        if (dk.TrangThai === 'Đã hủy' || dk.TrangThai === 'Từ chối' || dk.TrangThai === 'Da huy' || dk.TrangThai === 'Tu choi') {
+            throw new Error('Đăng ký này đã bị hủy, không thể xác nhận đóng tiền.');
+        }
 
-    await conn.query(
-      `UPDATE dangky_hocphan SET TrangThai = 'Đã đóng tiền', NgayThanhToan = NOW() WHERE MaDangKy = ?`,
-      [dk.MaDangKy]
-    );
-    await conn.query(
-      `INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)`,
-      [mssv, maLhp, dk.HocKy]
-    );
+        await conn.query(
+            `UPDATE dangky_hocphan SET TrangThai = 'Đã đóng tiền', NgayThanhToan = NOW() WHERE MaDangKy = ?`,
+            [dk.MaDangKy]
+        );
+        await conn.query(
+            `INSERT IGNORE INTO diem (MSSV, MaLopHocPhan, HocKy) VALUES (?, ?, ?)`,
+            [mssv, maLhp, dk.HocKy]
+        );
 
-    await conn.commit();
-    res.json({ success: true, message: 'Xác nhận đóng học phí thành công! Lịch học đã được kích hoạt.' });
-  } catch (err) {
-    await conn.rollback();
-    res.status(400).json({ message: err.message || 'Lỗi xác nhận đóng học phí.' });
-  } finally { conn.release(); }
+        await conn.commit();
+        res.json({ success: true, message: 'Xác nhận đóng học phí thành công! Lịch học đã được kích hoạt.' });
+    } catch (err) {
+        await conn.rollback();
+        res.status(400).json({ message: err.message || 'Lỗi xác nhận đóng học phí.' });
+    } finally { conn.release(); }
 });
 
 // 7. Từ chối / hủy do sinh viên không đóng tiền (dùng thủ công hoặc bởi job tự động)
 app.post('/api/enrollment/:mssv/:maLhp/tu-choi-thanh-toan', (req, res) => {
-  executeUpdate(
-    `UPDATE dangky_hocphan SET TrangThai = 'Đã hủy' WHERE MSSV = ? AND MaLopHocPhan = ? AND TrangThai = 'Chờ đóng tiền'`,
-    [req.params.mssv, req.params.maLhp], res,
-    'Đã hủy đăng ký do chưa đóng học phí.',
-    'Lỗi hủy đăng ký!'
-  );
+    executeUpdate(
+        `UPDATE dangky_hocphan SET TrangThai = 'Đã hủy' WHERE MSSV = ? AND MaLopHocPhan = ? AND TrangThai = 'Chờ đóng tiền'`,
+        [req.params.mssv, req.params.maLhp], res,
+        'Đã hủy đăng ký do chưa đóng học phí.',
+        'Lỗi hủy đăng ký!'
+    );
 });
 
 // 8. Khi một đợt đăng ký bị đóng: tự động hủy mọi đăng ký còn "Chờ đóng tiền"
 //    thuộc đợt đó (không hoàn thành nghĩa vụ học phí trong thời hạn).
 app.post('/api/enrollment/phases/:id/auto-huy-qua-han', (req, res) => {
-  executeUpdate(
-    `UPDATE dangky_hocphan SET TrangThai = 'Đã hủy' WHERE MaDot = ? AND TrangThai = 'Chờ đóng tiền'`,
-    [req.params.id], res,
-    'Đã tự động hủy các đăng ký chưa đóng học phí của đợt này.',
-    'Lỗi hủy tự động!'
-  );
+    executeUpdate(
+        `UPDATE dangky_hocphan SET TrangThai = 'Đã hủy' WHERE MaDot = ? AND TrangThai = 'Chờ đóng tiền'`,
+        [req.params.id], res,
+        'Đã tự động hủy các đăng ký chưa đóng học phí của đợt này.',
+        'Lỗi hủy tự động!'
+    );
 });
 
 // 9. THỐNG KÊ CHO ADMIN: theo từng lớp học phần — tổng số đăng ký thành công,
 //    số đã đóng tiền, số đang chờ đóng tiền.
 app.get('/api/enrollment/thong-ke-lop-hoc-phan', async (req, res) => {
-  try {
-    const [rows] = await db.promise().query(`
+    try {
+        const [rows] = await db.promise().query(`
       SELECT
         lhp.MaLopHocPhan,
         mh.TenMonHoc,
@@ -2208,17 +2209,17 @@ app.get('/api/enrollment/thong-ke-lop-hoc-phan', async (req, res) => {
       GROUP BY lhp.MaLopHocPhan, mh.TenMonHoc, lhp.HocKy, lhp.NamHoc, lhp.SoLuongToiDa
       ORDER BY lhp.NamHoc DESC, lhp.HocKy, mh.TenMonHoc
     `);
-    res.json(rows);
-  } catch (err) {
-    console.error('GET /api/enrollment/thong-ke-lop-hoc-phan error:', err);
-    res.status(500).json({ message: 'Lỗi lấy thống kê đăng ký học phần!' });
-  }
+        res.json(rows);
+    } catch (err) {
+        console.error('GET /api/enrollment/thong-ke-lop-hoc-phan error:', err);
+        res.status(500).json({ message: 'Lỗi lấy thống kê đăng ký học phần!' });
+    }
 });
 
 // 10. Thống kê giới hạn trong 1 đợt đăng ký cụ thể (dựa vào MaDot đã gắn khi đăng ký)
 app.get('/api/enrollment/phases/:id/thong-ke', async (req, res) => {
-  try {
-    const [rows] = await db.promise().query(`
+    try {
+        const [rows] = await db.promise().query(`
       SELECT
         lhp.MaLopHocPhan,
         mh.TenMonHoc,
@@ -2232,11 +2233,11 @@ app.get('/api/enrollment/phases/:id/thong-ke', async (req, res) => {
       GROUP BY lhp.MaLopHocPhan, mh.TenMonHoc
       ORDER BY mh.TenMonHoc
     `, [req.params.id]);
-    res.json(rows);
-  } catch (err) {
-    console.error('GET /api/enrollment/phases/:id/thong-ke error:', err);
-    res.status(500).json({ message: 'Lỗi lấy thống kê đợt đăng ký!' });
-  }
+        res.json(rows);
+    } catch (err) {
+        console.error('GET /api/enrollment/phases/:id/thong-ke error:', err);
+        res.status(500).json({ message: 'Lỗi lấy thống kê đợt đăng ký!' });
+    }
 });
 
 // ------------------------------------------------------------------
@@ -2264,152 +2265,152 @@ app.get('/api/enrollment/phases', async (req, res) => {
 
 // 7. Tạo mới một đợt đăng ký (CHÈN DỮ LIỆU vào dot_dangky)
 app.post('/api/enrollment/phases', async (req, res) => {
-  const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
 
-  if (!TenDot || !NgayMo || !NgayDong) {
-    return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
-  }
-  if (new Date(NgayDong) <= new Date(NgayMo)) {
-    return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
-  }
+    if (!TenDot || !NgayMo || !NgayDong) {
+        return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
+    }
+    if (new Date(NgayDong) <= new Date(NgayMo)) {
+        return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
+    }
 
-  const formatMySQLDateTime = (dateStr) => {
-    if (!dateStr) return null;
-    return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
-  };
+    const formatMySQLDateTime = (dateStr) => {
+        if (!dateStr) return null;
+        return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
+    };
 
-  try {
-    const formattedNgayMo = formatMySQLDateTime(NgayMo);
-    const formattedNgayDong = formatMySQLDateTime(NgayDong);
+    try {
+        const formattedNgayMo = formatMySQLDateTime(NgayMo);
+        const formattedNgayDong = formatMySQLDateTime(NgayDong);
 
-    // "Ngày mở" của form được lưu vào cột thật NgayTao (không có cột NgayMo trong bảng).
-    const [result] = await db.promise().query(
-      `INSERT INTO dot_dangky (TenDot, HocKy, NamHoc, NienKhoa, NgayTao, NgayDong, TrangThai)
+        // "Ngày mở" của form được lưu vào cột thật NgayTao (không có cột NgayMo trong bảng).
+        const [result] = await db.promise().query(
+            `INSERT INTO dot_dangky (TenDot, HocKy, NamHoc, NienKhoa, NgayTao, NgayDong, TrangThai)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [TenDot, HocKy || null, NamHoc || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo']
-    );
+            [TenDot, HocKy || null, NamHoc || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo']
+        );
 
-    const [[newPhase]] = await db.promise().query(
-      `SELECT *, NgayTao AS NgayMo FROM dot_dangky WHERE MaDot = ?`, [result.insertId]
-    );
+        const [[newPhase]] = await db.promise().query(
+            `SELECT *, NgayTao AS NgayMo FROM dot_dangky WHERE MaDot = ?`, [result.insertId]
+        );
 
-    res.status(201).json({ success: true, message: 'Tạo đợt đăng ký thành công!', data: newPhase });
-  } catch (err) {
-    console.error('POST /api/enrollment/phases error:', err);
-    res.status(500).json({ message: 'Lỗi tạo đợt đăng ký!', error: err.message });
-  }
+        res.status(201).json({ success: true, message: 'Tạo đợt đăng ký thành công!', data: newPhase });
+    } catch (err) {
+        console.error('POST /api/enrollment/phases error:', err);
+        res.status(500).json({ message: 'Lỗi tạo đợt đăng ký!', error: err.message });
+    }
 });
 // 8. Cập nhật một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.put('/api/enrollment/phases/:id', async (req, res) => {
-  const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
-  const { id } = req.params;
+    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { id } = req.params;
 
-  if (!TenDot || !NgayMo || !NgayDong) {
-    return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
-  }
-  if (new Date(NgayDong) <= new Date(NgayMo)) {
-    return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
-  }
-
-  // HÀM CHUẨN HÓA ĐỊNH DẠNG NGÀY THÁNG CHO MYSQL
-  const formatMySQLDateTime = (dateStr) => {
-    if (!dateStr) return null;
-    // Chuyển chữ 'T' thành khoảng trắng, bỏ phần đuôi '.000Z' và lấy đúng 19 ký tự đầu (YYYY-MM-DD HH:mm:ss)
-    return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
-  };
-
-  try {
-    const formattedNgayMo = formatMySQLDateTime(NgayMo);
-    const formattedNgayDong = formatMySQLDateTime(NgayDong);
-
-    const [result] = await db.promise().query(
-      `UPDATE dot_dangky
-       SET TenDot = ?, HocKy = ?, NamHoc = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
-       WHERE MaDot = ?`,
-      [TenDot, HocKy || null, NamHoc || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo', id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Không tìm thấy đợt đăng ký cần cập nhật.' });
+    if (!TenDot || !NgayMo || !NgayDong) {
+        return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
+    }
+    if (new Date(NgayDong) <= new Date(NgayMo)) {
+        return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
     }
 
-    res.json({ success: true, message: 'Cập nhật đợt đăng ký thành công!' });
-  } catch (err) {
-    console.error('PUT /api/enrollment/phases/:id error:', err);
-    res.status(500).json({ message: 'Lỗi cập nhật đợt đăng ký!', error: err.message });
-  }
+    // HÀM CHUẨN HÓA ĐỊNH DẠNG NGÀY THÁNG CHO MYSQL
+    const formatMySQLDateTime = (dateStr) => {
+        if (!dateStr) return null;
+        // Chuyển chữ 'T' thành khoảng trắng, bỏ phần đuôi '.000Z' và lấy đúng 19 ký tự đầu (YYYY-MM-DD HH:mm:ss)
+        return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
+    };
+
+    try {
+        const formattedNgayMo = formatMySQLDateTime(NgayMo);
+        const formattedNgayDong = formatMySQLDateTime(NgayDong);
+
+        const [result] = await db.promise().query(
+            `UPDATE dot_dangky
+       SET TenDot = ?, HocKy = ?, NamHoc = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
+       WHERE MaDot = ?`,
+            [TenDot, HocKy || null, NamHoc || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo', id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy đợt đăng ký cần cập nhật.' });
+        }
+
+        res.json({ success: true, message: 'Cập nhật đợt đăng ký thành công!' });
+    } catch (err) {
+        console.error('PUT /api/enrollment/phases/:id error:', err);
+        res.status(500).json({ message: 'Lỗi cập nhật đợt đăng ký!', error: err.message });
+    }
 });
 
 // 9. Đóng một đợt đăng ký
 // 9. Đóng một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.post('/api/enrollment/phases/:id/close', async (req, res) => {
-  try {
-    // Chỉ cập nhật duy nhất trạng thái đợt đăng ký trong bảng dot_dangky
-    await db.promise().query(
-      `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE MaDot = ?`, 
-      [req.params.id]
-    );
+    try {
+        // Chỉ cập nhật duy nhất trạng thái đợt đăng ký trong bảng dot_dangky
+        await db.promise().query(
+            `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE MaDot = ?`,
+            [req.params.id]
+        );
 
-    res.json({
-      success: true,
-      message: `Đã đóng đợt đăng ký thành công!`
-    });
-  } catch (err) {
-    console.error('POST /api/enrollment/phases/:id/close error:', err);
-    res.status(500).json({ message: 'Lỗi đóng đợt đăng ký', error: err.message });
-  }
+        res.json({
+            success: true,
+            message: `Đã đóng đợt đăng ký thành công!`
+        });
+    } catch (err) {
+        console.error('POST /api/enrollment/phases/:id/close error:', err);
+        res.status(500).json({ message: 'Lỗi đóng đợt đăng ký', error: err.message });
+    }
 });
 
 // 10. Xóa một đợt đăng ký
 // API cho Admin xác nhận thanh toán
 // ==================== [ADMIN] XÁC NHẬN HỌC PHÍ & CHỐT LỊCH ====================
 app.post('/api/admin/confirm-tuition', async (req, res) => {
-  const { MSSV, MaLopHocPhan } = req.body;
+    const { MSSV, MaLopHocPhan } = req.body;
 
-  if (!MSSV || !MaLopHocPhan) {
-    return res.status(400).json({ message: 'Thiếu thông tin MSSV hoặc Mã lớp học phần.' });
-  }
-
-  const conn = await db.promise().getConnection();
-  try {
-    await conn.beginTransaction();
-
-    // 1. Chuyển trạng thái trong bảng Đăng ký thành "Đã đóng tiền"
-    const [updateResult] = await conn.query(
-      `UPDATE dangky_hocphan SET TrangThai = 'Đã đóng tiền' WHERE MSSV = ? AND MaLopHocPhan = ?`,
-      [MSSV, MaLopHocPhan]
-    );
-
-    if (updateResult.affectedRows === 0) {
-      throw new Error('Không tìm thấy đăng ký này hoặc đã được duyệt từ trước.');
+    if (!MSSV || !MaLopHocPhan) {
+        return res.status(400).json({ message: 'Thiếu thông tin MSSV hoặc Mã lớp học phần.' });
     }
 
-    // 2. Lấy thông tin Học kỳ để chèn vào bảng Điểm
-    const [[lhp]] = await conn.query(
-      `SELECT HocKy FROM lophocphan WHERE MaLopHocPhan = ?`, 
-      [MaLopHocPhan]
-    );
+    const conn = await db.promise().getConnection();
+    try {
+        await conn.beginTransaction();
 
-    // 3. Đưa sinh viên vào bảng Điểm (Chốt danh sách lớp chính thức)
-    await conn.query(
-      `INSERT INTO diem (MSSV, MaLopHocPhan, HocKy, ChuyenCan, GiuaKy, CuoiKy, DiemTong) 
+        // 1. Chuyển trạng thái trong bảng Đăng ký thành "Đã đóng tiền"
+        const [updateResult] = await conn.query(
+            `UPDATE dangky_hocphan SET TrangThai = 'Đã đóng tiền' WHERE MSSV = ? AND MaLopHocPhan = ?`,
+            [MSSV, MaLopHocPhan]
+        );
+
+        if (updateResult.affectedRows === 0) {
+            throw new Error('Không tìm thấy đăng ký này hoặc đã được duyệt từ trước.');
+        }
+
+        // 2. Lấy thông tin Học kỳ để chèn vào bảng Điểm
+        const [[lhp]] = await conn.query(
+            `SELECT HocKy FROM lophocphan WHERE MaLopHocPhan = ?`,
+            [MaLopHocPhan]
+        );
+
+        // 3. Đưa sinh viên vào bảng Điểm (Chốt danh sách lớp chính thức)
+        await conn.query(
+            `INSERT INTO diem (MSSV, MaLopHocPhan, HocKy, ChuyenCan, GiuaKy, CuoiKy, DiemTong) 
        VALUES (?, ?, ?, NULL, NULL, NULL, NULL)
        ON DUPLICATE KEY UPDATE MSSV=MSSV`, // Tránh lỗi crash nếu lỡ click 2 lần
-      [MSSV, MaLopHocPhan, lhp.HocKy]
-    );
+            [MSSV, MaLopHocPhan, lhp.HocKy]
+        );
 
-    // 4. (Tùy chọn) Cập nhật lại trạng thái trong bảng HocPhi thành 'Đã đóng'
-    // Nếu bạn thu tiền theo từng môn. Nếu thu gom 1 cục theo kỳ thì Admin sẽ update bảng HocPhi riêng.
+        // 4. (Tùy chọn) Cập nhật lại trạng thái trong bảng HocPhi thành 'Đã đóng'
+        // Nếu bạn thu tiền theo từng môn. Nếu thu gom 1 cục theo kỳ thì Admin sẽ update bảng HocPhi riêng.
 
-    await conn.commit();
-    res.json({ success: true, message: 'Xác nhận học phí thành công, môn học đã vào lịch!' });
+        await conn.commit();
+        res.json({ success: true, message: 'Xác nhận học phí thành công, môn học đã vào lịch!' });
 
-  } catch (err) {
-    await conn.rollback();
-    res.status(400).json({ message: err.message || 'Lỗi hệ thống khi xác nhận.' });
-  } finally {
-    conn.release();
-  }
+    } catch (err) {
+        await conn.rollback();
+        res.status(400).json({ message: err.message || 'Lỗi hệ thống khi xác nhận.' });
+    } finally {
+        conn.release();
+    }
 });
 
 // API lấy lịch học chính thức (chỉ lấy môn đã đóng tiền)
@@ -2421,7 +2422,7 @@ app.post('/api/admin/confirm-tuition', async (req, res) => {
 // Sinh viên xem danh sách học phí của mình
 app.get('/student/tuitions/:maSinhVien', (req, res) => {
     const { maSinhVien } = req.params;
-    
+
     const query = `
         SELECT 
             t.id,
@@ -2440,10 +2441,10 @@ app.get('/student/tuitions/:maSinhVien', (req, res) => {
     db.query(query, [maSinhVien], (err, results) => {
         if (err) {
             console.error("Lỗi lấy học phí:", err);
-            return res.status(500).json({ 
-                success: false, 
-                message: "Lỗi lấy học phí của sinh viên!", 
-                error: err.message 
+            return res.status(500).json({
+                success: false,
+                message: "Lỗi lấy học phí của sinh viên!",
+                error: err.message
             });
         }
         res.json(results);
@@ -2474,7 +2475,7 @@ app.get('/api/schedule-configs', async (req, res) => {
         const promiseRooms = new Promise((resolve, reject) => { db.query("SELECT MaPhong FROM phonghoc WHERE TrangThai = 'Hoạt động'", (err, results) => { if (err) reject(err); else resolve(results.map(r => r.MaPhong)); }); });
         const promisePeriods = new Promise((resolve, reject) => { db.query("SELECT Tiet, DATE_FORMAT(GioBatDau, '%H:%i') as start, DATE_FORMAT(GioKetThuc, '%H:%i') as end FROM tiethoc ORDER BY Tiet", (err, results) => { if (err) reject(err); else { const periods = {}; results.forEach(r => { periods[r.Tiet] = { start: r.start, end: r.end }; }); resolve(periods); } }); });
         const [roomList, periodTimes] = await Promise.all([promiseRooms, promisePeriods]);
-        res.json({ success: true, rooms: roomList, periods: periodTimes, tanSuat: [ { value: 1, label: '1 buổi / tuần' }, { value: 2, label: '2 buổi / tuần' } ], thuList: [ { value: 1, label: 'Thứ 2' }, { value: 2, label: 'Thứ 3' }, { value: 3, label: 'Thứ 4' }, { value: 4, label: 'Thứ 5' }, { value: 5, label: 'Thứ 6' }, { value: 6, label: 'Thứ 7' }, { value: 0, label: 'Chủ Nhật' } ] });
+        res.json({ success: true, rooms: roomList, periods: periodTimes, tanSuat: [{ value: 1, label: '1 buổi / tuần' }, { value: 2, label: '2 buổi / tuần' }], thuList: [{ value: 1, label: 'Thứ 2' }, { value: 2, label: 'Thứ 3' }, { value: 3, label: 'Thứ 4' }, { value: 4, label: 'Thứ 5' }, { value: 5, label: 'Thứ 6' }, { value: 6, label: 'Thứ 7' }, { value: 0, label: 'Chủ Nhật' }] });
     } catch (error) { res.status(500).json({ success: false, message: 'Lỗi tải cấu hình lịch học từ DB!', error: error.message || error }); }
 });
 
@@ -2806,12 +2807,12 @@ app.get('/api/attendance/course/:maLhp/date/:ngay', async (req, res) => {
         const { maLhp, ngay } = req.params;
         const lanDiemDanh = req.query.lan;
         let targetLan = lanDiemDanh;
-        
+
         if (!targetLan) {
             const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [maLhp, ngay]);
             targetLan = (lich.length > 0 && lich[0].LanDiemDanhHienTai > 0) ? lich[0].LanDiemDanhHienTai : 1;
         }
-        
+
         executeQuery('SELECT * FROM diemdanh WHERE MaLopHocPhan = ? AND DATE(NgayDiemDanh) = ? AND LanDiemDanh = ?', [maLhp, ngay, targetLan], res, 'Lỗi!');
     } catch (error) {
         res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -2822,7 +2823,7 @@ app.post('/api/attendance/course/:maLhp/date/:ngay', async (req, res) => {
     const { maLhp, ngay } = req.params; const attendanceList = req.body.attendance;
     const lanDiemDanh = req.query.lan;
     if (!Array.isArray(attendanceList) || attendanceList.length === 0) return res.status(400).json({ success: false });
-    
+
     let targetLan = lanDiemDanh;
     if (!targetLan) {
         const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [maLhp, ngay]);
@@ -2884,10 +2885,10 @@ app.get('/api/attendance/course/:id/session/:date', async (req, res) => {
             [id, date]
         );
         if (rows.length === 0) return res.json({ status: 'PENDING', timeOpened: null, elapsedSeconds: 0 });
-        res.json({ 
-            status: rows[0].TrangThaiDiemDanh || 'PENDING', 
+        res.json({
+            status: rows[0].TrangThaiDiemDanh || 'PENDING',
             timeOpened: rows[0].ThoiGianMoDiemDanh,
-            elapsedSeconds: rows[0].ElapsedSeconds || 0 
+            elapsedSeconds: rows[0].ElapsedSeconds || 0
         });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -2900,13 +2901,13 @@ app.post('/api/attendance/course/:id/open/:date', async (req, res) => {
         const { id, date } = req.params;
         const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [id, date]);
         let currentLan = (lich.length > 0 && lich[0].LanDiemDanhHienTai) ? lich[0].LanDiemDanhHienTai : 0;
-        
+
         // Đảm bảo không trùng với LanDiemDanh đã có trong bảng diemdanh
         const [maxDiemDanh] = await db.promise().query("SELECT MAX(LanDiemDanh) as maxLan FROM diemdanh WHERE MaLopHocPhan = ? AND NgayDiemDanh = ?", [id, date]);
         const maxLan = maxDiemDanh[0]?.maxLan || 0;
-        
+
         currentLan = Math.max(currentLan, maxLan) + 1;
-        
+
         await db.promise().query(
             "UPDATE lichhoc SET TrangThaiDiemDanh = 'OPEN', ThoiGianMoDiemDanh = NOW(), LanDiemDanhHienTai = ? WHERE MaLopHocPhan = ? AND NgayHoc = ?",
             [currentLan, id, date]
@@ -2925,26 +2926,26 @@ app.post('/api/attendance/course/:id/close/:date', async (req, res) => {
             "UPDATE lichhoc SET TrangThaiDiemDanh = 'CLOSED' WHERE MaLopHocPhan = ? AND NgayHoc = ?",
             [id, date]
         );
-        
+
         // Lấy ds sv của lớp
         const [enrolled] = await db.promise().query(
             "SELECT DISTINCT MSSV FROM diem WHERE MaLopHocPhan = ?",
             [id]
         );
-        
+
         if (enrolled.length > 0) {
             const mssvList = enrolled.map(s => s.MSSV);
-            
+
             const [lich] = await db.promise().query("SELECT LanDiemDanhHienTai FROM lichhoc WHERE MaLopHocPhan = ? AND NgayHoc = ?", [id, date]);
             const targetLan = (lich.length > 0 && lich[0].LanDiemDanhHienTai) ? lich[0].LanDiemDanhHienTai : 1;
-            
+
             // Tìm những sv đã có mặt
             const [attended] = await db.promise().query(
                 "SELECT MSSV FROM diemdanh WHERE MaLopHocPhan = ? AND NgayDiemDanh = ? AND LanDiemDanh = ?",
                 [id, date, targetLan]
             );
             const attendedSet = new Set(attended.map(a => a.MSSV));
-            
+
             for (let mssv of mssvList) {
                 if (!attendedSet.has(mssv)) {
                     await db.promise().query(
@@ -3170,13 +3171,13 @@ app.get('/api/attendance/percentage/:mssv', (req, res) => {
     db.query(query, [req.params.mssv, req.params.mssv], (err, results) => {
         if (err) return res.status(500).json({ success: false });
         const present = results.filter(r => r.TrangThai === 'Có mặt').length;
-        res.json({ 
-            success: true, 
-            totalSessions: results.length, 
-            present, 
-            absent: results.filter(r => r.TrangThai === 'Vắng mặt').length, 
-            excused: results.filter(r => r.TrangThai === 'Có phép').length, 
-            percentage: results.length > 0 ? parseFloat(((present / results.length) * 100).toFixed(2)) : 0 
+        res.json({
+            success: true,
+            totalSessions: results.length,
+            present,
+            absent: results.filter(r => r.TrangThai === 'Vắng mặt').length,
+            excused: results.filter(r => r.TrangThai === 'Có phép').length,
+            percentage: results.length > 0 ? parseFloat(((present / results.length) * 100).toFixed(2)) : 0
         });
     });
 });
@@ -3442,16 +3443,16 @@ app.post('/api/support/teacher', (req, res) => {
 // đợt đăng ký (EnrollmentPhaseManagement.jsx) hiển thị đúng trạng thái, không cần admin
 // phải nhớ bấm nút "Đóng" thủ công.
 async function autoCloseExpiredPhases() {
-  try {
-    const [result] = await db.promise().query(
-      `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE TrangThai = 'Mo' AND NgayDong < NOW()`
-    );
-    if (result.affectedRows > 0) {
-      console.log(`[Auto-Close] Đã tự động đóng ${result.affectedRows} đợt đăng ký quá hạn.`);
+    try {
+        const [result] = await db.promise().query(
+            `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE TrangThai = 'Mo' AND NgayDong < NOW()`
+        );
+        if (result.affectedRows > 0) {
+            console.log(`[Auto-Close] Đã tự động đóng ${result.affectedRows} đợt đăng ký quá hạn.`);
+        }
+    } catch (err) {
+        console.error('[Auto-Close] Lỗi khi tự động đóng đợt đăng ký quá hạn:', err.message);
     }
-  } catch (err) {
-    console.error('[Auto-Close] Lỗi khi tự động đóng đợt đăng ký quá hạn:', err.message);
-  }
 }
 
 //=============================================================================
