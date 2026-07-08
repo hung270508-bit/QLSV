@@ -179,10 +179,24 @@ function ExamManagement() {
         }
 
         const tongSoCauVal = Number(formData.tong_so_cau);
-        if (tongSoCauVal < 20 || !Number.isInteger(tongSoCauVal)) {
-            errors.tong_so_cau = 'Tổng số câu hỏi phải là số nguyên và lớn hơn hoặc bằng 20!';
-        } else if (selectedBankInfo && tongSoCauVal > maxAvailableQuestions) {
-            errors.tong_so_cau = `Tổng số câu hỏi (${tongSoCauVal}) vượt quá số lượng câu hỏi có trong ngân hàng đề (${maxAvailableQuestions})!`;
+        
+        if (selectedBankInfo) {
+            if (maxAvailableQuestions >= 20) {
+                if (tongSoCauVal < 20 || !Number.isInteger(tongSoCauVal)) {
+                    errors.tong_so_cau = 'Tổng số câu hỏi phải là số nguyên và tối thiểu từ 20 câu trở lên!';
+                } else if (tongSoCauVal > maxAvailableQuestions) {
+                    errors.tong_so_cau = `Tổng số câu hỏi (${tongSoCauVal}) vượt quá số lượng câu hỏi có trong ngân hàng đề (${maxAvailableQuestions})!`;
+                }
+            } else {
+                // Ngân hàng có dưới 20 câu
+                if (tongSoCauVal !== maxAvailableQuestions) {
+                    errors.tong_so_cau = `Ngân hàng đề chỉ có ${maxAvailableQuestions} câu (chưa đủ 20). Bạn phải chọn toàn bộ ${maxAvailableQuestions} câu để tạo đề!`;
+                }
+            }
+        } else {
+            if (tongSoCauVal < 20 || !Number.isInteger(tongSoCauVal)) {
+                errors.tong_so_cau = 'Tổng số câu hỏi phải là số nguyên và lớn hơn hoặc bằng 20!';
+            }
         }
 
         const thoiGianVal = Number(formData.thoi_gian_thi_phut);

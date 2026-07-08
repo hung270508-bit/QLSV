@@ -1348,16 +1348,6 @@ function QuestionBankManagement() {
                                                             <span>Chỉnh sửa</span>
                                                         </button>
 
-                                                        {q.trang_thai !== 'REJECTED' && q.trang_thai !== 'APPROVED' && (
-                                                            <button
-                                                                onClick={() => handleUpdateStatus(q.id, 'REJECTED')}
-                                                                title="Từ chối câu hỏi"
-                                                                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-xl text-xs transition-all border border-amber-200 w-full md:w-32"
-                                                            >
-                                                                <X className="w-3.5 h-3.5" />
-                                                                <span>Từ chối</span>
-                                                            </button>
-                                                        )}
 
                                                         <button
                                                             onClick={() => handleDeleteQuestion(q)}
