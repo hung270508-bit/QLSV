@@ -13,22 +13,23 @@ import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 const statusConfig = {
   'Hoàn thành': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
   'Đã phản hồi': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
-  'Đang xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
+  'Chờ xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
   'Từ chối': { bg: 'bg-gray-100', text: 'text-[#6B7280]', border: 'border-[#E5E7EB]', Icon: X },
 };
 
 function StatusBadge({ status }) {
-  const cfg = statusConfig[status] || { bg: 'bg-[#3B82F6]/10', text: 'text-blue-700', border: 'border-blue-200', Icon: AlertCircle };
+  const displayStatus = status === 'Đang xử lý' ? 'Chờ xử lý' : status;
+  const cfg = statusConfig[displayStatus] || { bg: 'bg-[#3B82F6]/10', text: 'text-blue-700', border: 'border-blue-200', Icon: AlertCircle };
   const { bg, text, border, Icon } = cfg;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${bg} ${text} ${border}`}>
       <Icon className="w-3 h-3" />
-      {status}
+      {displayStatus}
     </span>
   );
 }
 
-function AdminRequests() {
+function AdminRequests({ refreshBadge }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState('All');
@@ -49,6 +50,7 @@ function AdminRequests() {
       setLoading(true);
       const res = await axios.get(`${API_URL}/api/admin/support-requests`);
       setRequests(res.data);
+      if (refreshBadge) refreshBadge();
     } catch (e) {
       console.error(e);
     } finally {
@@ -77,7 +79,7 @@ function AdminRequests() {
   const handleOpenModal = (req, viewOnly = false) => {
     setSelectedReq(req);
     setReplyText(req.PhanHoi || '');
-    setUpdateStatus(req.TrangThai);
+    setUpdateStatus(req.TrangThai === 'Đang xử lý' ? 'Chờ xử lý' : req.TrangThai);
     setReplyErrors({});
     setIsViewOnly(viewOnly);
   };
@@ -87,7 +89,7 @@ function AdminRequests() {
     if (!updateStatus) {
       errors.updateStatus = 'Vui lòng chọn trạng thái';
     }
-    if (updateStatus === 'Đang xử lý') {
+    if (updateStatus === 'Chờ xử lý' || updateStatus === 'Đang xử lý') {
       errors.updateStatus = 'Vui lòng phản hồi';
     } else if (['Đã phản hồi', 'Từ chối'].includes(updateStatus) && !replyText.trim()) {
       errors.replyText = 'Vui lòng nhập nội dung phản hồi';
@@ -180,7 +182,9 @@ function AdminRequests() {
   const filtered = requests.filter(req => {
     if (search && search.length > 0 && search.trim() === '') return false;
     if (filterRole !== 'All' && req.VaiTro !== filterRole) return false;
-    if (filterStatus !== 'All' && req.TrangThai !== filterStatus) return false;
+    if (filterStatus === 'Chờ xử lý') {
+      if (req.TrangThai !== 'Chờ xử lý' && req.TrangThai !== 'Đang xử lý') return false;
+    } else if (filterStatus !== 'All' && req.TrangThai !== filterStatus) return false;
     if (search && !req.TenNguoiGui?.toLowerCase().includes(search.toLowerCase()) &&
       !req.TieuDe?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -257,7 +261,7 @@ function AdminRequests() {
           className="px-3 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
         >
           <option value="All">Tất cả trạng thái</option>
-          <option value="Đang xử lý">Đang xử lý</option>
+          <option value="Chờ xử lý">Chờ xử lý</option>
           <option value="Đã phản hồi">Đã phản hồi</option>
           <option value="Từ chối">Từ chối</option>
         </select>
@@ -356,7 +360,7 @@ function AdminRequests() {
                   <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
                   <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
-                      {req.TrangThai === 'Đang xử lý' ? (
+                      {req.TrangThai === 'Chờ xử lý' || req.TrangThai === 'Đang xử lý' ? (
                         <motion.button
                           whileHover={{ scale: 1.04 }}
                           whileTap={{ scale: 0.96 }}
@@ -475,7 +479,7 @@ function AdminRequests() {
                         }}
                         className={`w-full p-2.5 bg-[#FFFFFF] border rounded-xl outline-none text-sm font-medium text-gray-700 transition-colors ${replyErrors.updateStatus ? 'border-red-400 focus:border-red-400' : 'border-[#E5E7EB] focus:border-blue-400'}`}
                       >
-                        <option value="Đang xử lý">Đang xử lý</option>
+                        <option value="Chờ xử lý">Chờ xử lý</option>
                         <option value="Đã phản hồi">Đã phản hồi</option>
                         <option value="Từ chối">Từ chối</option>
                       </select>
