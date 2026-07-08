@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Building2, GraduationCap, BookOpen, Users, UserCheck,
-  LogOut, ChevronRight, Calendar, FileText, Bell, ClipboardCheck,
+  LogOut, ChevronRight, Calendar, CalendarDays, FileText, Bell, ClipboardCheck,
   UserCircle, MessageSquare, Award, Menu, X, MoreHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,9 +16,11 @@ import GradeManagement from './GradeManagement';
 import ScheduleManagement from './ScheduleManagement';
 import TeachingAssignment from './TeachingAssignment';
 import AnnouncementManagement from './AnnouncementManagement';
+import EnrollmentPhaseManagement from './EnrollmentPhaseManagement';
 import UserAccountManagement from './UserAccountManagement';
 import AdminRequests from './AdminRequests';
 import AdminTrainingPoints from './AdminTrainingPoints';
+import TuitionManagement from './TuitionManagement';
 import API_URL from '../../api';
 import axios from 'axios';
 
@@ -31,11 +33,13 @@ const menuItems = [
   { id: 'giangvien', label: 'Quản lý giảng viên', icon: Users },
   { id: 'diem', label: 'Quản lý điểm', icon: FileText },
   { id: 'lichhoc', label: 'Quản lý lịch học', icon: Calendar },
+  { id: 'phasedangky', label: 'Quản lý đợt đăng ký', icon: CalendarDays },
   { id: 'phancong', label: 'Phân công giảng dạy', icon: ClipboardCheck },
   { id: 'thongbao', label: 'Quản lý thông báo', icon: Bell },
   { id: 'yeucau', label: 'Quản lý yêu cầu', icon: MessageSquare },
   { id: 'diemrenluyen', label: 'Quản lý điểm rèn luyện', icon: Award },
   { id: 'taikhoan', label: 'Quản lý tài khoản', icon: UserCircle },
+  { id: 'tuition', label: 'Quản lý học phí', icon: FileText }
 ];
 
 // Bottom nav shows 4 most-used items + "More" button
@@ -55,11 +59,13 @@ const pageComponents = {
   lophoc: ClassManagement,
   diem: GradeManagement,
   lichhoc: ScheduleManagement,
+  phasedangky: EnrollmentPhaseManagement,
   phancong: TeachingAssignment,
   thongbao: AnnouncementManagement,
   yeucau: AdminRequests,
   diemrenluyen: AdminTrainingPoints,
   taikhoan: UserAccountManagement,
+  tuition: TuitionManagement, // Thêm dòng này vào
 };
 
 function AdminDashboard({ user, onLogout }) {
