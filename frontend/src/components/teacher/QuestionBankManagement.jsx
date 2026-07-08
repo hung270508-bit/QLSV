@@ -183,9 +183,10 @@ function QuestionBankManagement() {
             );
         }
 
-        if (currentSession) {
+        const pendingCount = stagingQuestions.filter(q => q.trang_thai === 'PENDING').length;
+        if (currentSession && pendingCount > 0) {
             return showCustomAlert(
-                `Bạn đang mở và làm việc với Đề #${currentSession.id} (${currentSession.doc_tieu_de || currentSession.tieu_de || 'AI Session'}). Vui lòng hoàn tất kiểm tra, duyệt câu hỏi vào Ngân hàng hoặc bấm nút "Đóng" đề làm việc hiện tại bên dưới trước khi khởi tạo bộ đề mới!`,
+                `Bạn đang mở và làm việc với Đề #${currentSession.id} và còn ${pendingCount} câu chưa xử lý. Vui lòng duyệt câu hỏi vào Ngân hàng, hoặc xóa, hoặc bấm nút "Đóng" đề làm việc hiện tại bên dưới trước khi khởi tạo bộ đề mới!`,
                 '⚠️ Đang mở một đề làm việc'
             );
         }
@@ -975,7 +976,7 @@ function QuestionBankManagement() {
                                 {formErrors.so_cau_yeu_cau ? (
                                     <p className="text-xs text-red-600 font-bold animate-pulse">❌ {formErrors.so_cau_yeu_cau}</p>
                                 ) : (
-                                    <p className="text-xs text-gray-500">AI chia nhỏ tạo đợt 10 câu/lần để đảm bảo chất lượng và không lỗi timeout.</p>
+                                    <p className="text-xs text-gray-500">AI sẽ tự động đọc tài liệu và sinh ra một lần đủ số lượng câu hỏi theo yêu cầu.</p>
                                 )}
                             </div>
 
@@ -1026,12 +1027,12 @@ function QuestionBankManagement() {
                                     {isUploading ? (
                                         <>
                                             <RefreshCw className="w-5 h-5 animate-spin" />
-                                            <span>AI Đang Phân Tích & Tạo 10 Câu Đầu...</span>
+                                            <span>AI Đang Phân Tích & Tạo Câu Hỏi...</span>
                                         </>
                                     ) : (
                                         <>
                                             <Sparkles className="w-5 h-5 text-yellow-300" />
-                                            <span>Bắt Đầu Tạo Câu Hỏi AI (Đợt 1)</span>
+                                            <span>Bắt Đầu Tạo Câu Hỏi AI</span>
                                         </>
                                     )}
                                 </button>

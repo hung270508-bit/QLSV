@@ -28,12 +28,23 @@ function ExamManagement() {
 
     // States Tạo kỳ thi - Cập nhật thêm bank_id
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [autoCount, setAutoCount] = useState(25);
-    const [formData, setFormData] = useState({
+    const initialFormData = {
         ma_lop_hoc_phan: '', ma_mon_hoc: '', bank_id: '', tieu_de: '', thoi_gian_thi_phut: 60,
-        so_cau_de: 10, so_cau_tb: 10, so_cau_kho: 5,
+        tong_so_cau: 30,
+        so_cau_de: 0, so_cau_tb: 0, so_cau_kho: 0,
         thoi_gian_bat_dau: '', thoi_gian_ket_thuc: ''
-    });
+    };
+    const [formData, setFormData] = useState(initialFormData);
+    const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', title: '', onConfirm: null });
+    const [submitErrors, setSubmitErrors] = useState({});
+
+    const openConfirmDialog = (title, message, onConfirm) => {
+        setConfirmDialog({ show: true, title, message, onConfirm });
+    };
+
+    const closeConfirmDialog = () => {
+        setConfirmDialog(prev => ({ ...prev, show: false }));
+    };
 
     // States Lịch sử & Bảng điểm
     const [selectedExamForResults, setSelectedExamForResults] = useState(null);
@@ -73,34 +84,32 @@ function ExamManagement() {
             
             setClasses(currentUser.role === 'admin' ? clsRes.data : clsRes.data.filter(item => item.MaGiangVien === teacherId));
             setSubjects(subRes.data);
-            setBanks(bankRes.data.filter(b => b.trang_thai === 'Approved'));
+            setBanks((bankRes.data?.data || bankRes.data || []).filter(b => b.trang_thai === 'Approved'));
+
         } catch (error) {
             console.error('Error fetching options', error);
         }
     };
 
-    const handleAutoDistributeAI = () => {
-        const n = Math.max(1, Number(autoCount) || 10);
-        const easy = Math.round(n * 0.4);
-        const med = Math.round(n * 0.4);
-        const hard = n - easy - med; 
-        setFormData({ ...formData, so_cau_de: easy, so_cau_tb: med, so_cau_kho: hard });
-        showToast(`⚡ AI đã phân chia: ${easy} Dễ, ${med} TB, ${hard} Khó (Tổng: ${n} câu)`, 'info');
-    };
 
     const handleDeleteExam = async (exam) => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa kỳ thi "${exam.tieu_de}" không? Hành động này không thể hoàn tác.`)) {
-            try {
-                await axios.delete(`${API_URL}/api/ai-exams/exams/${exam.id}`);
-                showToast('Đã xóa kỳ thi thành công!', 'success');
-                fetchExams();
-                if (selectedExamForResults?.id === exam.id) {
-                    setSelectedExamForResults(null);
+        openConfirmDialog(
+            'Xác nhận xóa',
+            `Bạn có chắc chắn muốn xóa kỳ thi "${exam.tieu_de}" không? Hành động này không thể hoàn tác.`,
+            async () => {
+                closeConfirmDialog();
+                try {
+                    await axios.delete(`${API_URL}/api/ai-exams/exams/${exam.id}`);
+                    showToast('Đã xóa kỳ thi thành công!', 'success');
+                    fetchExams();
+                    if (selectedExamForResults?.id === exam.id) {
+                        setSelectedExamForResults(null);
+                    }
+                } catch (error) {
+                    showToast(error.response?.data?.message || 'Lỗi khi xóa kỳ thi', 'error');
                 }
-            } catch (error) {
-                showToast(error.response?.data?.message || 'Lỗi khi xóa kỳ thi', 'error');
             }
-        }
+        );
     };
 
     const handleViewResults = async (exam) => {
@@ -122,13 +131,42 @@ function ExamManagement() {
         }
     };
 
-    const totalConfigQuestions = Number(formData.so_cau_de) + Number(formData.so_cau_tb) + Number(formData.so_cau_kho);
+    const totalConfigQuestions = Number(formData.tong_so_cau);
+    const selectedBankInfo = banks.find(b => String(b.id) === String(formData.bank_id));
+    const maxAvailableQuestions = selectedBankInfo ? selectedBankInfo.tong_so_cau : 0;
+
+    const formatDateDisplay = (dateStr) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        let errors = {};
         
-        if (!formData.ma_mon_hoc || !formData.ma_lop_hoc_phan || !formData.bank_id || !formData.tieu_de || !formData.thoi_gian_bat_dau || !formData.thoi_gian_ket_thuc) {
+        if (!formData.ma_mon_hoc || !formData.ma_lop_hoc_phan || !formData.bank_id || !formData.thoi_gian_bat_dau || !formData.thoi_gian_ket_thuc) {
             return showToast('Vui lòng điền đầy đủ các thông tin (Bao gồm cả Chọn Ngân hàng đề)!', 'error');
+        }
+        
+        const tieuDeTrim = formData.tieu_de ? formData.tieu_de.trim() : '';
+        if (!tieuDeTrim) {
+            errors.tieu_de = 'Không được bỏ trống tiêu đề đợt thi!';
+        } else if (tieuDeTrim.length < 10) {
+            errors.tieu_de = 'Tiêu đề đợt thi phải từ 10 ký tự trở lên!';
+        } else if (formData.tieu_de.length > 30) {
+            errors.tieu_de = 'Tiêu đề đợt thi không được vượt quá 30 ký tự!';
+        } else {
+            const validRegex = /^[a-zA-Z0-9\s\-\(\)ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ]*$/;
+            if (!validRegex.test(formData.tieu_de)) {
+                errors.tieu_de = 'Chỉ được phép sử dụng chữ cái, số, khoảng trắng và các ký tự: - ( )';
+            }
         }
 
         const now = new Date();
@@ -140,16 +178,22 @@ function ExamManagement() {
             return showToast('Thời gian kết thúc ôn thi phải sau thời gian mở phòng!', 'error');
         }
 
-        if (Number(formData.so_cau_de) < 0 || Number(formData.so_cau_tb) < 0 || Number(formData.so_cau_kho) < 0) {
-            return showToast('Cấu trúc đề thi không được nhập số lượng câu hỏi là số âm!', 'error');
+        const tongSoCauVal = Number(formData.tong_so_cau);
+        if (tongSoCauVal < 20 || !Number.isInteger(tongSoCauVal)) {
+            errors.tong_so_cau = 'Tổng số câu hỏi phải là số nguyên và lớn hơn hoặc bằng 20!';
+        } else if (selectedBankInfo && tongSoCauVal > maxAvailableQuestions) {
+            errors.tong_so_cau = `Tổng số câu hỏi (${tongSoCauVal}) vượt quá số lượng câu hỏi có trong ngân hàng đề (${maxAvailableQuestions})!`;
         }
 
-        if (Number(formData.thoi_gian_thi_phut) <= 0) {
-            return showToast('Thời gian làm bài thi phải lớn hơn 0 phút!', 'error');
+        const thoiGianVal = Number(formData.thoi_gian_thi_phut);
+        if (thoiGianVal < 5 || !Number.isInteger(thoiGianVal)) {
+            errors.thoi_gian_thi_phut = 'Thời gian làm bài phải là số nguyên và lớn hơn hoặc bằng 5 phút!';
         }
 
-        if (totalConfigQuestions <= 0) {
-            return showToast('Tổng số câu hỏi của kỳ thi phải lớn hơn 0!', 'error');
+        setSubmitErrors(errors);
+        
+        if (Object.keys(errors).length > 0) {
+            return; // Dừng lại nếu có lỗi
         }
 
         const payload = {
@@ -159,19 +203,36 @@ function ExamManagement() {
             cho_phep_thi_lai: false
         };
 
-        try {
-            await axios.post(`${API_URL}/api/ai-exams/exams`, payload);
-            showToast('Tạo đợt kiểm tra mới thành công!');
-            setShowCreateModal(false);
-            fetchExams();
-        } catch (error) {
-            showToast(error.response?.data?.message || 'Lỗi tạo kỳ thi', 'error');
-        }
+        openConfirmDialog(
+            'Xác nhận tạo kỳ thi',
+            `Bạn có chắc chắn muốn tạo kỳ thi "${formData.tieu_de}" với ${totalConfigQuestions} câu hỏi không?`,
+            async () => {
+                closeConfirmDialog();
+                try {
+                    await axios.post(`${API_URL}/api/ai-exams/exams`, payload);
+                    showToast('Tạo đợt kiểm tra mới thành công!');
+                    setShowCreateModal(false);
+                    setFormData(initialFormData);
+                    setSubmitErrors({});
+                    fetchExams();
+                } catch (error) {
+                    showToast(error.response?.data?.message || 'Lỗi tạo kỳ thi', 'error');
+                }
+            }
+        );
     };
 
     return (
         <div className="space-y-6 p-4 max-w-screen-3xl mx-auto w-full">
             <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
+            
+            <ConfirmDialog 
+                show={confirmDialog.show} 
+                title={confirmDialog.title} 
+                message={confirmDialog.message} 
+                onConfirm={confirmDialog.onConfirm} 
+                onCancel={closeConfirmDialog} 
+            />
             
             {/* HEADER & TABS */}
             <div className="bg-gradient-to-r from-purple-800 to-indigo-900 rounded-3xl p-6 md:p-8 shadow-xl text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -459,7 +520,7 @@ function ExamManagement() {
                                 <p className="text-sm text-purple-700 font-medium mt-1">Hệ thống sẽ tạo ra 1 cột điểm độc lập cho đợt thi này</p>
                             </div>
                             <div className="flex-1 overflow-y-auto p-6 md:p-8">
-                                <form id="exam-form" onSubmit={handleSubmit} className="space-y-6">
+                                <form id="exam-form" onSubmit={handleSubmit} noValidate className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2">Môn học</label>
@@ -490,63 +551,162 @@ function ExamManagement() {
                                     
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Tiêu đề đợt thi</label>
-                                        <input type="text" required value={formData.tieu_de} onChange={e => setFormData({...formData, tieu_de: e.target.value})} className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium" placeholder="Ví dụ: Kiểm tra 15p - Đợt 1..." />
+                                        <input type="text" required
+                                            value={formData.tieu_de}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                
+                                                if (val.length > 30) {
+                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Tiêu đề đợt thi không được vượt quá 30 ký tự!' }));
+                                                    return;
+                                                }
+
+                                                const validRegex = /^[a-zA-Z0-9\s\-\(\)ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ]*$/;
+                                                if (!validRegex.test(val)) {
+                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Chỉ được phép sử dụng chữ cái, số, khoảng trắng và các ký tự: - ( )' }));
+                                                    return;
+                                                }
+
+                                                setFormData({...formData, tieu_de: val});
+                                                
+                                                if (val.trim() === '') {
+                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Không được bỏ trống tiêu đề!' }));
+                                                } else if (val.trim().length < 10) {
+                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Tiêu đề phải từ 10 ký tự trở lên!' }));
+                                                } else {
+                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: undefined }));
+                                                }
+                                            }}
+                                            onBlur={e => {
+                                                const val = formData.tieu_de.trim();
+                                                if (val === '') {
+                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Không được bỏ trống tiêu đề!' }));
+                                                } else if (val.length < 10) {
+                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Tiêu đề phải từ 10 ký tự trở lên!' }));
+                                                }
+                                            }}
+                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.tieu_de ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl focus:bg-white font-medium focus:ring-2`}
+                                            placeholder="Ví dụ: Kiểm tra 15p - Đợt 1..." />
+                                        {submitErrors.tieu_de && (
+                                            <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                                <span className="font-medium">{submitErrors.tieu_de}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2">Thời gian mở phòng</label>
-                                            <input type="datetime-local" required value={formData.thoi_gian_bat_dau} onChange={e => setFormData({...formData, thoi_gian_bat_dau: e.target.value})} className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium" />
+                                            <div className="relative">
+                                                <input 
+                                                    type="text" 
+                                                    readOnly 
+                                                    value={formatDateDisplay(formData.thoi_gian_bat_dau)} 
+                                                    placeholder="DD/MM/YYYY HH:MM"
+                                                    className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium cursor-pointer" 
+                                                    onClick={() => { const el = document.getElementById('thoi_gian_bat_dau_picker'); if (el && el.showPicker) el.showPicker(); }}
+                                                />
+                                                <input 
+                                                    id="thoi_gian_bat_dau_picker"
+                                                    type="datetime-local" 
+                                                    value={formData.thoi_gian_bat_dau} 
+                                                    onChange={e => setFormData({...formData, thoi_gian_bat_dau: e.target.value})} 
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-none" 
+                                                    style={{ zIndex: -1 }}
+                                                />
+                                                <Calendar className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none" />
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2">Thời gian đóng phòng</label>
-                                            <input type="datetime-local" required value={formData.thoi_gian_ket_thuc} onChange={e => setFormData({...formData, thoi_gian_ket_thuc: e.target.value})} className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium" />
+                                            <div className="relative">
+                                                <input 
+                                                    type="text" 
+                                                    readOnly 
+                                                    value={formatDateDisplay(formData.thoi_gian_ket_thuc)} 
+                                                    placeholder="DD/MM/YYYY HH:MM"
+                                                    className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium cursor-pointer" 
+                                                    onClick={() => { const el = document.getElementById('thoi_gian_ket_thuc_picker'); if (el && el.showPicker) el.showPicker(); }}
+                                                />
+                                                <input 
+                                                    id="thoi_gian_ket_thuc_picker"
+                                                    type="datetime-local" 
+                                                    value={formData.thoi_gian_ket_thuc} 
+                                                    onChange={e => setFormData({...formData, thoi_gian_ket_thuc: e.target.value})} 
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-none" 
+                                                    style={{ zIndex: -1 }}
+                                                />
+                                                <Calendar className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none" />
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-2xl border border-purple-100 space-y-5">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-purple-200/60 pb-4">
-                                            <h4 className="font-extrabold text-purple-900 flex items-center gap-2"><BookOpen className="w-5 h-5"/> Cấu trúc đề thi tự động</h4>
-                                            <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-purple-100">
-                                                <input
-                                                    type="number" min="1" max="200" value={autoCount}
-                                                    onChange={e => setAutoCount(Math.max(1, parseInt(e.target.value) || 10))}
-                                                    className="w-16 p-2 text-sm font-bold text-center border-none bg-transparent focus:ring-0"
-                                                    title="Tổng số câu" placeholder="C"
-                                                />
-                                                <button
-                                                    type="button" onClick={handleAutoDistributeAI}
-                                                    className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-lg text-xs shadow-sm hover:opacity-90"
-                                                >
-                                                    <Sparkles className="w-3.5 h-3.5 text-yellow-300" /> Chia Tự Động
-                                                </button>
-                                            </div>
+                                        <div className="flex flex-col border-b border-purple-200/60 pb-4">
+                                            <h4 className="font-extrabold text-purple-900 flex items-center gap-2"><BookOpen className="w-5 h-5"/> Cấu trúc đề thi</h4>
+                                            {selectedBankInfo && (
+                                                <span className="text-sm font-semibold text-rose-600 mt-1">
+                                                    * Ngân hàng đề hiện có tối đa {maxAvailableQuestions} câu.
+                                                </span>
+                                            )}
                                         </div>
                                         
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Dễ</label>
-                                                <input type="number" min="0" required value={formData.so_cau_de} onChange={e => setFormData({...formData, so_cau_de: Math.max(0, Number(e.target.value))})} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-bold text-blue-600 focus:ring-2 focus:ring-blue-500" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Trung bình</label>
-                                                <input type="number" min="0" required value={formData.so_cau_tb} onChange={e => setFormData({...formData, so_cau_tb: Math.max(0, Number(e.target.value))})} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-bold text-yellow-600 focus:ring-2 focus:ring-yellow-500" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Khó</label>
-                                                <input type="number" min="0" required value={formData.so_cau_kho} onChange={e => setFormData({...formData, so_cau_kho: Math.max(0, Number(e.target.value))})} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-bold text-red-600 focus:ring-2 focus:ring-red-500" />
+                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tổng số câu hỏi</label>
+                                                <input type="number" required
+                                                    value={formData.tong_so_cau}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        setFormData({...formData, tong_so_cau: val});
+                                                        if (val !== '') {
+                                                            const numVal = Number(val);
+                                                            if (numVal < 0 || !Number.isInteger(numVal)) {
+                                                                setSubmitErrors(prev => ({ ...prev, tong_so_cau: 'Không được nhập số thập phân hoặc số âm!' }));
+                                                            } else {
+                                                                setSubmitErrors(prev => ({ ...prev, tong_so_cau: undefined }));
+                                                            }
+                                                        } else {
+                                                            setSubmitErrors(prev => ({ ...prev, tong_so_cau: undefined }));
+                                                        }
+                                                    }}
+                                                    onBlur={e => setFormData({...formData, tong_so_cau: Number(formData.tong_so_cau) || 0})}
+                                                    className={`w-full p-3 bg-white border ${submitErrors.tong_so_cau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-xl text-center font-bold text-blue-600 focus:ring-2`} />
+                                                {submitErrors.tong_so_cau && (
+                                                    <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                                        <span className="font-medium">{submitErrors.tong_so_cau}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-extrabold text-purple-700 uppercase mb-1">Thời gian (phút)</label>
-                                                <input type="number" min="1" required value={formData.thoi_gian_thi_phut} onChange={e => setFormData({...formData, thoi_gian_thi_phut: Math.max(1, Number(e.target.value))})} className="w-full p-3 border-2 border-purple-400 bg-white rounded-xl text-center font-extrabold text-purple-700 focus:ring-2 focus:ring-purple-500 shadow-inner" />
+                                                <input type="number" required
+                                                    value={formData.thoi_gian_thi_phut}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        setFormData({...formData, thoi_gian_thi_phut: val});
+                                                        if (val !== '') {
+                                                            const numVal = Number(val);
+                                                            if (numVal < 0 || !Number.isInteger(numVal)) {
+                                                                setSubmitErrors(prev => ({ ...prev, thoi_gian_thi_phut: 'Không được nhập số thập phân hoặc số âm!' }));
+                                                            } else {
+                                                                setSubmitErrors(prev => ({ ...prev, thoi_gian_thi_phut: undefined }));
+                                                            }
+                                                        } else {
+                                                            setSubmitErrors(prev => ({ ...prev, thoi_gian_thi_phut: undefined }));
+                                                        }
+                                                    }}
+                                                    onBlur={e => setFormData({...formData, thoi_gian_thi_phut: Number(formData.thoi_gian_thi_phut) || 0})}
+                                                    className={`w-full p-3 border-2 ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-purple-400 focus:ring-purple-500'} bg-white rounded-xl text-center font-extrabold text-purple-700 focus:ring-2 shadow-inner`} />
+                                                {submitErrors.thoi_gian_thi_phut && (
+                                                    <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                                        <span className="font-medium">{submitErrors.thoi_gian_thi_phut}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm font-semibold text-purple-900 bg-white p-3 rounded-xl border border-purple-200 shadow-sm">
-                                            <div className="flex items-center gap-2">
-                                                <AlertCircle className="w-4 h-4 text-purple-600"/>
-                                                <span>Tổng: Dễ ({formData.so_cau_de}) + TB ({formData.so_cau_tb}) + Khó ({formData.so_cau_kho})</span>
-                                            </div>
-                                            <span className="font-extrabold bg-purple-100 px-3 py-1 rounded-lg">= {totalConfigQuestions} câu</span>
                                         </div>
                                     </div>
                                     
