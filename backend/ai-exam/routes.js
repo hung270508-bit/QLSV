@@ -146,13 +146,21 @@ module.exports = (db) => {
                 const needed = targetTotal - questions.length;
                 const existingIds = questions.map(q => q.id);
                 const notInClause = existingIds.length > 0 ? `AND q.id NOT IN (${existingIds.join(',')})` : '';
+                
+                let fallbackBankCond = "b.ma_mon_hoc = ?";
+                let fallbackParams = [exam.ma_mon_hoc, needed];
+                if (exam.bank_id) {
+                    fallbackBankCond = "b.id = ?";
+                    fallbackParams = [exam.bank_id, needed];
+                }
+                
                 const [extraQs] = await connection.query(`
                     SELECT q.id, q.noi_dung 
                     FROM questions q 
                     JOIN question_banks b ON q.bank_id = b.id 
-                    WHERE b.ma_mon_hoc = ? AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved' ${notInClause}
+                    WHERE ${fallbackBankCond} AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved' ${notInClause}
                     ORDER BY RAND() LIMIT ?
-                `, [exam.ma_mon_hoc, needed]);
+                `, fallbackParams);
                 questions.push(...extraQs);
             }
 
@@ -263,5 +271,48 @@ router.delete('/exams/:id', async (req, res) => {
             res.status(500).json({ success: false, message: error.message });
         }
     });
+    // API: Lấy chi tiết lịch sử một bài làm (dành cho sinh viên xem lại)
+    router.get('/attempts/:attempt_id/details', async (req, res) => {
+        let connection;
+        try {
+            const attemptId = req.params.attempt_id;
+            connection = await dbPromise.getConnection();
+            
+            // 1. Lấy thông tin bài làm
+            const [attempts] = await connection.query(`
+                SELECT a.id, a.diem_so, a.thoi_gian_nop_bai, e.tieu_de, e.thoi_gian_thi_phut 
+                FROM exam_attempts a
+                JOIN exams e ON a.exam_id = e.id
+                WHERE a.id = ?
+            `, [attemptId]);
+            if (attempts.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy bài làm' });
+            
+            // 2. Lấy danh sách câu trả lời
+            const [answers] = await connection.query(`
+                SELECT 
+                    eaa.question_id, 
+                    eaa.selected_option_id, 
+                    eaa.la_dap_an_dung as is_correct, 
+                    q.noi_dung as question_content
+                FROM exam_attempt_answers eaa
+                JOIN questions q ON eaa.question_id = q.id
+                WHERE eaa.attempt_id = ?
+            `, [attemptId]);
+            
+            // 3. Lấy tất cả options cho các câu hỏi này
+            for (const ans of answers) {
+                const [opts] = await connection.query(`SELECT id, noi_dung, la_dap_an_dung FROM question_options WHERE question_id = ?`, [ans.question_id]);
+                ans.options = opts;
+            }
+            
+            res.json({ success: true, data: { attempt: attempts[0], answers } });
+        } catch (error) {
+            console.error('Lỗi lấy chi tiết bài thi:', error);
+            res.status(500).json({ success: false, message: error.message });
+        } finally {
+            if (connection) connection.release();
+        }
+    });
+
     return router;
 };
