@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Award, CheckCircle2, Clock, X, FileSignature, 
   Edit, AlertTriangle, AlertCircle, Eye, MessageSquare, Send,
-  Upload, FileImage, Trash2
+  Upload, FileImage, Trash2, CalendarDays, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -90,18 +90,16 @@ function StudentTrainingPointsSkeleton() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 relative animate-pulse pb-10">
       <div className="bg-slate-200 h-28 rounded-3xl" />
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-1 bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100 h-72 space-y-4">
-          <div className="h-6 bg-slate-200 rounded w-1/2" />
-          <div className="h-36 bg-slate-100 rounded-2xl animate-pulse" />
-        </div>
-        <div className="xl:col-span-3 bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
-          <div className="h-6 bg-slate-200 rounded w-1/4" />
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-14 bg-slate-50 rounded-xl" />
-            ))}
-          </div>
+      <div className="flex gap-2 mb-6">
+        <div className="w-40 h-10 bg-slate-200 rounded-xl" />
+        <div className="w-40 h-10 bg-slate-200 rounded-xl" />
+      </div>
+      <div className="bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+        <div className="h-6 bg-slate-200 rounded w-1/4" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-14 bg-slate-50 rounded-xl" />
+          ))}
         </div>
       </div>
     </div>
@@ -111,6 +109,7 @@ function StudentTrainingPointsSkeleton() {
 function StudentTrainingPoints({ user }) {
   const [points, setPoints] = useState([]);
   const [activePeriods, setActivePeriods] = useState([]); 
+  const [activeTab, setActiveTab] = useState('periods');
   const [supportRequests, setSupportRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -126,8 +125,14 @@ function StudentTrainingPoints({ user }) {
   // Appeals (Khiếu nại) states
   const [isAppealModalOpen, setIsAppealModalOpen] = useState(false);
   const [appealSemester, setAppealSemester] = useState('');
+  const [appealCategory, setAppealCategory] = useState('');
   const [appealReason, setAppealReason] = useState('');
   const [appealError, setAppealError] = useState('');
+  const [appealCriteria, setAppealCriteria] = useState('');
+  const [appealExpectedScore, setAppealExpectedScore] = useState('');
+  const [appealEvidenceLink, setAppealEvidenceLink] = useState('');
+  const [appealFile, setAppealFile] = useState(null);
+  const fileInputRef = useRef(null);
   
   // State xem phản hồi khiếu nại
   const [viewFeedback, setViewFeedback] = useState(null);
@@ -389,23 +394,64 @@ function StudentTrainingPoints({ user }) {
   // Nộp đơn khiếu nại điểm
   const handleOpenAppeal = (hocKy) => {
     setAppealSemester(hocKy);
+    setAppealCategory('');
+    setAppealCriteria('');
+    setAppealExpectedScore('');
+    setAppealEvidenceLink('');
+    setAppealFile(null);
     setAppealReason('');
     setAppealError('');
     setIsAppealModalOpen(true);
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB
+        setAppealError('File minh chứng quá lớn! Vui lòng chọn file dưới 2MB.');
+        setAppealFile(null);
+        return;
+      }
+      setAppealError('');
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAppealFile({ name: file.name, data: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSendAppeal = async () => {
-    if (!appealReason.trim()) {
-      setAppealError('Vui lòng điền nội dung khiếu nại!');
+    if (!appealCategory) {
+      setAppealError('Vui lòng chọn loại khiếu nại!');
       return;
     }
+    if (appealCategory === 'Chấm sai/Sót điểm' && !appealCriteria) {
+      setAppealError('Vui lòng chọn tiêu chí bị chấm sai!');
+      return;
+    }
+    if (!appealReason.trim()) {
+      setAppealError('Vui lòng điền nội dung khiếu nại chi tiết!');
+      return;
+    }
+
+    let compiledContent = ``;
+    if (appealCriteria) compiledContent += `- Tiêu chí khiếu nại: ${appealCriteria}\n`;
+    if (appealExpectedScore) compiledContent += `- Điểm mong muốn điều chỉnh: ${appealExpectedScore}đ\n`;
+    if (appealEvidenceLink) compiledContent += `- Link minh chứng bổ sung: ${appealEvidenceLink}\n`;
+    compiledContent += `- Chi tiết lý do: ${appealReason}`;
+    
+    if (appealFile) {
+      compiledContent += `\n\n[FILE_MINH_CHUNG_START]\n${appealFile.data}\n[FILE_MINH_CHUNG_END]`;
+    }
+
     try {
       const appealHocKy = appealSemester.replace('HK', 'Học kỳ ').replace(/_/g, ' ');
       await axios.post(`${API_URL}/api/support`, {
         MSSV: user.username,
         LoaiYeuCau: 'Khiếu nại điểm rèn luyện',
-        ChuDe: `Khiếu nại điểm rèn luyện - ${appealHocKy}`,
-        NoiDung: appealReason
+        ChuDe: `[${appealCategory}] Khiếu nại điểm rèn luyện - ${appealHocKy}`,
+        NoiDung: compiledContent
       });
       showToast('Gửi khiếu nại thành công!', 'success');
       setIsAppealModalOpen(false);
@@ -431,8 +477,29 @@ function StudentTrainingPoints({ user }) {
     return new Date(dateStr).toLocaleDateString('vi-VN');
   };
 
+  const parseAdminFeedback = (ghiChu) => {
+    if (!ghiChu) return { comment: '', adjustments: {} };
+    let comment = ghiChu;
+    let adjustments = {};
+    const match = ghiChu.match(/\[Chi tiết điều chỉnh: (.*)\]/);
+    if (match) {
+      comment = ghiChu.replace(` | [Chi tiết điều chỉnh: ${match[1]}]`, '').replace(`[Chi tiết điều chỉnh: ${match[1]}]`, '').trim();
+      const parts = match[1].split('; ');
+      parts.forEach(part => {
+        const m = part.match(/Mục (.*?): (-?\d+)đ -> (-?\d+)đ \((.*)\)/);
+        if (m) {
+          adjustments[m[1]] = { old: m[2], new: m[3], reason: m[4] };
+        }
+      });
+    }
+    return { comment, adjustments };
+  };
+
+  const adminFeedback = viewOnly && editingRecord ? parseAdminFeedback(editingRecord.GhiChu) : { comment: '', adjustments: {} };
+
   const getRealTimeRating = (score) => {
     if (score >= 90) return 'Xuất sắc';
+
     if (score >= 80) return 'Tốt';
     if (score >= 65) return 'Khá';
     if (score >= 50) return 'Trung bình';
@@ -480,10 +547,35 @@ function StudentTrainingPoints({ user }) {
       />
 
       {/* HEADER */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#F4C542] rounded-3xl p-8 text-[#152238] shadow-xl flex items-center gap-5 relative overflow-hidden">
-        <div className="p-4 bg-white/40 backdrop-blur-sm rounded-2xl"><Award className="w-10 h-10" /></div>
-        <div><h2 className="text-3xl font-black mb-1">Đánh giá rèn luyện</h2><p className="text-[#152238]/70 font-medium">Khai báo tự đánh giá và theo dõi điểm rèn luyện</p></div>
+      <motion.div
+        initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-[#F4C542] rounded-3xl p-8 shadow-lg relative overflow-hidden flex items-center gap-5"
+      >
+        <div className="p-4 bg-white/40 rounded-2xl relative z-10 backdrop-blur-sm">
+          <Award className="w-10 h-10 text-[#152238]" />
+        </div>
+        <div className="relative z-10">
+          <h2 className="text-3xl font-bold text-[#152238] mb-1">Đánh giá rèn luyện</h2>
+          <p className="text-[#152238]/70 text-lg">Khai báo tự đánh giá và theo dõi điểm rèn luyện</p>
+        </div>
+        <Award className="absolute -right-6 -bottom-6 w-48 h-48 text-white opacity-10 transform rotate-12" />
       </motion.div>
+
+      {/* Tabs */}
+      <div className="flex bg-[#FFFFFF] rounded-2xl p-1.5 shadow-sm border border-[#E5E7EB] w-fit">
+        <button
+          onClick={() => setActiveTab('periods')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'periods' ? 'bg-[#F4C542]/20 text-[#B45309] shadow-sm' : 'text-[#6B7280] hover:bg-[#F7F8FA]'}`}
+        >
+          <CalendarDays className="w-5 h-5" /> Khai báo điểm
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'history' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-[#6B7280] hover:bg-[#F7F8FA]'}`}
+        >
+          <Clock className="w-5 h-5" /> Lịch sử rèn luyện
+        </button>
+      </div>
 
       {/* BANNER NHẮC NHỞ TỰ ĐÁNH GIÁ (REMINDERS) */}
       <AnimatePresence>
@@ -522,177 +614,204 @@ function StudentTrainingPoints({ user }) {
         })}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        
-        {/* SIDEBAR: ĐỢT ĐÁNH GIÁ */}
-        <div className="xl:col-span-1 bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100 h-fit space-y-5">
-          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 border-b border-slate-50 pb-3">
-            <FileSignature className="w-5 h-5 text-[#F4C542]" /> Đợt đánh giá
-          </h3>
-          <div className="space-y-4">
-            {activePeriods.map((period) => {
-              const hasSubmitted = points.some(p => p.HocKy === period.HocKy);
-              const daysLeft = getDaysLeft(period.NgayKetThuc);
-              
-              return (
-                <div key={period.MaDotDanhGia} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 relative overflow-hidden">
-                  <div>
-                    <p className="font-bold text-slate-800 text-base">{period.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</p>
-                    <p className="text-[11px] text-slate-500 font-medium mt-1">Năm học: {period.NamHoc}</p>
-                  </div>
-                  
-                  {/* Countdown và Hạn nộp */}
-                  <div className="border-t border-slate-200/60 pt-2 space-y-1 text-xs">
-                    <p className="text-slate-500 font-medium">Hạn nộp: <span className="font-bold text-slate-700">{formatDate(period.NgayKetThuc)}</span></p>
-                    {daysLeft !== null && (
-                      <div className="mt-1.5 inline-block">
-                        {daysLeft > 0 ? (
-                          <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-[#3B82F6]/10 text-[#3B82F6] border border-blue-100">
-                            Còn {daysLeft} ngày
-                          </span>
-                        ) : daysLeft === 0 ? (
-                          <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-amber-50 text-amber-600 border border-amber-200 animate-pulse">
-                            Hạn cuối hôm nay!
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-slate-200 text-slate-500">
-                            Đã hết hạn
-                          </span>
+      <AnimatePresence mode="wait">
+        {/* TAB: KHAI BÁO ĐIỂM (CÁC ĐỢT ĐANG MỞ) */}
+        {activeTab === 'periods' && (
+          <motion.div key="periods" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
+            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
+              <FileSignature className="w-5 h-5 text-[#F4C542]" /> Danh sách Đợt đánh giá
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activePeriods.map((period) => {
+                const hasSubmitted = points.some(p => p.HocKy === period.HocKy);
+                const daysLeft = getDaysLeft(period.NgayKetThuc);
+                
+                return (
+                  <div key={period.MaDotDanhGia} className="p-6 bg-[#FFFFFF] rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#F4C542]/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+                    <div>
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <p className="font-black text-slate-800 text-xl">{period.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</p>
+                          <p className="text-sm text-slate-500 font-medium mt-1 flex items-center gap-1">
+                            Năm học: <span className="text-slate-700">{period.NamHoc}</span>
+                          </p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                          <FileSignature className="w-6 h-6" />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500 font-medium flex items-center gap-1.5"><CalendarDays className="w-4 h-4" /> Hạn nộp</span>
+                          <span className="font-bold text-slate-700">{formatDate(period.NgayKetThuc)}</span>
+                        </div>
+                        {daysLeft !== null && (
+                          <div className="flex justify-end">
+                            {daysLeft > 0 ? (
+                              <span className="px-2.5 py-1 rounded-lg font-bold text-xs bg-[#3B82F6]/10 text-[#3B82F6] border border-blue-100">
+                                Còn {daysLeft} ngày
+                              </span>
+                            ) : daysLeft === 0 ? (
+                              <span className="px-2.5 py-1 rounded-lg font-bold text-xs bg-amber-50 text-amber-600 border border-amber-200 animate-pulse">
+                                Hạn cuối hôm nay!
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-lg font-bold text-xs bg-slate-100 text-slate-500 border border-slate-200">
+                                Đã hết hạn
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-
-                  {hasSubmitted ? (
-                    <div className="text-xs font-bold text-emerald-600 bg-emerald-50 p-3 rounded-xl flex items-center justify-center gap-1.5 border border-emerald-100">
-                      <CheckCircle2 className="w-4 h-4" /> Đã nộp phiếu
                     </div>
-                  ) : (
-                    <button 
-                      onClick={() => handleOpenNew(period.HocKy)} 
-                      disabled={daysLeft !== null && daysLeft < 0}
-                      className="w-full bg-[#F4C542] hover:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-[#152238] font-bold py-3 rounded-xl text-sm shadow-md shadow-[#F4C542]/30 transition-colors"
-                    >
-                      Khai báo ngay
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-            {activePeriods.length === 0 && (
-              <p className="text-slate-400 text-sm italic text-center p-4">Hiện không có đợt đánh giá nào mở.</p>
-            )}
-          </div>
-        </div>
 
-        {/* LỊCH SỬ RÈN LUYỆN */}
-        <div className="xl:col-span-3 bg-[#FFFFFF] rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-800 text-lg">Lịch sử rèn luyện</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider">
-                  <th className="p-5 font-bold whitespace-nowrap">Học kỳ</th>
-                  <th className="p-5 font-bold text-center whitespace-nowrap">SV ĐG</th>
-                  <th className="p-5 font-bold text-center whitespace-nowrap">Khoa ĐG</th>
-                  <th className="p-5 font-bold text-center whitespace-nowrap">Điểm chốt</th>
-                  <th className="p-5 font-bold text-center whitespace-nowrap">Xếp loại</th>
-                  <th className="p-5 font-bold whitespace-nowrap">Trạng thái</th>
-                  <th className="p-5 font-bold text-center whitespace-nowrap">Tác vụ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {points.map((p, i) => {
-                  const appealReq = supportRequests.find(r => 
-                    r.LoaiYeuCau === 'Khiếu nại điểm rèn luyện' && 
-                    r.ChuDe.includes(p.HocKy)
-                  );
-                  
-                  return (
-                    <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-5 font-bold text-slate-700 whitespace-nowrap">{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</td>
-                      <td className="p-5 text-center font-bold text-[#3B82F6] whitespace-nowrap"><span className="bg-[#3B82F6]/10 px-3 py-1 rounded-md">{p.DiemTuDanhGia}đ</span></td>
-                      <td className="p-5 text-center text-slate-500 font-semibold whitespace-nowrap">{p.DiemKhoaDanhGia || '0'}đ</td>
-                      <td className="p-5 text-center font-black text-[#F4C542] text-lg whitespace-nowrap">{p.TongDiem || p.DiemTuDanhGia}đ</td>
-                      <td className="p-5 text-center whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getXepLoaiBadge(p.XepLoai)}`}>
-                          {p.XepLoai || 'Chưa xếp'}
-                        </span>
-                      </td>
-                      <td className="p-5 whitespace-nowrap">
-                        {p.TrangThai === 'Đã xác nhận' ? (
-                          <span className="text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 w-fit font-bold text-xs">
-                            <CheckCircle2 className="w-3.5 h-3.5"/> Đã xác nhận
-                          </span>
-                        ) : (
-                          <span className="text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 w-fit font-bold text-xs">
-                            <Clock className="w-3.5 h-3.5"/> Chờ duyệt
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-5 text-center whitespace-nowrap">
-                        <div className="inline-flex gap-2 justify-center items-center">
-                          {/* Nút Xem chi tiết */}
-                          <button 
-                            onClick={() => handleViewDetails(p)} 
-                            className="p-2 bg-[#FFFFFF] border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-lg shadow-sm"
-                            title="Xem chi tiết phiếu"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-
-                          {/* Nút Sửa (chỉ khi chưa duyệt và đợt còn mở) */}
-                          {p.TrangThai !== 'Đã xác nhận' && activePeriods.some(ap => ap.HocKy === p.HocKy && getDaysLeft(ap.NgayKetThuc) >= 0) && (
-                            <button 
-                              onClick={() => handleEdit(p)} 
-                              className="p-2 bg-[#FFFFFF] border border-blue-200 text-[#3B82F6] hover:bg-[#3B82F6]/10 rounded-lg shadow-sm"
-                              title="Sửa phiếu"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {/* Khiếu nại (khi đã duyệt chốt) */}
-                          {p.TrangThai === 'Đã xác nhận' && (
-                            <>
-                              {!appealReq ? (
-                                <button
-                                  onClick={() => handleOpenAppeal(p.HocKy)}
-                                  className="px-3 py-1.5 bg-[#EF4444]/10 hover:bg-red-200 text-[#EF4444] border border-red-200 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1"
-                                >
-                                  Khiếu nại
-                                </button>
-                              ) : appealReq.TrangThai === 'Đã xử lý' ? (
-                                <button
-                                  onClick={() => setViewFeedback(appealReq)}
-                                  className="px-3 py-1.5 bg-[#3B82F6]/10 hover:bg-blue-100 text-[#3B82F6] border border-blue-200 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" /> Xem phản hồi
-                                </button>
-                              ) : (
-                                <span className="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs rounded-lg flex items-center gap-1">
-                                  <Clock className="w-3.5 h-3.5" /> Đang giải quyết
-                                </span>
-                              )}
-                            </>
-                          )}
+                    <div>
+                      {hasSubmitted ? (
+                        <div className="text-sm font-bold text-emerald-600 bg-emerald-50 p-3.5 rounded-xl flex items-center justify-center gap-2 border border-emerald-200">
+                          <CheckCircle2 className="w-5 h-5" /> Bạn đã nộp phiếu
                         </div>
-                      </td>
+                      ) : (
+                        <button 
+                          onClick={() => handleOpenNew(period.HocKy)} 
+                          disabled={daysLeft !== null && daysLeft < 0}
+                          className="w-full bg-[#F4C542] hover:bg-amber-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-[#152238] font-bold py-3.5 rounded-xl text-sm shadow-md shadow-[#F4C542]/30 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Edit className="w-4 h-4" /> Khai báo ngay
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {activePeriods.length === 0 && (
+                <div className="col-span-full bg-[#FFFFFF] p-10 rounded-3xl shadow-sm border border-slate-100 text-center">
+                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <FileSignature className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <p className="text-slate-500 font-medium">Hiện tại không có đợt đánh giá nào đang mở.</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* TAB: LỊCH SỬ RÈN LUYỆN */}
+        {activeTab === 'history' && (
+          <motion.div key="history" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+            <div className="bg-[#FFFFFF] rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-500" /> Lịch sử rèn luyện của bạn
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[900px]">
+                  <thead>
+                    <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100">
+                      <th className="p-5 font-bold whitespace-nowrap">Học kỳ</th>
+                      <th className="p-5 font-bold text-center whitespace-nowrap">SV ĐG</th>
+                      <th className="p-5 font-bold text-center whitespace-nowrap">Khoa ĐG</th>
+                      <th className="p-5 font-bold text-center whitespace-nowrap">Điểm chốt</th>
+                      <th className="p-5 font-bold text-center whitespace-nowrap">Xếp loại</th>
+                      <th className="p-5 font-bold whitespace-nowrap">Trạng thái</th>
+                      <th className="p-5 font-bold text-center whitespace-nowrap">Tác vụ</th>
                     </tr>
-                  );
-                })}
-                {points.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="p-10 text-center text-slate-400 italic">Chưa có lịch sử rèn luyện.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {points.map((p, i) => {
+                      const appealReq = supportRequests.find(r => 
+                        r.LoaiYeuCau === 'Khiếu nại điểm rèn luyện' && 
+                        r.ChuDe.includes(p.HocKy)
+                      );
+                      
+                      return (
+                        <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-5 font-bold text-slate-700 whitespace-nowrap">{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</td>
+                          <td className="p-5 text-center font-bold text-[#3B82F6] whitespace-nowrap"><span className="bg-[#3B82F6]/10 px-3 py-1.5 rounded-lg border border-blue-100">{p.DiemTuDanhGia}đ</span></td>
+                          <td className="p-5 text-center text-slate-600 font-semibold whitespace-nowrap">{p.DiemKhoaDanhGia || '0'}đ</td>
+                          <td className="p-5 text-center font-black text-[#F4C542] text-lg whitespace-nowrap">{p.TongDiem || p.DiemTuDanhGia}đ</td>
+                          <td className="p-5 text-center whitespace-nowrap">
+                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${getXepLoaiBadge(p.XepLoai)}`}>
+                              {p.XepLoai || 'Chưa xếp'}
+                            </span>
+                          </td>
+                          <td className="p-5 whitespace-nowrap">
+                            {p.TrangThai === 'Đã xác nhận' ? (
+                              <span className="text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 w-fit font-bold text-xs">
+                                <CheckCircle2 className="w-3.5 h-3.5"/> Đã xác nhận
+                              </span>
+                            ) : (
+                              <span className="text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 w-fit font-bold text-xs">
+                                <Clock className="w-3.5 h-3.5"/> Chờ duyệt
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-5 text-center whitespace-nowrap">
+                            <div className="inline-flex gap-2 justify-center items-center">
+                              {/* Nút Xem chi tiết */}
+                              <button 
+                                onClick={() => handleViewDetails(p)} 
+                                className="p-2.5 bg-[#FFFFFF] border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl shadow-sm hover:text-blue-600 hover:border-blue-200 transition-all"
+                                title="Xem chi tiết phiếu"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+
+                              {/* Nút Sửa (chỉ khi chưa duyệt và đợt còn mở) */}
+                              {p.TrangThai !== 'Đã xác nhận' && activePeriods.some(ap => ap.HocKy === p.HocKy && getDaysLeft(ap.NgayKetThuc) >= 0) && (
+                                <button 
+                                  onClick={() => handleEdit(p)} 
+                                  className="p-2.5 bg-[#FFFFFF] border border-blue-200 text-[#3B82F6] hover:bg-[#3B82F6]/10 rounded-xl shadow-sm transition-all"
+                                  title="Sửa phiếu"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {/* Khiếu nại (khi đã duyệt chốt) */}
+                              {p.TrangThai === 'Đã xác nhận' && (
+                                <>
+                                  {!appealReq ? (
+                                    <button
+                                      onClick={() => handleOpenAppeal(p.HocKy)}
+                                      className="px-4 py-2 bg-[#EF4444]/10 hover:bg-red-100 text-[#EF4444] border border-red-200 font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+                                    >
+                                      Khiếu nại
+                                    </button>
+                                  ) : appealReq.TrangThai === 'Đã xử lý' ? (
+                                    <button
+                                      onClick={() => setViewFeedback(appealReq)}
+                                      className="px-4 py-2 bg-[#3B82F6]/10 hover:bg-blue-100 text-[#3B82F6] border border-blue-200 font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+                                    >
+                                      <MessageSquare className="w-3.5 h-3.5" /> Xem phản hồi
+                                    </button>
+                                  ) : (
+                                    <span className="px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs rounded-xl flex items-center gap-1.5">
+                                      <Clock className="w-3.5 h-3.5" /> Đang giải quyết
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {points.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-12 text-center text-slate-400 font-medium">Chưa có lịch sử rèn luyện.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL PHIẾU ĐÁNH GIÁ (FORM) */}
       <ModalPortal>
@@ -735,6 +854,19 @@ function StudentTrainingPoints({ user }) {
                     <span className={`text-base font-black px-3 py-1 bg-[#FFFFFF] border border-slate-200 rounded-xl ${getRatingColor(currentTotalScore)}`}>
                       {getRealTimeRating(currentTotalScore)}
                     </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Hiển thị phản hồi chung từ Admin nếu có */}
+              {viewOnly && adminFeedback.comment && (
+                <div className="mx-8 mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-4 items-start shrink-0 shadow-sm">
+                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                    <MessageSquare className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-black text-amber-800 text-sm mb-1 uppercase tracking-wider">Phản hồi từ Khoa/Trường</h4>
+                    <p className="text-sm font-medium text-amber-700 whitespace-pre-wrap">{adminFeedback.comment}</p>
                   </div>
                 </div>
               )}
@@ -897,7 +1029,42 @@ function StudentTrainingPoints({ user }) {
                                 )}
                               </div>
                             )}
+
+                            {/* Hiển thị điều chỉnh điểm của Admin (nếu có) */}
+                            {viewOnly && (
+                              <div className="mt-4">
+                                {adminFeedback.adjustments[item.id] ? (
+                                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col gap-2 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+                                    <div className="flex justify-between items-center">
+                                      <div className="flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 text-rose-600" />
+                                        <span className="text-sm font-black text-rose-700">Điểm Khoa đánh giá: {adminFeedback.adjustments[item.id].new}đ</span>
+                                      </div>
+                                      <span className="text-xs font-bold text-rose-600/70 line-through">SV tự chấm: {adminFeedback.adjustments[item.id].old}đ</span>
+                                    </div>
+                                    <div className="bg-[#FFFFFF]/60 p-2.5 rounded-xl border border-rose-100">
+                                      <p className="text-xs font-bold text-rose-700">
+                                        <span className="text-rose-500 uppercase tracking-wider mr-1">Lý do:</span> 
+                                        {adminFeedback.adjustments[item.id].reason}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                      <span className="text-xs font-bold text-emerald-700">Khoa đồng ý với điểm tự đánh giá</span>
+                                    </div>
+                                    <span className="text-sm font-black text-emerald-700">
+                                      {formScores[item.id]?.point || 0}đ
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
+
                           <div className="md:w-32 flex items-center justify-center bg-slate-50 rounded-2xl p-4 border border-slate-100 shrink-0">
                             <span className={`text-3xl font-black ${formScores[item.id] !== undefined ? 'text-[#3B82F6]' : 'text-slate-200'}`}>
                               {formScores[item.id] !== undefined ? `+${formScores[item.id].point}` : '-'}
@@ -912,9 +1079,17 @@ function StudentTrainingPoints({ user }) {
 
               {/* Footer Form */}
               <div className="bg-slate-50 border-t border-slate-200 px-8 py-5 flex justify-between items-center shrink-0">
-                <div className="flex flex-col">
-                  <span className="text-slate-500 font-bold text-xs uppercase">Điểm tự đánh giá</span>
-                  <div className="text-4xl font-black text-[#3B82F6]">{currentTotalScore} <span className="text-xl text-slate-400">/ 100</span></div>
+                <div className="flex gap-12">
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 font-bold text-xs uppercase">Điểm tự đánh giá</span>
+                    <div className="text-4xl font-black text-[#3B82F6]">{currentTotalScore} <span className="text-xl text-slate-400">/ 100</span></div>
+                  </div>
+                  {viewOnly && editingRecord?.TongDiem !== undefined && editingRecord?.TongDiem !== null && (
+                    <div className="flex flex-col">
+                      <span className="text-emerald-700 font-bold text-xs uppercase">Điểm tổng kết</span>
+                      <div className="text-4xl font-black text-emerald-600">{editingRecord.TongDiem} <span className="text-xl text-emerald-400/50">/ 100</span></div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 bg-[#FFFFFF] border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 transition-colors">
@@ -948,23 +1123,133 @@ function StudentTrainingPoints({ user }) {
                 <h3 className="text-lg font-bold flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> Khiếu nại kết quả rèn luyện</h3>
                 <button onClick={() => setIsAppealModalOpen(false)} className="p-1 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-500">Học kỳ khiếu nại</p>
-                  <p className="text-base font-bold text-slate-800 mt-0.5">
-                    {appealSemester.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}
-                  </p>
+              <div className="p-6 space-y-5">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 shadow-sm">
+                  <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-bold mb-1">Lưu ý trước khi khiếu nại:</p>
+                    <ul className="list-disc pl-4 space-y-1 text-amber-700/90 marker:text-amber-400">
+                      <li>Chỉ khiếu nại khi có minh chứng rõ ràng, hợp lệ.</li>
+                      <li>Ghi rõ số thứ tự mục tiêu chí (Ví dụ: Mục 1.2).</li>
+                      <li>Sinh viên chịu trách nhiệm về tính trung thực.</li>
+                    </ul>
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 sm:col-span-1">
+                    <p className="text-sm font-semibold text-slate-500 mb-1.5">Đợt</p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-800 h-[46px] flex items-center">
+                      {appealSemester.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}
+                    </div>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Loại khiếu nại <span className="text-red-500">*</span></label>
+                    <select 
+                      value={appealCategory}
+                      onChange={e => { setAppealCategory(e.target.value); setAppealError(''); }}
+                      className="w-full bg-[#FFFFFF] border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all outline-none h-[46px]"
+                    >
+                      <option value="" disabled>-- Chọn phân loại --</option>
+                      <option value="Chấm sai/Sót điểm">Chấm sai / Sót điểm</option>
+                      <option value="Hệ thống lỗi">Lỗi hệ thống</option>
+                      <option value="Đánh giá chưa thỏa đáng">Đánh giá chưa thỏa đáng</option>
+                      <option value="Khác">Lý do khác</option>
+                    </select>
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  {appealCategory === 'Chấm sai/Sót điểm' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="grid grid-cols-2 gap-4 overflow-hidden"
+                    >
+                      <div className="col-span-2">
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mục tiêu chí bị chấm sai <span className="text-red-500">*</span></label>
+                        <select 
+                          value={appealCriteria}
+                          onChange={e => { setAppealCriteria(e.target.value); setAppealError(''); }}
+                          className="w-full bg-[#FFFFFF] border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all outline-none h-[46px]"
+                        >
+                          <option value="" disabled>-- Chọn tiêu chí --</option>
+                          <option value="Toàn bộ phiếu (Nhiều mục)">Toàn bộ phiếu (Nhiều mục)</option>
+                          {currentCriteria.flatMap(sec => sec.items).map(item => (
+                            <option key={item.id} value={item.label}>{item.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Điểm mong muốn <span className="text-slate-400 font-normal">(Không bắt buộc)</span></label>
+                        <input 
+                          type="number"
+                          value={appealExpectedScore}
+                          onChange={e => setAppealExpectedScore(e.target.value)}
+                          placeholder="VD: 10"
+                          className="w-full p-2.5 bg-[#FFFFFF] border border-slate-200 rounded-xl outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all text-sm text-slate-700 h-[46px]"
+                        />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Link minh chứng <span className="text-slate-400 font-normal">(Không bắt buộc)</span></label>
+                        <input 
+                          type="url"
+                          value={appealEvidenceLink}
+                          onChange={e => setAppealEvidenceLink(e.target.value)}
+                          placeholder="Google Drive, OneDrive..."
+                          className="w-full p-2.5 bg-[#FFFFFF] border border-slate-200 rounded-xl outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all text-sm text-slate-700 h-[46px]"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Lý do khiếu nại chi tiết</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nội dung chi tiết <span className="text-red-500">*</span></label>
                   <textarea 
                     rows="4" 
                     value={appealReason}
                     onChange={e => { setAppealReason(e.target.value); setAppealError(''); }}
-                    placeholder="Vui lòng ghi rõ lý do bạn khiếu nại (ví dụ: bị cộng thiếu điểm chuyên cần, chưa cộng hoạt động ngoại khóa đã nộp minh chứng...)"
-                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-red-400 focus:bg-[#FFFFFF] transition-all text-sm text-slate-700 placeholder-slate-400"
+                    placeholder="Vui lòng diễn giải chi tiết vấn đề bạn đang gặp phải..."
+                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 focus:bg-[#FFFFFF] transition-all text-sm text-slate-700 placeholder-slate-400"
                   />
-                  {appealError && <p className="text-[#EF4444] text-xs mt-1.5 font-semibold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5"/> {appealError}</p>}
+                  
+                  {/* Tải file minh chứng */}
+                  <div className="mt-3">
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      accept="image/*,.pdf" 
+                      className="hidden" 
+                    />
+                    {appealFile ? (
+                      <div className="flex justify-between items-center bg-blue-50 border border-blue-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <FileImage className="w-5 h-5 text-blue-600 shrink-0" />
+                          <span className="text-sm font-medium text-blue-800 truncate">{appealFile.name}</span>
+                        </div>
+                        <button 
+                          onClick={() => setAppealFile(null)}
+                          className="text-slate-400 hover:text-red-500 p-1 transition-colors"
+                          title="Xóa file"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => fileInputRef.current.click()}
+                        className="flex items-center gap-2 text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2.5 rounded-xl transition-colors w-full justify-center"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Chọn file đính kèm (Tối đa 2MB)
+                      </button>
+                    )}
+                  </div>
+
+                  {appealError && <p className="text-[#EF4444] text-xs mt-2 font-bold flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5"/> {appealError}</p>}
                 </div>
               </div>
               <div className="bg-slate-50 p-4 border-t border-slate-100 flex justify-end gap-3">
