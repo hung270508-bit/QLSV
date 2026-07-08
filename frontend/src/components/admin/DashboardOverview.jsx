@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, BookOpen, Building2, GraduationCap, Activity, ArrowUpRight } from 'lucide-react';
+import { Users, BookOpen, Building2, GraduationCap, Activity, ArrowUpRight, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import Pagination from '../common/Pagination';
 import {
@@ -34,7 +34,7 @@ const CustomBarTooltip = ({ active, payload, label }) => {
         <div key={i} className="flex items-center gap-2 mb-1">
           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.fill }} />
           <span className="text-xs text-[#6B7280]">{p.name}</span>
-          <span className="ml-auto text-xs font-bold text-[#1F2937]">{p.value}</span>
+          <span className="ml-auto text-xs font-bold text-[#1F2937]">{Number(p.value).toLocaleString('vi-VN')}</span>
         </div>
       ))}
     </div>
@@ -50,7 +50,7 @@ const CustomPieTooltip = ({ active, payload }) => {
         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
         <span className="text-xs font-semibold text-gray-700">{name}</span>
       </div>
-      <p className="text-lg font-bold text-[#1F2937]">{value} SV</p>
+      <p className="text-lg font-bold text-[#1F2937]">{Number(value).toLocaleString('vi-VN')} SV</p>
     </div>
   );
 };
@@ -87,16 +87,26 @@ const StatCard = ({ stat, index, onNavigate }) => {
 
 /* ─── Loading skeleton ───────────────────────────────────────────── */
 const Skeleton = () => (
-  <div className="space-y-6 animate-pulse">
-    <div className="h-32 bg-[#FFF7D6] rounded-2xl" />
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-      {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-100 rounded-2xl" />)}
+  <div className="relative">
+    {/* Skeleton Pattern */}
+    <div className="space-y-6 animate-pulse pointer-events-none">
+      <div className="h-32 bg-gradient-to-r from-[#FFF7D6] to-[#FFECA1] rounded-2xl shadow-sm" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-96 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />
+        <div className="h-96 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />
+      </div>
+      <div className="h-64 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />
     </div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="h-96 bg-gray-100 rounded-2xl" />
-      <div className="h-96 bg-gray-100 rounded-2xl" />
+
+    {/* Sticky Centered Spinner */}
+    <div className="absolute inset-0 pointer-events-none z-[100] flex justify-center">
+      <div className="sticky top-1/2 -translate-y-1/2 h-fit">
+        <Loader2 className="w-8 h-8 text-[#F4C542] animate-spin drop-shadow-md" />
+      </div>
     </div>
-    <div className="h-64 bg-gray-100 rounded-2xl" />
   </div>
 );
 
@@ -194,11 +204,11 @@ function DashboardOverview({ onNavigate }) {
   ];
 
   const statCards = [
-    { title: 'Sinh viên', value: stats.totalStudents, icon: Users, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'sinhvien' },
-    { title: 'Giảng viên', value: stats.totalTeachers, icon: GraduationCap, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'giangvien' },
-    { title: 'Lớp học', value: stats.totalClasses, icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'lophoc' },
-    { title: 'Môn học', value: stats.totalSubjects, icon: BookOpen, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'monhoc' },
-    { title: 'Khoa', value: facultyStats.length, icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'khoa' },
+    { title: 'Sinh viên', value: Number(stats.totalStudents || 0).toLocaleString('vi-VN'), icon: Users, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'sinhvien' },
+    { title: 'Giảng viên', value: Number(stats.totalTeachers || 0).toLocaleString('vi-VN'), icon: GraduationCap, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'giangvien' },
+    { title: 'Lớp học', value: Number(stats.totalClasses || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'lophoc' },
+    { title: 'Môn học', value: Number(stats.totalSubjects || 0).toLocaleString('vi-VN'), icon: BookOpen, bgColor: 'bg-[#152238]', iconColor: 'text-[#F4C542]', menuId: 'monhoc' },
+    { title: 'Khoa', value: Number(facultyStats.length || 0).toLocaleString('vi-VN'), icon: Building2, bgColor: 'bg-[#F4C542]', iconColor: 'text-[#152238]', menuId: 'khoa' },
   ];
 
   const facultyStudentData = useMemo(() =>
