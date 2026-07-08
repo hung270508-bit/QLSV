@@ -91,7 +91,7 @@ function TeacherSupport({ user, profile }) {
           setSubmittedData({
             MaGiangVien: user.username, LoaiYeuCau: 'Hành chính',
             ChuDe: requestForm.chude, NoiDung: requestForm.noiDung,
-            NgayGui: new Date().toISOString(), TrangThai: 'Đang xử lý'
+            NgayGui: new Date().toISOString(), TrangThai: 'Chờ xử lý'
           });
           setToast({ show: true, message: 'Đã gửi yêu cầu thành công!', type: 'success' });
           setRequestForm({ show: false, chude: '', noiDung: '' });
@@ -144,8 +144,9 @@ function TeacherSupport({ user, profile }) {
     switch (status) {
       case 'Đã hoàn thành': case 'Đã trả lời': case 'Đã duyệt': case 'Đã phản hồi':
         return <span className="flex items-center gap-1 text-[#22C55E] bg-[#22C55E]/10 px-3 py-1.5 rounded-full text-xs font-bold w-fit"><CheckCircle2 className="w-3.5 h-3.5" />{status}</span>;
+      case 'Chờ xử lý':
       case 'Đang xử lý':
-        return <span className="flex items-center gap-1 text-[#F4C542] bg-[#FFF7D6] px-3 py-1.5 rounded-full text-xs font-bold w-fit"><Clock className="w-3.5 h-3.5" />{status}</span>;
+        return <span className="flex items-center gap-1 text-[#F4C542] bg-[#FFF7D6] px-3 py-1.5 rounded-full text-xs font-bold w-fit"><Clock className="w-3.5 h-3.5" /> Chờ xử lý</span>;
       default:
         return <span className="flex items-center gap-1 text-[#EF4444] bg-[#EF4444]/10 px-3 py-1.5 rounded-full text-xs font-bold w-fit"><AlertCircle className="w-3.5 h-3.5" />{status}</span>;
     }
@@ -242,8 +243,8 @@ function TeacherSupport({ user, profile }) {
                             {req.NgayPhanHoi ? new Date(req.NgayPhanHoi).toLocaleDateString('vi-VN') + ' ' + new Date(req.NgayPhanHoi).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
                           </td>
                           <td className="px-3 py-3 text-center">
-                            {req.TrangThai === 'Đang xử lý' ? (
-                              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-md"><Clock className="w-3 h-3" /> Đang xử lý</span>
+                            {req.TrangThai === 'Chờ xử lý' || req.TrangThai === 'Đang xử lý' ? (
+                              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-md"><Clock className="w-3 h-3" /> Chờ xử lý</span>
                             ) : req.TrangThai === 'Đã hoàn thành' || req.TrangThai === 'Đã duyệt' || req.TrangThai === 'Đã phản hồi' ? (
                               <span className="inline-flex items-center gap-1 bg-[#22C55E]/20 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-md"><CheckCircle2 className="w-3 h-3" /> Đã xử lý</span>
                             ) : (
@@ -429,7 +430,7 @@ function TeacherSupport({ user, profile }) {
                   <div className="flex justify-center gap-3 pt-4 border-t border-[#E5E7EB]">
                     <button type="button" onClick={() => setRequestForm({ show: false, chude: '', noiDung: '' })} className="px-6 py-2.5 text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] font-semibold rounded-lg border border-[#F4C542]/30 text-sm">HỦY BỎ</button>
                     <button type="submit" disabled={requestSubmitting} className="bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-semibold py-2.5 px-8 rounded-lg shadow-md shadow-[#F4C542]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm">
-                      {requestSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> ĐANG XỬ LÝ...</> : 'ĐĂNG KÝ'}
+                      {requestSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> ĐANG GỬI...</> : 'ĐĂNG KÝ'}
                     </button>
                   </div>
                 </form>

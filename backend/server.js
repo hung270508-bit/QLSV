@@ -3413,7 +3413,7 @@ app.get('/api/support/student/:mssv', (req, res) => {
 
 app.post('/api/support', (req, res) => {
     const { MSSV, LoaiYeuCau, ChuDe, NoiDung } = req.body;
-    const query = "INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Đang xử lý')";
+    const query = "INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Chờ xử lý')";
     executeInsert(query, [MSSV, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 
@@ -3425,7 +3425,7 @@ app.get('/api/support/teacher/:maGV', (req, res) => {
 
 app.post('/api/support/teacher', (req, res) => {
     const { MaGiangVien, LoaiYeuCau, ChuDe, NoiDung } = req.body;
-    const query = "INSERT INTO yeucau_hotro (MaGiangVien, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Đang xử lý')";
+    const query = "INSERT INTO yeucau_hotro (MaGiangVien, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Chờ xử lý')";
     executeInsert(query, [MaGiangVien, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 

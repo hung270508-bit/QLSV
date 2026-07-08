@@ -159,10 +159,14 @@ module.exports = (dbPromise) => {
                 await connection.query(
                     `UPDATE ai_generation_sessions
                      SET so_cau_da_sinh = (SELECT COUNT(*) FROM ai_generated_questions WHERE session_id = ?),
-                         trang_thai = IF(so_cau_da_sinh >= so_cau_yeu_cau, 'COMPLETED', 'READY')
+                         trang_thai = IF(
+                             (SELECT COUNT(*) FROM ai_generated_questions WHERE session_id = ?) >= so_cau_yeu_cau,
+                             'COMPLETED', 'READY'
+                         )
                      WHERE id = ?`,
-                    [session_id, session_id]
+                    [session_id, session_id, session_id]
                 );
+
 
                 await connection.commit();
                 return addedCount;
@@ -326,7 +330,8 @@ module.exports = (dbPromise) => {
                                 stagingQ.bloom_level || null,
                                 stagingQ.chapter     || null,
                                 stagingQ.question_type || null,
-                                stagingQ.keywords     || null
+                                // keywords từ JSON column → mysql2 trả về Array/Object, cần stringify lại
+                                stagingQ.keywords != null ? JSON.stringify(stagingQ.keywords) : null
                             ]
                         );
                         realQId = resQ.insertId;
@@ -347,7 +352,9 @@ module.exports = (dbPromise) => {
                                 trang_thai = 'Approved' WHERE id = ?`,
                             [stagingQ.chu_de || 'Chung', stagingQ.noi_dung, stagingQ.giai_thich, stagingQ.do_kho,
                              stagingQ.bloom_level || null, stagingQ.chapter || null,
-                             stagingQ.question_type || null, stagingQ.keywords || null, realQId]
+                             stagingQ.question_type || null,
+                             stagingQ.keywords != null ? JSON.stringify(stagingQ.keywords) : null,
+                             realQId]
                         );
                     } else {
                         await connection.query(
