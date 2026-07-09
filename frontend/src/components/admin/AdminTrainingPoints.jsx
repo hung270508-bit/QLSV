@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import API_URL from '../../api';
 import { TrainingPointsSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
-import { Toast, ConfirmDialog } from '../common/ModalPortal';
+import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award, Filter, CheckCircle2, Clock, X, Calculator,
@@ -138,7 +138,6 @@ function AdminTrainingPoints() {
 
   // States cho chi tiết phiếu tự đánh giá & lịch sử duyệt (Audit log)
   const [recordDetails, setRecordDetails] = useState([]);
-  const [recordLogs, setRecordLogs] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   // States hỗ trợ điều chỉnh chi tiết và ghi chú lý do
@@ -387,19 +386,16 @@ function AdminTrainingPoints() {
     setTrangThaiDuyet(record.TrangThai === 'Chờ lớp duyệt' ? 'Đã xác nhận' : record.TrangThai);
     setReviewErrors({});
     setRecordDetails([]);
-    setRecordLogs([]);
     setAdjustedItems({});
     setAdminComment('');
 
     setLoadingDetails(true);
     try {
-      const [detailsRes, logsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/training-points/${record.MaDanhGia}/details`),
-        axios.get(`${API_URL}/api/admin/training-points/${record.MaDanhGia}/logs`)
+      const [detailsRes] = await Promise.all([
+        axios.get(`${API_URL}/api/training-points/${record.MaDanhGia}/details`)
       ]);
       const details = detailsRes.data || [];
       setRecordDetails(details);
-      setRecordLogs(logsRes.data || []);
 
       // Khởi tạo trạng thái mặc định của các tiêu chí là đã đồng ý
       const initialAdjusted = {};
@@ -410,6 +406,28 @@ function AdminTrainingPoints() {
           lyDo: ''
         };
       });
+
+      // Parse existing GhiChu to restore previous adjustments and comment
+      if (record.GhiChu) {
+        let comment = record.GhiChu;
+        const match = record.GhiChu.match(/\[Chi tiết điều chỉnh: ([\s\S]*)\]/);
+        if (match) {
+          comment = record.GhiChu.replace(` | [Chi tiết điều chỉnh: ${match[1]}]`, '').replace(`[Chi tiết điều chỉnh: ${match[1]}]`, '').trim();
+          const parts = match[1].split('; ');
+          parts.forEach(part => {
+            const m = part.match(/Mục (.*?): (-?[\d.]+)đ -> (-?[\d.]+)đ \(([\s\S]*)\)/);
+            if (m && initialAdjusted[m[1]]) {
+              initialAdjusted[m[1]] = {
+                status: 'rejected',
+                diem: m[3],
+                lyDo: m[4] === 'Không có lý do riêng' ? '' : m[4]
+              };
+            }
+          });
+        }
+        setAdminComment(comment);
+      }
+
       setAdjustedItems(initialAdjusted);
     } catch (err) {
       console.error('Không thể tải chi tiết phiếu hoặc nhật ký duyệt:', err);
@@ -431,12 +449,12 @@ function AdminTrainingPoints() {
   const getTongDiemDuyet = () => {
     let total = 0;
     const criteriaList = selectedRecord?.CauTrucTieuChi ? (typeof selectedRecord.CauTrucTieuChi === 'string' ? JSON.parse(selectedRecord.CauTrucTieuChi) : selectedRecord.CauTrucTieuChi) : DEFAULT_CRITERIA;
-    
+
     criteriaList.forEach(sec => {
       sec.items?.forEach(item => {
         const detail = detailsMap[item.id];
         const studentScore = detail ? detail.diem : 0;
-        
+
         const adj = adjustedItems[item.id];
         if (adj && adj.status !== 'approved') {
           total += Number(adj.diem) || 0;
@@ -459,7 +477,7 @@ function AdminTrainingPoints() {
         const original = detailsMap[id]?.diem || 0;
         return `Mục ${id}: ${original}đ -> ${data.diem}đ (${data.lyDo || 'Không có lý do riêng'})`;
       });
-    
+
     let finalComment = adminComment.trim();
     if (adjustments.length > 0) {
       const adjustText = `[Chi tiết điều chỉnh: ${adjustments.join('; ')}]`;
@@ -645,8 +663,8 @@ function AdminTrainingPoints() {
                         </td>
                         <td className="p-4">
                           <div className="flex flex-col gap-1">
-                            <span className="text-sm font-medium text-gray-700 flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5 text-emerald-500"/> Từ: {formatDate(p.NgayBatDau)}</span>
-                            <span className="text-sm font-medium text-gray-500 flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5 text-rose-400"/> Đến: {formatDate(p.NgayKetThuc)}</span>
+                            <span className="text-sm font-medium text-gray-700 flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5 text-emerald-500" /> Từ: {formatDate(p.NgayBatDau)}</span>
+                            <span className="text-sm font-medium text-gray-500 flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5 text-rose-400" /> Đến: {formatDate(p.NgayKetThuc)}</span>
                           </div>
                         </td>
                         <td className="p-4">
@@ -725,72 +743,79 @@ function AdminTrainingPoints() {
             </div>
 
             {/* Bộ lọc & Tìm kiếm */}
-            <div className="bg-[#FFFFFF] p-4 rounded-2xl shadow-sm border border-[#E5E7EB] flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex flex-wrap gap-3 items-center flex-1">
-                <div className="flex items-center gap-2 text-[#6B7280] font-semibold text-sm">
-                  <Filter className="w-4 h-4" /> Bộ lọc:
+            <div className="bg-[#FFFFFF] p-4 lg:p-6 rounded-2xl shadow-sm border border-[#E5E7EB] flex flex-col gap-5">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-[#1F2937] font-bold text-base">
+                  <Filter className="w-5 h-5 text-blue-500" /> Bộ lọc danh sách
                 </div>
+                
+                {/* Vùng tìm kiếm và Hành động */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                  <div className="relative w-full sm:w-[300px]">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Tìm theo MSSV, Họ tên sinh viên..."
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:bg-[#FFFFFF] transition-all outline-none text-gray-700"
+                    />
+                  </div>
+                  <button
+                    onClick={handleOpenAllLogs}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <Clock className="w-4 h-4" /> Nhật ký duyệt
+                  </button>
+                </div>
+              </div>
+
+              {/* Vùng dropdowns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full pt-4 border-t border-gray-100">
                 <select
                   value={filterHocKy} onChange={e => setFilterHocKy(e.target.value)}
-                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="w-full px-4 py-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-400 focus:bg-[#FFFFFF] transition-colors text-gray-700 cursor-pointer"
                 >
                   <option value="All">Tất cả học kỳ</option>
                   {uniqueSemesters.map(hk => (
                     <option key={hk} value={hk}>{hk.split('_')[0].replace('HK', 'Học kỳ ')}{hk.includes('_') ? ` (${hk.split('_')[1]}-${hk.split('_')[2]})` : ''}</option>
                   ))}
                 </select>
-                <select
-                  value={filterTrangThai} onChange={e => setFilterTrangThai(e.target.value)}
-                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
-                >
-                  <option value="All">Tất cả trạng thái</option>
-                  <option value="Chờ lớp duyệt">Chờ duyệt</option>
-                  <option value="Đã xác nhận">Đã xác nhận</option>
-                </select>
+
                 <select
                   value={filterKhoa}
                   onChange={e => {
                     setFilterKhoa(e.target.value);
                     setFilterLop('All');
                   }}
-                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="w-full px-4 py-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-400 focus:bg-[#FFFFFF] transition-colors text-gray-700 cursor-pointer"
                 >
                   <option value="All">Tất cả khoa</option>
                   {faculties.map(k => (
                     <option key={k.MaKhoa} value={k.MaKhoa}>{k.TenKhoa}</option>
                   ))}
                 </select>
+
                 <select
                   value={filterLop}
                   onChange={e => setFilterLop(e.target.value)}
-                  className="px-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="w-full px-4 py-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-400 focus:bg-[#FFFFFF] transition-colors text-gray-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={filterKhoa === 'All' && classes.length === 0}
                 >
                   <option value="All">Tất cả lớp</option>
                   {(filterKhoa === 'All' ? classes : classes.filter(c => c.MaKhoa === filterKhoa)).map(l => (
                     <option key={l.MaLop} value={l.MaLop}>{l.TenLop || l.MaLop}</option>
                   ))}
                 </select>
-                <div className="relative w-full max-w-[280px]">
-                  <Search className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Tìm theo MSSV / Họ tên..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:bg-[#FFFFFF] transition-all outline-none"
-                  />
-                </div>
-              </div>
 
-              {/* Nút hành động */}
-              <div className="flex items-center gap-2 shrink-0">
-
-                <button
-                  onClick={handleOpenAllLogs}
-                  className="px-5 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] hover:bg-[#F7F8FA] text-gray-700 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2"
+                <select
+                  value={filterTrangThai} onChange={e => setFilterTrangThai(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-400 focus:bg-[#FFFFFF] transition-colors text-gray-700 cursor-pointer"
                 >
-                  <Clock className="w-4 h-4 text-[#F4C542]" /> Nhật ký duyệt
-                </button>
+                  <option value="All">Tất cả trạng thái</option>
+                  <option value="Chờ lớp duyệt">Chờ duyệt</option>
+                  <option value="Đã xác nhận">Đã xác nhận</option>
+                </select>
               </div>
             </div>
 
@@ -892,254 +917,256 @@ function AdminTrainingPoints() {
       {/* ======================================================= */}
       <AnimatePresence>
         {isPeriodModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-[#FFFFFF] w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
-              {/* Header Modal */}
-              <div className="bg-[#1F2937] p-5 flex justify-between items-center text-white shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <CalendarDays className="w-5 h-5 text-[#F4C542]" />
+          <ModalPortal>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-[#FFFFFF] w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+                {/* Header Modal */}
+                <div className="bg-[#1F2937] p-5 flex justify-between items-center text-white shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                      <CalendarDays className="w-5 h-5 text-[#F4C542]" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold leading-tight">Thiết lập đợt đánh giá</h3>
+                      <p className="text-xs text-gray-400 font-medium mt-0.5">Cấu hình thời gian và tiêu chí chấm điểm</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold leading-tight">Thiết lập đợt đánh giá</h3>
-                    <p className="text-xs text-gray-400 font-medium mt-0.5">Cấu hình thời gian và tiêu chí chấm điểm</p>
-                  </div>
+                  <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); }} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5" /></button>
                 </div>
-                <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); }} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5" /></button>
-              </div>
 
-              {/* Tabs */}
-              <div className="flex px-6 border-b border-[#E5E7EB] bg-gray-50/50 shrink-0">
-                <button onClick={() => setPeriodModalTab('info')} className={`py-4 px-6 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 ${periodModalTab === 'info' ? 'border-[#F4C542] text-[#1F2937]' : 'border-transparent text-[#6B7280] hover:text-gray-700'}`}>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${periodModalTab === 'info' ? 'bg-[#F4C542]/20 text-[#B45309]' : 'bg-gray-200 text-gray-500'}`}>1</div>
-                  Thông tin chung
-                </button>
-                <button onClick={() => setPeriodModalTab('builder')} className={`py-4 px-6 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 ${periodModalTab === 'builder' ? 'border-[#F4C542] text-[#1F2937]' : 'border-transparent text-[#6B7280] hover:text-gray-700'}`}>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${periodModalTab === 'builder' ? 'bg-[#F4C542]/20 text-[#B45309]' : 'bg-gray-200 text-gray-500'}`}>2</div>
-                  Thiết kế bộ tiêu chí
-                  {(() => {
-                    let t = 0;
-                    periodForm.CauTrucTieuChi?.forEach(s => s.items?.forEach(i => { t += Math.max(0, ...i.options.map(o => Number(o.point) || 0)); }));
-                    return <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-black text-white ${t === 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}>{t}/100</span>;
-                  })()}
-                </button>
-              </div>
+                {/* Tabs */}
+                <div className="flex px-6 border-b border-[#E5E7EB] bg-gray-50/50 shrink-0">
+                  <button onClick={() => setPeriodModalTab('info')} className={`py-4 px-6 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 ${periodModalTab === 'info' ? 'border-[#F4C542] text-[#1F2937]' : 'border-transparent text-[#6B7280] hover:text-gray-700'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${periodModalTab === 'info' ? 'bg-[#F4C542]/20 text-[#B45309]' : 'bg-gray-200 text-gray-500'}`}>1</div>
+                    Thông tin chung
+                  </button>
+                  <button onClick={() => setPeriodModalTab('builder')} className={`py-4 px-6 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 ${periodModalTab === 'builder' ? 'border-[#F4C542] text-[#1F2937]' : 'border-transparent text-[#6B7280] hover:text-gray-700'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${periodModalTab === 'builder' ? 'bg-[#F4C542]/20 text-[#B45309]' : 'bg-gray-200 text-gray-500'}`}>2</div>
+                    Thiết kế bộ tiêu chí
+                    {(() => {
+                      let t = 0;
+                      periodForm.CauTrucTieuChi?.forEach(s => s.items?.forEach(i => { t += Math.max(0, ...i.options.map(o => Number(o.point) || 0)); }));
+                      return <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-black text-white ${t === 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}>{t}/100</span>;
+                    })()}
+                  </button>
+                </div>
 
-              <div className="p-6 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/30">
-                {periodModalTab === 'info' && (
-                  <div className="max-w-2xl mx-auto space-y-6">
-                    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm space-y-5">
-                      <h4 className="font-bold text-gray-800 text-base mb-4 flex items-center gap-2"><Clock className="w-5 h-5 text-blue-500" /> Học kỳ & Thời gian</h4>
-                      <div className="grid grid-cols-2 gap-5">
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Học kỳ</label>
-                          <select value={periodForm.HocKy} onChange={e => setPeriodForm({ ...periodForm, HocKy: e.target.value })} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
-                            <option value="HK1">Học kỳ 1</option>
-                            <option value="HK2">Học kỳ 2</option>
-                            <option value="HK3">Học kỳ 3</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Niên khóa</label>
-                          <input type="text" value={periodForm.NamHoc} readOnly disabled className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl outline-none font-bold text-gray-500 cursor-not-allowed" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-5">
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu <span className="text-red-500">*</span></label>
-                          <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-700 focus:ring-2 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'}`} />
-                          {periodFormErrors.NgayBatDau && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayBatDau}</p>}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc <span className="text-red-500">*</span></label>
-                          <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-700 focus:ring-2 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'}`} />
-                          {periodFormErrors.NgayKetThuc && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayKetThuc}</p>}
-                        </div>
-                      </div>
-                      {nienKhoaRange && <p className="text-xs text-[#B45309] bg-[#F4C542]/10 p-2.5 rounded-lg border border-[#F4C542]/30 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" /> Khung thời gian hợp lệ đến <b>{nienKhoaRange.end}-12-31</b> theo niên khóa.</p>}
-                    </div>
-
-                    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm">
-                      <h4 className="font-bold text-gray-800 text-base mb-4 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500" /> Trạng thái khởi tạo</h4>
-                      <select value={periodForm.TrangThai} onChange={e => setPeriodForm({ ...periodForm, TrangThai: e.target.value })} className="w-full p-3.5 bg-white border border-gray-200 rounded-xl outline-none font-bold text-gray-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
-                        <option value="Đang tự đánh giá">Mở cho phép Sinh viên làm bài ngay</option>
-                        <option value="Đã đóng đợt">Đóng (Chỉ lưu nháp)</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {periodModalTab === 'builder' && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-blue-50 border border-blue-100 p-4 rounded-2xl">
-                      <div>
-                        <h4 className="font-bold text-blue-900">Thiết kế tiêu chí động</h4>
-                        <p className="text-sm text-blue-700 mt-0.5">Tùy chỉnh nhóm tiêu chí, mục điểm và các mức điểm cho đợt này.</p>
-                      </div>
-                      <button onClick={() => setPeriodForm({ ...periodForm, CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) })} className="text-sm font-bold bg-white text-blue-600 px-4 py-2 rounded-xl shadow-sm hover:bg-blue-600 hover:text-white transition-all border border-blue-200">
-                        Khôi phục mẫu mặc định
-                      </button>
-                    </div>
-
-                    <div className="space-y-5">
-                      {periodForm.CauTrucTieuChi?.map((sec, secIdx) => (
-                        <div key={sec.id} className="border border-[#E5E7EB] rounded-2xl bg-[#FFFFFF] shadow-sm overflow-hidden group/section">
-                          <div className="bg-gray-50 p-4 flex justify-between items-center border-b border-[#E5E7EB]">
-                            <div className="flex-1 flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center font-black text-sm">
-                                {secIdx + 1}
-                              </div>
-                              <input
-                                type="text"
-                                value={sec.title}
-                                onChange={e => {
-                                  const newCriteria = [...periodForm.CauTrucTieuChi];
-                                  newCriteria[secIdx].title = e.target.value;
-                                  setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                }}
-                                className="font-bold text-gray-800 text-lg bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-full max-w-lg transition-colors px-1"
-                                placeholder="Nhập tên nhóm tiêu chí..."
-                              />
-                            </div>
-                            <button onClick={() => {
-                              const newCriteria = [...periodForm.CauTrucTieuChi];
-                              newCriteria.splice(secIdx, 1);
-                              setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                            }} className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Xóa nhóm này"><X className="w-5 h-5" /></button>
+                <div className="p-6 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/30">
+                  {periodModalTab === 'info' && (
+                    <div className="max-w-2xl mx-auto space-y-6">
+                      <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm space-y-5">
+                        <h4 className="font-bold text-gray-800 text-base mb-4 flex items-center gap-2"><Clock className="w-5 h-5 text-blue-500" /> Học kỳ & Thời gian</h4>
+                        <div className="grid grid-cols-2 gap-5">
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Học kỳ</label>
+                            <select value={periodForm.HocKy} onChange={e => setPeriodForm({ ...periodForm, HocKy: e.target.value })} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                              <option value="HK1">Học kỳ 1</option>
+                              <option value="HK2">Học kỳ 2</option>
+                              <option value="HK3">Học kỳ 3</option>
+                            </select>
                           </div>
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Niên khóa</label>
+                            <input type="text" value={periodForm.NamHoc} readOnly disabled className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl outline-none font-bold text-gray-500 cursor-not-allowed" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-5">
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu <span className="text-red-500">*</span></label>
+                            <input type="date" value={periodForm.NgayBatDau} onChange={e => handleNgayChange('NgayBatDau', e.target.value)} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-700 focus:ring-2 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayBatDau ? 'border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'}`} />
+                            {periodFormErrors.NgayBatDau && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayBatDau}</p>}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc <span className="text-red-500">*</span></label>
+                            <input type="date" value={periodForm.NgayKetThuc} onChange={e => handleNgayChange('NgayKetThuc', e.target.value)} max={maxNgay || undefined} disabled={!nienKhoaRange} className={`w-full p-3 bg-white border rounded-xl outline-none text-sm text-gray-700 focus:ring-2 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed ${periodFormErrors.NgayKetThuc ? 'border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-400 focus:ring-blue-100'}`} />
+                            {periodFormErrors.NgayKetThuc && <p className="text-red-500 text-xs mt-1.5 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {periodFormErrors.NgayKetThuc}</p>}
+                          </div>
+                        </div>
+                        {nienKhoaRange && <p className="text-xs text-[#B45309] bg-[#F4C542]/10 p-2.5 rounded-lg border border-[#F4C542]/30 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" /> Khung thời gian hợp lệ đến <b>{nienKhoaRange.end}-12-31</b> theo niên khóa.</p>}
+                      </div>
 
-                          <div className="p-5 space-y-4">
-                            {sec.items.map((item, itemIdx) => (
-                              <div key={item.id} className="bg-gray-50/50 border border-[#E5E7EB] p-4 rounded-xl relative group/item">
-                                <div className="flex gap-3 items-start mb-4">
-                                  <input
-                                    type="text"
-                                    value={item.id}
-                                    onChange={e => {
-                                      const newCriteria = [...periodForm.CauTrucTieuChi];
-                                      newCriteria[secIdx].items[itemIdx].id = e.target.value;
-                                      setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                    }}
-                                    className="w-16 text-sm font-bold text-center border-b-2 border-gray-300 focus:border-blue-500 bg-transparent outline-none py-1 transition-colors"
-                                    placeholder="Mã"
-                                  />
-                                  <textarea
-                                    value={item.label}
-                                    onChange={e => {
-                                      const newCriteria = [...periodForm.CauTrucTieuChi];
-                                      newCriteria[secIdx].items[itemIdx].label = e.target.value;
-                                      setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                    }}
-                                    rows={1}
-                                    className="flex-1 text-sm font-semibold border border-[#E5E7EB] rounded-lg p-2.5 bg-[#FFFFFF] focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none resize-none transition-all"
-                                    placeholder="Nội dung tiêu chí..."
-                                  />
-                                  <button onClick={() => {
-                                    const newCriteria = [...periodForm.CauTrucTieuChi];
-                                    newCriteria[secIdx].items.splice(itemIdx, 1);
-                                    setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                  }} className="text-gray-400 hover:text-red-500 mt-2 opacity-0 group-hover/item:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
+                      <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm">
+                        <h4 className="font-bold text-gray-800 text-base mb-4 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500" /> Trạng thái khởi tạo</h4>
+                        <select value={periodForm.TrangThai} onChange={e => setPeriodForm({ ...periodForm, TrangThai: e.target.value })} className="w-full p-3.5 bg-white border border-gray-200 rounded-xl outline-none font-bold text-gray-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                          <option value="Đang tự đánh giá">Mở cho phép Sinh viên làm bài ngay</option>
+                          <option value="Đã đóng đợt">Đóng (Chỉ lưu nháp)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {periodModalTab === 'builder' && (
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-blue-50 border border-blue-100 p-4 rounded-2xl">
+                        <div>
+                          <h4 className="font-bold text-blue-900">Thiết kế tiêu chí động</h4>
+                          <p className="text-sm text-blue-700 mt-0.5">Tùy chỉnh nhóm tiêu chí, mục điểm và các mức điểm cho đợt này.</p>
+                        </div>
+                        <button onClick={() => setPeriodForm({ ...periodForm, CauTrucTieuChi: JSON.parse(JSON.stringify(DEFAULT_CRITERIA)) })} className="text-sm font-bold bg-white text-blue-600 px-4 py-2 rounded-xl shadow-sm hover:bg-blue-600 hover:text-white transition-all border border-blue-200">
+                          Khôi phục mẫu mặc định
+                        </button>
+                      </div>
+
+                      <div className="space-y-5">
+                        {periodForm.CauTrucTieuChi?.map((sec, secIdx) => (
+                          <div key={sec.id} className="border border-[#E5E7EB] rounded-2xl bg-[#FFFFFF] shadow-sm overflow-hidden group/section">
+                            <div className="bg-gray-50 p-4 flex justify-between items-center border-b border-[#E5E7EB]">
+                              <div className="flex-1 flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center font-black text-sm">
+                                  {secIdx + 1}
                                 </div>
+                                <input
+                                  type="text"
+                                  value={sec.title}
+                                  onChange={e => {
+                                    const newCriteria = [...periodForm.CauTrucTieuChi];
+                                    newCriteria[secIdx].title = e.target.value;
+                                    setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                                  }}
+                                  className="font-bold text-gray-800 text-lg bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-full max-w-lg transition-colors px-1"
+                                  placeholder="Nhập tên nhóm tiêu chí..."
+                                />
+                              </div>
+                              <button onClick={() => {
+                                const newCriteria = [...periodForm.CauTrucTieuChi];
+                                newCriteria.splice(secIdx, 1);
+                                setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                              }} className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Xóa nhóm này"><X className="w-5 h-5" /></button>
+                            </div>
 
-                                <div className="pl-4 sm:pl-[76px] space-y-2">
-                                  {item.options.map((opt, optIdx) => (
-                                    <div key={optIdx} className="flex gap-3 items-center">
-                                      <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                                      <input
-                                        type="text"
-                                        value={opt.label}
-                                        onChange={e => {
-                                          const newCriteria = [...periodForm.CauTrucTieuChi];
-                                          newCriteria[secIdx].items[itemIdx].options[optIdx].label = e.target.value;
-                                          setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                        }}
-                                        className="flex-1 text-sm border-b border-dashed border-gray-300 focus:border-blue-500 focus:border-solid bg-transparent px-1 py-1 outline-none transition-colors"
-                                        placeholder="Mô tả mức điểm..."
-                                      />
-                                      <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
+                            <div className="p-5 space-y-4">
+                              {sec.items.map((item, itemIdx) => (
+                                <div key={item.id} className="bg-gray-50/50 border border-[#E5E7EB] p-4 rounded-xl relative group/item">
+                                  <div className="flex gap-3 items-start mb-4">
+                                    <input
+                                      type="text"
+                                      value={item.id}
+                                      onChange={e => {
+                                        const newCriteria = [...periodForm.CauTrucTieuChi];
+                                        newCriteria[secIdx].items[itemIdx].id = e.target.value;
+                                        setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                                      }}
+                                      className="w-16 text-sm font-bold text-center border-b-2 border-gray-300 focus:border-blue-500 bg-transparent outline-none py-1 transition-colors"
+                                      placeholder="Mã"
+                                    />
+                                    <textarea
+                                      value={item.label}
+                                      onChange={e => {
+                                        const newCriteria = [...periodForm.CauTrucTieuChi];
+                                        newCriteria[secIdx].items[itemIdx].label = e.target.value;
+                                        setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                                      }}
+                                      rows={1}
+                                      className="flex-1 text-sm font-semibold border border-[#E5E7EB] rounded-lg p-2.5 bg-[#FFFFFF] focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none resize-none transition-all"
+                                      placeholder="Nội dung tiêu chí..."
+                                    />
+                                    <button onClick={() => {
+                                      const newCriteria = [...periodForm.CauTrucTieuChi];
+                                      newCriteria[secIdx].items.splice(itemIdx, 1);
+                                      setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                                    }} className="text-gray-400 hover:text-red-500 mt-2 opacity-0 group-hover/item:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
+                                  </div>
+
+                                  <div className="pl-4 sm:pl-[76px] space-y-2">
+                                    {item.options.map((opt, optIdx) => (
+                                      <div key={optIdx} className="flex gap-3 items-center">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
                                         <input
-                                          type="number"
-                                          value={opt.point}
+                                          type="text"
+                                          value={opt.label}
                                           onChange={e => {
                                             const newCriteria = [...periodForm.CauTrucTieuChi];
-                                            newCriteria[secIdx].items[itemIdx].options[optIdx].point = Number(e.target.value);
+                                            newCriteria[secIdx].items[itemIdx].options[optIdx].label = e.target.value;
                                             setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                           }}
-                                          className="w-16 text-sm text-center py-1.5 font-bold text-blue-600 bg-transparent outline-none"
-                                          placeholder="Điểm"
+                                          className="flex-1 text-sm border-b border-dashed border-gray-300 focus:border-blue-500 focus:border-solid bg-transparent px-1 py-1 outline-none transition-colors"
+                                          placeholder="Mô tả mức điểm..."
                                         />
-                                        <span className="text-xs font-bold text-gray-400 pr-2">đ</span>
+                                        <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
+                                          <input
+                                            type="number"
+                                            value={opt.point}
+                                            onChange={e => {
+                                              const newCriteria = [...periodForm.CauTrucTieuChi];
+                                              newCriteria[secIdx].items[itemIdx].options[optIdx].point = Number(e.target.value);
+                                              setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                                            }}
+                                            className="w-16 text-sm text-center py-1.5 font-bold text-blue-600 bg-transparent outline-none"
+                                            placeholder="Điểm"
+                                          />
+                                          <span className="text-xs font-bold text-gray-400 pr-2">đ</span>
+                                        </div>
+                                        <button onClick={() => {
+                                          const newCriteria = [...periodForm.CauTrucTieuChi];
+                                          newCriteria[secIdx].items[itemIdx].options.splice(optIdx, 1);
+                                          setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                                        }} className="text-gray-300 hover:text-red-500 p-1"><X className="w-4 h-4" /></button>
                                       </div>
-                                      <button onClick={() => {
-                                        const newCriteria = [...periodForm.CauTrucTieuChi];
-                                        newCriteria[secIdx].items[itemIdx].options.splice(optIdx, 1);
-                                        setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                      }} className="text-gray-300 hover:text-red-500 p-1"><X className="w-4 h-4" /></button>
-                                    </div>
-                                  ))}
-                                  <button onClick={() => {
-                                    const newCriteria = [...periodForm.CauTrucTieuChi];
-                                    newCriteria[secIdx].items[itemIdx].options.push({ label: 'Mức điểm mới', point: 0 });
-                                    setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                                  }} className="text-xs text-blue-600 font-bold flex items-center gap-1.5 hover:bg-blue-50 px-2 py-1.5 rounded-lg w-max mt-2 transition-colors">
-                                    <PlusCircle className="w-3.5 h-3.5" /> Thêm mức điểm
-                                  </button>
+                                    ))}
+                                    <button onClick={() => {
+                                      const newCriteria = [...periodForm.CauTrucTieuChi];
+                                      newCriteria[secIdx].items[itemIdx].options.push({ label: 'Mức điểm mới', point: 0 });
+                                      setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                                    }} className="text-xs text-blue-600 font-bold flex items-center gap-1.5 hover:bg-blue-50 px-2 py-1.5 rounded-lg w-max mt-2 transition-colors">
+                                      <PlusCircle className="w-3.5 h-3.5" /> Thêm mức điểm
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
 
-                            <button onClick={() => {
-                              const newCriteria = [...periodForm.CauTrucTieuChi];
-                              newCriteria[secIdx].items.push({
-                                id: `new-${Date.now().toString().slice(-4)}`,
-                                label: 'Tiêu chí mới',
-                                options: [{ label: 'Đạt (+10đ)', point: 10 }, { label: 'Không đạt (+0đ)', point: 0 }]
-                              });
-                              setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                            }} className="w-full py-3 border-2 border-dashed border-blue-200 rounded-xl text-sm font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center gap-2">
-                              <PlusCircle className="w-4 h-4" /> Thêm tiêu chí con
-                            </button>
+                              <button onClick={() => {
+                                const newCriteria = [...periodForm.CauTrucTieuChi];
+                                newCriteria[secIdx].items.push({
+                                  id: `new-${Date.now().toString().slice(-4)}`,
+                                  label: 'Tiêu chí mới',
+                                  options: [{ label: 'Đạt (+10đ)', point: 10 }, { label: 'Không đạt (+0đ)', point: 0 }]
+                                });
+                                setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                              }} className="w-full py-3 border-2 border-dashed border-blue-200 rounded-xl text-sm font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center gap-2">
+                                <PlusCircle className="w-4 h-4" /> Thêm tiêu chí con
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
 
-                      <button onClick={() => {
-                        const newCriteria = [...periodForm.CauTrucTieuChi];
-                        newCriteria.push({
-                          id: `sec-${Date.now()}`,
-                          title: 'Nhóm tiêu chí mới',
-                          items: []
-                        });
-                        setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
-                      }} className="w-full py-4 bg-gray-50 text-gray-600 rounded-2xl font-bold border-2 border-dashed border-gray-300 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800 transition-colors flex items-center justify-center gap-2">
-                        <PlusCircle className="w-5 h-5" /> Thêm nhóm tiêu chí lớn
-                      </button>
+                        <button onClick={() => {
+                          const newCriteria = [...periodForm.CauTrucTieuChi];
+                          newCriteria.push({
+                            id: `sec-${Date.now()}`,
+                            title: 'Nhóm tiêu chí mới',
+                            items: []
+                          });
+                          setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
+                        }} className="w-full py-4 bg-gray-50 text-gray-600 rounded-2xl font-bold border-2 border-dashed border-gray-300 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800 transition-colors flex items-center justify-center gap-2">
+                          <PlusCircle className="w-5 h-5" /> Thêm nhóm tiêu chí lớn
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              <div className="bg-white p-5 border-t border-gray-200 flex justify-end gap-3 shrink-0">
-                <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); setPeriodFormErrors({}); }} className="px-6 py-2.5 font-bold text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-colors">Hủy thao tác</button>
-                {periodModalTab === 'info' ? (
-                  <button onClick={() => {
-                    const diffTime = new Date(periodForm.NgayKetThuc) - new Date(periodForm.NgayBatDau);
-                    if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc || diffTime < 24 * 60 * 60 * 1000 || periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
-                      showToast('Vui lòng kiểm tra lại ngày hợp lệ (ngày kết thúc phải cách ngày bắt đầu ít nhất 1 ngày)!', 'error');
-                      return;
-                    }
-                    setPeriodModalTab('builder');
-                  }} className="px-6 py-2.5 font-bold text-[#1F2937] bg-[#F4C542] rounded-xl hover:bg-[#F4C542]/90 shadow-md flex items-center gap-2 transition-all">
-                    Tiếp theo (Cấu hình tiêu chí) <ChevronRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button onClick={triggerCreatePeriod} className="px-6 py-2.5 font-bold text-[#1F2937] bg-[#F4C542] rounded-xl hover:bg-[#F4C542]/90 shadow-md flex items-center gap-2 transition-all">
-                    <CheckCircle2 className="w-5 h-5" /> Xác nhận tạo đợt
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </div>
+                <div className="bg-white p-5 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                  <button onClick={() => { setIsPeriodModalOpen(false); setPeriodModalTab('info'); setPeriodFormErrors({}); }} className="px-6 py-2.5 font-bold text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-colors">Hủy thao tác</button>
+                  {periodModalTab === 'info' ? (
+                    <button onClick={() => {
+                      const diffTime = new Date(periodForm.NgayKetThuc) - new Date(periodForm.NgayBatDau);
+                      if (!periodForm.NgayBatDau || !periodForm.NgayKetThuc || diffTime < 24 * 60 * 60 * 1000 || periodForm.NgayBatDau < minNgay || periodForm.NgayKetThuc < minNgay) {
+                        showToast('Vui lòng kiểm tra lại ngày hợp lệ (ngày kết thúc phải cách ngày bắt đầu ít nhất 1 ngày)!', 'error');
+                        return;
+                      }
+                      setPeriodModalTab('builder');
+                    }} className="px-6 py-2.5 font-bold text-[#1F2937] bg-[#F4C542] rounded-xl hover:bg-[#F4C542]/90 shadow-md flex items-center gap-2 transition-all">
+                      Tiếp theo (Cấu hình tiêu chí) <ChevronRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button onClick={triggerCreatePeriod} className="px-6 py-2.5 font-bold text-[#1F2937] bg-[#F4C542] rounded-xl hover:bg-[#F4C542]/90 shadow-md flex items-center gap-2 transition-all">
+                      <CheckCircle2 className="w-5 h-5" /> Xác nhận tạo đợt
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
@@ -1148,322 +1175,289 @@ function AdminTrainingPoints() {
       {/* ======================================================= */}
       <AnimatePresence>
         {selectedRecord && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#FFFFFF] w-full max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]"
-            >
-              {/* Header Modal */}
-              <div className="bg-blue-600 p-5 flex justify-between items-center text-white shrink-0">
-                <h3 className="text-lg font-bold flex items-center gap-2"><UserCheck className="w-5 h-5" /> Xét duyệt điểm rèn luyện</h3>
-                <button onClick={() => { setSelectedRecord(null); setReviewErrors({}); }} className="p-1.5 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
-              </div>
+          <ModalPortal>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-[#FFFFFF] w-[98vw] max-w-[98vw] rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[96vh] max-h-[96vh]"
+              >
+                {/* Header Modal */}
+                <div className="bg-blue-600 p-5 flex justify-between items-center text-white shrink-0">
+                  <h3 className="text-lg font-bold flex items-center gap-2"><UserCheck className="w-5 h-5" /> Xét duyệt điểm rèn luyện</h3>
+                  <button onClick={() => { setSelectedRecord(null); setReviewErrors({}); }} className="p-1.5 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                </div>
 
-              {/* Body Modal */}
-              <div className="p-5 flex flex-col gap-5 overflow-y-auto bg-gray-50/50">
-                
-                {/* 1. Header Info Card */}
-                <div className="bg-[#FFFFFF] rounded-2xl p-5 border border-[#E5E7EB] shadow-sm flex flex-col lg:flex-row items-center justify-between gap-6 shrink-0">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6] font-bold text-2xl shrink-0">
-                      {selectedRecord.HoTen.charAt(0)}
+                {/* Body Modal */}
+                <div className="flex-1 min-h-0 p-5 flex flex-col gap-5 overflow-y-auto bg-gray-50/50">
+
+                  {/* 1. Header Info Card */}
+                  <div className="bg-[#FFFFFF] rounded-2xl p-5 border border-[#E5E7EB] shadow-sm flex flex-col lg:flex-row items-center justify-between gap-6 shrink-0">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6] font-bold text-2xl shrink-0">
+                        {selectedRecord.HoTen.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#1F2937] text-xl leading-tight">{selectedRecord.HoTen}</h4>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span className="text-xs text-[#6B7280] font-medium bg-[#F7F8FA] px-2.5 py-1 rounded-md border border-[#E5E7EB]">
+                            {selectedRecord.MSSV}
+                          </span>
+                          <span className="text-xs text-[#6B7280] font-medium bg-[#F7F8FA] px-2.5 py-1 rounded-md border border-[#E5E7EB]">
+                            Lớp: {selectedRecord.MaLop}
+                          </span>
+                          <span className="text-xs text-[#6B7280] font-bold bg-[#F7F8FA] px-2.5 py-1 rounded-md border border-[#E5E7EB]">
+                            {selectedRecord.HocKy.split('_')[0].replace('HK', 'Học kỳ ')}{selectedRecord.HocKy.includes('_') ? ` (${selectedRecord.HocKy.split('_')[1]}-${selectedRecord.HocKy.split('_')[2]})` : ''}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-[#1F2937] text-xl leading-tight">{selectedRecord.HoTen}</h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="text-xs text-[#6B7280] font-medium bg-[#F7F8FA] px-2.5 py-1 rounded-md border border-[#E5E7EB]">
-                          {selectedRecord.MSSV}
-                        </span>
-                        <span className="text-xs text-[#6B7280] font-medium bg-[#F7F8FA] px-2.5 py-1 rounded-md border border-[#E5E7EB]">
-                          Lớp: {selectedRecord.MaLop}
-                        </span>
-                        <span className="text-xs text-[#6B7280] font-bold bg-[#F7F8FA] px-2.5 py-1 rounded-md border border-[#E5E7EB]">
-                          {selectedRecord.HocKy.split('_')[0].replace('HK', 'Học kỳ ')}{selectedRecord.HocKy.includes('_') ? ` (${selectedRecord.HocKy.split('_')[1]}-${selectedRecord.HocKy.split('_')[2]})` : ''}
-                        </span>
+
+                    <div className="flex items-center gap-6 divide-x divide-gray-200">
+                      <div className="text-center px-4">
+                        <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">SV Tự đánh giá</p>
+                        <p className="text-2xl font-black text-[#3B82F6]">{selectedRecord.DiemTuDanhGia}đ</p>
+                      </div>
+                      <div className="text-center px-4">
+                        <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Chênh lệch</p>
+                        <p className={`text-2xl font-black ${computedDiemKhoa >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {computedDiemKhoa > 0 ? `+${computedDiemKhoa}` : computedDiemKhoa}đ
+                        </p>
+                      </div>
+                      <div className="text-center px-4">
+                        <p className="text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                          <Calculator className="w-3.5 h-3.5" /> Tổng dự kiến
+                        </p>
+                        <p className={`text-4xl font-black ${getScoreColor(tongDiemPreview)}`}>{tongDiemPreview}đ</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6 divide-x divide-gray-200">
-                    <div className="text-center px-4">
-                      <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">SV Tự đánh giá</p>
-                      <p className="text-2xl font-black text-[#3B82F6]">{selectedRecord.DiemTuDanhGia}đ</p>
-                    </div>
-                    <div className="text-center px-4">
-                      <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Chênh lệch</p>
-                      <p className={`text-2xl font-black ${computedDiemKhoa >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {computedDiemKhoa > 0 ? `+${computedDiemKhoa}` : computedDiemKhoa}đ
-                      </p>
-                    </div>
-                    <div className="text-center px-4">
-                      <p className="text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                        <Calculator className="w-3.5 h-3.5"/> Tổng dự kiến
-                      </p>
-                      <p className={`text-4xl font-black ${getScoreColor(tongDiemPreview)}`}>{tongDiemPreview}đ</p>
-                    </div>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0">
+                    {/* Left Col: Breakdown chi tiết (8 cols) */}
+                    <div className="lg:col-span-8 flex flex-col overflow-hidden bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm">
+                      <div className="bg-[#F7F8FA] px-5 py-4 border-b border-[#E5E7EB] shrink-0">
+                        <h5 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                          <BookOpen className="w-5 h-5 text-[#3B82F6]" /> Chi tiết phiếu tự đánh giá
+                        </h5>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                        {loadingDetails ? (
+                          <div className="flex flex-col items-center justify-center py-10 text-gray-400 gap-3">
+                            <Loader2 className="w-8 h-8 animate-spin text-[#3B82F6]" />
+                            <span className="text-sm font-bold">Đang tải dữ liệu tự chấm...</span>
+                          </div>
+                        ) : (
+                          (selectedRecord?.CauTrucTieuChi || DEFAULT_CRITERIA).map(sec => (
+                            <div key={sec.id} className="border border-[#E5E7EB] rounded-xl overflow-hidden bg-[#FFFFFF] shadow-sm">
+                              <div className="bg-[#F7F8FA] px-4 py-3 border-b border-[#E5E7EB]">
+                                <span className="text-sm font-bold text-gray-700">{sec.title}</span>
+                              </div>
+                              <div className="divide-y divide-gray-100">
+                                {sec.items.map(item => {
+                                  const sel = detailsMap[item.id];
+                                  const maxPossible = Math.max(0, ...item.options.map(o => Number(o.point) || 0));
+                                  const adj = adjustedItems[item.id];
+                                  const isAdjusted = adj && adj.status !== 'approved';
+                                  const currentScore = isAdjusted ? (adj.diem === '' ? 0 : Number(adj.diem)) : (sel ? sel.diem : 0);
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0">
-                  {/* Left Col: Breakdown chi tiết (8 cols) */}
-                  <div className="lg:col-span-8 flex flex-col overflow-hidden bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm">
-                    <div className="bg-[#F7F8FA] px-5 py-4 border-b border-[#E5E7EB] shrink-0">
-                      <h5 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                        <BookOpen className="w-5 h-5 text-[#3B82F6]" /> Chi tiết phiếu tự đánh giá
-                      </h5>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                      {loadingDetails ? (
-                        <div className="flex flex-col items-center justify-center py-10 text-gray-400 gap-3">
-                          <Loader2 className="w-8 h-8 animate-spin text-[#3B82F6]" />
-                          <span className="text-sm font-bold">Đang tải dữ liệu tự chấm...</span>
-                        </div>
-                      ) : (
-                        (selectedRecord?.CauTrucTieuChi || DEFAULT_CRITERIA).map(sec => (
-                          <div key={sec.id} className="border border-[#E5E7EB] rounded-xl overflow-hidden bg-[#FFFFFF] shadow-sm">
-                            <div className="bg-[#F7F8FA] px-4 py-3 border-b border-[#E5E7EB]">
-                              <span className="text-sm font-bold text-gray-700">{sec.title}</span>
-                            </div>
-                            <div className="divide-y divide-gray-100">
-                              {sec.items.map(item => {
-                                const sel = detailsMap[item.id];
-                                const maxPossible = Math.max(0, ...item.options.map(o => Number(o.point) || 0));
-                                const adj = adjustedItems[item.id];
-                                const isAdjusted = adj && adj.status !== 'approved';
-                                const currentScore = isAdjusted ? (adj.diem === '' ? 0 : Number(adj.diem)) : (sel ? sel.diem : 0);
+                                  return (
+                                    <div key={item.id} className="p-4 lg:p-5 flex flex-col xl:flex-row gap-4 xl:gap-6 justify-between items-start hover:bg-gray-50/50 transition-colors">
+                                      <div className="flex-1 w-full space-y-2">
+                                        <p className="text-sm font-semibold text-gray-800 leading-normal">{item.label}</p>
 
-                                return (
-                                  <div key={item.id} className="p-4 lg:p-5 flex flex-col xl:flex-row gap-4 xl:gap-6 justify-between items-start hover:bg-gray-50/50 transition-colors">
-                                    <div className="flex-1 w-full space-y-2">
-                                      <p className="text-sm font-semibold text-gray-800 leading-normal">{item.label}</p>
-                                      
-                                      {sel !== undefined ? (
-                                        <p className="text-sm text-[#3B82F6] bg-[#3B82F6]/10 border border-blue-100 rounded-lg p-3 font-medium">
-                                          <span className="font-bold mr-1">SV Chọn:</span> {item.options[sel.index]?.label || 'Chưa xác định'}
-                                        </p>
-                                      ) : (
-                                        <p className="text-sm text-[#EF4444] italic bg-[#EF4444]/10 rounded-lg p-3 font-medium border border-red-100">
-                                          SV không tích chọn mục này
-                                        </p>
-                                      )}
+                                        {sel !== undefined ? (
+                                          <p className="text-sm text-[#3B82F6] bg-[#3B82F6]/10 border border-blue-100 rounded-lg p-3 font-medium">
+                                            <span className="font-bold mr-1">SV Chọn:</span> {item.options[sel.index]?.label || 'Chưa xác định'}
+                                          </p>
+                                        ) : (
+                                          <p className="text-sm text-[#EF4444] italic bg-[#EF4444]/10 rounded-lg p-3 font-medium border border-red-100">
+                                            SV không tích chọn mục này
+                                          </p>
+                                        )}
 
-                                      {/* Panels Duyệt / Điều chỉnh tiêu chí */}
-                                      {sel !== undefined && (
-                                        <div className="mt-4 bg-[#FFFFFF] p-4 rounded-xl border border-[#E5E7EB] shadow-sm space-y-3">
-                                          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                                            <span className="font-bold text-[#1F2937]">Quyết định điểm:</span>
-                                            <div className="flex bg-[#F7F8FA] p-1 rounded-xl border border-gray-200">
-                                              <button
-                                                type="button"
-                                                onClick={() => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...(prev[item.id] || {}), status: 'approved', diem: sel.diem } }))}
-                                                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                                  (!adjustedItems[item.id] || adjustedItems[item.id].status === 'approved')
+                                        {/* Panels Duyệt / Điều chỉnh tiêu chí */}
+                                        {sel !== undefined && (
+                                          <div className="mt-4 bg-[#FFFFFF] p-4 rounded-xl border border-[#E5E7EB] shadow-sm space-y-3">
+                                            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                                              <span className="font-bold text-[#1F2937]">Quyết định điểm:</span>
+                                              <div className="flex bg-[#F7F8FA] p-1 rounded-xl border border-gray-200">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...(prev[item.id] || {}), status: 'approved', diem: sel.diem } }))}
+                                                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${(!adjustedItems[item.id] || adjustedItems[item.id].status === 'approved')
                                                     ? 'bg-emerald-100 text-emerald-700 shadow-sm'
                                                     : 'text-[#6B7280] hover:bg-gray-100'
-                                                }`}
-                                              >
-                                                Đồng ý (+{sel.diem}đ)
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...(prev[item.id] || {}), status: 'adjusted', diem: prev[item.id]?.diem !== undefined ? prev[item.id].diem : sel.diem } }))}
-                                                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                                  (adjustedItems[item.id] && adjustedItems[item.id].status !== 'approved')
+                                                    }`}
+                                                >
+                                                  Đồng ý (+{sel.diem}đ)
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...(prev[item.id] || {}), status: 'adjusted', diem: prev[item.id]?.diem !== undefined ? prev[item.id].diem : sel.diem } }))}
+                                                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${(adjustedItems[item.id] && adjustedItems[item.id].status !== 'approved')
                                                     ? 'bg-amber-100 text-amber-700 shadow-sm'
                                                     : 'text-[#6B7280] hover:bg-gray-100'
-                                                }`}
-                                              >
-                                                Điều chỉnh
-                                              </button>
-                                            </div>
-                                          </div>
-
-                                          <AnimatePresence>
-                                            {adjustedItems[item.id] && adjustedItems[item.id].status !== 'approved' && (
-                                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 pt-3 border-t border-gray-100 overflow-hidden">
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                  <span className="text-xs text-gray-700 font-bold shrink-0">Điểm thực tế:</span>
-                                                  <input
-                                                    type="number"
-                                                    min="0" max={maxPossible}
-                                                    value={adjustedItems[item.id].diem}
-                                                    onChange={e => {
-                                                      const val = e.target.value;
-                                                      setAdjustedItems(prev => ({ ...prev, [item.id]: { ...prev[item.id], diem: val === '' ? '' : Number(val) } }));
-                                                    }}
-                                                    className={`w-24 px-3 py-1.5 text-sm border rounded-lg font-bold text-center bg-[#FFFFFF] shadow-sm outline-none transition-all ${
-                                                      reviewErrors[item.id] ? 'border-red-500 text-red-600 focus:ring-2 focus:ring-red-100' : 'border-gray-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100'
                                                     }`}
-                                                  />
-                                                  <span className="text-xs text-gray-400 font-medium">(Tối đa: {maxPossible}đ)</span>
-                                                </div>
-                                                {reviewErrors[item.id] && <p className="text-[11px] text-red-500 font-bold">{reviewErrors[item.id]}</p>}
-                                                <div className="flex flex-col gap-1.5">
-                                                  <span className="text-xs text-gray-700 font-bold">Lý do điều chỉnh:</span>
-                                                  <input
-                                                    type="text" placeholder="Nhập lý do..."
-                                                    value={adjustedItems[item.id].lyDo || ''}
-                                                    onChange={e => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...prev[item.id], lyDo: e.target.value } }))}
-                                                    className="w-full px-3 py-2 text-sm border border-gray-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 rounded-lg outline-none bg-[#FFFFFF] font-medium shadow-sm transition-all"
-                                                  />
-                                                </div>
-                                              </motion.div>
-                                            )}
-                                          </AnimatePresence>
-                                        </div>
-                                      )}
+                                                >
+                                                  Điều chỉnh
+                                                </button>
+                                              </div>
+                                            </div>
 
-                                      {sel !== undefined && sel.diem > 0 && sel.Files && sel.Files.length > 0 && (
-                                        <div className="mt-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 space-y-3">
-                                          <p className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider flex items-center gap-1.5">
-                                            <FileImage className="w-4 h-4"/> Tệp đính kèm ({sel.Files.length})
-                                          </p>
-                                          
-                                          {/* Preview row */}
-                                          {sel.Files.filter(f => f.type.startsWith('image/')).length > 0 && (
-                                            <div className="flex flex-wrap gap-3">
-                                              {sel.Files.filter(f => f.type.startsWith('image/')).map((file, fileIndex) => (
-                                                <div key={fileIndex} className="relative group cursor-pointer" onClick={() => setPreviewImage(file.data)}>
-                                                  <img src={file.data} alt="Minh chứng" className="w-20 h-20 object-cover rounded-xl border border-blue-200 shadow-sm group-hover:shadow-md transition-all" />
-                                                  <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Search className="w-6 h-6 text-white"/>
+                                            <AnimatePresence>
+                                              {adjustedItems[item.id] && adjustedItems[item.id].status !== 'approved' && (
+                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 pt-3 border-t border-gray-100 overflow-hidden">
+                                                  <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-xs text-gray-700 font-bold shrink-0">Điểm thực tế:</span>
+                                                    <input
+                                                      type="number"
+                                                      min="0" max={maxPossible}
+                                                      value={adjustedItems[item.id].diem}
+                                                      onChange={e => {
+                                                        const val = e.target.value;
+                                                        setAdjustedItems(prev => ({ ...prev, [item.id]: { ...prev[item.id], diem: val === '' ? '' : Number(val) } }));
+                                                      }}
+                                                      className={`w-24 px-3 py-1.5 text-sm border rounded-lg font-bold text-center bg-[#FFFFFF] shadow-sm outline-none transition-all ${reviewErrors[item.id] ? 'border-red-500 text-red-600 focus:ring-2 focus:ring-red-100' : 'border-gray-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100'
+                                                        }`}
+                                                    />
+                                                    <span className="text-xs text-gray-400 font-medium">(Tối đa: {maxPossible}đ)</span>
                                                   </div>
+                                                  {reviewErrors[item.id] && <p className="text-[11px] text-red-500 font-bold">{reviewErrors[item.id]}</p>}
+                                                  <div className="flex flex-col gap-1.5">
+                                                    <span className="text-xs text-gray-700 font-bold">Lý do điều chỉnh:</span>
+                                                    <input
+                                                      type="text" placeholder="Nhập lý do..."
+                                                      value={adjustedItems[item.id].lyDo || ''}
+                                                      onChange={e => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...prev[item.id], lyDo: e.target.value } }))}
+                                                      className="w-full px-3 py-2 text-sm border border-gray-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 rounded-lg outline-none bg-[#FFFFFF] font-medium shadow-sm transition-all"
+                                                    />
+                                                  </div>
+                                                </motion.div>
+                                              )}
+                                            </AnimatePresence>
+                                          </div>
+                                        )}
+
+                                        {sel !== undefined && sel.diem > 0 && sel.Files && sel.Files.length > 0 && (
+                                          <div className="mt-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 space-y-3">
+                                            <p className="text-xs font-bold text-[#3B82F6] uppercase tracking-wider flex items-center gap-1.5">
+                                              <FileImage className="w-4 h-4" /> Tệp đính kèm ({sel.Files.length})
+                                            </p>
+
+                                            {/* Preview row */}
+                                            {sel.Files.filter(f => f.type.startsWith('image/')).length > 0 && (
+                                              <div className="flex flex-wrap gap-3">
+                                                {sel.Files.filter(f => f.type.startsWith('image/')).map((file, fileIndex) => (
+                                                  <div key={fileIndex} className="relative group cursor-pointer" onClick={() => setPreviewImage(file.data)}>
+                                                    <img src={file.data} alt="Minh chứng" className="w-20 h-20 object-cover rounded-xl border border-blue-200 shadow-sm group-hover:shadow-md transition-all" />
+                                                    <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                      <Search className="w-6 h-6 text-white" />
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+
+                                            {/* File list */}
+                                            <div className="space-y-2">
+                                              {sel.Files.map((file, fileIndex) => (
+                                                <div key={fileIndex} className="flex items-center gap-3 p-2.5 bg-[#FFFFFF] rounded-lg border border-gray-200 shadow-sm">
+                                                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                                                    <FileImage className="w-4 h-4 text-[#3B82F6]" />
+                                                  </div>
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-bold text-gray-700 truncate">{file.name}</p>
+                                                    <p className="text-[10px] text-gray-400 font-medium">{(file.data.length * 3 / 4 / 1024).toFixed(1)} KB</p>
+                                                  </div>
+                                                  {file.type.startsWith('image/') && (
+                                                    <button onClick={() => setPreviewImage(file.data)} className="px-3 py-1.5 bg-[#F7F8FA] hover:bg-gray-200 text-[#3B82F6] text-xs font-bold rounded-lg transition-colors shrink-0">
+                                                      Xem
+                                                    </button>
+                                                  )}
                                                 </div>
                                               ))}
                                             </div>
-                                          )}
-
-                                          {/* File list */}
-                                          <div className="space-y-2">
-                                            {sel.Files.map((file, fileIndex) => (
-                                              <div key={fileIndex} className="flex items-center gap-3 p-2.5 bg-[#FFFFFF] rounded-lg border border-gray-200 shadow-sm">
-                                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                                                  <FileImage className="w-4 h-4 text-[#3B82F6]" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                  <p className="text-xs font-bold text-gray-700 truncate">{file.name}</p>
-                                                  <p className="text-[10px] text-gray-400 font-medium">{(file.data.length * 3 / 4 / 1024).toFixed(1)} KB</p>
-                                                </div>
-                                                {file.type.startsWith('image/') && (
-                                                  <button onClick={() => setPreviewImage(file.data)} className="px-3 py-1.5 bg-[#F7F8FA] hover:bg-gray-200 text-[#3B82F6] text-xs font-bold rounded-lg transition-colors shrink-0">
-                                                    Xem
-                                                  </button>
-                                                )}
-                                              </div>
-                                            ))}
                                           </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                    
-                                    <div className="shrink-0 flex items-center gap-2 xl:flex-col xl:items-end mt-2 xl:mt-0">
-                                      <div className={`px-4 py-2 rounded-xl border-2 font-black text-lg shadow-sm ${isAdjusted ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-[#FFFFFF] border-[#E5E7EB] text-gray-700'}`}>
-                                        +{currentScore}đ
+                                        )}
                                       </div>
-                                      {isAdjusted && <span className="text-[10px] font-bold text-amber-600 uppercase">Đã điều chỉnh</span>}
+
+                                      <div className="shrink-0 flex items-center gap-2 xl:flex-col xl:items-end mt-2 xl:mt-0">
+                                        <div className={`px-4 py-2 rounded-xl border-2 font-black text-lg shadow-sm ${isAdjusted ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-[#FFFFFF] border-[#E5E7EB] text-gray-700'}`}>
+                                          +{currentScore}đ
+                                        </div>
+                                        {isAdjusted && <span className="text-[10px] font-bold text-amber-600 uppercase">Đã điều chỉnh</span>}
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Col: Phê duyệt & Nhật ký (4 cols) */}
-                  <div className="lg:col-span-4 flex flex-col gap-5 overflow-hidden">
-                    <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col shrink-0">
-                      <div className="bg-[#F7F8FA] px-5 py-4 border-b border-[#E5E7EB]">
-                        <h5 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Quyết định phê duyệt
-                        </h5>
-                      </div>
-                      <div className="p-5 space-y-5">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Trạng thái phê duyệt</label>
-                          <select
-                            value={trangThaiDuyet}
-                            onChange={e => setTrangThaiDuyet(e.target.value)}
-                            className="w-full p-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl outline-none focus:border-blue-400 focus:bg-[#FFFFFF] text-sm font-bold text-gray-700 transition-colors"
-                          >
-                            <option value="Đã xác nhận">Đã xác nhận (Chốt điểm)</option>
-                            <option value="Chờ lớp duyệt">Lưu nháp (Chờ lớp duyệt)</option>
-                            <option value="Yêu cầu chỉnh sửa">Trả lại phiếu (Yêu cầu SV sửa)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Ý kiến / Ghi chú</label>
-                          <textarea
-                            rows="3"
-                            placeholder="Nhập nhận xét chung..."
-                            value={adminComment}
-                            onChange={e => setAdminComment(e.target.value)}
-                            className="w-full p-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl outline-none focus:border-blue-400 focus:bg-[#FFFFFF] text-sm font-semibold text-gray-700 transition-all resize-none custom-scrollbar"
-                          />
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {['Đạt yêu cầu', 'Thiếu minh chứng', 'Ảnh mờ', 'Không hợp lệ'].map((template) => (
-                              <button
-                                key={template}
-                                type="button"
-                                onClick={() => setAdminComment(template)}
-                                className="px-2.5 py-1 text-[11px] bg-[#FFFFFF] hover:bg-gray-100 border border-gray-300 text-[#6B7280] font-bold rounded-lg transition-colors shadow-sm"
-                              >
-                                {template}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="bg-amber-50/70 border border-amber-200/70 rounded-xl p-3.5 space-y-2">
-                          <span className="text-[10px] font-bold text-[#B45309] uppercase tracking-wider block">Xem trước nhật ký:</span>
-                          <div className="text-[11px] text-gray-700 font-mono break-words leading-relaxed bg-[#FFFFFF] p-2.5 rounded-lg border border-amber-200/50 shadow-sm">
-                            <div className="mt-1">
-                              <strong>Cập nhật điểm:</strong> {computedDiemKhoa >= 0 ? '+' : ''}{computedDiemKhoa}đ, Tổng: {tongDiemPreview}đ, Trạng thái: {trangThaiDuyet}
-                              {compileGhiChu() ? <><br/><strong>Phản hồi:</strong> {compileGhiChu()}</> : ''}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col min-h-0 flex-1">
-                      <div className="bg-[#F7F8FA] px-5 py-4 border-b border-[#E5E7EB] shrink-0">
-                        <h5 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                          <Clock className="w-5 h-5 text-gray-400" /> Nhật ký phê duyệt
-                        </h5>
-                      </div>
-                      <div className="p-5 flex-1 overflow-y-auto space-y-4 custom-scrollbar">
-                        {recordLogs.map((log) => (
-                          <div key={log.MaLog} className="flex gap-3 items-start text-sm border-b border-gray-50 pb-3">
-                            <div className="w-2 h-2 bg-[#3B82F6] rounded-full mt-1.5 shrink-0" />
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-700 leading-snug">{log.HanhDong}</p>
-                              <p className="text-[11px] text-gray-400 mt-1 font-medium">{new Date(log.ThoiGian).toLocaleString('vi-VN')} · {log.NguoiDuyet}</p>
-                            </div>
-                          </div>
-                        ))}
-                        {recordLogs.length === 0 && (
-                          <div className="h-full flex flex-col items-center justify-center opacity-50">
-                             <Clock className="w-8 h-8 text-gray-400 mb-2"/>
-                             <p className="text-xs text-gray-500 font-bold">Chưa có nhật ký</p>
-                          </div>
+                          ))
                         )}
                       </div>
                     </div>
+
+                    {/* Right Col: Phê duyệt & Nhật ký (4 cols) */}
+                    <div className="lg:col-span-4 flex flex-col gap-5 overflow-y-auto custom-scrollbar pr-1 pb-1 min-h-0">
+                      <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col shrink-0">
+                        <div className="bg-[#F7F8FA] px-5 py-4 border-b border-[#E5E7EB]">
+                          <h5 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Quyết định phê duyệt
+                          </h5>
+                        </div>
+                        <div className="p-5 space-y-5">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Trạng thái phê duyệt</label>
+                            <select
+                              value={trangThaiDuyet}
+                              onChange={e => setTrangThaiDuyet(e.target.value)}
+                              className="w-full p-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl outline-none focus:border-blue-400 focus:bg-[#FFFFFF] text-sm font-bold text-gray-700 transition-colors"
+                            >
+                              <option value="Đã xác nhận">Đã xác nhận (Chốt điểm)</option>
+                              <option value="Yêu cầu chỉnh sửa">Trả lại phiếu (Yêu cầu SV sửa)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Nhận xét/Ý kiến</label>
+                            <textarea
+                              rows="3"
+                              placeholder="Nhập nhận xét chung..."
+                              value={adminComment}
+                              onChange={e => setAdminComment(e.target.value)}
+                              className="w-full p-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl outline-none focus:border-blue-400 focus:bg-[#FFFFFF] text-sm font-semibold text-gray-700 transition-all resize-none custom-scrollbar"
+                            />
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {['Đạt yêu cầu', 'Thiếu minh chứng', 'Ảnh mờ', 'Không hợp lệ'].map((template) => (
+                                <button
+                                  key={template}
+                                  type="button"
+                                  onClick={() => setAdminComment(template)}
+                                  className="px-2.5 py-1 text-[11px] bg-[#FFFFFF] hover:bg-gray-100 border border-gray-300 text-[#6B7280] font-bold rounded-lg transition-colors shadow-sm"
+                                >
+                                  {template}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Xóa khối xem trước nhật ký */}
+                        </div>
+                      </div>
+
+
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Footer Modal */}
-              <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end gap-3 shrink-0">
-                <button onClick={() => setSelectedRecord(null)} className="px-5 py-2.5 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Hủy</button>
-                <button onClick={handleSubmitReview} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Chốt điểm</button>
-              </div>
-            </motion.div>
-          </div>
+                {/* Footer Modal */}
+                <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end gap-3 shrink-0 mt-auto">
+                  <button onClick={() => setSelectedRecord(null)} className="px-5 py-2.5 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Hủy</button>
+                  <button onClick={handleSubmitReview} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Chốt điểm</button>
+                </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
@@ -1472,83 +1466,85 @@ function AdminTrainingPoints() {
       {/* ======================================================= */}
       <AnimatePresence>
         {isAllLogsModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#FFFFFF] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
-            >
-              <div className="bg-[#F4C542] p-5 flex justify-between items-center text-[#152238] shrink-0">
-                <h3 className="text-lg font-bold flex items-center gap-2"><Clock className="w-5 h-5" /> Nhật ký phê duyệt điểm rèn luyện</h3>
-                <button onClick={() => setIsAllLogsModalOpen(false)} className="p-1.5 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-6 flex flex-col flex-1 overflow-hidden space-y-4">
-                {/* Thanh tìm kiếm nhật ký */}
-                <div className="relative shrink-0">
-                  <Search className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Tìm theo MSSV, Họ tên hoặc nội dung..."
-                    value={allLogsSearch}
-                    onChange={e => setAllLogsSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-100 focus:bg-[#FFFFFF] transition-all outline-none"
-                  />
+          <ModalPortal>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-[#FFFFFF] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              >
+                <div className="bg-[#F4C542] p-5 flex justify-between items-center text-[#152238] shrink-0">
+                  <h3 className="text-lg font-bold flex items-center gap-2"><Clock className="w-5 h-5" /> Nhật ký phê duyệt điểm rèn luyện</h3>
+                  <button onClick={() => setIsAllLogsModalOpen(false)} className="p-1.5 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5" /></button>
                 </div>
+                <div className="p-6 flex flex-col flex-1 overflow-hidden space-y-4">
+                  {/* Thanh tìm kiếm nhật ký */}
+                  <div className="relative shrink-0">
+                    <Search className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Tìm theo MSSV, Họ tên hoặc nội dung..."
+                      value={allLogsSearch}
+                      onChange={e => setAllLogsSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-100 focus:bg-[#FFFFFF] transition-all outline-none"
+                    />
+                  </div>
 
-                {/* Danh sách nhật ký */}
-                <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                  {loadingAllLogs ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-gray-300 gap-2">
-                      <Loader2 className="w-8 h-8 animate-spin text-[#F4C542]" />
-                      <span className="text-xs font-bold">Đang tải nhật ký...</span>
-                    </div>
-                  ) : (
-                    <>
-                      {allLogs
-                        .filter(log => {
-                          if (!allLogsSearch.trim()) return true;
-                          const s = allLogsSearch.toLowerCase();
-                          return (
-                            (log.HoTen || '').toLowerCase().includes(s) ||
-                            (log.MSSV || '').toLowerCase().includes(s) ||
-                            (log.HanhDong || '').toLowerCase().includes(s) ||
-                            (log.NguoiDuyet || '').toLowerCase().includes(s)
-                          );
-                        })
-                        .map(log => (
-                          <div key={log.MaLog} className="p-4 bg-[#F7F8FA] rounded-2xl border border-[#E5E7EB] hover:bg-[#FFF7D6]/15 transition-colors flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-full bg-[#F4C542]/20 text-[#B45309] flex items-center justify-center shrink-0">
-                              <UserCheck className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
-                                <span className="font-bold text-[#1F2937] text-sm">{log.HoTen} <span className="text-gray-300 font-medium">({log.MSSV})</span></span>
-                                <span className="text-[10px] font-bold bg-[#FFFFFF] px-2 py-0.5 rounded border border-[#E5E7EB] text-[#6B7280]">
-                                  {log.HocKy.split('_')[0].replace('HK', 'HK ')}{log.HocKy.includes('_') ? ` (${log.HocKy.split('_')[1]}-${log.HocKy.split('_')[2]})` : ''}
-                                </span>
+                  {/* Danh sách nhật ký */}
+                  <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                    {loadingAllLogs ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-gray-300 gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-[#F4C542]" />
+                        <span className="text-xs font-bold">Đang tải nhật ký...</span>
+                      </div>
+                    ) : (
+                      <>
+                        {allLogs
+                          .filter(log => {
+                            if (!allLogsSearch.trim()) return true;
+                            const s = allLogsSearch.toLowerCase();
+                            return (
+                              (log.HoTen || '').toLowerCase().includes(s) ||
+                              (log.MSSV || '').toLowerCase().includes(s) ||
+                              (log.HanhDong || '').toLowerCase().includes(s) ||
+                              (log.NguoiDuyet || '').toLowerCase().includes(s)
+                            );
+                          })
+                          .map(log => (
+                            <div key={log.MaLog} className="p-4 bg-[#F7F8FA] rounded-2xl border border-[#E5E7EB] hover:bg-[#FFF7D6]/15 transition-colors flex gap-4 items-start">
+                              <div className="w-8 h-8 rounded-full bg-[#F4C542]/20 text-[#B45309] flex items-center justify-center shrink-0">
+                                <UserCheck className="w-4 h-4" />
                               </div>
-                              <p className="text-sm text-[#6B7280] font-medium leading-relaxed">{log.HanhDong}</p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-gray-300 mt-2 font-medium">
-                                <span>Người duyệt: <strong className="text-[#6B7280]">{log.NguoiDuyet}</strong></span>
-                                <span>•</span>
-                                <span>{new Date(log.ThoiGian).toLocaleString('vi-VN')}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
+                                  <span className="font-bold text-[#1F2937] text-sm">{log.HoTen} <span className="text-gray-300 font-medium">({log.MSSV})</span></span>
+                                  <span className="text-[10px] font-bold bg-[#FFFFFF] px-2 py-0.5 rounded border border-[#E5E7EB] text-[#6B7280]">
+                                    {log.HocKy.split('_')[0].replace('HK', 'HK ')}{log.HocKy.includes('_') ? ` (${log.HocKy.split('_')[1]}-${log.HocKy.split('_')[2]})` : ''}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#6B7280] font-medium leading-relaxed">{log.HanhDong}</p>
+                                <div className="flex items-center gap-1.5 text-[10px] text-gray-300 mt-2 font-medium">
+                                  <span>Người duyệt: <strong className="text-[#6B7280]">{log.NguoiDuyet}</strong></span>
+                                  <span>•</span>
+                                  <span>{new Date(log.ThoiGian).toLocaleString('vi-VN')}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      {allLogs.length === 0 && (
-                        <p className="text-center py-10 text-gray-300 italic text-sm">Chưa có nhật ký phê duyệt nào.</p>
-                      )}
-                    </>
-                  )}
+                          ))}
+                        {allLogs.length === 0 && (
+                          <p className="text-center py-10 text-gray-300 italic text-sm">Chưa có nhật ký phê duyệt nào.</p>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end shrink-0">
-                <button onClick={() => { setIsAllLogsModalOpen(false); setAllLogsSearch(''); }} className="px-6 py-2.5 font-bold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Đóng</button>
-              </div>
-            </motion.div>
-          </div>
+                <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end shrink-0">
+                  <button onClick={() => { setIsAllLogsModalOpen(false); setAllLogsSearch(''); }} className="px-6 py-2.5 font-bold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Đóng</button>
+                </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
