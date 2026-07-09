@@ -1,0 +1,890 @@
+[
+  {
+    "method": "GET",
+    "route": "/api/sinhvien/:mssv/tong-quan",
+    "filename": "server.js",
+    "line": 790,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/:taiKhoan",
+    "filename": "server.js",
+    "line": 818,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/users/:taiKhoan",
+    "filename": "server.js",
+    "line": 831,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/:taiKhoan/reset-password",
+    "filename": "server.js",
+    "line": 832,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/:taiKhoan/status",
+    "filename": "server.js",
+    "line": 843,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/students/:mssv",
+    "filename": "server.js",
+    "line": 1028,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/students/:mssv",
+    "filename": "server.js",
+    "line": 1203,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/students/:mssv/clear-uid",
+    "filename": "server.js",
+    "line": 1214,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/students/next-code/:maLop",
+    "filename": "server.js",
+    "line": 1221,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/students/:mssv/details",
+    "filename": "server.js",
+    "line": 1256,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/students/:mssv/schedule",
+    "filename": "server.js",
+    "line": 1257,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/teachers/next-code/:maKhoa",
+    "filename": "server.js",
+    "line": 1268,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/teachers/:maGV",
+    "filename": "server.js",
+    "line": 1290,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/teachers/:maGV",
+    "filename": "server.js",
+    "line": 1336,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/teachers/:maGV/details",
+    "filename": "server.js",
+    "line": 1338,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/teachers/:maGV/teaching-schedule",
+    "filename": "server.js",
+    "line": 1339,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/teachers/:maGV/teaching-load",
+    "filename": "server.js",
+    "line": 1340,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/teachers/:maGV/subjects",
+    "filename": "server.js",
+    "line": 1341,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/faculties/:maKhoa",
+    "filename": "server.js",
+    "line": 1346,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/faculties/:maKhoa",
+    "filename": "server.js",
+    "line": 1377,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/faculties/:maKhoa/teachers",
+    "filename": "server.js",
+    "line": 1378,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/faculties/:maKhoa/students",
+    "filename": "server.js",
+    "line": 1379,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/faculties/:maKhoa/classes",
+    "filename": "server.js",
+    "line": 1380,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/subjects/next-code/:maKhoa",
+    "filename": "server.js",
+    "line": 1384,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/subjects/:maMH",
+    "filename": "server.js",
+    "line": 1406,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/subjects/:maMH/classes",
+    "filename": "server.js",
+    "line": 1407,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/subjects/:maMH/teachers",
+    "filename": "server.js",
+    "line": 1408,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/subjects/:maMH/grade-stats",
+    "filename": "server.js",
+    "line": 1409,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/classes/next-code/:startYear/:maKhoa",
+    "filename": "server.js",
+    "line": 1426,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/classes/next-name/:tenLop/:maKhoa/:nienKhoa",
+    "filename": "server.js",
+    "line": 1437,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/classes/:maLop",
+    "filename": "server.js",
+    "line": 1485,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/classes/:maLop",
+    "filename": "server.js",
+    "line": 1489,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/classes/:maLop/details",
+    "filename": "server.js",
+    "line": 1490,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/classes/:maLop/students",
+    "filename": "server.js",
+    "line": 1511,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/classes/:maLop/schedule",
+    "filename": "server.js",
+    "line": 1512,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/classes/:maLop/grade-stats",
+    "filename": "server.js",
+    "line": 1513,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/lophocphan/teacher/:maGV",
+    "filename": "server.js",
+    "line": 1535,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/course-sections/teacher/:maGV",
+    "filename": "server.js",
+    "line": 1536,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/course-sections/:maLhp/students",
+    "filename": "server.js",
+    "line": 1537,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/teaching-assignments/:id/toggle-lock",
+    "filename": "server.js",
+    "line": 1612,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/teaching-assignments/:id",
+    "filename": "server.js",
+    "line": 1628,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/teaching-assignments/:id",
+    "filename": "server.js",
+    "line": 1676,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/enrollment/available/:mssv",
+    "filename": "server.js",
+    "line": 1727,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/enrollment/my-courses/:mssv",
+    "filename": "server.js",
+    "line": 1831,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/enrollment/phases/:id",
+    "filename": "server.js",
+    "line": 2071,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/enrollment/:mssv/:maLhp",
+    "filename": "server.js",
+    "line": 2085,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/api/enrollment/:mssv/:maLhp/xac-nhan-thanh-toan",
+    "filename": "server.js",
+    "line": 2139,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/api/enrollment/:mssv/:maLhp/tu-choi-thanh-toan",
+    "filename": "server.js",
+    "line": 2172,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/api/enrollment/phases/:id/auto-huy-qua-han",
+    "filename": "server.js",
+    "line": 2183,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/enrollment/phases/:id/thong-ke",
+    "filename": "server.js",
+    "line": 2220,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/enrollment/phases/:id",
+    "filename": "server.js",
+    "line": 2304,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/api/enrollment/phases/:id/close",
+    "filename": "server.js",
+    "line": 2346,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/student/tuitions/:maSinhVien",
+    "filename": "server.js",
+    "line": 2423,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/students/:mssv/schedule",
+    "filename": "server.js",
+    "line": 2503,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/schedule/student/:mssv",
+    "filename": "server.js",
+    "line": 2525,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/schedules/:maLichHoc",
+    "filename": "server.js",
+    "line": 2564,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/schedules/:maLichHoc",
+    "filename": "server.js",
+    "line": 2587,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/schedules/lophocphan/:maLHP",
+    "filename": "server.js",
+    "line": 2591,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/schedules/lophocphan/:maLHP/reschedule",
+    "filename": "server.js",
+    "line": 2602,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/tuitions/:id/status",
+    "filename": "server.js",
+    "line": 2717,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/grades/student/:mssv",
+    "filename": "server.js",
+    "line": 2731,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/grades/:maDiem",
+    "filename": "server.js",
+    "line": 2745,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/grades/:maDiem",
+    "filename": "server.js",
+    "line": 2746,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/grades/statistics/:maLopHocPhan",
+    "filename": "server.js",
+    "line": 2748,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/grades/class-averages/:hocKy",
+    "filename": "server.js",
+    "line": 2759,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/academic/gpa/:mssv",
+    "filename": "server.js",
+    "line": 2771,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/academic/transcript/:mssv",
+    "filename": "server.js",
+    "line": 2786,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/attendance/:id",
+    "filename": "server.js",
+    "line": 2803,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/attendance/:id",
+    "filename": "server.js",
+    "line": 2804,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/attendance/course/:maLhp/date/:ngay",
+    "filename": "server.js",
+    "line": 2805,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/attendance/course/:maLhp/history-dates",
+    "filename": "server.js",
+    "line": 2821,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/api/attendance/course/:maLhp/date/:ngay",
+    "filename": "server.js",
+    "line": 2822,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/attendance/course/:id/session/:date",
+    "filename": "server.js",
+    "line": 2880,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/api/attendance/course/:id/open/:date",
+    "filename": "server.js",
+    "line": 2899,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/api/attendance/course/:id/close/:date",
+    "filename": "server.js",
+    "line": 2922,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/rfid/:uid",
+    "filename": "server.js",
+    "line": 3110,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/attendance/student/:mssv",
+    "filename": "server.js",
+    "line": 3136,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/attendance/percentage/:mssv",
+    "filename": "server.js",
+    "line": 3156,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/announcements/:id",
+    "filename": "server.js",
+    "line": 3189,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/announcements/:id",
+    "filename": "server.js",
+    "line": 3190,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/announcements/student/:mssv",
+    "filename": "server.js",
+    "line": 3191,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/training-periods/:id/status",
+    "filename": "server.js",
+    "line": 3231,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/training-points/:id",
+    "filename": "server.js",
+    "line": 3257,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/training-points/:id/logs",
+    "filename": "server.js",
+    "line": 3290,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/support-requests/:id",
+    "filename": "server.js",
+    "line": 3317,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/support-requests/:id",
+    "filename": "server.js",
+    "line": 3322,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/training-points/:id/details",
+    "filename": "server.js",
+    "line": 3327,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/training-points/student/:mssv",
+    "filename": "server.js",
+    "line": 3333,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/api/training-points/:id",
+    "filename": "server.js",
+    "line": 3381,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/support/student/:mssv",
+    "filename": "server.js",
+    "line": 3411,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/api/support/teacher/:maGV",
+    "filename": "server.js",
+    "line": 3423,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/documents/teacher/:ma_giang_vien",
+    "filename": "ai-exam/routes.js",
+    "line": 24,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/sessions/:id/resume",
+    "filename": "ai-exam/routes.js",
+    "line": 27,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/sessions/teacher/:ma_giang_vien",
+    "filename": "ai-exam/routes.js",
+    "line": 28,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/sessions/:id/questions",
+    "filename": "ai-exam/routes.js",
+    "line": 30,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/questions/:id/status",
+    "filename": "ai-exam/routes.js",
+    "line": 31,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/questions/:id",
+    "filename": "ai-exam/routes.js",
+    "line": 32,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/sessions/:id/approve-all",
+    "filename": "ai-exam/routes.js",
+    "line": 33,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/questions/:id",
+    "filename": "ai-exam/routes.js",
+    "line": 34,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/banks/teacher/:ma_giang_vien",
+    "filename": "ai-exam/routes.js",
+    "line": 37,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/banks/:id/questions",
+    "filename": "ai-exam/routes.js",
+    "line": 38,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/banks/:id",
+    "filename": "ai-exam/routes.js",
+    "line": 39,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/banks/:id",
+    "filename": "ai-exam/routes.js",
+    "line": 40,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/exams/teacher/:ma_giang_vien",
+    "filename": "ai-exam/routes.js",
+    "line": 59,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/exams/student/:mssv",
+    "filename": "ai-exam/routes.js",
+    "line": 76,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "POST",
+    "route": "/exams/:exam_id/start",
+    "filename": "ai-exam/routes.js",
+    "line": 94,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/exams/history/student/:mssv",
+    "filename": "ai-exam/routes.js",
+    "line": 215,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "DELETE",
+    "route": "/exams/:id",
+    "filename": "ai-exam/routes.js",
+    "line": 233,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "PUT",
+    "route": "/exams/:id",
+    "filename": "ai-exam/routes.js",
+    "line": 245,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/exams/:id/results",
+    "filename": "ai-exam/routes.js",
+    "line": 263,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  },
+  {
+    "method": "GET",
+    "route": "/attempts/:attempt_id/details",
+    "filename": "ai-exam/routes.js",
+    "line": 295,
+    "hasVerifyToken": false,
+    "hasAuthorizeRole": false
+  }
+]
