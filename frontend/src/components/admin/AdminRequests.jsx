@@ -4,7 +4,7 @@ import { RequestsSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search, Trash2, Check
+  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search, Trash2, Check, Paperclip
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { ConfirmDialog, Toast } from '../common/ModalPortal';
@@ -476,7 +476,40 @@ function AdminRequests({ refreshBadge }) {
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-[#6B7280] block mb-1">Nội dung chi tiết:</span>
-                      <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed bg-[#FFFFFF] p-3 rounded-lg border border-[#F4C542]/30">{selectedReq.NoiDung}</p>
+                      <div className="bg-[#FFFFFF] p-3 rounded-lg border border-[#F4C542]/30">
+                        {(() => {
+                          const noiDung = selectedReq.NoiDung;
+                          if (!noiDung) return null;
+                          const fileStartIdx = noiDung.indexOf('[FILE_MINH_CHUNG_START]');
+                          const fileEndIdx = noiDung.indexOf('[FILE_MINH_CHUNG_END]');
+                          
+                          if (fileStartIdx !== -1 && fileEndIdx !== -1) {
+                            const textContent = noiDung.substring(0, fileStartIdx).trim();
+                            const fileData = noiDung.substring(fileStartIdx + '[FILE_MINH_CHUNG_START]'.length, fileEndIdx).trim();
+                            const isImage = fileData.startsWith('data:image/');
+                            
+                            return (
+                              <div className="space-y-3">
+                                <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{textContent}</p>
+                                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                  <p className="text-xs font-bold text-gray-500 mb-2 uppercase">File minh chứng đính kèm:</p>
+                                  {isImage ? (
+                                    <a href={fileData} target="_blank" rel="noopener noreferrer" className="block max-w-sm">
+                                      <img src={fileData} alt="Minh chứng" className="max-w-full h-auto object-contain rounded border border-gray-300 shadow-sm hover:opacity-90 transition-opacity" />
+                                    </a>
+                                  ) : (
+                                    <a href={fileData} download="minh_chung" className="text-blue-600 hover:underline text-sm font-semibold flex items-center gap-1.5">
+                                      <Paperclip className="w-4 h-4" /> Tải xuống file đính kèm
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{noiDung}</p>;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -76,13 +76,14 @@ module.exports = (db) => {
     router.get('/exams/student/:mssv', async (req, res) => {
         try {
             const query = `
-                SELECT e.*, m.TenMonHoc 
+                SELECT e.*, m.TenMonHoc,
+                (SELECT COUNT(*) FROM exam_attempts a WHERE a.exam_id = e.id AND a.mssv = ? AND a.trang_thai = 'Submitted') as is_submitted
                 FROM exams e 
                 JOIN monhoc m ON e.ma_mon_hoc = m.MaMonHoc
                 JOIN dangky_hocphan dk ON e.ma_lop_hoc_phan = dk.MaLopHocPhan
                 WHERE dk.MSSV = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') AND (e.trang_thai != 'Completed' OR e.trang_thai IS NULL)
             `;
-            const exams = await execute(query, [req.params.mssv]);
+            const exams = await execute(query, [req.params.mssv, req.params.mssv]);
             res.json(exams);
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
@@ -205,7 +206,7 @@ module.exports = (db) => {
             const score = answers.length > 0 ? (correctCount / answers.length) * 10 : 0;
             await dbPromise.query(`UPDATE exam_attempts SET diem_so = ?, thoi_gian_nop_bai = CURRENT_TIMESTAMP, trang_thai = 'Submitted' WHERE id = ?`, [score, attempt_id]);
 
-            res.json({ success: true, score });
+            res.json({ success: true, score, correct: correctCount, total: answers.length });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
         }
@@ -235,6 +236,25 @@ router.delete('/exams/:id', async (req, res) => {
         // Tùy thuộc vào CSDL, nếu có foreign key constraint, bạn có thể cần xóa ở bảng exam_attempts trước
         await dbPromise.query(`DELETE FROM exams WHERE id = ?`, [examId]);
         res.json({ success: true, message: 'Đã xóa kỳ thi thành công.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Cập nhật kỳ thi
+router.put('/exams/:id', async (req, res) => {
+    try {
+        const examId = req.params.id;
+        const { tieu_de, thoi_gian_thi_phut, thoi_gian_bat_dau, thoi_gian_ket_thuc } = req.body;
+        
+        await dbPromise.query(
+            `UPDATE exams 
+             SET tieu_de = ?, thoi_gian_thi_phut = ?, thoi_gian_bat_dau = ?, thoi_gian_ket_thuc = ? 
+             WHERE id = ?`,
+            [tieu_de, thoi_gian_thi_phut, thoi_gian_bat_dau, thoi_gian_ket_thuc, examId]
+        );
+        
+        res.json({ success: true, message: 'Đã cập nhật kỳ thi thành công.' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
