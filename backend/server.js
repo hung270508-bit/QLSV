@@ -3255,7 +3255,7 @@ app.get('/api/admin/training-points', (req, res) => {
 });
 
 app.put('/api/admin/training-points/:id', (req, res) => {
-    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet } = req.body;
+    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet, GhiChu } = req.body;
     let xepLoai = 'Yếu';
     const diem = Number(TongDiem);
     if (diem >= 90) xepLoai = 'Xuất sắc';
@@ -3268,7 +3268,10 @@ app.put('/api/admin/training-points/:id', (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
 
         const nguoiDuyet = NguoiDuyet || 'admin';
-        const logMsg = `Đã chốt điểm: Cộng thêm ${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
+        let logMsg = `Cập nhật điểm: Điều chỉnh ${DiemKhoaDanhGia >= 0 ? '+' : ''}${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
+        if (GhiChu && GhiChu.trim()) {
+            logMsg += ` | Phản hồi: ${GhiChu.trim()}`;
+        }
         db.query('INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES (?, ?, ?)', [req.params.id, nguoiDuyet, logMsg], (logErr) => {
             if (logErr) console.error('Lỗi lưu log duyệt:', logErr);
             res.json({ success: true, message: 'Đã chốt điểm và lưu nhật ký!' });
