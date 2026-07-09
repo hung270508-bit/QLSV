@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Plus, Calendar, BookOpen, AlertCircle, Sparkles, 
     Trash2, BarChart2, XCircle, CheckCircle, Users,
-    ClipboardList, History, ChevronLeft
+    ClipboardList, History, ChevronLeft, Edit2
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
@@ -50,6 +50,10 @@ function ExamManagement() {
     const [selectedExamForResults, setSelectedExamForResults] = useState(null);
     const [examResults, setExamResults] = useState([]);
     const [loadingResults, setLoadingResults] = useState(false);
+
+    // States Edit Exam
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editExamData, setEditExamData] = useState(null);
 
     useEffect(() => {
         fetchExams();
@@ -236,6 +240,68 @@ function ExamManagement() {
         );
     };
 
+    const handleOpenEditModal = (exam) => {
+        // Date parsing helper to handle timezone cleanly for datetime-local input
+        const formatForInput = (isoString) => {
+            if (!isoString) return '';
+            const d = new Date(isoString);
+            return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        };
+        
+        setEditExamData({
+            ...exam,
+            thoi_gian_bat_dau: formatForInput(exam.thoi_gian_bat_dau),
+            thoi_gian_ket_thuc: formatForInput(exam.thoi_gian_ket_thuc)
+        });
+        setSubmitErrors({});
+        setShowEditModal(true);
+    };
+
+    const handleUpdateSubmit = async (e) => {
+        e.preventDefault();
+        let errors = {};
+        
+        const tieuDeTrim = editExamData.tieu_de ? editExamData.tieu_de.trim() : '';
+        if (!tieuDeTrim) {
+            errors.tieu_de = 'Không được bỏ trống tiêu đề đợt thi!';
+        } else if (tieuDeTrim.length < 10) {
+            errors.tieu_de = 'Tiêu đề đợt thi phải từ 10 ký tự trở lên!';
+        } else if (editExamData.tieu_de.length > 30) {
+            errors.tieu_de = 'Tiêu đề đợt thi không được vượt quá 30 ký tự!';
+        }
+        
+        const thoiGianVal = Number(editExamData.thoi_gian_thi_phut);
+        if (thoiGianVal < 5 || !Number.isInteger(thoiGianVal)) {
+            errors.thoi_gian_thi_phut = 'Thời gian làm bài phải là số nguyên và lớn hơn hoặc bằng 5 phút!';
+        }
+        
+        const now = new Date();
+        const thoiGianBatDau = new Date(editExamData.thoi_gian_bat_dau);
+        const thoiGianKetThuc = new Date(editExamData.thoi_gian_ket_thuc);
+        
+        if (thoiGianKetThuc <= thoiGianBatDau) {
+            errors.thoi_gian_ket_thuc = 'Thời gian kết thúc phải sau thời gian mở phòng!';
+        }
+        
+        if (thoiGianKetThuc <= now) {
+            errors.thoi_gian_ket_thuc = 'Thời gian kết thúc phải ở trong tương lai (sau hiện tại)!';
+        }
+        
+        setSubmitErrors(errors);
+        
+        if (Object.keys(errors).length > 0) return;
+        
+        try {
+            await axios.put(`${API_URL}/api/ai-exams/exams/${editExamData.id}`, editExamData);
+            showToast('Cập nhật kỳ thi thành công!');
+            setShowEditModal(false);
+            setEditExamData(null);
+            fetchExams();
+        } catch (error) {
+            showToast(error.response?.data?.message || 'Lỗi cập nhật kỳ thi', 'error');
+        }
+    };
+
     return (
         <div className="space-y-6 p-4 max-w-screen-3xl mx-auto w-full">
             <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
@@ -249,52 +315,48 @@ function ExamManagement() {
             />
             
             {/* HEADER & TABS */}
-            <div className="bg-gradient-to-r from-purple-800 to-indigo-900 rounded-3xl p-6 md:p-8 shadow-xl text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="bg-[#F4C542] rounded-3xl p-6 md:p-8 shadow-xl text-[#152238] flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                        <Calendar className="w-8 h-8 text-purple-300" />
+                    <h2 className="text-3xl font-bold mb-2 flex items-center gap-3 text-[#152238]">
                         Tổ chức Thi Online (AI)
                     </h2>
-                    <p className="text-purple-200 text-base">Tạo các đợt kiểm tra và quản lý cột điểm của sinh viên</p>
-                </div>
-                
-                <div className="flex bg-black/20 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 self-start md:self-auto">
-                    <button
-                        onClick={() => setActiveTab('exams')}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                            activeTab === 'exams'
-                                ? 'bg-white text-purple-950 shadow-lg font-bold'
-                                : 'text-purple-100 hover:text-white hover:bg-white/10'
-                        }`}
-                    >
-                        <ClipboardList className="w-5 h-5" />
-                        <span>Mở Đề Thi</span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('history'); setSelectedExamForResults(null); }}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                            activeTab === 'history'
-                                ? 'bg-white text-purple-950 shadow-lg font-bold'
-                                : 'text-purple-100 hover:text-white hover:bg-white/10'
-                        }`}
-                    >
-                        <History className="w-5 h-5" />
-                        <span>Lịch Sử Làm Bài</span>
-                    </button>
+                    <p className="text-[#152238]/80 font-medium text-lg">Quản lý đợt thi, ngân hàng câu hỏi & lịch sử thi</p>
                 </div>
             </div>
 
-            {/* TAB 1: MỞ ĐỀ THI */}
+            <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 w-max">
+                <button
+                    onClick={() => setActiveTab('exams')}
+                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'exams' ? 'bg-[#152238] text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}
+                >
+                    <BookOpen className="w-4 h-4" />
+                    Quản lý đợt thi
+                </button>
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'history' ? 'bg-[#152238] text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}
+                >
+                    <History className="w-4 h-4" />
+                    Lịch sử & Bảng điểm
+                </button>
+            </div>
+
+            {/* TAB 1: QUẢN LÝ ĐỢT THI */}
             {activeTab === 'exams' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                    <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="text-gray-600 font-medium text-sm flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-purple-500" />
-                            <span>Mỗi lần "Tạo kỳ thi mới" sẽ mở một đợt thi độc lập để lấy một cột điểm mới.</span>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
+                                <Calendar className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Danh sách các đợt thi</h3>
+                                <p className="text-sm text-gray-500 font-medium">Bạn có tổng cộng {exams.length} đợt kiểm tra</p>
+                            </div>
                         </div>
-                        <button
+                        <button 
                             onClick={() => setShowCreateModal(true)}
-                            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                            className="flex items-center gap-2 px-6 py-3 bg-[#152238] hover:bg-[#152238]/90 text-white font-bold rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 text-sm"
                         >
                             <Plus className="w-5 h-5" />
                             Tạo kỳ thi mới
@@ -317,11 +379,11 @@ function ExamManagement() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {exams.map(exam => (
-                                        <tr key={exam.id} className="hover:bg-purple-50/30 transition-colors">
+                                        <tr key={exam.id} className="hover:bg-gray-50/30 transition-colors">
                                             <td className="py-4 px-6 font-bold text-gray-900">{exam.tieu_de}</td>
                                             <td className="py-4 px-6 text-gray-600 font-medium">{exam.TenMonHoc || exam.ma_mon_hoc}</td>
                                             <td className="py-4 px-6 text-center">
-                                                <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-lg font-bold text-xs">
+                                                <span className="bg-purple-100 text-gray-700 px-3 py-1 rounded-lg font-bold text-xs">
                                                     {exam.ma_lop_hoc_phan}
                                                 </span>
                                             </td>
@@ -332,20 +394,29 @@ function ExamManagement() {
                                                 <div className="text-rose-500">{new Date(exam.thoi_gian_ket_thuc).toLocaleString('vi-VN')}</div>
                                             </td>
                                             <td className="py-4 px-6 text-center">
-                                                <button 
-                                                    onClick={() => handleDeleteExam(exam)}
-                                                    className="p-2 text-rose-500 hover:bg-rose-100 rounded-xl transition-all"
-                                                    title="Xóa kỳ thi này"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button 
+                                                        onClick={() => handleOpenEditModal(exam)}
+                                                        className="p-2 text-[#152238] hover:bg-[#F4C542]/20 rounded-xl transition-all shadow-sm border border-[#152238]/20 bg-gray-50 flex items-center justify-center"
+                                                        title="Sửa kỳ thi này"
+                                                    >
+                                                        <Edit2 className="w-5 h-5" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteExam(exam)}
+                                                        className="p-2 text-rose-500 hover:bg-rose-100 rounded-xl transition-all shadow-sm border border-rose-200 bg-rose-50 flex items-center justify-center"
+                                                        title="Xóa kỳ thi này"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
                                     {exams.length === 0 && !loading && (
                                         <tr>
                                             <td colSpan="7" className="py-12 text-center text-gray-500">
-                                                <ClipboardList className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                                
                                                 <p className="font-semibold text-lg">Chưa có đợt kiểm tra nào.</p>
                                                 <p className="text-sm">Nhấn "Tạo kỳ thi mới" để bắt đầu thiết lập.</p>
                                             </td>
@@ -369,149 +440,109 @@ function ExamManagement() {
                             exit={{ opacity: 0, x: -20 }}
                             className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8"
                         >
-                            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2 border-b pb-4">
-                                <History className="w-6 h-6 text-indigo-600" />
-                                Chọn đợt kiểm tra để lấy bảng điểm
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="mb-6">
+                                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    <BarChart2 className="w-6 h-6 text-blue-600" />
+                                    Lịch sử Thi & Bảng Điểm
+                                </h3>
+                                <p className="text-gray-500 text-sm mt-1">Chọn một đợt kiểm tra để xem điểm chi tiết của sinh viên</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {exams.map(exam => (
                                     <div 
                                         key={exam.id} 
-                                        onClick={() => handleViewResults(exam)} 
-                                        className="relative group p-6 border border-gray-200 rounded-2xl cursor-pointer hover:border-indigo-400 hover:shadow-xl transition-all bg-gradient-to-br from-white to-indigo-50/30 overflow-hidden"
+                                        onClick={() => handleViewResults(exam)}
+                                        className="p-5 rounded-2xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group"
                                     >
-                                        <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500 transform origin-left scale-y-0 group-hover:scale-y-100 transition-transform duration-300 ease-out" />
-                                        
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
-                                                <BookOpen className="w-6 h-6" />
-                                            </div>
-                                            <span className="bg-white border border-gray-200 text-gray-600 font-bold px-3 py-1 rounded-lg text-xs shadow-sm">
-                                                {exam.ma_lop_hoc_phan}
-                                            </span>
+                                        <div className="flex items-start justify-between mb-3">
+                                            <h4 className="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors line-clamp-2">{exam.tieu_de}</h4>
+                                            <span className="bg-blue-50 text-blue-600 p-2 rounded-xl"><ClipboardList className="w-5 h-5"/></span>
                                         </div>
-                                        
-                                        <h4 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2 group-hover:text-indigo-700 transition-colors">
-                                            {exam.tieu_de}
-                                        </h4>
-                                        <p className="text-sm text-gray-500 font-medium mb-5 line-clamp-1">{exam.TenMonHoc || exam.ma_mon_hoc}</p>
-                                        
-                                        <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                                            <div className="text-sm font-semibold text-gray-600">
-                                                <span className="text-indigo-600 font-extrabold">{exam.tong_so_cau}</span> câu hỏi
-                                            </div>
-                                            <div className="text-indigo-600 font-bold text-sm flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                                Xem điểm <ChevronLeft className="w-4 h-4 rotate-180" />
-                                            </div>
+                                        <div className="space-y-2 text-sm text-gray-600">
+                                            <div className="flex items-center gap-2"><BookOpen className="w-4 h-4"/> <span className="font-medium">{exam.TenMonHoc || exam.ma_mon_hoc}</span></div>
+                                            <div className="flex items-center gap-2"><Users className="w-4 h-4"/> <span>Lớp: <span className="font-bold">{exam.ma_lop_hoc_phan}</span></span></div>
+                                            <div className="flex items-center gap-2"><Calendar className="w-4 h-4"/> <span>Ngày thi: {new Date(exam.thoi_gian_bat_dau).toLocaleDateString('vi-VN')}</span></div>
                                         </div>
                                     </div>
                                 ))}
                                 {exams.length === 0 && !loading && (
-                                    <div className="col-span-full py-16 text-center text-gray-500">
-                                        <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                                        <p className="font-bold text-lg text-gray-700">Chưa có đợt kiểm tra nào trong hệ thống.</p>
-                                        <p className="text-sm mt-1">Vui lòng quay lại tab "Mở Đề Thi" để khởi tạo.</p>
-                                    </div>
+                                    <div className="col-span-full py-10 text-center text-gray-500">Chưa có dữ liệu kỳ thi nào.</div>
                                 )}
                             </div>
                         </motion.div>
                     ) : (
                         <motion.div 
-                            key="detail"
+                            key="details"
                             initial={{ opacity: 0, x: 20 }} 
                             animate={{ opacity: 1, x: 0 }} 
                             exit={{ opacity: 0, x: 20 }}
-                            className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col"
+                            className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
                         >
-                            <div className="p-6 md:p-8 border-b bg-gradient-to-r from-indigo-50/50 to-blue-50/50">
-                                <button 
-                                    onClick={() => setSelectedExamForResults(null)} 
-                                    className="flex items-center gap-2 text-indigo-700 hover:text-indigo-900 font-bold mb-6 text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-indigo-100 transition-all hover:-translate-x-1 w-max"
-                                >
-                                    <ChevronLeft className="w-4 h-4" /> Trở lại danh sách đợt thi
-                                </button>
-                                
-                                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                                    <div>
-                                        <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 flex items-center gap-3">
-                                            <BarChart2 className="w-8 h-8 text-indigo-500" />
-                                            Bảng Điểm: {selectedExamForResults.tieu_de}
-                                        </h3>
-                                        <div className="flex flex-wrap items-center gap-3 mt-3">
-                                            <span className="text-sm text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg font-bold shadow-sm">
-                                                Lớp: <span className="text-indigo-700">{selectedExamForResults.ma_lop_hoc_phan}</span>
-                                            </span>
-                                            <span className="text-sm text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg font-bold shadow-sm">
-                                                Môn: {selectedExamForResults.TenMonHoc || selectedExamForResults.ma_mon_hoc}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-md">
-                                        Tổng nộp: {examResults.length} SV
-                                    </div>
+                            {/* Header Bảng điểm */}
+                            <div className="p-6 md:p-8 bg-gradient-to-r from-blue-900 to-indigo-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <button 
+                                        onClick={() => setSelectedExamForResults(null)}
+                                        className="flex items-center gap-2 text-blue-200 hover:text-white font-medium mb-3 transition-colors"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                        Quay lại danh sách
+                                    </button>
+                                    <h3 className="text-2xl font-extrabold">{selectedExamForResults.tieu_de}</h3>
+                                    <p className="text-blue-200 mt-1">Lớp: {selectedExamForResults.ma_lop_hoc_phan} • Môn: {selectedExamForResults.TenMonHoc || selectedExamForResults.ma_mon_hoc}</p>
+                                </div>
+                                <div className="bg-white/10 px-5 py-3 rounded-2xl backdrop-blur-sm text-center">
+                                    <div className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Tổng sinh viên nộp bài</div>
+                                    <div className="text-3xl font-extrabold">{examResults.length}</div>
                                 </div>
                             </div>
-                            
-                            <div className="p-6 md:p-8 min-h-[400px]">
+
+                            {/* Bảng điểm chi tiết */}
+                            <div className="p-6 md:p-8">
                                 {loadingResults ? (
-                                    <div className="flex flex-col items-center justify-center h-full pt-12 text-indigo-600">
-                                        <Sparkles className="w-12 h-12 animate-spin mb-4" />
-                                        <p className="font-bold text-lg">Hệ thống đang tổng hợp điểm...</p>
-                                    </div>
-                                ) : examResults.length > 0 ? (
-                                    <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-sm text-left">
-                                                <thead className="bg-gray-50 border-b border-gray-200 font-extrabold text-gray-600 uppercase text-xs tracking-wider">
-                                                    <tr>
-                                                        <th className="px-6 py-4 text-center w-16">STT</th>
-                                                        <th className="px-6 py-4">Sinh viên</th>
-                                                        <th className="px-6 py-4 text-center">Thời gian nộp bài</th>
-                                                        <th className="px-6 py-4 text-center">Đúng / Sai</th>
-                                                        <th className="px-6 py-4 text-center">Điểm Hệ 10</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-100 bg-white">
-                                                    {examResults.map((rs, idx) => (
-                                                        <tr key={rs.attempt_id} className="hover:bg-indigo-50/30 transition-colors">
-                                                            <td className="px-6 py-4 text-center font-bold text-gray-400">{idx + 1}</td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="font-bold text-gray-900 text-base">{rs.HoTen || 'Chưa cập nhật'}</div>
-                                                                <div className="text-xs font-bold text-indigo-600 mt-1">{rs.mssv}</div>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center font-semibold text-gray-600">
-                                                                {new Date(rs.thoi_gian_nop_bai).toLocaleString('vi-VN')}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                <div className="flex items-center justify-center gap-3">
-                                                                    <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                                                                        <CheckCircle className="w-4 h-4"/> {rs.so_cau_dung || 0}
-                                                                    </span>
-                                                                    <span className="flex items-center gap-1.5 text-rose-700 font-bold bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">
-                                                                        <XCircle className="w-4 h-4"/> {rs.so_cau_sai || 0}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                <span className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl font-extrabold text-lg shadow-sm border-2 ${
-                                                                    Number(rs.diem_so) >= 8 ? 'bg-emerald-50 text-emerald-600 border-emerald-300' : 
-                                                                    Number(rs.diem_so) >= 5 ? 'bg-indigo-50 text-indigo-600 border-indigo-300' : 
-                                                                    'bg-rose-50 text-rose-600 border-rose-300'
-                                                                }`}>
-                                                                    {Number(rs.diem_so).toFixed(1)}
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
+                                    <div className="py-12 text-center text-gray-500 font-medium animate-pulse">Đang tải dữ liệu...</div>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center pt-16 pb-8 text-gray-500">
-                                        <Users className="w-16 h-16 mb-4 text-gray-300" />
-                                        <p className="text-xl font-bold text-gray-800">Chưa có dữ liệu điểm</p>
-                                        <p className="text-sm mt-2 text-gray-500">Danh sách sẽ tự động cập nhật ngay khi có sinh viên nộp bài.</p>
+                                    <div className="overflow-x-auto border border-gray-200 rounded-2xl">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50 border-b border-gray-200">
+                                                <tr>
+                                                    <th className="text-left py-4 px-6 font-bold text-gray-700">MSSV</th>
+                                                    <th className="text-left py-4 px-6 font-bold text-gray-700">Họ & Tên</th>
+                                                    <th className="text-center py-4 px-6 font-bold text-gray-700">Lớp</th>
+                                                    <th className="text-center py-4 px-6 font-bold text-gray-700">Nộp bài lúc</th>
+                                                    <th className="text-center py-4 px-6 font-bold text-gray-700">Số câu đúng</th>
+                                                    <th className="text-center py-4 px-6 font-bold text-gray-700">Điểm số</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {examResults.map((result, idx) => (
+                                                    <tr key={result.attempt_id || idx} className="hover:bg-blue-50/50 transition-colors">
+                                                        <td className="py-4 px-6 font-bold text-gray-900">{result.mssv}</td>
+                                                        <td className="py-4 px-6 text-gray-700 font-medium">{result.HoTen}</td>
+                                                        <td className="py-4 px-6 text-center text-gray-600">{result.MaLop}</td>
+                                                        <td className="py-4 px-6 text-center text-sm text-gray-500">
+                                                            {new Date(result.thoi_gian_nop_bai).toLocaleString('vi-VN')}
+                                                        </td>
+                                                        <td className="py-4 px-6 text-center">
+                                                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg font-bold text-sm">
+                                                                {result.so_cau_dung} / {Number(result.so_cau_dung || 0) + Number(result.so_cau_sai || 0)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-4 px-6 text-center">
+                                                            <span className={`font-extrabold text-lg ${result.diem_so >= 5 ? 'text-blue-600' : 'text-rose-600'}`}>
+                                                                {result.diem_so}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {examResults.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="6" className="py-12 text-center text-gray-500">Chưa có sinh viên nào nộp bài.</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
                             </div>
@@ -529,9 +560,9 @@ function ExamManagement() {
                             animate={{ scale: 1, opacity: 1 }}
                             className="bg-white rounded-3xl w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl overflow-hidden"
                         >
-                            <div className="p-6 border-b bg-purple-50">
+                            <div className="p-6 border-b bg-gray-50">
                                 <h3 className="text-2xl font-extrabold text-purple-900">Tạo Đợt Kiểm Tra Mới</h3>
-                                <p className="text-sm text-purple-700 font-medium mt-1">Hệ thống sẽ tạo ra 1 cột điểm độc lập cho đợt thi này</p>
+                                <p className="text-sm text-gray-700 font-medium mt-1">Hệ thống sẽ tạo ra 1 cột điểm độc lập cho đợt thi này</p>
                             </div>
                             <div className="flex-1 overflow-y-auto p-6 md:p-8">
                                 <form id="exam-form" onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -554,8 +585,8 @@ function ExamManagement() {
 
                                     {/* NÂNG CẤP: CHỌN ĐÚNG NGÂN HÀNG ĐỀ */}
                                     <div>
-                                        <label className="block text-sm font-extrabold text-indigo-700 mb-2">Chọn Ngân hàng đề để bốc câu hỏi <span className="text-rose-500">*</span></label>
-                                        <select required value={formData.bank_id} onChange={e => setFormData({...formData, bank_id: e.target.value})} className="w-full p-3.5 bg-indigo-50/50 border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-900">
+                                        <label className="block text-sm font-extrabold text-[#152238] mb-2">Chọn Ngân hàng đề để bốc câu hỏi <span className="text-rose-500">*</span></label>
+                                        <select required value={formData.bank_id} onChange={e => setFormData({...formData, bank_id: e.target.value})} className="w-full p-3.5 bg-[#F4C542]/10/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-900">
                                             <option value="">-- Chọn bộ đề thi (Vui lòng chọn môn học trước) --</option>
                                             {banks.filter(b => b.ma_mon_hoc === formData.ma_mon_hoc).map(b => (
                                                 <option key={b.id} value={b.id}>{b.tieu_de} (Có {b.tong_so_cau} câu)</option>
@@ -568,42 +599,14 @@ function ExamManagement() {
                                         <input type="text" required
                                             value={formData.tieu_de}
                                             onChange={e => {
-                                                const val = e.target.value;
-                                                
-                                                if (val.length > 30) {
-                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Tiêu đề đợt thi không được vượt quá 30 ký tự!' }));
-                                                    return;
-                                                }
-
-                                                const validRegex = /^[a-zA-Z0-9\s\-\(\)ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ]*$/;
-                                                if (!validRegex.test(val)) {
-                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Chỉ được phép sử dụng chữ cái, số, khoảng trắng và các ký tự: - ( )' }));
-                                                    return;
-                                                }
-
-                                                setFormData({...formData, tieu_de: val});
-                                                
-                                                if (val.trim() === '') {
-                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Không được bỏ trống tiêu đề!' }));
-                                                } else if (val.trim().length < 10) {
-                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Tiêu đề phải từ 10 ký tự trở lên!' }));
-                                                } else {
-                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: undefined }));
-                                                }
+                                                setFormData({...formData, tieu_de: e.target.value});
+                                                setSubmitErrors(prev => ({ ...prev, tieu_de: undefined }));
                                             }}
-                                            onBlur={e => {
-                                                const val = formData.tieu_de.trim();
-                                                if (val === '') {
-                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Không được bỏ trống tiêu đề!' }));
-                                                } else if (val.length < 10) {
-                                                    setSubmitErrors(prev => ({ ...prev, tieu_de: 'Tiêu đề phải từ 10 ký tự trở lên!' }));
-                                                }
-                                            }}
-                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.tieu_de ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl focus:bg-white font-medium focus:ring-2`}
-                                            placeholder="Ví dụ: Kiểm tra 15p - Đợt 1..." />
+                                            placeholder="VD: Kiểm tra giữa kỳ môn Cơ sở dữ liệu"
+                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.tieu_de ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
                                         {submitErrors.tieu_de && (
                                             <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                                
                                                 <span className="font-medium">{submitErrors.tieu_de}</span>
                                             </div>
                                         )}
@@ -611,54 +614,24 @@ function ExamManagement() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Thời gian mở phòng</label>
-                                            <div className="relative">
-                                                <input 
-                                                    type="text" 
-                                                    readOnly 
-                                                    value={formatDateDisplay(formData.thoi_gian_bat_dau)} 
-                                                    placeholder="DD/MM/YYYY HH:MM"
-                                                    className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium cursor-pointer" 
-                                                    onClick={() => { const el = document.getElementById('thoi_gian_bat_dau_picker'); if (el && el.showPicker) el.showPicker(); }}
-                                                />
-                                                <input 
-                                                    id="thoi_gian_bat_dau_picker"
-                                                    type="datetime-local" 
-                                                    value={formData.thoi_gian_bat_dau} 
-                                                    onChange={e => setFormData({...formData, thoi_gian_bat_dau: e.target.value})} 
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-none" 
-                                                    style={{ zIndex: -1 }}
-                                                />
-                                                <Calendar className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none" />
-                                            </div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Mở phòng thi (Bắt đầu)</label>
+                                            <input type="datetime-local" required
+                                                value={formData.thoi_gian_bat_dau}
+                                                onChange={e => setFormData({...formData, thoi_gian_bat_dau: e.target.value})}
+                                                className="w-full p-3 border-2 border-emerald-300 bg-white rounded-xl text-emerald-900 font-bold focus:ring-2 focus:ring-emerald-500" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Thời gian đóng phòng</label>
-                                            <div className="relative">
-                                                <input 
-                                                    type="text" 
-                                                    readOnly 
-                                                    value={formatDateDisplay(formData.thoi_gian_ket_thuc)} 
-                                                    placeholder="DD/MM/YYYY HH:MM"
-                                                    className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium cursor-pointer" 
-                                                    onClick={() => { const el = document.getElementById('thoi_gian_ket_thuc_picker'); if (el && el.showPicker) el.showPicker(); }}
-                                                />
-                                                <input 
-                                                    id="thoi_gian_ket_thuc_picker"
-                                                    type="datetime-local" 
-                                                    value={formData.thoi_gian_ket_thuc} 
-                                                    onChange={e => setFormData({...formData, thoi_gian_ket_thuc: e.target.value})} 
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-none" 
-                                                    style={{ zIndex: -1 }}
-                                                />
-                                                <Calendar className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none" />
-                                            </div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Đóng phòng thi (Kết thúc)</label>
+                                            <input type="datetime-local" required
+                                                value={formData.thoi_gian_ket_thuc}
+                                                onChange={e => setFormData({...formData, thoi_gian_ket_thuc: e.target.value})}
+                                                className="w-full p-3 border-2 border-rose-300 bg-white rounded-xl text-rose-900 font-bold focus:ring-2 focus:ring-rose-500" />
                                         </div>
                                     </div>
 
-                                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-2xl border border-purple-100 space-y-5">
-                                        <div className="flex flex-col border-b border-purple-200/60 pb-4">
-                                            <h4 className="font-extrabold text-purple-900 flex items-center gap-2"><BookOpen className="w-5 h-5"/> Cấu trúc đề thi</h4>
+                                    <div className="bg-gray-50 p-6 rounded-2xl border border-purple-100 space-y-5">
+                                        <div className="flex flex-col border-b border-gray-200/60 pb-4">
+                                            <h4 className="font-extrabold text-purple-900 flex items-center gap-2"> Cấu trúc đề thi</h4>
                                             {selectedBankInfo && (
                                                 <span className="text-sm font-semibold text-rose-600 mt-1">
                                                     * Ngân hàng đề hiện có tối đa {maxAvailableQuestions} câu.
@@ -689,13 +662,13 @@ function ExamManagement() {
                                                     className={`w-full p-3 bg-white border ${submitErrors.tong_so_cau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-xl text-center font-bold text-blue-600 focus:ring-2`} />
                                                 {submitErrors.tong_so_cau && (
                                                     <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                                        
                                                         <span className="font-medium">{submitErrors.tong_so_cau}</span>
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-extrabold text-purple-700 uppercase mb-1">Thời gian (phút)</label>
+                                                <label className="block text-xs font-extrabold text-gray-700 uppercase mb-1">Thời gian (phút)</label>
                                                 <input type="number" required
                                                     value={formData.thoi_gian_thi_phut}
                                                     onChange={e => {
@@ -713,10 +686,10 @@ function ExamManagement() {
                                                         }
                                                     }}
                                                     onBlur={e => setFormData({...formData, thoi_gian_thi_phut: Number(formData.thoi_gian_thi_phut) || 0})}
-                                                    className={`w-full p-3 border-2 ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-purple-400 focus:ring-purple-500'} bg-white rounded-xl text-center font-extrabold text-purple-700 focus:ring-2 shadow-inner`} />
+                                                    className={`w-full p-3 border-2 ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-purple-400 focus:ring-purple-500'} bg-white rounded-xl text-center font-extrabold text-gray-700 focus:ring-2 shadow-inner`} />
                                                 {submitErrors.thoi_gian_thi_phut && (
                                                     <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                                        
                                                         <span className="font-medium">{submitErrors.thoi_gian_thi_phut}</span>
                                                     </div>
                                                 )}
@@ -724,8 +697,8 @@ function ExamManagement() {
                                         </div>
                                     </div>
                                     
-                                    <div className="p-4 bg-amber-50/80 rounded-xl border border-amber-200 text-amber-800 font-bold text-sm flex items-center gap-3">
-                                        <AlertCircle className="w-6 h-6 shrink-0 text-amber-500" />
+                                    <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                        <AlertCircle className="w-5 h-5 text-gray-400 flex-shrink-0" />
                                         <span>Lưu ý: Mỗi sinh viên của lớp chỉ được phép làm và nộp bài 1 lần duy nhất trong đợt kiểm tra này.</span>
                                     </div>
                                 </form>
@@ -733,6 +706,93 @@ function ExamManagement() {
                             <div className="p-5 border-t bg-gray-50 flex gap-4 shrink-0">
                                 <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-all">Hủy bỏ</button>
                                 <button type="submit" form="exam-form" className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5">Tạo Kỳ Thi</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                </ModalPortal>
+            )}
+            {/* MODAL SỬA KỲ THI */}
+            {showEditModal && editExamData && (
+                <ModalPortal>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0 }} 
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="bg-white rounded-3xl w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+                        >
+                            <div className="p-6 border-b bg-gray-50 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-2xl font-extrabold text-[#152238]">Sửa Đợt Kiểm Tra</h3>
+                                    <p className="text-sm text-gray-700 font-medium mt-1">Chỉnh sửa thông tin kỳ thi (Thời gian, tiêu đề)</p>
+                                </div>
+                                <button onClick={() => setShowEditModal(false)} className="p-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-full">
+                                    <XCircle className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                                <form id="edit-exam-form" onSubmit={handleUpdateSubmit} noValidate className="space-y-6">
+                                    
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Tiêu đề đợt thi</label>
+                                        <input type="text" required
+                                            value={editExamData.tieu_de}
+                                            onChange={e => {
+                                                setEditExamData({...editExamData, tieu_de: e.target.value});
+                                                setSubmitErrors(prev => ({ ...prev, tieu_de: undefined }));
+                                            }}
+                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.tieu_de ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                        {submitErrors.tieu_de && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.tieu_de}</div>}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Mở phòng thi (Bắt đầu)</label>
+                                            <input type="datetime-local" required
+                                                value={editExamData.thoi_gian_bat_dau}
+                                                onChange={e => {
+                                                    setEditExamData({...editExamData, thoi_gian_bat_dau: e.target.value});
+                                                    setSubmitErrors(prev => ({ ...prev, thoi_gian_bat_dau: undefined }));
+                                                }}
+                                                className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_bat_dau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                            {submitErrors.thoi_gian_bat_dau && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_bat_dau}</div>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Đóng phòng thi (Kết thúc)</label>
+                                            <input type="datetime-local" required
+                                                value={editExamData.thoi_gian_ket_thuc}
+                                                onChange={e => {
+                                                    setEditExamData({...editExamData, thoi_gian_ket_thuc: e.target.value});
+                                                    setSubmitErrors(prev => ({ ...prev, thoi_gian_ket_thuc: undefined }));
+                                                }}
+                                                className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_ket_thuc ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                            {submitErrors.thoi_gian_ket_thuc && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_ket_thuc}</div>}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thời gian làm bài (phút)</label>
+                                        <input type="number" required
+                                            value={editExamData.thoi_gian_thi_phut}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setEditExamData({...editExamData, thoi_gian_thi_phut: val});
+                                                if (val !== '') {
+                                                    const numVal = Number(val);
+                                                    if (numVal < 0 || !Number.isInteger(numVal)) {
+                                                        setSubmitErrors(prev => ({ ...prev, thoi_gian_thi_phut: 'Không được nhập số thập phân hoặc số âm!' }));
+                                                    } else {
+                                                        setSubmitErrors(prev => ({ ...prev, thoi_gian_thi_phut: undefined }));
+                                                    }
+                                                }
+                                            }}
+                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                        {submitErrors.thoi_gian_thi_phut && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_thi_phut}</div>}
+                                    </div>
+                                </form>
+                            </div>
+                            <div className="p-5 border-t bg-gray-50 flex gap-4 shrink-0">
+                                <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-3.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-all">Hủy bỏ</button>
+                                <button type="submit" form="edit-exam-form" className="flex-1 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5">Lưu Thay Đổi</button>
                             </div>
                         </motion.div>
                     </div>
