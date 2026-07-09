@@ -34,6 +34,7 @@ function AdminRequests({ refreshBadge }) {
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [filterTopic, setFilterTopic] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedReq, setSelectedReq] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -182,6 +183,7 @@ function AdminRequests({ refreshBadge }) {
   const filtered = requests.filter(req => {
     if (search && search.length > 0 && search.trim() === '') return false;
     if (filterRole !== 'All' && req.VaiTro !== filterRole) return false;
+    if (filterTopic !== 'All' && req.LoaiYeuCau !== filterTopic) return false;
     if (filterStatus === 'Chờ xử lý') {
       if (req.TrangThai !== 'Chờ xử lý' && req.TrangThai !== 'Đang xử lý') return false;
     } else if (filterStatus !== 'All' && req.TrangThai !== filterStatus) return false;
@@ -195,7 +197,9 @@ function AdminRequests({ refreshBadge }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterRole, filterStatus]);
+  }, [search, filterRole, filterStatus, filterTopic]);
+
+  const topics = Array.from(new Set(requests.map(req => req.LoaiYeuCau).filter(Boolean)));
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -254,6 +258,16 @@ function AdminRequests({ refreshBadge }) {
           <option value="All">Tất cả đối tượng</option>
           <option value="SinhVien">Sinh viên</option>
           <option value="GiangVien">Giảng viên</option>
+        </select>
+        <select
+          value={filterTopic}
+          onChange={e => setFilterTopic(e.target.value)}
+          className="px-3 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+        >
+          <option value="All">Tất cả chủ đề</option>
+          {topics.map(topic => (
+            <option key={topic} value={topic}>{topic}</option>
+          ))}
         </select>
         <select
           value={filterStatus}
@@ -466,6 +480,28 @@ function AdminRequests({ refreshBadge }) {
                     </div>
                   </div>
                 </div>
+
+                {isViewOnly && selectedReq.TrangThai !== 'Chờ xử lý' && selectedReq.TrangThai !== 'Đang xử lý' && (
+                  <div className="border-t border-[#E5E7EB] pt-4 space-y-3">
+                    <h4 className="font-semibold text-gray-700 text-sm">Phản hồi từ bạn:</h4>
+                    <div className="bg-[#F0FDF4]/60 p-4 rounded-xl border border-[#F0FDF4] space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-[#6B7280]">Trạng thái xử lý:</span>
+                        <StatusBadge status={selectedReq.TrangThai} />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-[#6B7280]">Thời gian phản hồi:</span>
+                        <span className="text-xs font-semibold text-[#1F2937]">
+                          {selectedReq.NgayPhanHoi ? new Date(selectedReq.NgayPhanHoi).toLocaleString('vi-VN') : '-'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-[#6B7280] block mb-1">Nội dung phản hồi:</span>
+                        <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed bg-[#FFFFFF] p-3 rounded-lg border border-emerald-200/50">{selectedReq.PhanHoi || 'Không có nội dung phản hồi.'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {!isViewOnly && (
                   <div className="border-t border-[#E5E7EB] pt-4 space-y-3">
