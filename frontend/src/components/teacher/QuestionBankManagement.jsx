@@ -42,7 +42,7 @@ function QuestionBankManagement() {
     // Cập nhật State để bắt được Lớp học phần
     const [uploadForm, setUploadForm] = useState({
         ma_mon_hoc: '',
-        ma_lop_hoc_phan: '',
+        ma_lop_hoc_phan: [],
         tieu_de: '',
         so_cau_yeu_cau: 10,
         do_kho: 'Mixed',
@@ -267,8 +267,8 @@ function QuestionBankManagement() {
         setIsUploading(true);
         try {
             // Nối thêm LHP vào tiêu đề nếu có chọn LHP để phân biệt rạch ròi
-            const finalTieuDe = uploadForm.ma_lop_hoc_phan 
-                ? `${tieuDe} [${uploadForm.ma_lop_hoc_phan}]` 
+            const finalTieuDe = uploadForm.ma_lop_hoc_phan && uploadForm.ma_lop_hoc_phan.length > 0
+                ? `${tieuDe} [${uploadForm.ma_lop_hoc_phan.map(code => code.split('.').pop()).join(', ')}]` 
                 : tieuDe;
 
             const formData = new FormData();
@@ -276,6 +276,11 @@ function QuestionBankManagement() {
             formData.append('ma_mon_hoc', uploadForm.ma_mon_hoc);
             formData.append('ma_giang_vien', teacherId || 'GVCNTT001');
             formData.append('tieu_de', finalTieuDe);
+            
+            const selectedSubject = subjects.find(s => s.MaMonHoc === uploadForm.ma_mon_hoc);
+            if (selectedSubject) {
+                formData.append('ten_mon_hoc', selectedSubject.TenMonHoc);
+            }
 
             showToast('Đang tải lên tài liệu và trích xuất nội dung Word...', 'info');
             const uploadRes = await axios.post(`${API_URL}/api/ai-exams/documents/upload`, formData, {
@@ -287,35 +292,73 @@ function QuestionBankManagement() {
             }
 
             const docId = uploadRes.data.data.id;
+            const isRelevant = uploadRes.data.is_relevant;
 
-            showToast('Tài liệu sẵn sàng! AI đang phân tích và tạo batch 10 câu hỏi đầu tiên...', 'info');
-            const startRes = await axios.post(`${API_URL}/api/ai-exams/sessions/start`, {
-                document_id: docId,
-                ma_mon_hoc: uploadForm.ma_mon_hoc,
-                ma_giang_vien: teacherId || 'GVCNTT001',
-                so_cau_yeu_cau: soCau,
-                do_kho: uploadForm.do_kho,
-                chu_de: chuDe || 'Toàn bộ'
-            });
+            const proceedToGenerate = async (autoGen = true) => {
+                setIsUploading(true);
+                try {
+                    showToast(autoGen ? 'Tài liệu sẵn sàng! AI đang phân tích và tạo batch 10 câu hỏi đầu tiên...' : 'Đã tải tài liệu lên thành công. Bạn có thể bấm "Sinh Tiếp" khi sẵn sàng!', 'info');
+                    const startRes = await axios.post(`${API_URL}/api/ai-exams/sessions/start`, {
+                        document_id: docId,
+                        ma_mon_hoc: uploadForm.ma_mon_hoc,
+                        ma_giang_vien: teacherId || 'GVCNTT001',
+                        so_cau_yeu_cau: soCau,
+                        do_kho: uploadForm.do_kho,
+                        chu_de: chuDe || 'Toàn bộ',
+                        auto_generate: autoGen
+                    });
 
-            if (startRes.data?.success) {
-                const newSession = startRes.data.data;
-                showToast('Khởi tạo bộ đề AI thành công! Đã tạo xong batch câu hỏi đầu tiên.', 'success');
-                setSessions(prev => [newSession, ...prev]);
-                setCurrentSession(newSession);
-                
-                setUploadForm({
-                    ma_mon_hoc: '',
-                    ma_lop_hoc_phan: '',
-                    tieu_de: '',
-                    so_cau_yeu_cau: 10,
-                    do_kho: 'Mixed',
-                    chu_de: 'Toàn bộ',
-                    file: null,
-                    file_name: ''
+                    if (startRes.data?.success) {
+                        const newSession = startRes.data.data;
+                        showToast(autoGen ? 'Khởi tạo bộ đề AI thành công! Đã tạo xong batch câu hỏi đầu tiên.' : 'Khởi tạo bộ đề AI thành công! Hãy nhấn "Sinh Tiếp 10 Câu" để bắt đầu.', 'success');
+                        setSessions(prev => [newSession, ...prev]);
+                        setCurrentSession(newSession);
+                        
+                        setUploadForm({
+                            ma_mon_hoc: '',
+                            ma_lop_hoc_phan: [],
+                            tieu_de: '',
+                            so_cau_yeu_cau: 10,
+                            do_kho: 'Mixed',
+                            chu_de: 'Toàn bộ',
+                            file: null,
+                            file_name: ''
+                        });
+                    } else {
+                        throw new Error(startRes.data?.message || 'Lỗi khởi tạo đề AI');
+                    }
+                } catch (error) {
+                    console.error('Lỗi khởi tạo AI Session:', error);
+                    showToast(error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo câu hỏi AI!', 'error');
+                } finally {
+                    setIsUploading(false);
+                }
+            };
+
+            if (isRelevant === false) {
+                setIsUploading(false);
+                setConfirmDialog({
+                    show: true,
+                    title: '⚠️ Cảnh báo: Tài liệu có thể không phù hợp',
+                    message: 'AI nhận thấy nội dung file tài liệu này KHÔNG LIÊN QUAN đến môn học bạn đã chọn. Nếu bạn vô ý chọn nhầm file, vui lòng tải lại. Bạn có chắc chắn muốn giữ file này làm tài liệu nguồn không?',
+                    action: async () => {
+                        setConfirmDialog({ show: false, action: null });
+                        await proceedToGenerate(false); // Do not auto generate, wait for manual trigger
+                    }
                 });
+                return;
             } else {
-                throw new Error(startRes.data?.message || 'Lỗi khởi tạo đề AI');
+                setIsUploading(false);
+                setConfirmDialog({
+                    show: true,
+                    title: '✅ Kiểm duyệt thành công',
+                    message: 'Tài liệu hoàn toàn phù hợp với môn học. Bạn có chắc chắn muốn bắt đầu tạo bộ đề AI từ tài liệu này không?',
+                    action: async () => {
+                        setConfirmDialog({ show: false, action: null });
+                        await proceedToGenerate(true); // Auto generate since it is correct
+                    }
+                });
+                return;
             }
         } catch (error) {
             console.error('Lỗi khởi tạo AI Session:', error);
@@ -398,7 +441,7 @@ function QuestionBankManagement() {
                 try {
                     const res = await axios.delete(`${API_URL}/api/ai-exams/questions/${question.id}`);
                     if (res.data?.success) {
-                        showToast('🗑️ Đã xóa câu hỏi thành công!', 'success');
+                        showToast('Đã xóa câu hỏi thành công!', 'success');
                         if (currentSession) {
                             fetchStagingQuestions(currentSession.id);
                             setCurrentSession(prev => prev ? { ...prev, so_cau_da_sinh: Math.max(0, prev.so_cau_da_sinh - 1) } : null);
@@ -410,6 +453,46 @@ function QuestionBankManagement() {
                 }
             }
         });
+    };
+
+    const handleDeleteSession = (session) => {
+        setConfirmDialog({
+            show: true,
+            title: 'Xác nhận xóa bộ đề AI',
+            message: `Bạn có chắc chắn muốn xóa bộ đề "${session.doc_tieu_de || session.tieu_de}"? Toàn bộ câu hỏi chưa duyệt sẽ bị xóa khỏi hệ thống.`,
+            action: async () => {
+                try {
+                    const res = await axios.delete(`${API_URL}/api/ai-exams/sessions/${session.id}`);
+                    if (res.data?.success) {
+                        showToast('Đã xóa bộ đề AI thành công!', 'success');
+                        if (currentSession?.id === session.id) {
+                            setCurrentSession(null);
+                            setStagingQuestions([]);
+                        }
+                        await fetchSessions();
+                    }
+                } catch (error) {
+                    console.error('Lỗi xóa bộ đề:', error);
+                    showToast('Không thể xóa bộ đề. Vui lòng thử lại!', 'error');
+                }
+            }
+        });
+    };
+
+    const handleCompleteSession = async () => {
+        if (!currentSession) return;
+        try {
+            const res = await axios.put(`${API_URL}/api/ai-exams/sessions/${currentSession.id}/complete`);
+            if (res.data?.success) {
+                showToast('Đã kết thúc sớm và đóng bộ đề!', 'success');
+                await fetchSessions();
+                setCurrentSession(null);
+                setStagingQuestions([]);
+            }
+        } catch (error) {
+            console.error('Lỗi khi đóng bộ đề:', error);
+            showToast('Lỗi khi hoàn tất bộ đề', 'error');
+        }
     };
 
     const handleApproveAll = () => {
@@ -535,7 +618,7 @@ function QuestionBankManagement() {
                 try {
                     const res = await axios.delete(`${API_URL}/api/ai-exams/banks/${bank.id}`);
                     if (res.data?.success) {
-                        showToast('🗑️ Đã xóa Ngân hàng câu hỏi chính thức!', 'success');
+                        showToast('Đã xóa Ngân hàng câu hỏi chính thức!', 'success');
                         fetchOfficialBanks();
                         fetchSessions();
                         if (viewingBank?.id === bank.id) setViewingBank(null);
@@ -561,7 +644,7 @@ function QuestionBankManagement() {
                 try {
                     const res = await axios.delete(`${API_URL}/api/ai-exams/questions/${q.id}`);
                     if (res.data?.success) {
-                        showToast('🗑️ Đã xóa câu hỏi khỏi bộ đề!', 'success');
+                        showToast('Đã xóa câu hỏi khỏi bộ đề!', 'success');
                         if (viewingBank) {
                             const bRes = await axios.get(`${API_URL}/api/ai-exams/banks/${viewingBank.id}/questions`);
                             setBankQuestions(bRes.data?.data || []);
@@ -841,31 +924,28 @@ function QuestionBankManagement() {
                         <form onSubmit={handleStartAISession} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div className="space-y-2 lg:col-span-1">
                                 <label className="block text-sm font-semibold text-gray-700">
-                                    Môn học / Lớp học phần được phân công <span className="text-red-500">*</span>
+                                    Môn học phân công <span className="text-red-500">*</span>
                                 </label>
                                 <select
-                                    value={uploadForm.ma_lop_hoc_phan ? `${uploadForm.ma_mon_hoc}|${uploadForm.ma_lop_hoc_phan}` : uploadForm.ma_mon_hoc}
+                                    value={uploadForm.ma_mon_hoc}
                                     onChange={e => {
-                                        const val = e.target.value;
-                                        if (val.includes('|')) {
-                                            const [mon, lop] = val.split('|');
-                                            setUploadForm({ ...uploadForm, ma_mon_hoc: mon, ma_lop_hoc_phan: lop });
-                                        } else {
-                                            setUploadForm({ ...uploadForm, ma_mon_hoc: val, ma_lop_hoc_phan: '' });
-                                        }
+                                        setUploadForm({ ...uploadForm, ma_mon_hoc: e.target.value, ma_lop_hoc_phan: [] });
                                         setFormErrors(prev => ({ ...prev, ma_mon_hoc: '' }));
                                     }}
                                     className={`w-full p-3.5 bg-gray-50 border rounded-2xl focus:ring-2 focus:bg-white transition-all text-sm font-medium ${
                                         formErrors.ma_mon_hoc ? 'border-red-500 focus:ring-red-500 bg-red-50/30' : 'border-gray-200 focus:ring-indigo-500'
                                     }`}
                                 >
-                                    <option value="">-- Chọn môn học từ phân công --</option>
+                                    <option value="">-- Chọn môn học --</option>
                                     {assignments.length > 0 ? (
-                                        assignments.map(a => (
-                                            <option key={`${a.MaMonHoc}-${a.MaLopHocPhan || Math.random()}`} value={a.MaLopHocPhan ? `${a.MaMonHoc}|${a.MaLopHocPhan}` : a.MaMonHoc}>
-                                                {a.TenMonHoc} {a.MaLopHocPhan ? `(Lớp: ${a.MaLopHocPhan})` : ''}
-                                            </option>
-                                        ))
+                                        Array.from(new Set(assignments.map(a => a.MaMonHoc))).map(ma => {
+                                            const a = assignments.find(item => item.MaMonHoc === ma);
+                                            return (
+                                                <option key={ma} value={ma}>
+                                                    {a.TenMonHoc} ({ma})
+                                                </option>
+                                            );
+                                        })
                                     ) : (
                                         subjects.map(s => (
                                             <option key={s.MaMonHoc} value={s.MaMonHoc}>
@@ -878,6 +958,42 @@ function QuestionBankManagement() {
                                     <p className="text-xs text-red-600 font-bold animate-pulse">❌ {formErrors.ma_mon_hoc}</p>
                                 ) : (
                                     <p className="text-xs text-[#152238] font-medium">💡 Lấy tự động từ phân công giảng dạy của Admin</p>
+                                )}
+
+                                {uploadForm.ma_mon_hoc && assignments.some(a => a.MaMonHoc === uploadForm.ma_mon_hoc && a.MaLopHocPhan) && (
+                                    <div className="mt-4 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                        <label className="block text-xs font-bold text-indigo-900 mb-2">
+                                            Chọn Lớp học phần áp dụng (Tùy chọn)
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {assignments.filter(a => a.MaMonHoc === uploadForm.ma_mon_hoc && a.MaLopHocPhan).map(a => {
+                                                const hpCode = a.MaLopHocPhan.split('.').pop();
+                                                const className = a.TenLop ? `Lớp ${a.TenLop}` : 'Lớp tự do';
+                                                const isSelected = uploadForm.ma_lop_hoc_phan.includes(a.MaLopHocPhan);
+                                                return (
+                                                    <label 
+                                                        key={a.MaLopHocPhan} 
+                                                        className={`cursor-pointer px-3 py-1.5 border rounded-lg text-xs font-bold transition-all ${
+                                                            isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/30'
+                                                        }`}
+                                                    >
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="hidden"
+                                                            checked={isSelected}
+                                                            onChange={(e) => {
+                                                                const newLhp = e.target.checked 
+                                                                    ? [...uploadForm.ma_lop_hoc_phan, a.MaLopHocPhan]
+                                                                    : uploadForm.ma_lop_hoc_phan.filter(id => id !== a.MaLopHocPhan);
+                                                                setUploadForm({...uploadForm, ma_lop_hoc_phan: newLhp});
+                                                            }}
+                                                        />
+                                                        {hpCode} - {className}
+                                                    </label>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 
@@ -1117,7 +1233,7 @@ function QuestionBankManagement() {
                     </div>
 
                     {/* KHUNG 3: THANH TIẾN ĐỘ BỘ ĐỀ & THAO TÁC HÀNG LOẠT */}
-                    {currentSession && (stagingQuestions.some(q => q.trang_thai !== 'APPROVED') || isResuming || isUploading) ? (
+                    {currentSession ? (
                         <div className="bg-gradient-to-br from-indigo-900/5 via-purple-900/5 to-blue-900/5 rounded-3xl p-6 md:p-8 border border-indigo-100 shadow-sm space-y-6">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-indigo-100 pb-5">
                                 <div>
@@ -1160,6 +1276,33 @@ function QuestionBankManagement() {
                                             <span>{isApprovingAll ? 'Đang duyệt...' : '✓ Duyệt Tất Cả Vào Ngân Hàng'}</span>
                                         </button>
                                     )}
+                                    <button
+                                        onClick={() => {
+                                            if (stagingQuestions.length > 0 && stagingQuestions.every(q => q.trang_thai === 'APPROVED')) {
+                                                handleCompleteSession();
+                                            } else {
+                                                handleDeleteSession(currentSession);
+                                            }
+                                        }}
+                                        className={`flex items-center gap-2 px-5 py-2.5 ${
+                                            stagingQuestions.length > 0 && stagingQuestions.every(q => q.trang_thai === 'APPROVED') 
+                                            ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700' 
+                                            : 'bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700'
+                                        } text-white font-bold rounded-xl shadow-md transform hover:-translate-y-0.5 transition-all text-sm`}
+                                        title={stagingQuestions.length > 0 && stagingQuestions.every(q => q.trang_thai === 'APPROVED') ? "Kết thúc tạo đề sớm và dọn dẹp không gian làm việc" : "Xóa bộ đề đang làm việc (Bỏ qua)"}
+                                    >
+                                        {stagingQuestions.length > 0 && stagingQuestions.every(q => q.trang_thai === 'APPROVED') ? (
+                                            <>
+                                                <CheckCheck className="w-4 h-4" />
+                                                <span>Đóng Đề & Dọn Dẹp</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Trash2 className="w-4 h-4" />
+                                                <span>Xóa Bộ Đề</span>
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
 

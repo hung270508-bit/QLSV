@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
     Plus, Calendar, BookOpen, AlertCircle, Sparkles, 
     Trash2, BarChart2, XCircle, CheckCircle, Users,
-    ClipboardList, History, ChevronLeft, Edit2
+    ClipboardList, History, ChevronLeft, Edit2, MonitorPlay
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
 
 function ExamManagement() {
+    const navigate = useNavigate();
     // State Tab & Exams
     const [activeTab, setActiveTab] = useState('exams'); // 'exams' (Mở Đề Thi) hoặc 'history' (Lịch Sử Làm Bài)
     const [exams, setExams] = useState([]);
@@ -387,7 +389,7 @@ function ExamManagement() {
                                                     {exam.ma_lop_hoc_phan}
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-6 text-center font-bold text-gray-700">{exam.thoi_gian_thi_phut}p</td>
+                                            <td className="py-4 px-6 text-center font-bold text-gray-700">{exam.thoi_gian_thi_phut}</td>
                                             <td className="py-4 px-6 text-center font-bold text-blue-600">{exam.tong_so_cau}</td>
                                             <td className="py-4 px-6 text-center text-sm text-gray-500 font-medium">
                                                 <div className="text-emerald-600">{new Date(exam.thoi_gian_bat_dau).toLocaleString('vi-VN')}</div>
@@ -395,6 +397,23 @@ function ExamManagement() {
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <div className="flex items-center justify-center gap-2">
+                                                    {new Date(exam.thoi_gian_ket_thuc) > new Date() ? (
+                                                        <button 
+                                                            onClick={() => navigate(`/teacher/online-exams/dashboard/${exam.id}`)}
+                                                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-xl transition-all shadow-sm border border-blue-200 bg-blue-50 flex items-center justify-center"
+                                                            title="Giám sát kỳ thi (Real-time)"
+                                                        >
+                                                            <MonitorPlay className="w-5 h-5" />
+                                                        </button>
+                                                    ) : (
+                                                        <button 
+                                                            disabled
+                                                            className="p-2 text-gray-400 rounded-xl transition-all shadow-sm border border-gray-200 bg-gray-50 flex items-center justify-center cursor-not-allowed"
+                                                            title="Kỳ thi đã kết thúc, không thể giám sát"
+                                                        >
+                                                            <MonitorPlay className="w-5 h-5" />
+                                                        </button>
+                                                    )}
                                                     <button 
                                                         onClick={() => handleOpenEditModal(exam)}
                                                         className="p-2 text-[#152238] hover:bg-[#F4C542]/20 rounded-xl transition-all shadow-sm border border-[#152238]/20 bg-gray-50 flex items-center justify-center"
@@ -494,7 +513,7 @@ function ExamManagement() {
                                 </div>
                                 <div className="bg-white/10 px-5 py-3 rounded-2xl backdrop-blur-sm text-center">
                                     <div className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Tổng sinh viên nộp bài</div>
-                                    <div className="text-3xl font-extrabold">{examResults.length}</div>
+                                    <div className="text-3xl font-extrabold">{examResults.filter(r => r.trang_thai_hien_thi === 'Đã nộp bài').length}</div>
                                 </div>
                             </div>
 
@@ -510,6 +529,7 @@ function ExamManagement() {
                                                     <th className="text-left py-4 px-6 font-bold text-gray-700">MSSV</th>
                                                     <th className="text-left py-4 px-6 font-bold text-gray-700">Họ & Tên</th>
                                                     <th className="text-center py-4 px-6 font-bold text-gray-700">Lớp</th>
+                                                    <th className="text-center py-4 px-6 font-bold text-gray-700">Trạng thái</th>
                                                     <th className="text-center py-4 px-6 font-bold text-gray-700">Nộp bài lúc</th>
                                                     <th className="text-center py-4 px-6 font-bold text-gray-700">Số câu đúng</th>
                                                     <th className="text-center py-4 px-6 font-bold text-gray-700">Điểm số</th>
@@ -521,8 +541,13 @@ function ExamManagement() {
                                                         <td className="py-4 px-6 font-bold text-gray-900">{result.mssv}</td>
                                                         <td className="py-4 px-6 text-gray-700 font-medium">{result.HoTen}</td>
                                                         <td className="py-4 px-6 text-center text-gray-600">{result.MaLop}</td>
+                                                        <td className="py-4 px-6 text-center">
+                                                            <span className={`px-3 py-1 rounded-full font-bold text-xs ${result.trang_thai_hien_thi === 'Đã nộp bài' ? 'bg-blue-100 text-blue-700' : result.trang_thai_hien_thi === 'Chưa nộp bài' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                                {result.trang_thai_hien_thi}
+                                                            </span>
+                                                        </td>
                                                         <td className="py-4 px-6 text-center text-sm text-gray-500">
-                                                            {new Date(result.thoi_gian_nop_bai).toLocaleString('vi-VN')}
+                                                            {result.thoi_gian_nop_bai ? new Date(result.thoi_gian_nop_bai).toLocaleString('vi-VN') : '-'}
                                                         </td>
                                                         <td className="py-4 px-6 text-center">
                                                             <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg font-bold text-sm">
