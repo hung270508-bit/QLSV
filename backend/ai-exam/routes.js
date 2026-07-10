@@ -32,6 +32,8 @@ module.exports = (db) => {
     router.put('/questions/:id', aiAssistedController.updateQuestion);
     router.post('/sessions/:id/approve-all', aiAssistedController.approveAllInSession);
     router.delete('/questions/:id', aiAssistedController.deleteQuestion);
+    router.delete('/sessions/:id', aiAssistedController.deleteSession);
+    router.put('/sessions/:id/complete', aiAssistedController.completeSession);
 
     // Route giữ lại để tương thích với ExamManagement.jsx khi chọn Ngân hàng câu hỏi
     router.get('/banks/teacher/:ma_giang_vien', aiAssistedController.getTeacherQuestionBanks);
@@ -263,28 +265,52 @@ router.put('/exams/:id', async (req, res) => {
     router.get('/exams/:id/results', async (req, res) => {
         try {
             const examId = req.params.id;
+            // Lấy thông tin kỳ thi để biết lớp và giờ kết thúc
+            const [exams] = await dbPromise.query('SELECT ma_lop_hoc_phan, thoi_gian_ket_thuc FROM exams WHERE id = ?', [examId]);
+            if (!exams || exams.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy kỳ thi' });
             
-            // Truy vấn lấy điểm, đếm câu đúng/sai và join với bảng sinh viên để lấy Lớp
-            // Lưu ý: Nếu trong SQL Server/MySQL của bạn bảng sinh viên có tên cột khác (VD: ma_sv, ho_ten, ma_lop), hãy sửa lại cho khớp nhé.
+            const exam = exams[0];
+            const isEnded = new Date() > new Date(exam.thoi_gian_ket_thuc);
+
             const query = `
                 SELECT 
-                    a.id as attempt_id, 
-                    a.mssv, 
+                    sv.MSSV as mssv, 
                     sv.HoTen, 
                     sv.MaLop, 
-                    a.diem_so, 
+                    a.id as attempt_id, 
+                    COALESCE(a.diem_so, 0) as diem_so, 
                     a.thoi_gian_nop_bai,
+                    a.trang_thai,
                     SUM(CASE WHEN ans.la_dap_an_dung = 1 THEN 1 ELSE 0 END) as so_cau_dung,
                     SUM(CASE WHEN ans.la_dap_an_dung = 0 THEN 1 ELSE 0 END) as so_cau_sai
-                FROM exam_attempts a
-                LEFT JOIN sinhvien sv ON a.mssv = sv.MSSV 
+                FROM dangky_hocphan dk
+                JOIN sinhvien sv ON dk.MSSV = sv.MSSV
+                LEFT JOIN exam_attempts a ON sv.MSSV = a.mssv AND a.exam_id = ?
                 LEFT JOIN exam_attempt_answers ans ON a.id = ans.attempt_id
-                WHERE a.exam_id = ? AND a.trang_thai = 'Submitted'
-                GROUP BY a.id, a.mssv, sv.HoTen, sv.MaLop, a.diem_so, a.thoi_gian_nop_bai
-                ORDER BY sv.MaLop ASC, a.diem_so DESC
+                WHERE dk.MaLopHocPhan = ?
+                GROUP BY sv.MSSV, sv.HoTen, sv.MaLop, a.id, a.diem_so, a.thoi_gian_nop_bai, a.trang_thai
+                ORDER BY sv.MaLop ASC, diem_so DESC
             `;
             
-            const results = await execute(query, [examId]);
+            let [results] = await dbPromise.query(query, [examId, exam.ma_lop_hoc_phan]);
+            
+            // Cập nhật trạng thái
+            results = results.map(row => {
+                let status = 'Đã nộp bài';
+                let diem = row.diem_so;
+                
+                if (!row.attempt_id || row.trang_thai !== 'Submitted') {
+                    diem = 0;
+                    if (isEnded) {
+                        status = 'Chưa nộp bài'; // Đã hết giờ mà không có bài (hoặc chưa làm xong)
+                    } else {
+                        status = 'Chưa làm bài'; // Còn giờ nhưng chưa có bài
+                    }
+                }
+                
+                return { ...row, trang_thai_hien_thi: status, diem_so: diem };
+            });
+            
             res.json({ success: true, data: results });
         } catch (error) {
             console.error('Lỗi lấy điểm thi:', error);

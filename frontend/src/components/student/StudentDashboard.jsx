@@ -51,6 +51,7 @@ function StudentDashboard({ user, onLogout }) {
   const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isExamMode, setIsExamMode] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
@@ -73,6 +74,10 @@ function StudentDashboard({ user, onLogout }) {
   }, [user]);
 
   const handleNavigate = (id) => {
+    if (isExamMode) {
+        window.dispatchEvent(new CustomEvent('student_sidebar_click_violation'));
+        return;
+    }
     setActiveMenu(id);
     setMobileDrawerOpen(false);
     setMobileMoreOpen(false);
@@ -87,7 +92,7 @@ function StudentDashboard({ user, onLogout }) {
       case 'diemdanh': return <StudentAttendance user={user} />;
       case 'renluyen': return <StudentTrainingPoints user={user} />;
       case 'dangky': return <StudentCourseRegistration user={user} />;
-      case 'thionline': return <StudentOnlineExam user={user} />;
+      case 'thionline': return <StudentOnlineExam user={user} onExamModeChange={setIsExamMode} />;
       case 'thongbao': return <StudentAnnouncements user={user} />;
       case 'hotro': return <StudentSupport user={user} profile={profile} />;
       case 'hocphi': return <StudentTuition user={user} />;

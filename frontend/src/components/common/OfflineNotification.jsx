@@ -4,21 +4,25 @@ import { motion } from 'framer-motion';
 
 const OfflineNotification = ({ children }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isExamMode, setIsExamMode] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+    const handleExamMode = (e) => setIsExamMode(e.detail);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('examModeStatus', handleExamMode);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('examModeStatus', handleExamMode);
     };
   }, []);
 
-  if (isOnline) {
+  if (isOnline || isExamMode) {
     return children;
   }
 

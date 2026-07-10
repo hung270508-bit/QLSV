@@ -153,7 +153,17 @@ function TeachingAssignment() {
       const base = `${formData.MaMonHoc}.${hkCode}${namCode}`;
 
       const existing = assignments.filter(a => a.MaLopHocPhan?.startsWith(base));
-      const stt = String(existing.length + 1).padStart(2, '0');
+      let maxNum = 0;
+      existing.forEach(a => {
+        const parts = a.MaLopHocPhan.split('.HP');
+        if (parts.length === 2) {
+          const num = parseInt(parts[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      });
+      const stt = String(maxNum + 1).padStart(2, '0');
 
       setFormData(f => ({ ...f, MaLopHocPhan: `${base}.HP${stt}` }));
       setFormErrors(prev => ({ ...prev, MaLopHocPhan: '' }));

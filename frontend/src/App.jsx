@@ -5,8 +5,11 @@ import axios from 'axios';
 import AdminDashboard from './components/admin/AdminDashboard';
 import StudentDashboard from './components/student/StudentDashboard';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
+import TeacherExamDashboard from './components/teacher/TeacherExamDashboard';
 import ResetPassword from './components/auth/ResetPassword';
 import LoginForm from './components/auth/LoginForm';
+import StudentWaitRoom from './components/student/StudentWaitRoom';
+import StudentExamAttempt from './components/student/StudentExamAttempt';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, LogIn } from 'lucide-react';
 
@@ -310,6 +313,24 @@ function App() {
 
   // Render the appropriate dashboard based on role using a single lookup
   if (loggedInUser) {
+    const isTeacherExamDashboard = location.pathname.startsWith('/teacher/online-exams/dashboard/');
+    if (isTeacherExamDashboard && (loggedInUser.role === 'teacher' || loggedInUser.role === 'admin')) {
+      const parts = location.pathname.split('/');
+      const id = parts[parts.length - 1];
+      return <TeacherExamDashboard id={id} />;
+    }
+
+    // Các Route riêng biệt dành cho sinh viên tham gia thi trực tuyến
+    const isStudentWaitRoom = location.pathname.match(/^\/student\/online-exams\/\d+\/wait$/);
+    if (isStudentWaitRoom && loggedInUser.role === 'student') {
+      return <StudentWaitRoom />;
+    }
+
+    const isStudentAttempt = location.pathname.match(/^\/student\/online-exams\/attempt\/\d+$/);
+    if (isStudentAttempt && loggedInUser.role === 'student') {
+      return <StudentExamAttempt />;
+    }
+
     const DashboardComponent = DASHBOARD_MAP[loggedInUser.role];
     if (DashboardComponent) {
       return (

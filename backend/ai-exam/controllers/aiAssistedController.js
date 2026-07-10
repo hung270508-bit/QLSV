@@ -4,14 +4,14 @@ module.exports = (service, dbPromise) => {
         uploadDocument: async (req, res) => {
             try {
                 const file = req.file;
-                const { ma_mon_hoc, ma_giang_vien, tieu_de } = req.body;
+                const { ma_mon_hoc, ma_giang_vien, tieu_de, ten_mon_hoc } = req.body;
                 
                 if (!file || !ma_mon_hoc || !ma_giang_vien || !tieu_de) {
                     return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ file tài liệu, môn học, giảng viên và tiêu đề.' });
                 }
 
-                const docData = await service.uploadDocument(file, { ma_mon_hoc, ma_giang_vien, tieu_de });
-                res.json({ success: true, data: docData, message: 'Tải lên tài liệu và phân tích nội dung thành công! Tài liệu đã sẵn sàng.' });
+                const docData = await service.uploadDocument(file, { ma_mon_hoc, ma_giang_vien, tieu_de, ten_mon_hoc });
+                res.json({ success: true, data: docData, is_relevant: docData.is_relevant, message: 'Tải lên tài liệu và phân tích nội dung thành công! Tài liệu đã sẵn sàng.' });
             } catch (error) {
                 console.error('Upload document error:', error);
                 res.status(500).json({ success: false, message: error.message });
@@ -38,7 +38,7 @@ module.exports = (service, dbPromise) => {
         // 2. Quản lý phiên sinh AI
         startSession: async (req, res) => {
             try {
-                const { document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de } = req.body;
+                const { document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de, auto_generate } = req.body;
                 if (!document_id || !ma_mon_hoc || !ma_giang_vien) {
                     return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc để khởi tạo đề sinh câu hỏi.' });
                 }
@@ -49,7 +49,8 @@ module.exports = (service, dbPromise) => {
                     ma_giang_vien,
                     so_cau_yeu_cau: so_cau_yeu_cau || 10,
                     do_kho: do_kho || 'Mixed',
-                    chu_de: chu_de || 'Toàn bộ'
+                    chu_de: chu_de || 'Toàn bộ',
+                    auto_generate
                 });
 
                 res.json({ success: true, data: session, message: 'Bắt đầu sinh câu hỏi bằng AI thành công!' });
@@ -201,6 +202,28 @@ module.exports = (service, dbPromise) => {
                 res.json({ success: true, message: 'Cập nhật tên Ngân hàng thành công!' });
             } catch (error) {
                 console.error('Update official bank error:', error);
+                res.status(500).json({ success: false, message: error.message });
+            }
+        },
+
+        deleteSession: async (req, res) => {
+            try {
+                const { id } = req.params;
+                await service.deleteSession(id);
+                res.json({ success: true, message: 'Đã xóa bộ đề AI đang làm việc!' });
+            } catch (error) {
+                console.error('Delete session error:', error);
+                res.status(500).json({ success: false, message: error.message });
+            }
+        },
+
+        completeSession: async (req, res) => {
+            try {
+                const { id } = req.params;
+                await service.completeSession(id);
+                res.json({ success: true, message: 'Đã hoàn tất bộ đề AI!' });
+            } catch (error) {
+                console.error('Complete session error:', error);
                 res.status(500).json({ success: false, message: error.message });
             }
         }
