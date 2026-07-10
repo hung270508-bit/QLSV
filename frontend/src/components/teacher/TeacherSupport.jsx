@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   HelpCircle, MessageSquare, FileText, Send,
   Clock, CheckCircle2, ShieldAlert, GraduationCap, CalendarOff, CalendarClock, Monitor,
-  AlertCircle, ChevronDown, Loader2, X, Info
+  AlertCircle, ChevronDown, Loader2, X, Info, FileEdit
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
@@ -191,24 +191,30 @@ function TeacherSupport({ user, profile }) {
                 <h3 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#F4C542]" /> Tạo yêu cầu mới
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <button onClick={() => handleQuickRequest('Đăng ký phòng học, thiết bị thực hành hoặc thiết bị thí nghiệm')} className="group bg-[#FFFFFF] border-2 border-[#F4C542]/30 hover:border-[#F4C542] rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+                  <button onClick={() => handleQuickRequest('Đăng ký phòng học, thiết bị thực hành hoặc thiết bị thí nghiệm')} className="group bg-[#FFFFFF] border-2 border-[#F4C542]/30 hover:border-[#F4C542] rounded-xl p-6 transition-all shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
                     <div className="w-16 h-16 rounded-full bg-[#FFF7D6] group-hover:bg-[#F4C542] flex items-center justify-center transition-colors">
                       <Monitor className="w-8 h-8 text-[#F4C542] group-hover:text-white transition-colors" />
                     </div>
                     <span className="text-sm font-semibold text-gray-700 group-hover:text-[#F4C542] transition-colors text-center">Đăng ký phòng học, thiết bị thực hành hoặc thiết bị thí nghiệm</span>
                   </button>
-                  <button onClick={() => handleQuickRequest('Đơn xin nghỉ phép / Vắng dạy')} className="group bg-[#FFFFFF] border-2 border-blue-200 hover:border-blue-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
-                    <div className="w-16 h-16 rounded-full bg-blue-100 group-hover:bg-[#3B82F6]/100 flex items-center justify-center transition-colors">
+                  <button onClick={() => handleQuickRequest('Đơn xin nghỉ phép / Vắng dạy')} className="group bg-[#FFFFFF] border-2 border-blue-200 hover:border-blue-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-blue-100 group-hover:bg-[#3B82F6] flex items-center justify-center transition-colors">
                       <CalendarOff className="w-8 h-8 text-[#3B82F6] group-hover:text-white transition-colors" />
                     </div>
                     <span className="text-sm font-semibold text-gray-700 group-hover:text-[#3B82F6] transition-colors text-center">Đơn xin nghỉ phép / Vắng dạy</span>
                   </button>
-                  <button onClick={() => handleQuickRequest('Phiếu đề nghị điều chỉnh thời khóa biểu')} className="group bg-[#FFFFFF] border-2 border-red-200 hover:border-red-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
-                    <div className="w-16 h-16 rounded-full bg-[#EF4444]/20 group-hover:bg-[#EF4444]/100 flex items-center justify-center transition-colors">
+                  <button onClick={() => handleQuickRequest('Phiếu đề nghị điều chỉnh thời khóa biểu')} className="group bg-[#FFFFFF] border-2 border-red-200 hover:border-red-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-red-100 group-hover:bg-[#EF4444] flex items-center justify-center transition-colors">
                       <CalendarClock className="w-8 h-8 text-[#EF4444] group-hover:text-white transition-colors" />
                     </div>
                     <span className="text-sm font-semibold text-gray-700 group-hover:text-[#EF4444] transition-colors text-center">Phiếu đề nghị điều chỉnh thời khóa biểu</span>
+                  </button>
+                  <button onClick={() => handleQuickRequest('Phiếu xin điều chỉnh lại bảng điểm')} className="group bg-[#FFFFFF] border-2 border-green-200 hover:border-green-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-green-100 group-hover:bg-[#22C55E] flex items-center justify-center transition-colors">
+                      <FileEdit className="w-8 h-8 text-[#22C55E] group-hover:text-white transition-colors" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-[#22C55E] transition-colors text-center">Phiếu xin điều chỉnh lại bảng điểm</span>
                   </button>
                 </div>
               </div>

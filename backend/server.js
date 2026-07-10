@@ -3331,8 +3331,8 @@ app.put('/api/admin/training-points/:id', (req, res) => {
     else if (diem >= 65) xepLoai = 'Khá';
     else if (diem >= 50) xepLoai = 'Trung bình';
 
-    const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ? WHERE MaDanhGia = ?';
-    db.query(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, req.params.id], (err) => {
+    const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ?, GhiChu = ? WHERE MaDanhGia = ?';
+    db.query(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, GhiChu, req.params.id], (err) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
 
         const nguoiDuyet = NguoiDuyet || 'admin';

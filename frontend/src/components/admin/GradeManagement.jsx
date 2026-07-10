@@ -18,6 +18,7 @@ import { saveAs } from 'file-saver';
 // ================================================================
 const getConfigKey = (maLopHocPhan) => `grade_config_${maLopHocPhan}`;
 const getLockKey = (maLopHocPhan) => `grade_config_locked_${maLopHocPhan}`;
+const getGradeLockKey = (maLopHocPhan) => `grades_locked_${maLopHocPhan}`;
 
 const DEFAULT_COMPONENTS = [
   { key: 'DiemChuyenCan', label: 'Chuyên cần', shortLabel: 'CC', weight: 10, enabled: true },
@@ -254,7 +255,8 @@ function GradeManagement() {
   const [configOpen, setConfigOpen] = useState({}); 
   const [classConfigs, setClassConfigs] = useState({});
   const [activeConfigs, setActiveConfigs] = useState({});
-  const [lockedConfigs, setLockedConfigs] = useState({}); 
+  const [lockedConfigs, setLockedConfigs] = useState({});
+  const [gradeLockedConfigs, setGradeLockedConfigs] = useState({}); 
 
   const [showModal, setShowModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -313,16 +315,21 @@ function GradeManagement() {
       const configs = {};
       const active = {};
       const locks = {};
+      const gradeLocks = {};
       sectionsRes.data.forEach(ta => {
         const cfg = loadConfig(ta.MaLopHocPhan);
         configs[ta.MaLopHocPhan] = cfg;
         active[ta.MaLopHocPhan] = cfg;
         const savedLock = localStorage.getItem(getLockKey(ta.MaLopHocPhan));
-        locks[ta.MaLopHocPhan] = savedLock === null ? true : (savedLock === 'true');
+        locks[ta.MaLopHocPhan] = savedLock === null ? false : (savedLock === 'true');
+        
+        const savedGradeLock = localStorage.getItem(getGradeLockKey(ta.MaLopHocPhan));
+        gradeLocks[ta.MaLopHocPhan] = savedGradeLock === 'true';
       });
       setClassConfigs(configs);
       setActiveConfigs(active);
       setLockedConfigs(locks);
+      setGradeLockedConfigs(gradeLocks);
     } catch (err) {
     } finally {
       setLoading(false);
@@ -961,8 +968,7 @@ function GradeManagement() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {isLocked && <span className="text-[11px] text-green-700 bg-[#22C55E]/10 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
-                    {!isLocked && <span className="text-[11px] text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
+                    {gradeLockedConfigs[ta.MaLopHocPhan] ? <span className="text-[11px] text-green-700 bg-[#22C55E]/10 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span> : <span className="text-[11px] text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
                     <div className="p-2 rounded-full hover:bg-gray-100 transition-colors">
                       {isOpen ? <ChevronUp className="w-5 h-5 text-gray-300" /> : <ChevronDown className="w-5 h-5 text-gray-300" />}
                     </div>
@@ -991,6 +997,33 @@ function GradeManagement() {
                           <span className="text-sm text-[#3B82F6] font-bold bg-[#FFFFFF] px-3 py-1 rounded-lg shadow-sm border border-blue-100">Sĩ số: {filteredStudents.length}</span>
                         </div>
                         
+                        <div className="mb-4 flex flex-wrap items-center gap-3">
+                            <button
+                              onClick={() => {
+                                setExcelUploadLopHocPhan(ta.MaLopHocPhan);
+                                setExcelUploadTenLop(ta.TenMonHoc);
+                                setExcelUploadModal(true);
+                              }}
+                              disabled={!gradeLockedConfigs[ta.MaLopHocPhan]}
+                              className={`flex-1 sm:flex-none px-4 py-2 text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-[#E5E7EB]' : 'bg-[#FFFFFF] text-[#22C55E] border border-green-200 hover:bg-[#22C55E]/10 hover:border-green-300'}`}
+                            >
+                              <FileText className="w-4 h-4" /> Nhập hàng loạt (Excel)
+                            </button>
+                            <button
+                              onClick={() => {
+                                setFormData({ MSSV: '', MaLopHocPhan: ta.MaLopHocPhan, HocKy: '1', DiemChuyenCan: '', DiemBaiTap: '', DiemGiuaKy: '', DiemCuoiKy: '' });
+                                setFormErrors({});
+                                setScoreInputErrors({});
+                                setEditingGrade(null);
+                                setShowModal(true);
+                              }}
+                              disabled={!gradeLockedConfigs[ta.MaLopHocPhan]}
+                              className={`flex-1 sm:flex-none px-4 py-2 text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-[#E5E7EB]' : 'bg-[#3B82F6] text-white hover:bg-blue-600 hover:shadow-blue-500/20'}`}
+                            >
+                              <Plus className="w-4 h-4" /> Thêm điểm thủ công
+                            </button>
+                          </div>
+
                         <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
                           
                           {/* Mobile View */}
@@ -1032,11 +1065,11 @@ function GradeManagement() {
                                   <div className="flex justify-end gap-2">
                                     {hasGrade ? (
                                       <>
-                                        <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-sm flex-1 justify-center ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
-                                        <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="px-4 py-2 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-xl transition-colors shadow-sm flex-1 flex justify-center items-center"><Trash2 className="w-4 h-4"/> Xóa</button>
+                                        <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} disabled={!gradeLockedConfigs[ta.MaLopHocPhan]} className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-sm flex-1 justify-center ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
+                                        <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} disabled={!gradeLockedConfigs[ta.MaLopHocPhan]} className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-sm flex-1 justify-center ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200'}`}><Trash2 className="w-4 h-4"/> Xóa</button>
                                       </>
                                     ) : (
-                                      <button onClick={() => openAddGradeForStudent(ta, stu)} className={`w-full px-4 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5"/> Nhập điểm</button>
+                                      <button onClick={() => openAddGradeForStudent(ta, stu)} disabled={!gradeLockedConfigs[ta.MaLopHocPhan]} className={`w-full px-4 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5"/> Nhập điểm</button>
                                     )}
                                   </div>
                                 </div>
@@ -1081,11 +1114,11 @@ function GradeManagement() {
                                         <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                           {hasGrade ? (
                                             <>
-                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5"/> Sửa</button>
-                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4"/></button>
+                                              <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} disabled={!gradeLockedConfigs[ta.MaLopHocPhan]} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5" /> Sửa</button>
+                                              <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} disabled={!gradeLockedConfigs[ta.MaLopHocPhan]} className={`p-1.5 rounded-lg transition-colors shadow-sm ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200'}`}><Trash2 className="w-4 h-4" /></button>
                                             </>
                                           ) : (
-                                            <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5"/> Nhập</button>
+                                            <button onClick={() => openAddGradeForStudent(ta, stu)} disabled={!gradeLockedConfigs[ta.MaLopHocPhan]} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5" /> Nhập</button>
                                           )}
                                         </div>
                                       </td>

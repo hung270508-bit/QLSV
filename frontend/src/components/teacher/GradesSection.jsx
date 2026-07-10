@@ -7,12 +7,14 @@ import {
   Settings, Save, Info, ChevronDown, ChevronUp, Users, Lock, CheckSquare
 } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal from '../common/ModalPortal';
 
 // ================================================================
 // STORAGE KEY
 // ================================================================
 const getConfigKey = (maLopHocPhan) => `grade_config_${maLopHocPhan}`;
 const getLockKey = (maLopHocPhan) => `grade_config_locked_${maLopHocPhan}`;
+const getGradeLockKey = (maLopHocPhan) => `grades_locked_${maLopHocPhan}`;
 
 const DEFAULT_COMPONENTS = [
   { key: 'DiemChuyenCan', label: 'Chuyên cần', shortLabel: 'CC', weight: 10, enabled: true },
@@ -231,12 +233,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
   const [deleteModal, setDeleteModal] = useState({ show: false, maDiem: null, tenSinhVien: '', tenMonHoc: '' });
 
   const [configConfirm, setConfigConfirm] = useState({ show: false, maLopHocPhan: null, checked: false });
+  const [gradeLockConfirm, setGradeLockConfirm] = useState({ show: false, maLopHocPhan: null, checked: false });
   const [submitConfirmModal, setSubmitConfirmModal] = useState({ show: false, payload: null, isEdit: false });
 
   const [configOpen, setConfigOpen] = useState({});
   const [classConfigs, setClassConfigs] = useState({});
   const [activeConfigs, setActiveConfigs] = useState({});
   const [lockedConfigs, setLockedConfigs] = useState({});
+  const [gradeLockedConfigs, setGradeLockedConfigs] = useState({});
 
   const [showModal, setShowModal] = useState(false);
   const [editingGrade, setEditingGrade] = useState(null);
@@ -252,17 +256,34 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     const configs = {};
     const active = {};
     const locks = {};
+    const gradeLocks = {};
     teachingAssignments.forEach(ta => {
       const cfg = loadConfig(ta.MaLopHocPhan);
       configs[ta.MaLopHocPhan] = cfg;
       active[ta.MaLopHocPhan] = cfg;
       const savedLock = localStorage.getItem(getLockKey(ta.MaLopHocPhan));
-      locks[ta.MaLopHocPhan] = savedLock === null ? true : (savedLock === 'true');
+      locks[ta.MaLopHocPhan] = savedLock === null ? false : (savedLock === 'true');
+
+      const savedGradeLock = localStorage.getItem(getGradeLockKey(ta.MaLopHocPhan));
+      gradeLocks[ta.MaLopHocPhan] = savedGradeLock === 'true';
     });
     setClassConfigs(configs);
     setActiveConfigs(active);
     setLockedConfigs(locks);
+    setGradeLockedConfigs(gradeLocks);
   }, [teachingAssignments]);
+
+  // Khóa scroll màn hình chính khi mở bất kỳ modal nào
+  useEffect(() => {
+    if (showModal || configConfirm.show || gradeLockConfirm.show || deleteModal.show || submitConfirmModal.show) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal, configConfirm.show, gradeLockConfirm.show, deleteModal.show, submitConfirmModal.show]);
 
   const getActiveConfig = (maLopHocPhan) => activeConfigs[maLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
 
@@ -292,6 +313,20 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     setConfigConfirm({ show: false, maLopHocPhan: null, checked: false });
 
     showNotification('success', 'Đã chốt cấu hình điểm vĩnh viễn!');
+  };
+
+  const handleRequestSaveGradeLock = (maLopHocPhan) => {
+    setGradeLockConfirm({ show: true, maLopHocPhan, checked: false });
+  };
+
+  const executeSaveGradeLock = () => {
+    const { maLopHocPhan } = gradeLockConfirm;
+    if (!maLopHocPhan) return;
+
+    localStorage.setItem(getGradeLockKey(maLopHocPhan), 'true');
+    setGradeLockedConfigs(prev => ({ ...prev, [maLopHocPhan]: true }));
+    setGradeLockConfirm({ show: false, maLopHocPhan: null, checked: false });
+    showNotification('success', 'Đã chốt bảng điểm thành công!');
   };
 
   const closeModal = () => {
@@ -516,8 +551,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {isLocked && <span className="text-[11px] text-green-700 bg-[#22C55E]/10 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span>}
-                    {!isLocked && <span className="text-[11px] text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
+                    {gradeLockedConfigs[ta.MaLopHocPhan] ? <span className="text-[11px] text-green-700 bg-[#22C55E]/10 border border-green-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chốt</span> : <span className="text-[11px] text-[#F4C542] bg-[#FFF7D6] border border-[#F4C542]/30 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 uppercase tracking-wide"><AlertCircle className="w-3.5 h-3.5" /> Chưa chốt</span>}
                     <div className="p-2 rounded-full hover:bg-gray-100 transition-colors">
                       <ChevronDown className={`w-5 h-5 text-gray-300 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                     </div>
@@ -592,11 +626,11 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                                             <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                               {hasGrade ? (
                                                 <>
-                                                  <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5" /> Sửa</button>
-                                                  <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} className="p-1.5 text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200 rounded-lg transition-colors shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                                                  <button onClick={() => openEditModal({ ...grade, TenSinhVien: stu.HoTen, TenMonHoc: ta.TenMonHoc })} disabled={gradeLockedConfigs[ta.MaLopHocPhan] || !isLocked} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${gradeLockedConfigs[ta.MaLopHocPhan] || !isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#3B82F6] bg-[#3B82F6]/10 hover:bg-blue-100 border border-blue-100 hover:border-blue-200'}`}><Edit className="w-3.5 h-3.5" /> Sửa</button>
+                                                  <button onClick={() => setDeleteModal({ show: true, maDiem: grade.MaDiem, tenSinhVien: stu.HoTen, tenMonHoc: ta.TenMonHoc })} disabled={gradeLockedConfigs[ta.MaLopHocPhan]} className={`p-1.5 rounded-lg transition-colors shadow-sm ${gradeLockedConfigs[ta.MaLopHocPhan] ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#EF4444] bg-[#EF4444]/10 hover:bg-red-200 border border-red-200 hover:border-red-200'}`}><Trash2 className="w-4 h-4" /></button>
                                                 </>
                                               ) : (
-                                                <button onClick={() => openAddGradeForStudent(ta, stu)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${!isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5" /> Nhập</button>
+                                                <button onClick={() => openAddGradeForStudent(ta, stu)} disabled={gradeLockedConfigs[ta.MaLopHocPhan] || !isLocked} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${gradeLockedConfigs[ta.MaLopHocPhan] || !isLocked ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-[#E5E7EB]' : 'text-[#F4C542] bg-[#FFF7D6] hover:bg-[#FFF7D6] border border-[#F4C542]/30'}`}><Plus className="w-3.5 h-3.5" /> Nhập</button>
                                               )}
                                             </div>
                                           </td>
@@ -607,6 +641,18 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                                 </table>
                               </div>
                             </div>
+
+                            <div className="mt-4 flex justify-end">
+                              <motion.button
+                                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                                disabled={gradeLockedConfigs[ta.MaLopHocPhan] || !isLocked}
+                                onClick={() => setGradeLockConfirm({ show: true, maLopHocPhan: ta.MaLopHocPhan, checked: false })}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all ${gradeLockedConfigs[ta.MaLopHocPhan] || !isLocked ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-[#E5E7EB]' : 'bg-[#22C55E] text-white hover:bg-green-600'}`}
+                              >
+                                {gradeLockedConfigs[ta.MaLopHocPhan] ? <><CheckCircle2 className="w-5 h-5" /> Đã chốt điểm</> : <><Lock className="w-5 h-5" /> Chốt bảng điểm</>}
+                              </motion.button>
+                            </div>
+
                           </div>
                         </>
                       )}
@@ -627,6 +673,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
       {/* MODAL THÊM / SỬA ĐIỂM */}
       <AnimatePresence>
         {showModal && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
             <motion.div
@@ -745,12 +792,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL CẢNH BÁO XÁC NHẬN LƯU ĐIỂM */}
       <AnimatePresence>
         {submitConfirmModal.show && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[10005] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false })} />
             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
@@ -769,12 +818,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL CẢNH BÁO 2 LỚP - CHỐT CẤU HÌNH ĐIỂM */}
       <AnimatePresence>
         {configConfirm.show && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} />
             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
@@ -801,23 +852,62 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </label>
 
               <div className="flex gap-3">
-                <button onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Quay lại</button>
-                <button
-                  disabled={!configConfirm.checked}
-                  onClick={executeSaveConfig}
-                  className={`flex-1 py-3.5 rounded-xl font-bold shadow-md transition-all ${!configConfirm.checked ? 'bg-gray-200 text-gray-300 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-red-500/25'}`}
-                >
-                  Chốt vĩnh viễn
+                <button onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Hủy bỏ</button>
+                <button disabled={!configConfirm.checked} onClick={executeSaveConfig} className="flex-1 py-3.5 bg-red-600 text-white rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 hover:shadow-red-500/25 transition-all">
+                  Chốt cấu hình
                 </button>
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL CẢNH BÁO 2 LỚP - CHỐT BẢNG ĐIỂM */}
+      <AnimatePresence>
+        {gradeLockConfirm.show && (
+          <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setGradeLockConfirm({ show: false, maLopHocPhan: null, checked: false })} />
+            <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
+              <div className="w-20 h-20 bg-green-100 text-[#22C55E] rounded-full flex items-center justify-center mx-auto mb-5 border-[6px] border-green-200/50 shadow-inner">
+                <CheckCircle2 className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-[#1F2937] mb-3 tracking-tight">Xác nhận chốt bảng điểm</h3>
+              <p className="text-[#6B7280] text-sm font-medium mb-6 px-2 leading-relaxed">
+                Bạn có chắc chắn muốn chốt bảng điểm cho môn học này? Khi đã chốt, bạn sẽ không thể chỉnh sửa điểm được nữa.
+              </p>
+
+              <label className="flex items-start gap-3 bg-[#22C55E]/10/50 hover:bg-[#22C55E]/10 p-4 rounded-xl border-2 border-green-200 text-left cursor-pointer mb-7 transition-colors group">
+                <div className="pt-0.5">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 accent-green-600 rounded cursor-pointer"
+                    checked={gradeLockConfirm.checked}
+                    onChange={e => setGradeLockConfirm(prev => ({ ...prev, checked: e.target.checked }))}
+                  />
+                </div>
+                <span className="text-sm font-bold text-green-800 leading-tight">
+                  Tôi đồng ý chốt bảng điểm và xác nhận không có sai sót nào.
+                </span>
+              </label>
+
+              <div className="flex gap-3">
+                <button onClick={() => setGradeLockConfirm({ show: false, maLopHocPhan: null, checked: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Hủy bỏ</button>
+                <button disabled={!gradeLockConfirm.checked} onClick={executeSaveGradeLock} className="flex-1 py-3.5 bg-green-600 text-white rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700 transition-all">
+                  Chốt điểm
+                </button>
+              </div>
+            </motion.div>
+          </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL XÓA ĐIỂM */}
       <AnimatePresence>
         {deleteModal.show && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDeleteCancel} />
             <motion.div
@@ -839,12 +929,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
         {notification.show && (
+          <ModalPortal>
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }}
             className={`fixed bottom-8 right-8 z-[11000] flex items-center gap-3.5 px-6 py-4 rounded-2xl shadow-2xl text-white font-bold tracking-wide
@@ -853,6 +945,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
             {notification.type === 'success' ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
             <span className="text-[15px]">{notification.message}</span>
           </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>
