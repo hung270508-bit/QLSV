@@ -1185,11 +1185,11 @@ function GradeManagement() {
                     >
                       <option value="">Chọn lớp học phần</option>
                       {(courseSections || []).map(ta => {
-                        const isLocked = lockedConfigs[ta.MaLopHocPhan];
+                        const isGradeLocked = gradeLockedConfigs[ta.MaLopHocPhan];
                         const hasSched = (schedules || []).some(s => s.MaLopHocPhan === ta.MaLopHocPhan);
                         return (
-                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked || !hasSched}>
-                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isLocked ? '(Chưa chốt cấu hình)' : '')}
+                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isGradeLocked || !hasSched}>
+                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isGradeLocked ? '(Chưa chốt điểm)' : '')}
                           </option>
                         );
                       })}
@@ -1281,7 +1281,7 @@ function GradeManagement() {
               <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-t-[2rem] px-8 py-6 flex justify-between items-center shrink-0">
                 <div>
                   <h3 className="text-2xl font-bold text-[#152238] mb-1">Nhập điểm hàng loạt</h3>
-                  <p className="text-purple-100 text-sm font-medium">Chỉ cho phép nhập đối với Lớp học phần đã được Giảng viên chốt cấu hình</p>
+                  <p className="text-purple-100 text-sm font-medium">Chỉ cho phép nhập đối với Lớp học phần đã được chốt điểm</p>
                 </div>
                 <button onClick={() => setShowBulkModal(false)} className="p-2.5 bg-[#FFFFFF]/10 hover:bg-white/40 rounded-full transition-colors"><X className="w-5 h-5 text-white" /></button>
               </div>
@@ -1300,9 +1300,9 @@ function GradeManagement() {
                     <select value={bulkSection} onChange={e => handleBulkSectionChange(e.target.value)} className="w-full px-4 py-3.5 bg-[#FFFFFF] border-2 border-[#E5E7EB] rounded-xl focus:outline-none focus:border-purple-500 font-bold text-sm text-[#1F2937]">
                       <option value="">Chọn lớp học phần</option>
                       {courseSections.filter(cs => !bulkKhoa || extractKhoa(cs.MaKhoa, cs.MaMonHoc) === bulkKhoa.toUpperCase()).map(cs => {
-                        const isLocked = lockedConfigs[cs.MaLopHocPhan];
+                        const isGradeLocked = gradeLockedConfigs[cs.MaLopHocPhan];
                         const hasSched = (schedules || []).some(s => s.MaLopHocPhan === cs.MaLopHocPhan);
-                        return <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan} disabled={!isLocked || !hasSched}>{cs.TenMonHoc} — {cs.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isLocked ? '(Giảng viên chưa chốt)' : '')}</option>
+                        return <option key={cs.MaLopHocPhan} value={cs.MaLopHocPhan} disabled={!isGradeLocked || !hasSched}>{cs.TenMonHoc} — {cs.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isGradeLocked ? '(Chưa chốt điểm)' : '')}</option>
                       })}
                     </select>
                   </div>
