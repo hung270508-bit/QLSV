@@ -484,6 +484,34 @@ module.exports = (dbPromise) => {
             }
         },
 
+        deleteSession: async (sessionId) => {
+            let connection;
+            try {
+                connection = await dbPromise.getConnection();
+                await connection.beginTransaction();
+
+                const [genQs] = await connection.query(`SELECT id FROM ai_generated_questions WHERE session_id = ?`, [sessionId]);
+                if (genQs.length > 0) {
+                    await connection.query(`DELETE FROM ai_generated_options WHERE question_id IN (${genQs.map(q => q.id).join(',')})`);
+                }
+                await connection.query(`DELETE FROM ai_generated_questions WHERE session_id = ?`, [sessionId]);
+                
+                const [sessions] = await connection.query(`SELECT document_id FROM ai_generation_sessions WHERE id = ?`, [sessionId]);
+                await connection.query(`DELETE FROM ai_generation_sessions WHERE id = ?`, [sessionId]);
+
+                if (sessions.length > 0 && sessions[0].document_id) {
+                    await connection.query(`DELETE FROM documents WHERE id = ?`, [sessions[0].document_id]);
+                }
+
+                await connection.commit();
+            } catch (error) {
+                if (connection) await connection.rollback();
+                throw error;
+            } finally {
+                if (connection) connection.release();
+            }
+        },
+
         updateOfficialBank: async (bankId, { tieu_de }) => {
             await dbPromise.query(`UPDATE question_banks SET tieu_de = ? WHERE id = ?`, [tieu_de, bankId]);
         },

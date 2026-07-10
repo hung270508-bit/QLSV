@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import API_URL from '../../api';
-import { CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle, X } from 'lucide-react';
+
+// Chỉ cho phép chữ (có dấu tiếng Việt), số, khoảng trắng và một số ký tự thông dụng: - _ ( ) , .
+const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]*$/u;
+const TEN_DOT_INVALID_CHARS_REGEX = /[^\p{L}\p{N}\s\-_(),.]/gu;
 
 function EnrollmentPhaseManagement() {
   const [phases, setPhases] = useState([]);
@@ -11,6 +15,9 @@ function EnrollmentPhaseManagement() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [students, setStudents] = useState([]);
+  const [tenDotError, setTenDotError] = useState('');
+  const [toast, setToast] = useState(null); // { message: string, type: 'warning' | 'success' | 'error' }
+  const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, confirmLabel, variant, onConfirm }
   const [form, setForm] = useState({
     TenDot: '',
     MoTa: '',
@@ -20,6 +27,16 @@ function EnrollmentPhaseManagement() {
     NgayMo: '',
     NgayDong: ''
   });
+
+  const showToast = (message, type = 'warning') => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const fetchPhases = async () => {
     try {
@@ -56,6 +73,12 @@ function EnrollmentPhaseManagement() {
     return years.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
   }, [courseSections]);
 
+  // Học kỳ chỉ được lấy từ dữ liệu các lớp học phần đã có, không cho nhập tay
+  const hocKyOptions = useMemo(() => {
+    const values = Array.from(new Set(courseSections.map((cs) => cs.HocKy).filter(Boolean)));
+    return values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [courseSections]);
+
   const nienKhoaOptions = useMemo(() => {
     const values = Array.from(new Set(students.map((sv) => sv.NienKhoa).filter(Boolean)));
     return values.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
@@ -73,10 +96,69 @@ function EnrollmentPhaseManagement() {
     }
   }, [nienKhoaOptions, editingPhase, form.NienKhoa]);
 
+  useEffect(() => {
+    if (!editingPhase && !form.HocKy && hocKyOptions.length > 0) {
+      setForm((prev) => ({ ...prev, HocKy: hocKyOptions[0] }));
+    }
+  }, [hocKyOptions, editingPhase, form.HocKy]);
+
   useEffect(() => { fetchPhases(); fetchCourseSections(); fetchStudents(); }, []);
 
-  const handleSubmit = async (e) => {
+  // Tìm đợt đang mở (còn hạn) thuộc học kỳ khác với học kỳ đang thao tác (dùng để chặn mở song song nhiều học kỳ)
+  const findConflictingOpenPhase = (hocKy, excludeId) => {
+    if (!hocKy) return null;
+    const now = new Date();
+    return (
+      phases.find((p) => {
+        if (excludeId && p.MaDot === excludeId) return false;
+        if (p.TrangThai !== 'Mo') return false;
+        if (!p.HocKy || p.HocKy === hocKy) return false;
+        if (p.NgayDong && new Date(p.NgayDong) <= now) return false; // đã hết hạn thì không tính là đang mở
+        return true;
+      }) || null
+    );
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Ràng buộc ký tự đặc biệt cho tên đợt
+    if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) {
+      setTenDotError('Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .');
+      return;
+    }
+    setTenDotError('');
+
+    // Chỉ cho phép mở đăng ký của 1 học kỳ duy nhất tại một thời điểm.
+    // Đợt đang chỉnh sửa (nếu có) sẽ giữ trạng thái hiện tại; nếu đợt đó đang mở
+    // hoặc đợt mới sẽ được tạo (mặc định mở), thì kiểm tra xung đột học kỳ.
+    const willBeOpen = editingPhase ? editingPhase.TrangThai === 'Mo' : true;
+    if (willBeOpen) {
+      const conflictPhase = findConflictingOpenPhase(form.HocKy, editingPhase?.MaDot);
+      if (conflictPhase) {
+        showToast(
+          `Học kỳ "${conflictPhase.HocKy}" đang có đợt đăng ký mở ("${conflictPhase.TenDot}"). ` +
+          `Chỉ được mở đăng ký cho 1 học kỳ duy nhất — vui lòng đóng đợt của học kỳ "${conflictPhase.HocKy}" ` +
+          `hoặc chờ đến khi đợt đó hết hạn (${conflictPhase.NgayDong ? new Date(conflictPhase.NgayDong).toLocaleString('vi-VN') : '—'}) trước khi mở đợt cho học kỳ "${form.HocKy}".`,
+          'warning'
+        );
+        return;
+      }
+    }
+
+    // Mọi điều kiện hợp lệ -> mở popup xác nhận trước khi thực sự lưu
+    setConfirmDialog({
+      title: editingPhase ? 'Xác nhận cập nhật đợt đăng ký' : 'Xác nhận tạo đợt đăng ký',
+      message: editingPhase
+        ? `Bạn có chắc muốn lưu thay đổi cho đợt "${form.TenDot}" không?`
+        : `Bạn có chắc muốn tạo đợt đăng ký "${form.TenDot}" không?`,
+      confirmLabel: 'Lưu',
+      variant: 'primary',
+      onConfirm: performSave
+    });
+  };
+
+  const performSave = async () => {
     try {
       if (editingPhase) {
         await axios.put(`${API_URL}/api/enrollment/phases/${editingPhase.MaDot}`, {
@@ -86,19 +168,23 @@ function EnrollmentPhaseManagement() {
       } else {
         await axios.post(`${API_URL}/api/enrollment/phases`, form);
       }
+      showToast('Lưu đợt đăng ký thành công!', 'success');
       resetForm();
       fetchPhases();
     } catch (error) {
-      alert(error.response?.data?.message || 'Không thể lưu đợt đăng ký');
+      showToast(error.response?.data?.message || 'Không thể lưu đợt đăng ký', 'error');
+    } finally {
+      setConfirmDialog(null);
     }
   };
 
   const closePhase = async (id) => {
     try {
       await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`);
+      showToast('Đã đóng đợt đăng ký.', 'success');
       fetchPhases();
     } catch (error) {
-      alert('Không thể đóng đợt đăng ký');
+      showToast('Không thể đóng đợt đăng ký', 'error');
     }
   };
 
@@ -117,33 +203,43 @@ function EnrollmentPhaseManagement() {
         NgayDong: phase.NgayDong,
         TrangThai: 'Mo'
       });
+      showToast('Đã mở lại đợt đăng ký.', 'success');
       fetchPhases();
     } catch (error) {
-      alert('Không thể mở lại đợt đăng ký');
+      showToast('Không thể mở lại đợt đăng ký', 'error');
     }
   };
 
-  const deletePhase = async (id) => {
-  console.log("ID đang được gửi đi để xóa:", id); // Kiểm tra xem id có bị undefined không
-  
-  if (!window.confirm('Bạn có chắc muốn xóa đợt này?')) return;
-  try {
-    const response = await axios.delete(`${API_URL}/api/enrollment/phases/${id}`);
-    console.log("Kết quả từ server:", response.data); // Xem server trả về success: true không
-    fetchPhases();
-  } catch (error) {
-    // In ra lỗi chi tiết thay vì chỉ hiện alert chung chung
-    console.error("Chi tiết lỗi xóa:", error.response?.data || error.message);
-    alert(`Không thể xóa đợt đăng ký: ${error.response?.data?.message || 'Lỗi không xác định'}`);
-  }
-};
+  const requestDeletePhase = (phase) => {
+    setConfirmDialog({
+      title: 'Xóa đợt đăng ký',
+      message: `Bạn có chắc muốn xóa đợt "${phase.TenDot}" không? Hành động này không thể hoàn tác.`,
+      confirmLabel: 'Xóa',
+      variant: 'danger',
+      onConfirm: () => performDeletePhase(phase.MaDot)
+    });
+  };
+
+  const performDeletePhase = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/api/enrollment/phases/${id}`);
+      showToast('Đã xóa đợt đăng ký thành công!', 'success');
+      fetchPhases();
+    } catch (error) {
+      showToast(`Không thể xóa đợt đăng ký: ${error.response?.data?.message || 'Lỗi không xác định'}`, 'error');
+    } finally {
+      setConfirmDialog(null);
+    }
+  };
   const resetForm = () => {
     setEditingPhase(null);
+    setTenDotError('');
     setForm({ TenDot: '', MoTa: '', HocKy: '', NamHoc: '', NienKhoa: '', NgayMo: '', NgayDong: '' });
   };
 
   const handleEditPhase = (phase) => {
     setEditingPhase(phase);
+    setTenDotError('');
     setForm({
       TenDot: phase.TenDot || '',
       MoTa: phase.MoTa || '',
@@ -184,8 +280,67 @@ function EnrollmentPhaseManagement() {
     });
   }, [phases, filterStatus, searchTerm]);
 
+  const toastStyles = {
+    warning: { border: 'border-amber-200', bg: 'bg-amber-50', text: 'text-amber-800', icon: 'text-amber-600' },
+    success: { border: 'border-emerald-200', bg: 'bg-emerald-50', text: 'text-emerald-800', icon: 'text-emerald-600' },
+    error: { border: 'border-red-200', bg: 'bg-red-50', text: 'text-red-800', icon: 'text-red-600' }
+  };
+
   return (
     <div className="space-y-6">
+      {toast && (() => {
+        const style = toastStyles[toast.type] || toastStyles.warning;
+        return (
+          <div className="fixed top-4 right-4 z-50 w-full max-w-sm animate-in fade-in slide-in-from-top-2">
+            <div className={`flex items-start gap-3 rounded-2xl border ${style.border} ${style.bg} p-4 shadow-lg`}>
+              {toast.type === 'success' ? (
+                <CheckCircle2 className={`w-5 h-5 mt-0.5 flex-shrink-0 ${style.icon}`} />
+              ) : (
+                <AlertCircle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${style.icon}`} />
+              )}
+              <div className={`flex-1 text-sm ${style.text}`}>{toast.message}</div>
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className={`${style.icon} hover:opacity-70`}
+                aria-label="Đóng thông báo"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {confirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-800">{confirmDialog.title}</h3>
+            <p className="mt-2 text-sm text-slate-600">{confirmDialog.message}</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDialog(null)}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={confirmDialog.onConfirm}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
+                  confirmDialog.variant === 'danger'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-[#152238] hover:bg-[#0f1a2b]'
+                }`}
+              >
+                {confirmDialog.confirmLabel || 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-[#F4C542] rounded-2xl p-6 text-[#152238] shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-xl bg-white/50"><CalendarDays className="w-6 h-6" /></div>
@@ -222,9 +377,71 @@ function EnrollmentPhaseManagement() {
         <div className="xl:col-span-1 bg-white rounded-2xl p-5 border border-slate-200">
           <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-[#F4C542]" /> {editingPhase ? 'Chỉnh sửa đợt' : 'Tạo đợt mới'}</h3>
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input className="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Tên đợt" value={form.TenDot} onChange={(e) => setForm({ ...form, TenDot: e.target.value })} required />
+            <div>
+              <input
+                className={`w-full rounded-xl border px-3 py-2 ${tenDotError ? 'border-red-400' : 'border-slate-200'}`}
+                placeholder="Tên đợt"
+                value={form.TenDot}
+                maxLength={100}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Lọc ngay các ký tự đặc biệt không cho phép khi gõ
+                  const filtered = raw.replace(TEN_DOT_INVALID_CHARS_REGEX, '');
+                  setForm({ ...form, TenDot: filtered });
+                  setTenDotError(
+                    raw !== filtered
+                      ? 'Đã tự động loại bỏ ký tự đặc biệt không hợp lệ trong tên đợt.'
+                      : ''
+                  );
+                }}
+                required
+              />
+              {tenDotError ? (
+                <p className="mt-1 text-xs text-red-500">{tenDotError}</p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .</p>
+              )}
+            </div>
             <textarea className="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Mô tả" value={form.MoTa} onChange={(e) => setForm({ ...form, MoTa: e.target.value })} rows={3} />
-            <input className="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Học kỳ" value={form.HocKy} onChange={(e) => setForm({ ...form, HocKy: e.target.value })} />
+            {hocKyOptions.length > 0 ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Học kỳ</label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                  value={form.HocKy}
+                  onChange={(e) => {
+                    const newHocKy = e.target.value;
+                    setForm({ ...form, HocKy: newHocKy });
+                    const conflictPhase = findConflictingOpenPhase(newHocKy, editingPhase?.MaDot);
+                    if (conflictPhase) {
+                      showToast(
+                        `Đang có đợt đăng ký mở cho học kỳ "${conflictPhase.HocKy}" ("${conflictPhase.TenDot}"). ` +
+                        `Không thể mở song song đợt cho học kỳ "${newHocKy}" cho đến khi đợt đó đóng/hết hạn.`
+                      );
+                    }
+                  }}
+                  required
+                >
+                  <option value="" disabled>Chọn học kỳ từ dữ liệu lớp học phần</option>
+                  {hocKyOptions.map((hk) => (
+                    <option key={hk} value={hk}>{hk}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">Học kỳ được lấy tự động từ dữ liệu các lớp học phần, không thể nhập tay.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Học kỳ</label>
+                <input
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-400"
+                  placeholder="Chưa có dữ liệu học kỳ từ lớp học phần"
+                  value=""
+                  readOnly
+                  disabled
+                />
+                <p className="mt-1 text-xs text-slate-500">Cần có dữ liệu lớp học phần trước khi tạo đợt đăng ký.</p>
+              </div>
+            )}
             {courseYearOptions.length > 0 ? (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Năm học</label>
@@ -372,7 +589,7 @@ function EnrollmentPhaseManagement() {
                           )}
                           <button
                             type="button"
-                            onClick={() => deletePhase(phase.MaDot)}
+                            onClick={() => requestDeletePhase(phase)}
                             className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100"
                           >
                             <Trash2 className="w-4 h-4" />

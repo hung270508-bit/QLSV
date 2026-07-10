@@ -80,6 +80,16 @@ CREATE TABLE IF NOT EXISTS exam_attempts (
     FOREIGN KEY (mssv) REFERENCES sinhvien(MSSV) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Bảng Lưu trữ vi phạm
+CREATE TABLE IF NOT EXISTS exam_attempt_violations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    attempt_id INT NOT NULL,
+    violation_type VARCHAR(50) NOT NULL,
+    occurred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    note TEXT,
+    FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Bảng Câu trả lời thi chi tiết
 CREATE TABLE IF NOT EXISTS exam_attempt_answers (
     id INT AUTO_INCREMENT PRIMARY KEY,
