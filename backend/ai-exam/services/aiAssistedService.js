@@ -248,7 +248,7 @@ module.exports = (repo) => {
     // ================================================================
     return {
         // 1. Upload file Word và lưu Document
-        uploadDocument: async (file, { ma_mon_hoc, ma_giang_vien, tieu_de }) => {
+        uploadDocument: async (file, { ma_mon_hoc, ma_giang_vien, tieu_de, ten_mon_hoc }) => {
             if (!file || !ma_mon_hoc || !ma_giang_vien || !tieu_de) {
                 throw new Error('Vui lòng cung cấp đầy đủ file tài liệu, môn học, giảng viên và tiêu đề.');
             }
@@ -257,6 +257,34 @@ module.exports = (repo) => {
             }
 
             const text = await extractTextFromDocx(file.path);
+
+            let is_relevant = true;
+            if (ten_mon_hoc && text) {
+                try {
+                    const { client, model } = getOpenAIClient();
+                    const prompt = `Bạn là một hệ thống kiểm duyệt nội dung giáo dục.
+Môn học: ${ten_mon_hoc}
+Nội dung tài liệu (trích đoạn):
+${text.substring(0, 3000)}
+
+Hãy kiểm tra xem nội dung tài liệu này có phù hợp và liên quan đến môn học "${ten_mon_hoc}" hay không. 
+Yêu cầu bắt buộc: Chỉ trả về đúng 1 từ duy nhất bằng tiếng Anh: "YES" (nếu có liên quan) hoặc "NO" (nếu hoàn toàn sai lệch môn học). Không giải thích gì thêm.`;
+
+                    const completion = await client.chat.completions.create({
+                        model,
+                        messages: [{ role: 'user', content: prompt }],
+                        temperature: 0,
+                    });
+                    const responseText = completion.choices[0].message.content.trim().toUpperCase();
+                    // Catch NO, KHÔNG, KHONG, FALSE
+                    if (responseText.includes('NO') || responseText.includes('KHÔNG') || responseText.includes('KHONG') || responseText.includes('FALSE')) {
+                        is_relevant = false;
+                    }
+                } catch (error) {
+                    console.error('AI validation error:', error.message);
+                }
+            }
+
             const docId = await repo.saveDocument({
                 ma_mon_hoc,
                 ma_giang_vien,
@@ -266,11 +294,11 @@ module.exports = (repo) => {
                 text_content: text
             });
 
-            return { id: docId, tieu_de, file_name: file.originalname, ma_mon_hoc };
+            return { id: docId, tieu_de, file_name: file.originalname, ma_mon_hoc, is_relevant };
         },
 
         // 2. Khởi tạo phiên sinh AI & chạy batch đầu tiên
-        startSession: async ({ document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau = 10, do_kho = 'Mixed', chu_de = 'Toàn bộ' }) => {
+        startSession: async ({ document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau = 10, do_kho = 'Mixed', chu_de = 'Toàn bộ', auto_generate = true }) => {
             const document = await repo.getDocumentById(document_id);
             if (!document) throw new Error('Không tìm thấy tài liệu trong hệ thống');
 
@@ -283,12 +311,14 @@ module.exports = (repo) => {
                 chu_de
             });
 
-            // Thực hiện sinh batch đầu tiên
-            try {
-                await generateBatch(sessionId, document, Number(so_cau_yeu_cau) || 10, do_kho, chu_de);
-            } catch (err) {
-                console.error('Initial batch generation error:', err.message);
-                // Vẫn trả về sessionId để frontend có thể bấm Resume
+            if (auto_generate !== false && auto_generate !== 'false') {
+                // Thực hiện sinh batch đầu tiên
+                try {
+                    await generateBatch(sessionId, document, Number(so_cau_yeu_cau) || 10, do_kho, chu_de);
+                } catch (err) {
+                    console.error('Initial batch generation error:', err.message);
+                    // Vẫn trả về sessionId để frontend có thể bấm Resume
+                }
             }
 
             return await repo.getSessionById(sessionId);
@@ -367,6 +397,14 @@ module.exports = (repo) => {
 
         updateOfficialBank: async (bankId, data) => {
             return await repo.updateOfficialBank(bankId, data);
+        },
+
+        deleteSession: async (sessionId) => {
+            return await repo.deleteSession(sessionId);
+        },
+
+        completeSession: async (sessionId) => {
+            return await repo.updateSessionStatus(sessionId, 'COMPLETED');
         }
     };
 };

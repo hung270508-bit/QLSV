@@ -1,12 +1,13 @@
-import { Award, Clock, PlayCircle, AlertTriangle, CheckCircle, History, BookOpen, XCircle, X, Flag, FlagOff, Trash2, Edit2, Upload, Download, Calendar, Settings, FileText, Eye, AlertCircle, ChevronDown, Search, Filter, Plus, Check, Info, Camera, Edit, CheckCircle2 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { Award, Clock, PlayCircle, AlertTriangle, CheckCircle, History, BookOpen, XCircle, X, Flag, FlagOff, Trash2, Edit2, Upload, Download, Calendar, Settings, FileText, Eye, AlertCircle, ChevronDown, Search, Filter, Plus, Check, Info, Camera, Edit, CheckCircle2, WifiOff } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import io from 'socket.io-client';
 
 import axios from 'axios';
 import API_URL from '../../api';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 
-function StudentOnlineExam({ user }) {
+function StudentOnlineExam({ user, onExamModeChange }) {
     const mssv = user?.username || user?.MSSV || user?.id || 'SV000016';
     const [activeTab, setActiveTab] = useState('exams');
     const [exams, setExams] = useState([]);
@@ -36,15 +37,217 @@ function StudentOnlineExam({ user }) {
     }, [isTakingExam, activeTab]);
 
     useEffect(() => {
+        if (onExamModeChange) onExamModeChange(isTakingExam);
+        window.dispatchEvent(new CustomEvent('examModeStatus', { detail: isTakingExam }));
+    }, [isTakingExam, onExamModeChange]);
+
+    useEffect(() => {
+        if (attemptId && Object.keys(answers).length > 0) {
+            localStorage.setItem(`exam_${attemptId}_answers`, JSON.stringify(answers));
+        }
+    }, [answers, attemptId]);
+
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOffline(false);
+            showToast('Đã khôi phục kết nối mạng! Dữ liệu của bạn đang được đồng bộ.', 'success');
+            
+            // Đồng bộ vi phạm
+            if (socketRef.current && attemptId) {
+                const offlineViolations = JSON.parse(localStorage.getItem(`exam_${attemptId}_violations`) || '[]');
+                offlineViolations.forEach(v => socketRef.current.emit('student_violation', v));
+                localStorage.removeItem(`exam_${attemptId}_violations`);
+            }
+
+            // Đồng bộ nộp bài nếu đã nộp offline
+            if (currentExam && mssv) {
+                const isSubmittedOffline = localStorage.getItem(`exam_data_${currentExam.id}_${mssv}_submitted_offline`);
+                if (isSubmittedOffline) {
+                    submitExamAPI();
+                }
+            }
+        };
+        const handleOffline = () => {
+            setIsOffline(true);
+            showToast('Mất kết nối mạng! Bài làm sẽ được lưu tạm trên máy của bạn.', 'error');
+        };
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    const autoSubmitRef = useRef();
+
+    useEffect(() => {
+        const handleForceSubmit = () => {
+            if (autoSubmitRef.current) autoSubmitRef.current();
+        };
+        const handleBeforeUnload = (e) => {
+            if (isTakingExam) {
+                e.preventDefault();
+                e.returnValue = ''; // Bắt buộc đối với các trình duyệt hiện đại
+            }
+        };
+
+        window.addEventListener('student_force_submit', handleForceSubmit);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        
+        return () => {
+            window.removeEventListener('student_force_submit', handleForceSubmit);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [isTakingExam]);
+
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
         let timer;
-        if (isTakingExam && timeLeft > 0) {
-            timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
-        } else if (isTakingExam && timeLeft === 0) {
-            // Auto submit when time's up
-            handleAutoSubmit();
+        if (isTakingExam) {
+            if (timeLeft > 0) {
+                timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
+            } else if (timeLeft === 0 && attemptId) {
+                // Auto submit when time's up and attempt has started
+                handleAutoSubmit();
+            }
         }
         return () => clearInterval(timer);
-    }, [isTakingExam, timeLeft]);
+    }, [isTakingExam, timeLeft, attemptId]);
+
+    // Timer để check chuyển từ phòng chờ sang làm bài
+    useEffect(() => {
+        let checkTimer;
+        if (isTakingExam && currentExam && !attemptId) {
+            checkTimer = setInterval(() => {
+                const now = new Date();
+                setCurrentTime(now);
+                if (now >= new Date(currentExam.thoi_gian_bat_dau)) {
+                    handleStartExamAPI(currentExam);
+                    clearInterval(checkTimer);
+                }
+            }, 1000);
+        }
+        return () => clearInterval(checkTimer);
+    }, [isTakingExam, currentExam, attemptId]);
+
+    const socketRef = useRef(null);
+
+    useEffect(() => {
+        if (!isTakingExam || !currentExam || !attemptId) return;
+
+        // Initialize Socket.io connection
+        const socket = io(API_URL, {
+            auth: { token: localStorage.getItem('token') || sessionStorage.getItem('token') }
+        });
+        socketRef.current = socket;
+
+        // Join exam room
+        socket.emit('student_join_exam', {
+            scheduleId: currentExam.id, // Re-using scheduleId field for exam.id
+            studentId: mssv,
+            studentName: user?.HoTen || user?.username,
+            attemptId: attemptId
+        });
+
+        // Heartbeat
+        const heartbeatInterval = setInterval(() => {
+            socket.emit('student_heartbeat', {
+                scheduleId: currentExam.id,
+                studentId: mssv,
+                status: 'IN_PROGRESS',
+                attemptId: attemptId
+            });
+        }, 10000); // every 10 seconds
+
+        // Handle force submit from teacher
+        socket.on('force_submit', () => {
+            showToast('Giảng viên đã khóa bài thi của bạn. Đang tự động nộp bài...', 'error');
+            handleAutoSubmit();
+        });
+
+        // Tab visibility change (cheating detection)
+        const violationCount = { current: 0 }; // Using object to pass by reference in closure, better use a ref outside useEffect if needed across re-renders, but since we re-create this when attemptId changes it's fine. 
+        // Wait, I will just declare a let outside. No, I'll use a let inside useEffect.
+        let count = 0;
+        const triggerViolation = (violationType, descriptionSuffix) => {
+            count += 1;
+            
+            const offlineText = !navigator.onLine ? " (Ngoại tuyến)" : "";
+            
+            const violationData = {
+                scheduleId: currentExam.id,
+                studentId: mssv,
+                type: violationType,
+                description: `Sinh viên ${descriptionSuffix} ${count >= 3 ? '3 lần (Bắt buộc nộp bài)' : `lần ${count}`}${offlineText}`,
+                attemptId: attemptId
+            };
+
+            if (!navigator.onLine) {
+                const offlineViolations = JSON.parse(localStorage.getItem(`exam_${attemptId}_violations`) || '[]');
+                offlineViolations.push(violationData);
+                localStorage.setItem(`exam_${attemptId}_violations`, JSON.stringify(offlineViolations));
+            } else {
+                socket.emit('student_violation', violationData);
+            }
+
+            if (count >= 3) {
+                showToast('Cảnh báo: Bạn đã vi phạm 3 lần! Hệ thống tự động nộp bài.', 'error');
+                handleAutoSubmit();
+            } else {
+                showToast(`Cảnh báo: Bạn vừa rời khỏi màn hình thi! (Vi phạm ${count}/3 lần)`, 'error');
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) triggerViolation('TAB_SWITCH', 'chuyển tab');
+        };
+        const handleSidebarViolation = () => {
+            triggerViolation('TAB_SWITCH', 'click ra khỏi bài thi');
+        };
+
+        const handleContextMenu = (e) => {
+            e.preventDefault();
+            showToast('Tính năng chuột phải đã bị khóa trong lúc thi!', 'error');
+        };
+
+        const handleKeyDown = (e) => {
+            if (
+                e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) ||
+                (e.ctrlKey && ['U', 'u', 'C', 'c', 'V', 'v', 'A', 'a', 'P', 'p', 'S', 's', 'X', 'x'].includes(e.key))
+            ) {
+                e.preventDefault();
+                showToast('Tính năng này đã bị khóa trong lúc thi!', 'error');
+            }
+        };
+
+        const handleCopyPaste = (e) => {
+            e.preventDefault();
+            showToast('Không được sao chép/dán trong lúc thi!', 'error');
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('student_sidebar_click_violation', handleSidebarViolation);
+        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('copy', handleCopyPaste);
+        document.addEventListener('paste', handleCopyPaste);
+
+        return () => {
+            clearInterval(heartbeatInterval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('student_sidebar_click_violation', handleSidebarViolation);
+            document.removeEventListener('contextmenu', handleContextMenu);
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('copy', handleCopyPaste);
+            document.removeEventListener('paste', handleCopyPaste);
+            socket.disconnect();
+        };
+    }, [isTakingExam, currentExam, attemptId]);
 
     const fetchExams = async () => {
         try {
@@ -84,32 +287,102 @@ function StudentOnlineExam({ user }) {
         }
     };
 
+    const handleStartExamAPI = async (exam) => {
+        try {
+            const res = await axios.post(`${API_URL}/api/ai-exams/exams/${exam.id}/start`, { mssv });
+            const attemptId = res.data.attempt_id;
+            const questions = res.data.questions;
+            const duration = res.data.duration;
+            
+            localStorage.setItem(`exam_data_${exam.id}_${mssv}`, JSON.stringify({
+                attemptId: attemptId,
+                questions: questions,
+                startTime: new Date().toISOString(),
+                duration: duration
+            }));
+
+            setCurrentExam(exam);
+            setQuestions(questions);
+            setAttemptId(attemptId);
+            setTimeLeft(duration * 60);
+            
+            const savedAnswersStr = localStorage.getItem(`exam_${attemptId}_answers`);
+            if (savedAnswersStr) {
+                try { setAnswers(JSON.parse(savedAnswersStr)); } catch (e) { setAnswers({}); }
+            } else {
+                setAnswers({});
+            }
+            
+            setIsTakingExam(true);
+        } catch (error) {
+            showToast(error.response?.data?.message || 'Lỗi khi vào phòng thi!', 'error');
+        }
+    };
+
     const handleStartExam = async (exam) => {
         if (exam.is_submitted > 0) {
             showToast('Bạn đã làm bài thi này rồi!', 'error');
             return;
         }
-        const now = new Date();
-        if (now < new Date(exam.thoi_gian_bat_dau)) {
-            return showToast('Chưa tới giờ thi!', 'error');
+
+        // Kiểm tra xem có bài thi đang dang dở trong LocalStorage không
+        const isSubmittedOffline = localStorage.getItem(`exam_data_${exam.id}_${mssv}_submitted_offline`);
+        if (isSubmittedOffline) {
+            showToast('Bạn đã nộp bài khi mất kết nối mạng. Vui lòng kết nối Internet để hệ thống gửi dữ liệu lên máy chủ trước khi làm thao tác khác!', 'error');
+            return;
+        }
+
+        const savedDataStr = localStorage.getItem(`exam_data_${exam.id}_${mssv}`);
+        if (savedDataStr) {
+            try {
+                const savedData = JSON.parse(savedDataStr);
+                const startTime = new Date(savedData.startTime).getTime();
+                const now = new Date().getTime();
+                const elapsedSeconds = Math.floor((now - startTime) / 1000);
+                const remainingTime = savedData.duration * 60 - elapsedSeconds;
+
+                if (remainingTime > 0) {
+                    setConfirmDialog({
+                        show: true,
+                        title: 'Khôi phục bài làm',
+                        message: `Hệ thống phát hiện bạn đang làm dở bài thi này. Bạn còn ${Math.floor(remainingTime / 60)} phút. Tiếp tục?`,
+                        action: async () => {
+                            setConfirmDialog({ show: false, action: null });
+                            setCurrentExam(exam);
+                            setQuestions(savedData.questions);
+                            setAttemptId(savedData.attemptId);
+                            setTimeLeft(remainingTime);
+                            
+                            const savedAnswersStr = localStorage.getItem(`exam_${savedData.attemptId}_answers`);
+                            if (savedAnswersStr) {
+                                try { setAnswers(JSON.parse(savedAnswersStr)); } catch (e) { setAnswers({}); }
+                            } else {
+                                setAnswers({});
+                            }
+                            setIsTakingExam(true);
+                        }
+                    });
+                    return;
+                } else {
+                    // Quá giờ, xóa data cũ
+                    localStorage.removeItem(`exam_data_${exam.id}_${mssv}`);
+                    localStorage.removeItem(`exam_${savedData.attemptId}_answers`);
+                }
+            } catch (e) {
+                localStorage.removeItem(`exam_data_${exam.id}_${mssv}`);
+            }
         }
         
         setConfirmDialog({
             show: true,
-            title: 'Bắt đầu làm bài',
-            message: `Bạn chuẩn bị làm bài thi: ${exam.tieu_de}. Thời gian làm bài là ${exam.thoi_gian_thi_phut} phút. Trong quá trình làm bài tuyệt đối không tải lại trang. Bạn đã sẵn sàng?`,
+            title: 'Vào phòng chờ / Làm bài',
+            message: `Bạn chuẩn bị vào phòng thi: ${exam.tieu_de}. Hệ thống sẽ tự động giám sát. Bạn đã sẵn sàng?`,
             action: async () => {
                 setConfirmDialog({ show: false, action: null });
-                try {
-                    const res = await axios.post(`${API_URL}/api/ai-exams/exams/${exam.id}/start`, { mssv });
-                    setCurrentExam(exam);
-                    setQuestions(res.data.questions);
-                    setAttemptId(res.data.attempt_id);
-                    setTimeLeft(res.data.duration * 60);
-                    setAnswers({});
-                    setIsTakingExam(true);
-                } catch (error) {
-                    showToast(error.response?.data?.message || 'Lỗi khi vào phòng thi!', 'error');
+                
+                const now = new Date();
+                if (now >= new Date(exam.thoi_gian_bat_dau)) {
+                    handleStartExamAPI(exam);
                 }
             }
         });
@@ -131,6 +404,16 @@ function StudentOnlineExam({ user }) {
                 attempt_id: attemptId,
                 answers: answersArray
             });
+
+            // Xóa dữ liệu lưu tạm khi nộp bài thành công
+            localStorage.removeItem(`exam_data_${currentExam.id}_${mssv}`);
+            localStorage.removeItem(`exam_${attemptId}_answers`);
+            localStorage.removeItem(`exam_data_${currentExam.id}_${mssv}_submitted_offline`);
+            localStorage.removeItem(`exam_${attemptId}_violations`);
+
+            if (socketRef.current) {
+                socketRef.current.emit('student_submit_exam', { scheduleId: currentExam.id, studentId: mssv, attemptId: attemptId });
+            }
             setIsTakingExam(false);
             setResultModalData({
                 score: res.data.score,
@@ -138,7 +421,13 @@ function StudentOnlineExam({ user }) {
                 total: res.data.total
             });
         } catch (error) {
-            showToast('Lỗi khi nộp bài!', 'error');
+            if (!navigator.onLine) {
+                showToast('Đã ghi nhận nộp bài (ngoại tuyến). Dữ liệu sẽ tự động gửi khi có mạng!', 'warning');
+                localStorage.setItem(`exam_data_${currentExam.id}_${mssv}_submitted_offline`, "true");
+                setIsTakingExam(false);
+            } else {
+                showToast(error.response?.data?.message || 'Có lỗi xảy ra khi nộp bài. Vui lòng kiểm tra lại mạng!', 'error');
+            }
         }
     };
 
@@ -171,9 +460,11 @@ function StudentOnlineExam({ user }) {
     };
 
     const handleAutoSubmit = () => {
-        showToast('Đã hết giờ làm bài! Hệ thống đang tự động nộp bài...', 'error');
+        showToast('Hệ thống đang tự động nộp bài...', 'error');
         submitExamAPI();
     };
+    
+    autoSubmitRef.current = handleAutoSubmit;
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
@@ -181,7 +472,37 @@ function StudentOnlineExam({ user }) {
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    if (isTakingExam) {
+    if (isTakingExam && currentExam) {
+        const isWaiting = currentTime < new Date(currentExam.thoi_gian_bat_dau);
+
+        if (isWaiting && !attemptId) {
+            return (
+                <div className="fixed inset-0 bg-[#f4f7f6] z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 text-center">
+                        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Clock className="w-10 h-10 text-blue-600 animate-pulse" />
+                        </div>
+                        <h2 className="text-2xl font-black text-[#152238] mb-4">Phòng Chờ</h2>
+                        <p className="text-gray-600 mb-6 font-medium">Kỳ thi <span className="font-bold text-[#152238]">{currentExam.tieu_de}</span> chưa bắt đầu.</p>
+                        
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8">
+                            <p className="text-amber-700 text-sm font-semibold">
+                                Giờ mở đề: {new Date(currentExam.thoi_gian_bat_dau).toLocaleString('vi-VN')}
+                            </p>
+                            <p className="text-amber-700 text-xs mt-2">Hệ thống sẽ tự động tải đề khi tới giờ.</p>
+                        </div>
+                        
+                        <button 
+                            onClick={() => { setIsTakingExam(false); setCurrentExam(null); }}
+                            className="w-full py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-all"
+                        >
+                            Quay lại trang chủ
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         const answeredCount = Object.keys(answers).length;
         const totalCount = questions.length;
         const flaggedCount = Object.keys(flaggedQuestions).filter(k => flaggedQuestions[k]).length;
@@ -430,11 +751,11 @@ function StudentOnlineExam({ user }) {
                                     </div>
 
                                     <button 
-                                        onClick={() => handleStartExam(exam)}
                                         disabled={(!isOngoing && !isUpcoming) || exam.is_submitted > 0} 
-                                        className={`w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all ${isOngoing && !exam.is_submitted ? 'bg-[#152238] hover:bg-[#152238]/90 text-white shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                        onClick={() => handleStartExam(exam)}
+                                        className={`w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all ${(isOngoing || isUpcoming) && !exam.is_submitted ? 'bg-[#152238] hover:bg-[#152238]/90 text-white shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                                     >
-                                         {exam.is_submitted > 0 ? 'Đã hoàn thành' : (isOngoing ? 'Vào phòng thi' : isUpcoming ? 'Chưa mở' : 'Đã khóa')}
+                                        {exam.is_submitted > 0 ? 'Đã hoàn thành' : (isOngoing ? 'Vào phòng thi' : isUpcoming ? 'Vào phòng chờ' : 'Đã khóa')}
                                     </button>
                                 </div>
                             );
@@ -461,8 +782,8 @@ function StudentOnlineExam({ user }) {
                                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#F4C542]/100 transform origin-left scale-y-0 group-hover:scale-y-100 transition-transform duration-300 ease-out" />
                                 
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-[#F4C542]/20 text-[#152238] rounded-xl">
-                                        
+                                    <div className="p-3 bg-[#F4C542]/20 text-[#152238] rounded-xl flex items-center justify-center">
+                                        <CheckCircle className="w-6 h-6" />
                                     </div>
                                     <span className="bg-green-100 text-green-700 font-black px-4 py-1.5 rounded-lg text-lg shadow-sm border border-green-200">
                                         {Number(item.diem_so).toFixed(2)} điểm

@@ -34,7 +34,8 @@ function StudentCourseRegistration({ user }) {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { if (user?.username) fetchData(); }, [user]);
+  useEffect(() => { console.log("User data:", user);           // ← thêm dòng này
+    if (user?.username) fetchData(); }, [user]);
 
   // LOGIC 1: ĐƯA VÀO GIỎ HÀNG TẠM (Chưa ném lên Server)
   const handleAddToCart = (course) => {

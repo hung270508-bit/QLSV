@@ -7,6 +7,7 @@ import {
   Settings, Save, Info, ChevronDown, ChevronUp, Users, Lock, CheckSquare
 } from 'lucide-react';
 import axios from 'axios';
+import ModalPortal from '../common/ModalPortal';
 
 // ================================================================
 // STORAGE KEY
@@ -271,6 +272,18 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     setLockedConfigs(locks);
     setGradeLockedConfigs(gradeLocks);
   }, [teachingAssignments]);
+
+  // Khóa scroll màn hình chính khi mở bất kỳ modal nào
+  useEffect(() => {
+    if (showModal || configConfirm.show || gradeLockConfirm.show || deleteModal.show || submitConfirmModal.show) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal, configConfirm.show, gradeLockConfirm.show, deleteModal.show, submitConfirmModal.show]);
 
   const getActiveConfig = (maLopHocPhan) => activeConfigs[maLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
 
@@ -660,6 +673,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
       {/* MODAL THÊM / SỬA ĐIỂM */}
       <AnimatePresence>
         {showModal && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[9990] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
             <motion.div
@@ -778,12 +792,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL CẢNH BÁO XÁC NHẬN LƯU ĐIỂM */}
       <AnimatePresence>
         {submitConfirmModal.show && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[10005] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSubmitConfirmModal({ show: false, payload: null, isEdit: false })} />
             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-sm shadow-2xl relative z-10 text-center">
@@ -802,12 +818,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL CẢNH BÁO 2 LỚP - CHỐT CẤU HÌNH ĐIỂM */}
       <AnimatePresence>
         {configConfirm.show && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfigConfirm({ show: false, maLopHocPhan: null, checked: false })} />
             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
@@ -841,12 +859,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL CẢNH BÁO 2 LỚP - CHỐT BẢNG ĐIỂM */}
       <AnimatePresence>
         {gradeLockConfirm.show && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setGradeLockConfirm({ show: false, maLopHocPhan: null, checked: false })} />
             <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-[#FFFFFF] rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 text-center">
@@ -880,12 +900,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL XÓA ĐIỂM */}
       <AnimatePresence>
         {deleteModal.show && (
+          <ModalPortal>
           <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDeleteCancel} />
             <motion.div
@@ -907,12 +929,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
         {notification.show && (
+          <ModalPortal>
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }}
             className={`fixed bottom-8 right-8 z-[11000] flex items-center gap-3.5 px-6 py-4 rounded-2xl shadow-2xl text-white font-bold tracking-wide
@@ -921,6 +945,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
             {notification.type === 'success' ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
             <span className="text-[15px]">{notification.message}</span>
           </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

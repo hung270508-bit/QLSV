@@ -32,13 +32,14 @@ app.get('/api/health', (req, res) => {
 
 // Middleware CORS cho Express API
 app.use(cors({
-    origin: function (origin, callback) {
-        // Cho phép tất cả các domain
-        callback(null, true);
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: [
+        'http://localhost:5173',           // local
+        'https://hung270508-bit.github.io', // GitHub Pages
+        'https://qlsv-kappa.vercel.app'    // frontend vercel (nếu có)
+    ],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Middleware giải mã dữ liệu JSON với giới hạn kích thước lớn hơn (để hỗ trợ upload ảnh/tệp Base64 lớn)
@@ -95,6 +96,9 @@ db.getConnection((err, connection) => {
         runAiExamMigration(db.promise()).catch(err =>
             console.error('[Migration] AI Exam migration lỗi (server vẫn chạy bình thường):', err.message)
         );
+        runOnlineExamMigration(db.promise()).catch(err =>
+            console.error('[Migration] Online Exam migration lỗi (server vẫn chạy bình thường):', err.message)
+        );
     }
 });
 
@@ -142,6 +146,71 @@ async function runAiExamMigration(pool) {
     console.log('[Migration] AI Exam schema: sẵn sàng ✓');
 }
 
+/**
+ * Auto-migration cho module Online Exam
+ */
+async function runOnlineExamMigration(pool) {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS online_exam_schedules (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ma_lop_hoc_phan VARCHAR(50) NOT NULL,
+            ma_giang_vien VARCHAR(50) NOT NULL,
+            thoi_gian_mo DATETIME NOT NULL,
+            thoi_gian_dong DATETIME NOT NULL,
+            so_cau_hoi INT NOT NULL,
+            thoi_luong_phut INT NOT NULL,
+            trang_thai VARCHAR(20) DEFAULT 'DRAFT',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS online_exam_attempts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            exam_schedule_id INT NOT NULL,
+            ma_sinh_vien VARCHAR(50) NOT NULL,
+            question_order JSON NOT NULL,
+            option_order_map JSON NOT NULL,
+            status VARCHAR(20) DEFAULT 'WAITING',
+            started_at DATETIME,
+            deadline_at DATETIME,
+            submitted_at DATETIME,
+            last_heartbeat_at DATETIME,
+            UNIQUE KEY idx_unique_attempt (exam_schedule_id, ma_sinh_vien),
+            FOREIGN KEY (exam_schedule_id) REFERENCES online_exam_schedules(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS online_exam_answers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            attempt_id INT NOT NULL,
+            question_id INT NOT NULL,
+            selected_option_id INT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY idx_unique_answer (attempt_id, question_id),
+            FOREIGN KEY (attempt_id) REFERENCES online_exam_attempts(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS online_exam_violation_events (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            attempt_id INT NOT NULL,
+            violation_type VARCHAR(50) NOT NULL,
+            occurred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            note TEXT,
+            FOREIGN KEY (attempt_id) REFERENCES online_exam_attempts(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS online_exam_connection_events (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            attempt_id INT NOT NULL,
+            event_type VARCHAR(50) NOT NULL,
+            occurred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (attempt_id) REFERENCES online_exam_attempts(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    console.log('[Migration] Online Exam schema: sẵn sàng ✓');
+}
 
 
 // Email transporter configuration
@@ -2241,8 +2310,28 @@ app.get('/api/enrollment/phases/:id/thong-ke', async (req, res) => {
 });
 
 // ------------------------------------------------------------------
+// ------------------------------------------------------------------
 // CỤM API QUẢN LÝ ĐỢT ĐĂNG KÝ HỌC PHẦN (bảng dot_dangky)
 // ------------------------------------------------------------------
+
+// Ràng buộc ký tự đặc biệt cho tên đợt (đồng bộ với frontend EnrollmentPhaseManagement.jsx)
+const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]+$/u;
+
+// Kiểm tra xem có đợt nào khác đang mở (còn hạn) thuộc học kỳ khác với hocKy đang thao tác không.
+// Chỉ cho phép mở đăng ký của 1 học kỳ duy nhất tại một thời điểm.
+async function findConflictingOpenPhase(hocKy, excludeId) {
+    if (!hocKy) return null;
+    let query = `SELECT MaDot, TenDot, HocKy, NgayDong FROM dot_dangky
+                 WHERE TrangThai = 'Mo' AND HocKy IS NOT NULL AND HocKy != ? AND NgayDong > NOW()`;
+    const params = [hocKy];
+    if (excludeId) {
+        query += ' AND MaDot != ?';
+        params.push(excludeId);
+    }
+    query += ' LIMIT 1';
+    const [rows] = await db.promise().query(query, params);
+    return rows[0] || null;
+}
 
 // 6. Lấy danh sách các đợt đăng ký
 app.get('/api/enrollment/phases', async (req, res) => {
@@ -2270,8 +2359,22 @@ app.post('/api/enrollment/phases', async (req, res) => {
     if (!TenDot || !NgayMo || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
+    if (!TEN_DOT_ALLOWED_REGEX.test(TenDot)) {
+        return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
     if (new Date(NgayDong) <= new Date(NgayMo)) {
         return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
+    }
+
+    // Đợt mới mặc định ở trạng thái 'Mo' nếu không truyền TrangThai -> kiểm tra xung đột học kỳ
+    const trangThaiMoi = TrangThai || 'Mo';
+    if (trangThaiMoi === 'Mo') {
+        const conflictPhase = await findConflictingOpenPhase(HocKy, null);
+        if (conflictPhase) {
+            return res.status(409).json({
+                message: `Học kỳ "${conflictPhase.HocKy}" đang có đợt đăng ký mở ("${conflictPhase.TenDot}"). Chỉ được mở đăng ký cho 1 học kỳ duy nhất tại một thời điểm. Vui lòng đóng đợt đó hoặc chờ đến khi hết hạn (${new Date(conflictPhase.NgayDong).toLocaleString('vi-VN')}) trước khi mở đợt cho học kỳ khác.`
+            });
+        }
     }
 
     const formatMySQLDateTime = (dateStr) => {
@@ -2308,9 +2411,15 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
     if (!TenDot || !NgayMo || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
+    if (!TEN_DOT_ALLOWED_REGEX.test(TenDot)) {
+        return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
     if (new Date(NgayDong) <= new Date(NgayMo)) {
         return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
     }
+    // Lưu ý: Không kiểm tra xung đột học kỳ ở đây (PUT) để giữ nguyên khả năng
+    // đóng/mở lại đợt tự do phục vụ mục đích test qua nút "Mở lại"/"Đóng" trên bảng.
+    // Ràng buộc "chỉ 1 học kỳ được mở" được thực thi khi TẠO MỚI đợt (POST) và ở phía frontend khi sửa đợt.
 
     // HÀM CHUẨN HÓA ĐỊNH DẠNG NGÀY THÁNG CHO MYSQL
     const formatMySQLDateTime = (dateStr) => {
@@ -3255,7 +3364,7 @@ app.get('/api/admin/training-points', (req, res) => {
 });
 
 app.put('/api/admin/training-points/:id', (req, res) => {
-    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet, GhiChu } = req.body;
+    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet } = req.body;
     let xepLoai = 'Yếu';
     const diem = Number(TongDiem);
     if (diem >= 90) xepLoai = 'Xuất sắc';
@@ -3268,10 +3377,7 @@ app.put('/api/admin/training-points/:id', (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
 
         const nguoiDuyet = NguoiDuyet || 'admin';
-        let logMsg = `Cập nhật điểm: Điều chỉnh ${DiemKhoaDanhGia >= 0 ? '+' : ''}${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
-        if (GhiChu && GhiChu.trim()) {
-            logMsg += ` | Phản hồi: ${GhiChu.trim()}`;
-        }
+        const logMsg = `Đã chốt điểm: Cộng thêm ${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
         db.query('INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES (?, ?, ?)', [req.params.id, nguoiDuyet, logMsg], (logErr) => {
             if (logErr) console.error('Lỗi lưu log duyệt:', logErr);
             res.json({ success: true, message: 'Đã chốt điểm và lưu nhật ký!' });
@@ -3434,6 +3540,12 @@ app.post('/api/support/teacher', (req, res) => {
     executeInsert(query, [MaGiangVien, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 
+// ==================== [MODULE: ONLINE EXAM] ====================
+const onlineExamRoutes = require('./online-exam/routes')(db.promise());
+app.use('/api/exam', onlineExamRoutes);
+
+
+
 //=============================================================================
 // TỰ ĐỘNG ĐÓNG ĐỢT ĐĂNG KÝ ĐÃ QUÁ HẠN (NgayDong)
 //=============================================================================
@@ -3460,7 +3572,14 @@ async function autoCloseExpiredPhases() {
 //=============================================================================
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    
+    const http = require('http');
+    const server = http.createServer(app);
+    
+    const { initSocket } = require('./online-exam/socketHandler');
+    initSocket(server, db.promise());
+    
+    server.listen(PORT, () => {
         console.log(`Server Backend đang chạy tại cổng: http://localhost:${PORT}`);
         autoCloseExpiredPhases();
         setInterval(autoCloseExpiredPhases, 5 * 60 * 1000); // chạy lại mỗi 5 phút
