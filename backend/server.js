@@ -33,7 +33,7 @@ app.get('/api/health', (req, res) => {
 // Middleware CORS cho Express API
 app.use(cors({
     origin: [
-        'http://localhost:3000',           // local
+        'http://localhost:5173',           // local
         'https://hung270508-bit.github.io', // GitHub Pages
         'https://qlsv-kappa.vercel.app'    // frontend vercel (nếu có)
     ],
@@ -2242,8 +2242,28 @@ app.get('/api/enrollment/phases/:id/thong-ke', async (req, res) => {
 });
 
 // ------------------------------------------------------------------
+// ------------------------------------------------------------------
 // CỤM API QUẢN LÝ ĐỢT ĐĂNG KÝ HỌC PHẦN (bảng dot_dangky)
 // ------------------------------------------------------------------
+
+// Ràng buộc ký tự đặc biệt cho tên đợt (đồng bộ với frontend EnrollmentPhaseManagement.jsx)
+const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]+$/u;
+
+// Kiểm tra xem có đợt nào khác đang mở (còn hạn) thuộc học kỳ khác với hocKy đang thao tác không.
+// Chỉ cho phép mở đăng ký của 1 học kỳ duy nhất tại một thời điểm.
+async function findConflictingOpenPhase(hocKy, excludeId) {
+    if (!hocKy) return null;
+    let query = `SELECT MaDot, TenDot, HocKy, NgayDong FROM dot_dangky
+                 WHERE TrangThai = 'Mo' AND HocKy IS NOT NULL AND HocKy != ? AND NgayDong > NOW()`;
+    const params = [hocKy];
+    if (excludeId) {
+        query += ' AND MaDot != ?';
+        params.push(excludeId);
+    }
+    query += ' LIMIT 1';
+    const [rows] = await db.promise().query(query, params);
+    return rows[0] || null;
+}
 
 // 6. Lấy danh sách các đợt đăng ký
 app.get('/api/enrollment/phases', async (req, res) => {
@@ -2271,8 +2291,22 @@ app.post('/api/enrollment/phases', async (req, res) => {
     if (!TenDot || !NgayMo || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
+    if (!TEN_DOT_ALLOWED_REGEX.test(TenDot)) {
+        return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
     if (new Date(NgayDong) <= new Date(NgayMo)) {
         return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
+    }
+
+    // Đợt mới mặc định ở trạng thái 'Mo' nếu không truyền TrangThai -> kiểm tra xung đột học kỳ
+    const trangThaiMoi = TrangThai || 'Mo';
+    if (trangThaiMoi === 'Mo') {
+        const conflictPhase = await findConflictingOpenPhase(HocKy, null);
+        if (conflictPhase) {
+            return res.status(409).json({
+                message: `Học kỳ "${conflictPhase.HocKy}" đang có đợt đăng ký mở ("${conflictPhase.TenDot}"). Chỉ được mở đăng ký cho 1 học kỳ duy nhất tại một thời điểm. Vui lòng đóng đợt đó hoặc chờ đến khi hết hạn (${new Date(conflictPhase.NgayDong).toLocaleString('vi-VN')}) trước khi mở đợt cho học kỳ khác.`
+            });
+        }
     }
 
     const formatMySQLDateTime = (dateStr) => {
@@ -2309,9 +2343,15 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
     if (!TenDot || !NgayMo || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
+    if (!TEN_DOT_ALLOWED_REGEX.test(TenDot)) {
+        return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
     if (new Date(NgayDong) <= new Date(NgayMo)) {
         return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
     }
+    // Lưu ý: Không kiểm tra xung đột học kỳ ở đây (PUT) để giữ nguyên khả năng
+    // đóng/mở lại đợt tự do phục vụ mục đích test qua nút "Mở lại"/"Đóng" trên bảng.
+    // Ràng buộc "chỉ 1 học kỳ được mở" được thực thi khi TẠO MỚI đợt (POST) và ở phía frontend khi sửa đợt.
 
     // HÀM CHUẨN HÓA ĐỊNH DẠNG NGÀY THÁNG CHO MYSQL
     const formatMySQLDateTime = (dateStr) => {
