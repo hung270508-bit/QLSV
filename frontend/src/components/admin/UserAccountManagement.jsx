@@ -268,7 +268,7 @@ function UserAccountManagement() {
   };
 
   if (loading) {
-    return <TableSkeleton columns={4} rows={6} />;
+    return <TableSkeleton columns={6} rows={6} />;
   }
 
   return (
@@ -415,11 +415,12 @@ function UserAccountManagement() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-amber-50 to-amber-100">
                 <tr>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Tài khoản</th>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Quyền</th>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Ngày tạo</th>
-                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Trạng thái</th>
-                  <th className="text-center py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider">Thao tác</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider whitespace-nowrap">Tài khoản</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider whitespace-nowrap">Thông tin</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider whitespace-nowrap">Quyền</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider whitespace-nowrap">Ngày tạo</th>
+                  <th className="text-left py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider whitespace-nowrap">Trạng thái</th>
+                  <th className="text-center py-5 px-6 text-sm font-bold text-[#152238] uppercase tracking-wider whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -435,6 +436,31 @@ function UserAccountManagement() {
                     >
                       <td className="py-5 px-6">
                         <span className="font-bold text-[#1F2937] text-sm">{user.TaiKhoan}</span>
+                      </td>
+                      <td className="py-5 px-6 min-w-[200px]">
+                        {user.MaQuyen === 3 && (
+                          <div>
+                            <div className="font-bold text-[#1F2937] text-sm">{user.TenSinhVien || 'Chưa cập nhật'}</div>
+                            <div className="text-xs text-[#6B7280] mt-1">
+                              {user.NgaySinhSV ? `NS: ${new Date(user.NgaySinhSV).getFullYear()}` : ''}
+                              {user.NgaySinhSV && user.TenLop ? ' • ' : ''}
+                              {user.TenLop || ''}
+                            </div>
+                          </div>
+                        )}
+                        {user.MaQuyen === 2 && (
+                          <div>
+                            <div className="font-bold text-[#1F2937] text-sm">{user.TenGiangVien || 'Chưa cập nhật'}</div>
+                            <div className="text-xs text-[#6B7280] mt-1">
+                              {user.TenKhoa ? `Khoa: ${user.TenKhoa}` : ''}
+                            </div>
+                          </div>
+                        )}
+                        {user.MaQuyen === 1 && (
+                          <div>
+                            <div className="font-bold text-[#1F2937] text-sm">Quản trị viên hệ thống</div>
+                          </div>
+                        )}
                       </td>
                       <td className="py-5 px-6 text-sm">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getRoleColor(user.MaQuyen)}`}>
@@ -477,7 +503,7 @@ function UserAccountManagement() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="py-16 text-center text-[#6B7280] font-semibold">
+                    <td colSpan="6" className="py-16 text-center text-[#6B7280] font-semibold">
                       Không tìm thấy tài khoản nào phù hợp
                     </td>
                   </tr>

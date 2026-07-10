@@ -87,7 +87,7 @@ const StatCard = ({ stat, index, onNavigate }) => {
 
 /* ─── Loading skeleton ───────────────────────────────────────────── */
 const Skeleton = () => (
-  <div>
+  <div className="relative">
     {/* Skeleton Pattern */}
     <div className="space-y-6 animate-pulse pointer-events-none">
       <div className="h-32 bg-gradient-to-r from-[#FFF7D6] to-[#FFECA1] rounded-2xl shadow-sm" />
@@ -101,9 +101,11 @@ const Skeleton = () => (
       <div className="h-64 bg-white rounded-2xl shadow-sm border border-[#E5E7EB]" />
     </div>
 
-    {/* Fixed Centered Spinner */}
-    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none">
-      <Loader2 className="w-8 h-8 text-[#F4C542] animate-spin drop-shadow-md" />
+    {/* Sticky Centered Spinner */}
+    <div className="absolute inset-0 pointer-events-none z-[100] flex justify-center">
+      <div className="sticky top-1/2 -translate-y-1/2 h-fit">
+        <Loader2 className="w-8 h-8 text-[#F4C542] animate-spin drop-shadow-md" />
+      </div>
     </div>
   </div>
 );

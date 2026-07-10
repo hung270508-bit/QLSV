@@ -4,7 +4,7 @@ import { RequestsSkeleton } from '../common/AdminSkeleton';
 import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search, Trash2, Check
+  MessageSquare, Filter, CheckCircle2, Clock, AlertCircle, X, Send, User, Reply, Search, Trash2, Check, Paperclip
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { ConfirmDialog, Toast } from '../common/ModalPortal';
@@ -13,26 +13,28 @@ import ConfirmDeleteModal from '../common/ConfirmDeleteModal';
 const statusConfig = {
   'Hoàn thành': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
   'Đã phản hồi': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: CheckCircle2 },
-  'Đang xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
+  'Chờ xử lý': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', Icon: Clock },
   'Từ chối': { bg: 'bg-gray-100', text: 'text-[#6B7280]', border: 'border-[#E5E7EB]', Icon: X },
 };
 
 function StatusBadge({ status }) {
-  const cfg = statusConfig[status] || { bg: 'bg-[#3B82F6]/10', text: 'text-blue-700', border: 'border-blue-200', Icon: AlertCircle };
+  const displayStatus = status === 'Đang xử lý' ? 'Chờ xử lý' : status;
+  const cfg = statusConfig[displayStatus] || { bg: 'bg-[#3B82F6]/10', text: 'text-blue-700', border: 'border-blue-200', Icon: AlertCircle };
   const { bg, text, border, Icon } = cfg;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${bg} ${text} ${border}`}>
       <Icon className="w-3 h-3" />
-      {status}
+      {displayStatus}
     </span>
   );
 }
 
-function AdminRequests() {
+function AdminRequests({ refreshBadge }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [filterTopic, setFilterTopic] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedReq, setSelectedReq] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -49,6 +51,7 @@ function AdminRequests() {
       setLoading(true);
       const res = await axios.get(`${API_URL}/api/admin/support-requests`);
       setRequests(res.data);
+      if (refreshBadge) refreshBadge();
     } catch (e) {
       console.error(e);
     } finally {
@@ -77,7 +80,7 @@ function AdminRequests() {
   const handleOpenModal = (req, viewOnly = false) => {
     setSelectedReq(req);
     setReplyText(req.PhanHoi || '');
-    setUpdateStatus(req.TrangThai);
+    setUpdateStatus(req.TrangThai === 'Đang xử lý' ? 'Chờ xử lý' : req.TrangThai);
     setReplyErrors({});
     setIsViewOnly(viewOnly);
   };
@@ -87,7 +90,7 @@ function AdminRequests() {
     if (!updateStatus) {
       errors.updateStatus = 'Vui lòng chọn trạng thái';
     }
-    if (updateStatus === 'Đang xử lý') {
+    if (updateStatus === 'Chờ xử lý' || updateStatus === 'Đang xử lý') {
       errors.updateStatus = 'Vui lòng phản hồi';
     } else if (['Đã phản hồi', 'Từ chối'].includes(updateStatus) && !replyText.trim()) {
       errors.replyText = 'Vui lòng nhập nội dung phản hồi';
@@ -180,7 +183,10 @@ function AdminRequests() {
   const filtered = requests.filter(req => {
     if (search && search.length > 0 && search.trim() === '') return false;
     if (filterRole !== 'All' && req.VaiTro !== filterRole) return false;
-    if (filterStatus !== 'All' && req.TrangThai !== filterStatus) return false;
+    if (filterTopic !== 'All' && req.LoaiYeuCau !== filterTopic) return false;
+    if (filterStatus === 'Chờ xử lý') {
+      if (req.TrangThai !== 'Chờ xử lý' && req.TrangThai !== 'Đang xử lý') return false;
+    } else if (filterStatus !== 'All' && req.TrangThai !== filterStatus) return false;
     if (search && !req.TenNguoiGui?.toLowerCase().includes(search.toLowerCase()) &&
       !req.TieuDe?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -191,7 +197,9 @@ function AdminRequests() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterRole, filterStatus]);
+  }, [search, filterRole, filterStatus, filterTopic]);
+
+  const topics = Array.from(new Set(requests.map(req => req.LoaiYeuCau).filter(Boolean)));
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -252,12 +260,22 @@ function AdminRequests() {
           <option value="GiangVien">Giảng viên</option>
         </select>
         <select
+          value={filterTopic}
+          onChange={e => setFilterTopic(e.target.value)}
+          className="px-3 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+        >
+          <option value="All">Tất cả chủ đề</option>
+          {topics.map(topic => (
+            <option key={topic} value={topic}>{topic}</option>
+          ))}
+        </select>
+        <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
           className="px-3 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
         >
           <option value="All">Tất cả trạng thái</option>
-          <option value="Đang xử lý">Đang xử lý</option>
+          <option value="Chờ xử lý">Chờ xử lý</option>
           <option value="Đã phản hồi">Đã phản hồi</option>
           <option value="Từ chối">Từ chối</option>
         </select>
@@ -356,7 +374,7 @@ function AdminRequests() {
                   <td className="p-4"><StatusBadge status={req.TrangThai} /></td>
                   <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-2">
-                      {req.TrangThai === 'Đang xử lý' ? (
+                      {req.TrangThai === 'Chờ xử lý' || req.TrangThai === 'Đang xử lý' ? (
                         <motion.button
                           whileHover={{ scale: 1.04 }}
                           whileTap={{ scale: 0.96 }}
@@ -458,10 +476,65 @@ function AdminRequests() {
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-[#6B7280] block mb-1">Nội dung chi tiết:</span>
-                      <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed bg-[#FFFFFF] p-3 rounded-lg border border-[#F4C542]/30">{selectedReq.NoiDung}</p>
+                      <div className="bg-[#FFFFFF] p-3 rounded-lg border border-[#F4C542]/30">
+                        {(() => {
+                          const noiDung = selectedReq.NoiDung;
+                          if (!noiDung) return null;
+                          const fileStartIdx = noiDung.indexOf('[FILE_MINH_CHUNG_START]');
+                          const fileEndIdx = noiDung.indexOf('[FILE_MINH_CHUNG_END]');
+                          
+                          if (fileStartIdx !== -1 && fileEndIdx !== -1) {
+                            const textContent = noiDung.substring(0, fileStartIdx).trim();
+                            const fileData = noiDung.substring(fileStartIdx + '[FILE_MINH_CHUNG_START]'.length, fileEndIdx).trim();
+                            const isImage = fileData.startsWith('data:image/');
+                            
+                            return (
+                              <div className="space-y-3">
+                                <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{textContent}</p>
+                                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                  <p className="text-xs font-bold text-gray-500 mb-2 uppercase">File minh chứng đính kèm:</p>
+                                  {isImage ? (
+                                    <a href={fileData} target="_blank" rel="noopener noreferrer" className="block max-w-sm">
+                                      <img src={fileData} alt="Minh chứng" className="max-w-full h-auto object-contain rounded border border-gray-300 shadow-sm hover:opacity-90 transition-opacity" />
+                                    </a>
+                                  ) : (
+                                    <a href={fileData} download="minh_chung" className="text-blue-600 hover:underline text-sm font-semibold flex items-center gap-1.5">
+                                      <Paperclip className="w-4 h-4" /> Tải xuống file đính kèm
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{noiDung}</p>;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {isViewOnly && selectedReq.TrangThai !== 'Chờ xử lý' && selectedReq.TrangThai !== 'Đang xử lý' && (
+                  <div className="border-t border-[#E5E7EB] pt-4 space-y-3">
+                    <h4 className="font-semibold text-gray-700 text-sm">Phản hồi từ bạn:</h4>
+                    <div className="bg-[#F0FDF4]/60 p-4 rounded-xl border border-[#F0FDF4] space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-[#6B7280]">Trạng thái xử lý:</span>
+                        <StatusBadge status={selectedReq.TrangThai} />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-[#6B7280]">Thời gian phản hồi:</span>
+                        <span className="text-xs font-semibold text-[#1F2937]">
+                          {selectedReq.NgayPhanHoi ? new Date(selectedReq.NgayPhanHoi).toLocaleString('vi-VN') : '-'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-[#6B7280] block mb-1">Nội dung phản hồi:</span>
+                        <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed bg-[#FFFFFF] p-3 rounded-lg border border-emerald-200/50">{selectedReq.PhanHoi || 'Không có nội dung phản hồi.'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {!isViewOnly && (
                   <div className="border-t border-[#E5E7EB] pt-4 space-y-3">
@@ -475,7 +548,7 @@ function AdminRequests() {
                         }}
                         className={`w-full p-2.5 bg-[#FFFFFF] border rounded-xl outline-none text-sm font-medium text-gray-700 transition-colors ${replyErrors.updateStatus ? 'border-red-400 focus:border-red-400' : 'border-[#E5E7EB] focus:border-blue-400'}`}
                       >
-                        <option value="Đang xử lý">Đang xử lý</option>
+                        <option value="Chờ xử lý">Chờ xử lý</option>
                         <option value="Đã phản hồi">Đã phản hồi</option>
                         <option value="Từ chối">Từ chối</option>
                       </select>

@@ -59,10 +59,12 @@ CREATE TABLE IF NOT EXISTS exams (
     thoi_gian_ket_thuc DATETIME NOT NULL,
     cho_phep_thi_lai BOOLEAN DEFAULT FALSE,
     trang_thai ENUM('Upcoming', 'Ongoing', 'Completed') DEFAULT 'Upcoming',
+    bank_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ma_lop_hoc_phan) REFERENCES lophocphan(MaLopHocPhan) ON DELETE CASCADE,
     FOREIGN KEY (ma_mon_hoc) REFERENCES monhoc(MaMonHoc) ON DELETE CASCADE,
-    FOREIGN KEY (ma_giang_vien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
+    FOREIGN KEY (ma_giang_vien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE,
+    FOREIGN KEY (bank_id) REFERENCES question_banks(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Bảng Lượt làm bài thi

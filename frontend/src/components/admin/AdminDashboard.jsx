@@ -21,6 +21,8 @@ import UserAccountManagement from './UserAccountManagement';
 import AdminRequests from './AdminRequests';
 import AdminTrainingPoints from './AdminTrainingPoints';
 import TuitionManagement from './TuitionManagement';
+import API_URL from '../../api';
+import axios from 'axios';
 
 const menuItems = [
   { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -74,7 +76,24 @@ function AdminDashboard({ user, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const isMobile = useIsMobile();
+
+  const fetchPendingRequestsCount = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/admin/support-requests`);
+      const count = res.data.filter(req => req.TrangThai === 'Chờ xử lý' || req.TrangThai === 'Đang xử lý').length;
+      setPendingRequestsCount(count);
+    } catch (e) {
+      console.error('Lỗi khi lấy số lượng yêu cầu:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingRequestsCount();
+    const interval = setInterval(fetchPendingRequestsCount, 60000); // Tự động cập nhật mỗi phút
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     sessionStorage.removeItem('logoutPending');
@@ -203,7 +222,14 @@ function AdminDashboard({ user, onLogout }) {
             <button key={item.id} onClick={() => handleNavigate(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-out ${isActive ? 'bg-[#F4C542] text-black shadow-md' : 'text-gray-300 hover:bg-[#1e2f4c] hover:text-[#F4C542]'}`}>
               <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
-              <span className="font-medium whitespace-nowrap text-sm">{item.label}</span>
+              <div className="flex-1 flex items-center justify-between min-w-0">
+                <span className="font-medium whitespace-nowrap text-sm truncate">{item.label}</span>
+                {item.id === 'yeucau' && pendingRequestsCount > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded-full shrink-0 shadow-sm">
+                    {pendingRequestsCount > 99 ? '99+' : pendingRequestsCount}
+                  </span>
+                )}
+              </div>
             </button>
           );
         })}
@@ -337,7 +363,7 @@ function AdminDashboard({ user, onLogout }) {
           <AnimatePresence mode="wait">
             <motion.div key={activeMenu} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.22, ease: 'easeOut' }} className="h-full">
-              {activeMenu === 'dashboard' ? <ActiveComponent onNavigate={handleNavigate} /> : <ActiveComponent />}
+              {activeMenu === 'dashboard' ? <ActiveComponent onNavigate={handleNavigate} refreshBadge={fetchPendingRequestsCount} /> : <ActiveComponent refreshBadge={fetchPendingRequestsCount} />}
             </motion.div>
           </AnimatePresence>
         </main>

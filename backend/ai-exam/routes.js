@@ -76,13 +76,14 @@ module.exports = (db) => {
     router.get('/exams/student/:mssv', async (req, res) => {
         try {
             const query = `
-                SELECT e.*, m.TenMonHoc 
+                SELECT e.*, m.TenMonHoc,
+                (SELECT COUNT(*) FROM exam_attempts a WHERE a.exam_id = e.id AND a.mssv = ? AND a.trang_thai = 'Submitted') as is_submitted
                 FROM exams e 
                 JOIN monhoc m ON e.ma_mon_hoc = m.MaMonHoc
                 JOIN dangky_hocphan dk ON e.ma_lop_hoc_phan = dk.MaLopHocPhan
                 WHERE dk.MSSV = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối') AND (e.trang_thai != 'Completed' OR e.trang_thai IS NULL)
             `;
-            const exams = await execute(query, [req.params.mssv]);
+            const exams = await execute(query, [req.params.mssv, req.params.mssv]);
             res.json(exams);
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
@@ -146,13 +147,21 @@ module.exports = (db) => {
                 const needed = targetTotal - questions.length;
                 const existingIds = questions.map(q => q.id);
                 const notInClause = existingIds.length > 0 ? `AND q.id NOT IN (${existingIds.join(',')})` : '';
+                
+                let fallbackBankCond = "b.ma_mon_hoc = ?";
+                let fallbackParams = [exam.ma_mon_hoc, needed];
+                if (exam.bank_id) {
+                    fallbackBankCond = "b.id = ?";
+                    fallbackParams = [exam.bank_id, needed];
+                }
+                
                 const [extraQs] = await connection.query(`
                     SELECT q.id, q.noi_dung 
                     FROM questions q 
                     JOIN question_banks b ON q.bank_id = b.id 
-                    WHERE b.ma_mon_hoc = ? AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved' ${notInClause}
+                    WHERE ${fallbackBankCond} AND b.trang_thai = 'Approved' AND q.trang_thai = 'Approved' ${notInClause}
                     ORDER BY RAND() LIMIT ?
-                `, [exam.ma_mon_hoc, needed]);
+                `, fallbackParams);
                 questions.push(...extraQs);
             }
 
@@ -197,7 +206,7 @@ module.exports = (db) => {
             const score = answers.length > 0 ? (correctCount / answers.length) * 10 : 0;
             await dbPromise.query(`UPDATE exam_attempts SET diem_so = ?, thoi_gian_nop_bai = CURRENT_TIMESTAMP, trang_thai = 'Submitted' WHERE id = ?`, [score, attempt_id]);
 
-            res.json({ success: true, score });
+            res.json({ success: true, score, correct: correctCount, total: answers.length });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
         }
@@ -227,6 +236,25 @@ router.delete('/exams/:id', async (req, res) => {
         // Tùy thuộc vào CSDL, nếu có foreign key constraint, bạn có thể cần xóa ở bảng exam_attempts trước
         await dbPromise.query(`DELETE FROM exams WHERE id = ?`, [examId]);
         res.json({ success: true, message: 'Đã xóa kỳ thi thành công.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Cập nhật kỳ thi
+router.put('/exams/:id', async (req, res) => {
+    try {
+        const examId = req.params.id;
+        const { tieu_de, thoi_gian_thi_phut, thoi_gian_bat_dau, thoi_gian_ket_thuc } = req.body;
+        
+        await dbPromise.query(
+            `UPDATE exams 
+             SET tieu_de = ?, thoi_gian_thi_phut = ?, thoi_gian_bat_dau = ?, thoi_gian_ket_thuc = ? 
+             WHERE id = ?`,
+            [tieu_de, thoi_gian_thi_phut, thoi_gian_bat_dau, thoi_gian_ket_thuc, examId]
+        );
+        
+        res.json({ success: true, message: 'Đã cập nhật kỳ thi thành công.' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -263,5 +291,48 @@ router.delete('/exams/:id', async (req, res) => {
             res.status(500).json({ success: false, message: error.message });
         }
     });
+    // API: Lấy chi tiết lịch sử một bài làm (dành cho sinh viên xem lại)
+    router.get('/attempts/:attempt_id/details', async (req, res) => {
+        let connection;
+        try {
+            const attemptId = req.params.attempt_id;
+            connection = await dbPromise.getConnection();
+            
+            // 1. Lấy thông tin bài làm
+            const [attempts] = await connection.query(`
+                SELECT a.id, a.diem_so, a.thoi_gian_nop_bai, e.tieu_de, e.thoi_gian_thi_phut 
+                FROM exam_attempts a
+                JOIN exams e ON a.exam_id = e.id
+                WHERE a.id = ?
+            `, [attemptId]);
+            if (attempts.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy bài làm' });
+            
+            // 2. Lấy danh sách câu trả lời
+            const [answers] = await connection.query(`
+                SELECT 
+                    eaa.question_id, 
+                    eaa.selected_option_id, 
+                    eaa.la_dap_an_dung as is_correct, 
+                    q.noi_dung as question_content
+                FROM exam_attempt_answers eaa
+                JOIN questions q ON eaa.question_id = q.id
+                WHERE eaa.attempt_id = ?
+            `, [attemptId]);
+            
+            // 3. Lấy tất cả options cho các câu hỏi này
+            for (const ans of answers) {
+                const [opts] = await connection.query(`SELECT id, noi_dung, la_dap_an_dung FROM question_options WHERE question_id = ?`, [ans.question_id]);
+                ans.options = opts;
+            }
+            
+            res.json({ success: true, data: { attempt: attempts[0], answers } });
+        } catch (error) {
+            console.error('Lỗi lấy chi tiết bài thi:', error);
+            res.status(500).json({ success: false, message: error.message });
+        } finally {
+            if (connection) connection.release();
+        }
+    });
+
     return router;
 };

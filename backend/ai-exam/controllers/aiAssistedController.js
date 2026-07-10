@@ -157,9 +157,10 @@ module.exports = (service, dbPromise) => {
                 await dbPromise.query(`UPDATE question_banks SET tieu_de = REGEXP_REPLACE(tieu_de, ' \\\\((Phiên|Đề) #[0-9]+\\\\)$', '') WHERE tieu_de REGEXP ' \\\\((Phiên|Đề) #[0-9]+\\\\)$'`).catch(()=>{});
 
                 const [rows] = await dbPromise.query(
-                    `SELECT b.*, m.TenMonHoc 
-                     FROM question_banks b 
-                     JOIN monhoc m ON b.ma_mon_hoc = m.MaMonHoc 
+                    `SELECT b.*, m.TenMonHoc, s.do_kho
+                     FROM question_banks b
+                     JOIN monhoc m ON b.ma_mon_hoc = m.MaMonHoc
+                     LEFT JOIN ai_generation_sessions s ON b.session_id = s.id
                      WHERE b.ma_giang_vien = ? 
                      ORDER BY b.created_at DESC`,
                     [ma_giang_vien]

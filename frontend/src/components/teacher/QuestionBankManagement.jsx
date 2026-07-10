@@ -183,9 +183,10 @@ function QuestionBankManagement() {
             );
         }
 
-        if (currentSession) {
+        const pendingCount = stagingQuestions.filter(q => q.trang_thai === 'PENDING').length;
+        if (currentSession && pendingCount > 0) {
             return showCustomAlert(
-                `Bạn đang mở và làm việc với Đề #${currentSession.id} (${currentSession.doc_tieu_de || currentSession.tieu_de || 'AI Session'}). Vui lòng hoàn tất kiểm tra, duyệt câu hỏi vào Ngân hàng hoặc bấm nút "Đóng" đề làm việc hiện tại bên dưới trước khi khởi tạo bộ đề mới!`,
+                `Bạn đang mở và làm việc với Đề #${currentSession.id} và còn ${pendingCount} câu chưa xử lý. Vui lòng duyệt câu hỏi vào Ngân hàng, hoặc xóa, hoặc bấm nút "Đóng" đề làm việc hiện tại bên dưới trước khi khởi tạo bộ đề mới!`,
                 '⚠️ Đang mở một đề làm việc'
             );
         }
@@ -710,7 +711,7 @@ function QuestionBankManagement() {
                         >
                             <div className="flex items-center gap-3 border-b pb-4">
                                 <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl">
-                                    <AlertCircle className="w-7 h-7" />
+                                    
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">{popupAlert.title}</h3>
@@ -743,12 +744,12 @@ function QuestionBankManagement() {
                         >
                             <div className="flex items-center gap-3 border-b pb-4">
                                 <div className="p-2.5 bg-amber-100 text-amber-600 rounded-xl">
-                                    <Edit className="w-6 h-6" />
+                                    
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h3 className="text-lg font-extrabold text-gray-900">Đổi Tên Ngân Hàng Câu Hỏi</h3>
-                                        {renameDialog.bank && <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 font-extrabold text-xs rounded-lg">[Đề #{renameDialog.bank.id}]</span>}
+                                        {renameDialog.bank && <span className="px-2 py-0.5 bg-[#F4C542]/20 text-[#152238] font-extrabold text-xs rounded-lg">[Đề #{renameDialog.bank.id}]</span>}
                                     </div>
                                     <p className="text-xs text-gray-500">Nhập tên mới cho bộ đề chính thức</p>
                                 </div>
@@ -790,41 +791,36 @@ function QuestionBankManagement() {
             </AnimatePresence>
 
             {/* HEADER & TABS */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 p-6 rounded-3xl text-white shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-[#F4C542] p-6 rounded-3xl text-[#152238] shadow-xl">
                 <div className="space-y-1">
                     <div className="flex items-center gap-3">
-                        <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
-                            <Sparkles className="w-8 h-8 text-yellow-300 animate-spin-slow" />
-                        </div>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight">AI Assisted Question Bank Studio</h1>
-                            <p className="text-sm text-blue-200">Trợ lý AI phân tích tài liệu Word và hỗ trợ Giảng viên xây dựng bộ đề thi trắc nghiệm</p>
+                            <h1 className="text-2xl font-bold tracking-tight text-[#152238]">AI Assisted Question Bank Studio</h1>
+                            <p className="text-sm font-medium text-[#152238]/80">Trợ lý AI phân tích tài liệu Word và hỗ trợ Giảng viên xây dựng bộ đề thi trắc nghiệm</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex bg-black/20 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 self-start md:self-auto">
+                <div className="flex bg-[#152238]/10 p-1.5 rounded-2xl self-start md:self-auto">
                     <button
                         onClick={() => setActiveTab('studio')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
                             activeTab === 'studio'
-                                ? 'bg-white text-indigo-950 shadow-lg font-bold'
-                                : 'text-blue-100 hover:text-white hover:bg-white/10'
+                                ? 'bg-[#152238] text-white shadow-lg font-bold'
+                                : 'text-[#152238]/70 hover:text-[#152238] hover:bg-white/50'
                         }`}
                     >
-                        <Sparkles className="w-4 h-4" />
-                        <span>⚡ Studio Tạo Đề AI (Nháp)</span>
+                        <span>Studio Tạo Đề AI (Nháp)</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('history')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
                             activeTab === 'history'
-                                ? 'bg-white text-indigo-950 shadow-lg font-bold'
-                                : 'text-blue-100 hover:text-white hover:bg-white/10'
+                                ? 'bg-[#152238] text-white shadow-lg font-bold'
+                                : 'text-[#152238]/70 hover:text-[#152238] hover:bg-white/50'
                         }`}
                     >
-                        <FolderCheck className="w-4 h-4" />
-                        <span>📚 Ngân Hàng Chính Thức ({officialBanks.length})</span>
+                        <span>Ngân Hàng Chính Thức ({officialBanks.length})</span>
                     </button>
                 </div>
             </div>
@@ -835,9 +831,7 @@ function QuestionBankManagement() {
                     {/* KHUNG 1 & 2: FORM UPLOAD & CẤU HÌNH AI */}
                     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 space-y-6">
                         <div className="flex items-center gap-3 border-b pb-4">
-                            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-                                <UploadCloud className="w-6 h-6" />
-                            </div>
+                            
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900">Khung Tải Lên Tài Liệu & Cấu Hình Trợ Lý AI</h2>
                                 <p className="text-sm text-gray-500">Tải file Word tài liệu môn học và thiết lập thông số để AI tạo câu hỏi từng đợt (10 câu/lần)</p>
@@ -883,7 +877,7 @@ function QuestionBankManagement() {
                                 {formErrors.ma_mon_hoc ? (
                                     <p className="text-xs text-red-600 font-bold animate-pulse">❌ {formErrors.ma_mon_hoc}</p>
                                 ) : (
-                                    <p className="text-xs text-indigo-600 font-medium">💡 Lấy tự động từ phân công giảng dạy của Admin</p>
+                                    <p className="text-xs text-[#152238] font-medium">💡 Lấy tự động từ phân công giảng dạy của Admin</p>
                                 )}
                             </div>
 
@@ -928,12 +922,12 @@ function QuestionBankManagement() {
                                             formErrors.file
                                                 ? 'bg-red-50 border-red-500 text-red-900 font-bold'
                                                 : uploadForm.file 
-                                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-medium' 
+                                                    ? 'bg-[#F4C542]/10 border-[#152238]/50 text-indigo-900 font-medium' 
                                                     : 'bg-gray-50 border-gray-300 hover:bg-gray-100 text-gray-600'
                                         }`}
                                     >
                                         <div className="flex items-center gap-2 truncate">
-                                            <FileText className={`w-5 h-5 flex-shrink-0 ${formErrors.file ? 'text-red-600' : uploadForm.file ? 'text-indigo-600' : 'text-gray-400'}`} />
+                                            
                                             <span className="text-sm truncate">
                                                 {uploadForm.file_name || 'Chọn hoặc kéo thả file Word (.docx)'}
                                             </span>
@@ -975,7 +969,7 @@ function QuestionBankManagement() {
                                 {formErrors.so_cau_yeu_cau ? (
                                     <p className="text-xs text-red-600 font-bold animate-pulse">❌ {formErrors.so_cau_yeu_cau}</p>
                                 ) : (
-                                    <p className="text-xs text-gray-500">AI chia nhỏ tạo đợt 10 câu/lần để đảm bảo chất lượng và không lỗi timeout.</p>
+                                    <p className="text-xs text-gray-500">AI sẽ tự động đọc tài liệu và sinh ra một lần đủ số lượng câu hỏi theo yêu cầu.</p>
                                 )}
                             </div>
 
@@ -1021,17 +1015,15 @@ function QuestionBankManagement() {
                                     type="button"
                                     onClick={handleStartAISession}
                                     disabled={isUploading}
-                                    className="flex items-center justify-center gap-3 w-full md:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                    className="flex items-center justify-center gap-3 w-full md:w-auto px-8 py-4 bg-[#152238] hover:bg-[#152238]/90 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                                 >
                                     {isUploading ? (
                                         <>
-                                            <RefreshCw className="w-5 h-5 animate-spin" />
-                                            <span>AI Đang Phân Tích & Tạo 10 Câu Đầu...</span>
+                                            <span>AI Đang Phân Tích & Tạo Câu Hỏi...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Sparkles className="w-5 h-5 text-yellow-300" />
-                                            <span>Bắt Đầu Tạo Câu Hỏi AI (Đợt 1)</span>
+                                            <span>Bắt Đầu Tạo Câu Hỏi AI</span>
                                         </>
                                     )}
                                 </button>
@@ -1043,9 +1035,7 @@ function QuestionBankManagement() {
                     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 space-y-6">
                         <div className="flex items-center justify-between border-b pb-4">
                             <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                                    <Layers className="w-6 h-6" />
-                                </div>
+                                
                                 <div>
                                     <h2 className="text-lg font-bold text-gray-900">🕒 Lịch Sử Các Bộ Đề Tải Lên & Sinh Đề Nháp ({sessions.length})</h2>
                                     <p className="text-sm text-gray-500">Các đề được phân loại rõ ràng theo từng Môn học</p>
@@ -1056,7 +1046,7 @@ function QuestionBankManagement() {
                                 className="p-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
                                 title="Làm mới danh sách"
                             >
-                                <RefreshCw className="w-5 h-5" />
+                                
                             </button>
                         </div>
 
@@ -1065,8 +1055,8 @@ function QuestionBankManagement() {
                                 {Object.entries(groupedSessions).map(([subjectName, sessionList]) => (
                                     <div key={subjectName} className="bg-gray-50/50 rounded-3xl p-6 border border-gray-100">
                                         <div className="flex items-center gap-3 mb-5 border-b border-gray-200/60 pb-3">
-                                            <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
-                                                <BookOpen className="w-5 h-5" />
+                                            <div className="p-2 bg-[#F4C542]/20 text-[#152238] rounded-xl">
+                                                
                                             </div>
                                             <h3 className="text-lg font-extrabold text-gray-800">{subjectName}</h3>
                                             <span className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-lg shadow-sm">
@@ -1083,7 +1073,7 @@ function QuestionBankManagement() {
                                                         className="p-5 rounded-2xl border bg-white border-gray-200 hover:border-indigo-400 hover:shadow-lg cursor-pointer transition-all transform hover:-translate-y-1"
                                                     >
                                                         <div className="flex items-center justify-between gap-2 mb-3">
-                                                            <span className="text-xs font-extrabold text-indigo-600 uppercase bg-indigo-50 px-2.5 py-1 rounded-lg">
+                                                            <span className="text-xs font-extrabold text-[#152238] uppercase bg-[#F4C542]/10 px-2.5 py-1 rounded-lg">
                                                                 Đề #{s.id}
                                                             </span>
                                                             <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${statusVN.color}`}>
@@ -1103,12 +1093,12 @@ function QuestionBankManagement() {
                                                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                                                                 <div
                                                                     style={{ width: `${Math.min(100, ((s.so_cau_da_sinh || 0) / (s.so_cau_yeu_cau || 10)) * 100)}%` }}
-                                                                    className="h-full bg-indigo-600 rounded-full"
+                                                                    className="h-full bg-[#152238] rounded-full"
                                                                 />
                                                             </div>
                                                         </div>
 
-                                                        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+                                                        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-[#152238]">
                                                             <span>{s.trang_thai === 'COMPLETED' ? '✓ Đã vào Ngân Hàng (Xem)' : 'Nhấn để mở / Tiếp tục tạo'}</span>
                                                             <ChevronRight className="w-4 h-4" />
                                                         </div>
@@ -1131,8 +1121,8 @@ function QuestionBankManagement() {
                         <div className="bg-gradient-to-br from-indigo-900/5 via-purple-900/5 to-blue-900/5 rounded-3xl p-6 md:p-8 border border-indigo-100 shadow-sm space-y-6">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-indigo-100 pb-5">
                                 <div>
-                                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 mb-1">
-                                        <Layers className="w-4 h-4" />
+                                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#152238] mb-1">
+                                        
                                         <span>Bộ đề đang làm việc #{currentSession.id}</span>
                                     </div>
                                     <h3 className="text-xl font-extrabold text-gray-900">
@@ -1145,7 +1135,7 @@ function QuestionBankManagement() {
 
                                 <div className="flex flex-wrap items-center gap-3">
                                     <span className={`px-4 py-2 rounded-xl text-sm font-bold border flex items-center gap-2 ${getSessionStatusVN(currentSession).color}`}>
-                                        <Clock className="w-4 h-4" />
+                                        
                                         <span>{getSessionStatusVN(currentSession).text}</span>
                                     </span>
 
@@ -1176,7 +1166,7 @@ function QuestionBankManagement() {
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center text-sm font-bold">
                                     <span className="text-gray-700">Tiến độ tạo câu hỏi từ trợ lý AI:</span>
-                                    <span className="text-indigo-600 font-extrabold">
+                                    <span className="text-[#152238] font-extrabold">
                                         Đã tạo: {currentSession.so_cau_da_sinh || 0} / {currentSession.so_cau_yeu_cau || 10} câu ({Math.round(((currentSession.so_cau_da_sinh || 0) / (currentSession.so_cau_yeu_cau || 10)) * 100)}%)
                                     </span>
                                 </div>
@@ -1197,7 +1187,7 @@ function QuestionBankManagement() {
                         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 space-y-6">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
+                                    <div className="p-2.5 bg-gray-50 text-purple-600 rounded-xl">
                                         <CheckSquare className="w-6 h-6" />
                                     </div>
                                     <div>
@@ -1209,7 +1199,7 @@ function QuestionBankManagement() {
                                 {/* BỘ LỌC */}
                                 <div className="flex flex-wrap items-center gap-3">
                                     <div className="relative">
-                                        <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                                        
                                         <input
                                             type="text"
                                             placeholder="Tìm từ khóa nội dung..."
@@ -1219,7 +1209,7 @@ function QuestionBankManagement() {
                                         />
                                         {searchKeyword && (
                                             <button onClick={() => setSearchKeyword('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                                <X className="w-3.5 h-3.5" />
+                                                
                                             </button>
                                         )}
                                     </div>
@@ -1269,13 +1259,13 @@ function QuestionBankManagement() {
                                                 className={`p-6 rounded-2xl border transition-all ${
                                                     q.trang_thai === 'APPROVED' ? 'bg-emerald-50/30 border-emerald-200' :
                                                     q.trang_thai === 'REJECTED' ? 'bg-rose-50/30 border-rose-200 opacity-75' :
-                                                    'bg-white border-gray-200 hover:border-indigo-300 shadow-sm'
+                                                    'bg-white border-gray-200 hover:border-[#152238]/50 shadow-sm'
                                                 }`}
                                             >
                                                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                                                     <div className="space-y-3 flex-1">
                                                         <div className="flex flex-wrap items-center gap-2">
-                                                            <span className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 font-extrabold flex items-center justify-center text-sm">
+                                                            <span className="w-8 h-8 rounded-lg bg-[#F4C542]/20 text-indigo-800 font-extrabold flex items-center justify-center text-sm">
                                                                 #{idx + 1}
                                                             </span>
                                                             <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${diffBadge.className}`}>
@@ -1313,13 +1303,13 @@ function QuestionBankManagement() {
                                                                         </span>
                                                                         <span className="truncate">{opt.text}</span>
                                                                     </div>
-                                                                    {opt.is_correct && <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />}
+                                                                    
                                                                 </div>
                                                             ))}
                                                         </div>
 
                                                         {q.giai_thich && (
-                                                            <div className="mt-3 p-3.5 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs text-indigo-900">
+                                                            <div className="mt-3 p-3.5 bg-[#F4C542]/10/60 rounded-xl border border-indigo-100 text-xs text-indigo-900">
                                                                 <span className="font-bold">💡 Giải thích từ AI: </span>
                                                                 <span>{q.giai_thich}</span>
                                                             </div>
@@ -1333,7 +1323,7 @@ function QuestionBankManagement() {
                                                                 title="Duyệt câu hỏi vào Ngân hàng chính thức"
                                                                 className="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all shadow-sm w-full md:w-32"
                                                             >
-                                                                <Check className="w-4 h-4" />
+                                                                
                                                                 <span>Duyệt</span>
                                                             </button>
                                                         )}
@@ -1341,29 +1331,19 @@ function QuestionBankManagement() {
                                                         <button
                                                             onClick={() => handleOpenEditModal(q)}
                                                             title="Xem và chỉnh sửa chi tiết câu hỏi trước khi chốt"
-                                                            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-all border border-indigo-200 w-full md:w-32"
+                                                            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-[#F4C542]/10 hover:bg-[#F4C542]/20 text-[#152238] font-bold rounded-xl text-xs transition-all border border-gray-200 w-full md:w-32"
                                                         >
-                                                            <Edit2 className="w-3.5 h-3.5" />
+                                                            
                                                             <span>Chỉnh sửa</span>
                                                         </button>
 
-                                                        {q.trang_thai !== 'REJECTED' && q.trang_thai !== 'APPROVED' && (
-                                                            <button
-                                                                onClick={() => handleUpdateStatus(q.id, 'REJECTED')}
-                                                                title="Từ chối câu hỏi"
-                                                                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-xl text-xs transition-all border border-amber-200 w-full md:w-32"
-                                                            >
-                                                                <X className="w-3.5 h-3.5" />
-                                                                <span>Từ chối</span>
-                                                            </button>
-                                                        )}
 
                                                         <button
                                                             onClick={() => handleDeleteQuestion(q)}
                                                             title="Xóa câu hỏi khỏi danh sách"
                                                             className="flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs transition-all border border-rose-200 w-full md:w-32"
                                                         >
-                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                            
                                                             <span>Xóa câu</span>
                                                         </button>
                                                     </div>
@@ -1374,7 +1354,7 @@ function QuestionBankManagement() {
                                 </div>
                             ) : (
                                 <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-2xl">
-                                    <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    
                                     <p className="text-base font-semibold">Không tìm thấy câu hỏi nào phù hợp với bộ lọc hiện tại</p>
                                 </div>
                             )}
@@ -1403,7 +1383,7 @@ function QuestionBankManagement() {
                                     <div key={subjectName} className="bg-gray-50/50 rounded-3xl p-6 border border-gray-100">
                                         <div className="flex items-center gap-3 mb-5 border-b border-gray-200/60 pb-3">
                                             <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
-                                                <BookOpen className="w-5 h-5" />
+                                                
                                             </div>
                                             <h3 className="text-xl font-extrabold text-gray-800">{subjectName}</h3>
                                             <span className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-lg shadow-sm">
@@ -1418,7 +1398,7 @@ function QuestionBankManagement() {
                                                             <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-extrabold rounded-lg border border-emerald-300">
                                                                 ✓ Đã Duyệt Chính Thức
                                                             </span>
-                                                            <span className="text-xs font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
+                                                            <span className="text-xs font-black text-[#152238] bg-[#F4C542]/10 px-2.5 py-1 rounded-lg border border-gray-200">
                                                                 ID #{b.id}
                                                             </span>
                                                         </div>
@@ -1432,7 +1412,7 @@ function QuestionBankManagement() {
                                                                 className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-all shrink-0"
                                                                 title="Đổi tên Ngân hàng"
                                                             >
-                                                                <Edit className="w-4 h-4" />
+                                                                
                                                             </button>
                                                         </div>
                                                         <div className="space-y-1.5 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs text-gray-600">
@@ -1442,7 +1422,7 @@ function QuestionBankManagement() {
                                                             </div>
                                                             <div className="flex items-center justify-between">
                                                                 <span className="text-gray-500 font-medium">Lớp HP:</span>
-                                                                <span className="font-extrabold text-indigo-600 font-mono">{b.ma_mon_hoc}</span>
+                                                                <span className="font-extrabold text-[#152238] font-mono">{b.ma_mon_hoc}</span>
                                                             </div>
                                                             <div className="flex items-center justify-between">
                                                                 <span className="text-gray-500 font-medium">Giảng viên:</span>
@@ -1465,15 +1445,14 @@ function QuestionBankManagement() {
                                                         <div className="flex items-center gap-2">
                                                             <button
                                                                 onClick={() => handleViewBank(b)}
-                                                                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                                                                className="px-4 py-1.5 bg-[#F4C542] hover:bg-[#F4C542]/90 border-2 border-[#152238] text-[#152238] rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
                                                                 title="Xem chi tiết câu hỏi"
                                                             >
-                                                                <Eye className="w-4 h-4" />
-                                                                <span>Xem</span>
+                                                                <span>Xem chi tiết</span>
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteOfficialBank(b)}
-                                                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs transition-all"
+                                                                className="p-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-xl font-bold text-xs transition-all shadow-sm flex items-center justify-center"
                                                                 title="Xóa bộ đề"
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
@@ -1508,8 +1487,8 @@ function QuestionBankManagement() {
                         >
                             <div className="flex items-center justify-between border-b pb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-xl">
-                                        <Edit2 className="w-6 h-6" />
+                                    <div className="p-2.5 bg-[#F4C542]/20 text-[#152238] rounded-xl">
+                                        
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-extrabold text-gray-900">Xem & Chỉnh Sửa Câu Hỏi #{editingQuestion.id}</h3>
@@ -1517,7 +1496,7 @@ function QuestionBankManagement() {
                                     </div>
                                 </div>
                                 <button onClick={() => setEditingQuestion(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-xl">
-                                    <X className="w-6 h-6" />
+                                    
                                 </button>
                             </div>
 
@@ -1610,10 +1589,10 @@ function QuestionBankManagement() {
                                     <button
                                         type="submit"
                                         disabled={isSavingEdit}
-                                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all disabled:opacity-50"
+                                        className="flex items-center gap-2 px-6 py-3 bg-[#152238] hover:bg-[#152238]/90 text-white font-bold rounded-xl text-sm shadow-md transition-all disabled:opacity-50"
                                     >
                                         <Save className="w-4 h-4" />
-                                        <span>{isSavingEdit ? 'Đang lưu...' : '💾 Lưu Thay Đổi'}</span>
+                                        <span>{isSavingEdit ? 'Đang lưu...' : 'Lưu Thay Đổi'}</span>
                                     </button>
                                 </div>
                             </form>
@@ -1636,7 +1615,7 @@ function QuestionBankManagement() {
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Ngân hàng đã duyệt</span>
-                                        <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">ID #{viewingBank.id}</span>
+                                        <span className="text-xs font-extrabold text-[#152238] bg-[#F4C542]/10 px-2.5 py-1 rounded-lg border border-gray-200">ID #{viewingBank.id}</span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <h3 className="text-xl font-extrabold text-gray-900"><span className="text-emerald-600 mr-1.5">[Đề #{viewingBank.id}]</span>{viewingBank.tieu_de}</h3>
@@ -1645,27 +1624,27 @@ function QuestionBankManagement() {
                                             className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg font-bold text-xs transition-all"
                                             title="Đổi tên Ngân hàng"
                                         >
-                                            <Edit className="w-4 h-4" />
+                                            
                                         </button>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Môn học: <strong className="text-gray-700">{viewingBank.TenMonHoc || viewingBank.ma_mon_hoc}</strong> • Lớp HP: <strong className="text-indigo-600 font-mono">{viewingBank.ma_mon_hoc}</strong> • Giảng viên: <strong className="text-gray-700">{viewingBank.ma_giang_vien}</strong> • Tổng số: <strong className="text-emerald-600">{bankQuestions.length} câu</strong>
+                                        Môn học: <strong className="text-gray-700">{viewingBank.TenMonHoc || viewingBank.ma_mon_hoc}</strong> • Lớp HP: <strong className="text-[#152238] font-mono">{viewingBank.ma_mon_hoc}</strong> • Giảng viên: <strong className="text-gray-700">{viewingBank.ma_giang_vien}</strong> • Tổng số: <strong className="text-emerald-600">{bankQuestions.length} câu</strong>
                                     </p>
                                 </div>
                                 <button onClick={() => setViewingBank(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-xl">
-                                    <X className="w-6 h-6" />
+                                    
                                 </button>
                             </div>
 
                             {loadingBankQs ? (
                                 <div className="p-12 text-center text-gray-500">
-                                    <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-indigo-600" />
+                                    
                                     <span>Đang tải danh sách câu hỏi...</span>
                                 </div>
                             ) : bankQuestions.length > 0 ? (
                                 <div className="space-y-4">
                                     {bankQuestions.map((q, qIdx) => (
-                                        <div key={q.id || qIdx} className="p-5 rounded-2xl border bg-gray-50/50 space-y-3 hover:border-indigo-200 transition-all">
+                                        <div key={q.id || qIdx} className="p-5 rounded-2xl border bg-gray-50/50 space-y-3 hover:border-gray-200 transition-all">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-extrabold text-indigo-900 text-sm">Câu #{qIdx + 1} ({q.do_kho || 'Medium'})</span>
@@ -1675,19 +1654,19 @@ function QuestionBankManagement() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setEditingQuestion({ ...q })}
-                                                        className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg font-bold text-xs flex items-center gap-1 transition-all"
+                                                        className="p-1.5 bg-[#F4C542]/10 hover:bg-[#F4C542]/20 text-[#152238] rounded-lg font-bold text-xs flex items-center gap-1 transition-all"
                                                         title="Sửa câu hỏi này"
                                                     >
-                                                        <Edit className="w-3.5 h-3.5" />
+                                                        
                                                         <span>Sửa</span>
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => handleDeleteBankQuestion(q)}
-                                                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-bold text-xs transition-all"
+                                                        className="p-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-lg font-bold text-xs transition-all shadow-sm flex items-center justify-center"
                                                         title="Xóa câu hỏi khỏi Ngân hàng"
                                                     >
-                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </div>
