@@ -272,6 +272,18 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     setGradeLockedConfigs(gradeLocks);
   }, [teachingAssignments]);
 
+  // Khóa scroll màn hình chính khi mở bất kỳ modal nào
+  useEffect(() => {
+    if (showModal || configConfirm.show || gradeLockConfirm.show || deleteModal.show || submitConfirmModal.show) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal, configConfirm.show, gradeLockConfirm.show, deleteModal.show, submitConfirmModal.show]);
+
   const getActiveConfig = (maLopHocPhan) => activeConfigs[maLopHocPhan] || DEFAULT_COMPONENTS.map(c => ({ ...c }));
 
   const showNotification = (type, message) => {
