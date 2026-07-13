@@ -102,7 +102,8 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
       SoDienThoai: user?.soDienThoai || 'Chưa cập nhật',
       TenKhoa: user?.tenKhoa || 'Chưa cập nhật',
       NgaySinh: user?.ngaySinh || 'Chưa cập nhật',
-      GioiTinh: user?.gioiTinh || 'Chưa cập nhật'
+      GioiTinh: user?.gioiTinh || 'Chưa cập nhật',
+      CapBac: user?.capBac || 'Chưa cập nhật'
     };
     return (
       <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
@@ -224,6 +225,15 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
                 <div>
                   <p className="text-xs font-medium text-[#6B7280]">Chức vụ</p>
                   <p className="text-[#1F2937] font-semibold">Giảng viên</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-[#6B7280]">Cấp bậc</p>
+                  <p className="text-[#1F2937] font-semibold">{fallbackProfile.CapBac}</p>
                 </div>
               </div>
             </div>
@@ -360,6 +370,15 @@ function TeacherProfileManagement({ profile, loading, user, onLogout }) {
               <div>
                 <p className="text-xs font-medium text-[#6B7280]">Chức vụ</p>
                 <p className="text-[#1F2937] font-semibold">Giảng viên</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-[#6B7280]">Cấp bậc</p>
+                <p className="text-[#1F2937] font-semibold">{profile.CapBac || 'Chưa cập nhật'}</p>
               </div>
             </div>
           </div>

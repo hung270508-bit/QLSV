@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import io from 'socket.io-client';
+
 import axios from 'axios';
 import { Users, Clock, AlertTriangle, ArrowLeft, Activity, Search, Filter, CheckCircle2, WifiOff, Lock, MonitorPlay } from 'lucide-react';
 import API_URL from '../../api';
@@ -88,50 +88,7 @@ export default function TeacherExamDashboard({ id: propId }) {
     }, [id, token, navigate]);
 
     useEffect(() => {
-        if (!schedule || !token) return;
-
-        const newSocket = io(API_URL, {
-            auth: { token }
-        });
-
-        newSocket.on('connect', () => {
-            console.log("Socket connected! Requesting join_exam...");
-            newSocket.emit('join_exam', { exam_schedule_id: schedule.id }, (response) => {
-                console.log("join_exam response:", response);
-                if (!response?.success) {
-                    setError(response?.message || 'Không thể join room');
-                }
-            });
-        });
-
-        newSocket.on('student_status_changed', (data) => {
-            setStudents(prev => prev.map(st => {
-                if (st.MSSV === data.ma_sinh_vien) {
-                    return { ...st, status: data.status, attemptId: data.attemptId };
-                }
-                return st;
-            }));
-        });
-
-        newSocket.on('student_violation_alert', (data) => {
-            // Update violations list
-            setViolations(prev => [data, ...prev]);
-            
-            // Also update student status if we want to mark them as violated? No, just keep the violation list.
-            // If they reach auto_locked or submitted, status will update via student_status_changed.
-            
-            // Highlight the student in the list if needed by adding a 'hasViolation' flag
-            setStudents(prev => prev.map(st => {
-                if (st.MSSV === data.ma_sinh_vien) {
-                    return { ...st, hasViolation: true, violationCount: (st.violationCount || 0) + 1 };
-                }
-                return st;
-            }));
-        });
-
-        return () => {
-            newSocket.disconnect();
-        };
+        // Socket.io has been removed
     }, [schedule, token]);
 
     useEffect(() => {

@@ -1,7 +1,6 @@
 import { Award, Clock, PlayCircle, AlertTriangle, CheckCircle, History, BookOpen, XCircle, X, Flag, FlagOff, Trash2, Edit2, Upload, Download, Calendar, Settings, FileText, Eye, AlertCircle, ChevronDown, Search, Filter, Plus, Check, Info, Camera, Edit, CheckCircle2, WifiOff } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import io from 'socket.io-client';
 
 import axios from 'axios';
 import API_URL from '../../api';
@@ -54,10 +53,8 @@ function StudentOnlineExam({ user, onExamModeChange }) {
             setIsOffline(false);
             showToast('Đã khôi phục kết nối mạng! Dữ liệu của bạn đang được đồng bộ.', 'success');
             
-            // Đồng bộ vi phạm
-            if (socketRef.current && attemptId) {
-                const offlineViolations = JSON.parse(localStorage.getItem(`exam_${attemptId}_violations`) || '[]');
-                offlineViolations.forEach(v => socketRef.current.emit('student_violation', v));
+            // Đồng bộ vi phạm (socket đã bị xóa)
+            if (attemptId) {
                 localStorage.removeItem(`exam_${attemptId}_violations`);
             }
 
@@ -138,44 +135,10 @@ function StudentOnlineExam({ user, onExamModeChange }) {
         return () => clearInterval(checkTimer);
     }, [isTakingExam, currentExam, attemptId]);
 
-    const socketRef = useRef(null);
-
     useEffect(() => {
         if (!isTakingExam || !currentExam || !attemptId) return;
 
-        // Initialize Socket.io connection
-        const socket = io(API_URL, {
-            auth: { token: localStorage.getItem('token') || sessionStorage.getItem('token') }
-        });
-        socketRef.current = socket;
-
-        // Join exam room
-        socket.emit('student_join_exam', {
-            scheduleId: currentExam.id, // Re-using scheduleId field for exam.id
-            studentId: mssv,
-            studentName: user?.HoTen || user?.username,
-            attemptId: attemptId
-        });
-
-        // Heartbeat
-        const heartbeatInterval = setInterval(() => {
-            socket.emit('student_heartbeat', {
-                scheduleId: currentExam.id,
-                studentId: mssv,
-                status: 'IN_PROGRESS',
-                attemptId: attemptId
-            });
-        }, 10000); // every 10 seconds
-
-        // Handle force submit from teacher
-        socket.on('force_submit', () => {
-            showToast('Giảng viên đã khóa bài thi của bạn. Đang tự động nộp bài...', 'error');
-            handleAutoSubmit();
-        });
-
         // Tab visibility change (cheating detection)
-        const violationCount = { current: 0 }; // Using object to pass by reference in closure, better use a ref outside useEffect if needed across re-renders, but since we re-create this when attemptId changes it's fine. 
-        // Wait, I will just declare a let outside. No, I'll use a let inside useEffect.
         let count = 0;
         const triggerViolation = (violationType, descriptionSuffix) => {
             count += 1;
@@ -194,8 +157,6 @@ function StudentOnlineExam({ user, onExamModeChange }) {
                 const offlineViolations = JSON.parse(localStorage.getItem(`exam_${attemptId}_violations`) || '[]');
                 offlineViolations.push(violationData);
                 localStorage.setItem(`exam_${attemptId}_violations`, JSON.stringify(offlineViolations));
-            } else {
-                socket.emit('student_violation', violationData);
             }
 
             if (count >= 3) {
@@ -252,7 +213,6 @@ function StudentOnlineExam({ user, onExamModeChange }) {
         document.addEventListener('paste', handleCopyPaste);
 
         return () => {
-            clearInterval(heartbeatInterval);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('blur', handleBlur);
             window.removeEventListener('student_sidebar_click_violation', handleSidebarViolation);
@@ -261,7 +221,6 @@ function StudentOnlineExam({ user, onExamModeChange }) {
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('copy', handleCopyPaste);
             document.removeEventListener('paste', handleCopyPaste);
-            socket.disconnect();
         };
     }, [isTakingExam, currentExam, attemptId]);
 
@@ -427,9 +386,7 @@ function StudentOnlineExam({ user, onExamModeChange }) {
             localStorage.removeItem(`exam_data_${currentExam.id}_${mssv}_submitted_offline`);
             localStorage.removeItem(`exam_${attemptId}_violations`);
 
-            if (socketRef.current) {
-                socketRef.current.emit('student_submit_exam', { scheduleId: currentExam.id, studentId: mssv, attemptId: attemptId });
-            }
+            // Socket.io has been removed
             setIsTakingExam(false);
             setResultModalData({
                 score: res.data.score,

@@ -34,20 +34,25 @@ function StudentCourseRegistration({ user }) {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { if (user?.username) fetchData(); }, [user]);
+  useEffect(() => { console.log("User data:", user);           // ← thêm dòng này
+    if (user?.username) fetchData(); }, [user]);
 
   // LOGIC 1: ĐƯA VÀO GIỎ HÀNG TẠM (Chưa ném lên Server)
-  const handleAddToCart = (course) => {
-    if (cart.find(c => c.MaLopHocPhan === course.MaLopHocPhan)) {
-      return showToast("Lớp học phần này đã có trong danh sách tạm chờ lưu!", "error");
+  // LOGIC 1: CHỈ CHO CHỌN 1 LỚP CHO 1 MÔN + ẨN NÚT CHỌN KHI ĐÃ CÓ
+const handleAddToCart = (course) => {
+    // Kiểm tra đã có trong giỏ tạm
+    if (cart.find(c => c.MaMonHoc === course.MaMonHoc)) {
+        return showToast(`Môn ${course.TenMonHoc} đã có trong danh sách tạm!`, "error");
     }
-    if (cart.find(c => c.MaMonHoc === course.MaMonHoc) || myCourses.find(c => c.MaMonHoc === course.MaMonHoc)) {
-      return showToast(`Bạn đã chọn đăng ký một lớp khác của môn ${course.TenMonHoc} rồi!`, "error");
-    }
-    setCart([...cart, course]);
-    showToast(`Đã chọn môn ${course.TenMonHoc} vào danh sách Tạm lưu!`, "success");
-  };
 
+    // Kiểm tra đã đăng ký rồi
+    if (myCourses.find(c => c.MaMonHoc === course.MaMonHoc)) {
+        return showToast(`Bạn đã đăng ký môn ${course.TenMonHoc} rồi!`, "error");
+    }
+
+    setCart([...cart, course]);
+    showToast(`Đã thêm môn ${course.TenMonHoc} vào danh sách tạm`, "success");
+};
   // LOGIC 2: XÓA KHỎI GIỎ HÀNG (Chỉ xóa local)
   const handleRemoveFromCart = (maLHP) => {
     setCart(cart.filter(c => c.MaLopHocPhan !== maLHP));
@@ -79,30 +84,35 @@ function StudentCourseRegistration({ user }) {
   };
 
   // LOGIC 3: LƯU TOÀN BỘ VÀO DATABASE
-  const handleFinalize = () => {
+  // LOGIC 3: LƯU TOÀN BỘ VÀO DATABASE
+const handleFinalize = () => {
     if (cart.length === 0) return showToast("Tiến trình đang trống!", "error");
     
     setConfirmDialog({
-      show: true,
-      title: 'Lưu thông tin đăng ký',
-      message: `Hệ thống sẽ tiến hành kiểm tra trùng lịch và lưu tạm ${cart.length} môn học này với trạng thái "Chờ đóng tiền". Lịch học chỉ chính thức hiển thị sau khi bạn hoàn tất đóng học phí. Bạn có chắc chắn?`,
-      action: async () => {
-        try {
-          const res = await axios.post(`${API_URL}/api/enrollment/batch`, { 
-            MSSV: user.username, 
-            cart: cart 
-          });
-          showToast(res.data.message || "Lưu thông tin đăng ký thành công!", "success");
-          setCart([]); // Xóa sạch giỏ hàng ảo sau khi lưu thành công
-          fetchData(); // Kéo lại dữ liệu đã duyệt từ DB
-          setConfirmDialog({ show: false });
-        } catch (error) {
-          showToast(error.response?.data?.message || "Có lỗi xảy ra khi kiểm tra môn học!", "error");
-          setConfirmDialog({ show: false });
+        show: true,
+        title: 'Lưu thông tin đăng ký',
+        message: `Hệ thống sẽ tiến hành kiểm tra trùng lịch và lưu tạm ${cart.length} môn học này với trạng thái "Chờ đóng tiền"...`,
+        action: async () => {
+            try {
+                const res = await axios.post(`${API_URL}/api/enrollment/batch`, { 
+                    MSSV: user.username, 
+                    cart: cart.map(c => ({ 
+                        ...c, 
+                        HocKy: '2025.1'   // ← Thêm dòng này (hoặc năm học hiện tại)
+                    })) 
+                });
+                
+                showToast(res.data.message || "Lưu thông tin đăng ký thành công!", "success");
+                setCart([]); 
+                fetchData(); 
+                setConfirmDialog({ show: false });
+            } catch (error) {
+                showToast(error.response?.data?.message || "Có lỗi xảy ra khi kiểm tra môn học!", "error");
+                setConfirmDialog({ show: false });
+            }
         }
-      }
     });
-  };
+};
 
   // Lấy tổng hợp danh sách đang hiển thị ở Tiến trình (Mix giữa DB và Local)
   const displayList = [
@@ -122,6 +132,17 @@ function StudentCourseRegistration({ user }) {
       default:
         return <span className="text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><Wallet className="w-3.5 h-3.5"/> Chờ đóng tiền</span>;
     }
+  };
+
+  // Chuyển field Thu (kết quả DAYOFWEEK() từ MySQL: 1 = Chủ nhật, 2-7 = Thứ 2 - Thứ 7)
+  // thành nhãn hiển thị tiếng Việt
+  const formatThu = (thu) => {
+    if (thu === null || thu === undefined || thu === '') return '—';
+    const val = String(thu).trim().toUpperCase();
+    if (val === 'CN' || val === '1') return 'Chủ nhật';
+    const num = parseInt(val, 10);
+    if (!Number.isNaN(num) && num >= 2 && num <= 7) return `Thứ ${num}`;
+    return val;
   };
 
   if (loading) return <StudentCourseRegistrationSkeleton />;
@@ -213,7 +234,7 @@ function StudentCourseRegistration({ user }) {
           <table className="w-full text-left text-sm border-collapse min-w-[900px]">
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold w-1/3">Môn học</th><th className="p-4 font-bold">Lịch học chi tiết</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Giảng viên</th><th className="p-4 text-center font-bold">Sĩ số</th><th className="p-4 text-center font-bold rounded-tr-xl">Đăng ký</th>
+                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold w-1/3">Môn học</th><th className="p-4 text-center font-bold">Thứ</th><th className="p-4 font-bold">Lịch học chi tiết</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Giảng viên</th><th className="p-4 text-center font-bold">Sĩ số</th><th className="p-4 text-center font-bold rounded-tr-xl">Đăng ký</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -240,14 +261,38 @@ function StudentCourseRegistration({ user }) {
                       <div className="font-bold text-slate-800 text-sm mb-1.5">{c.TenMonHoc}</div>
                       {(c.DiemCu === null || c.DiemCu === undefined) ? <span className="bg-[#3B82F6]/10 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span> : parseFloat(c.DiemCu) < 1.0 ? <span className="bg-[#EF4444]/10 text-red-700 border border-red-200 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại (F)</span> : <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học cải thiện ({parseFloat(c.DiemCu).toFixed(2)})</span>}
                     </td>
-                    <td className="p-4">
-                      {c.NgayBatDau ? (
-                        <div className="space-y-2 text-xs text-slate-600 font-medium">
-                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6]"><CalendarDays className="w-3 h-3" /></div>{formatDate(c.NgayBatDau)} <span className="text-slate-400">→</span> {formatDate(c.NgayKetThuc)}</div>
-                          <div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-[#FFF7D6] flex items-center justify-center text-[#F4C542]"><MapPin className="w-3 h-3" /></div>Phòng: {c.PhongHoc} | {tietStr}</div>
-                        </div>
-                      ) : <span className="text-slate-400 italic text-xs">Đang cập nhật lịch...</span>}
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-[#3B82F6] border border-blue-100">
+                        {formatThu(c.Thu)}
+                      </span>
                     </td>
+                    <td className="p-4">
+    {c.NgayBatDau ? (
+        <div className="space-y-2 text-xs text-slate-600 font-medium">
+            <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6]">
+                    <CalendarDays className="w-3 h-3" />
+                </div>
+                {formatDate(c.NgayBatDau)} → {formatDate(c.NgayKetThuc)}
+            </div>
+            
+            <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-[#FFF7D6] flex items-center justify-center text-[#F4C542]">
+                    <MapPin className="w-3 h-3" />
+                </div>
+                Phòng: {c.PhongHoc || 'Chưa cập nhật'}
+            </div>
+
+            {c.CaHoc && (
+                <div className="flex items-center gap-2 text-amber-600 font-semibold">
+    {tietStr}
+</div>
+            )}
+        </div>
+    ) : (
+        <span className="text-slate-400 italic text-xs">Đang cập nhật lịch...</span>
+    )}
+</td>
                     <td className="p-4 text-center font-bold text-slate-700">{c.SoTinChi}</td>
                     <td className="p-4 font-semibold text-slate-700">{c.TenGiangVien || 'Chưa xếp'}</td>
                     <td className="p-4 text-center"><span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isFull ? 'bg-red-100 text-[#DC2626] border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{c.DaDangKy} / {c.SoLuongToiDa || 40}</span></td>
@@ -264,7 +309,7 @@ function StudentCourseRegistration({ user }) {
                   </tr>
                 )
               })}
-              {availableCourses.length === 0 && <tr><td colSpan="7" className="p-12 text-center text-slate-400 font-medium">Hiện không có môn học nào khả dụng.</td></tr>}
+              {availableCourses.length === 0 && <tr><td colSpan="8" className="p-12 text-center text-slate-400 font-medium">Hiện không có môn học nào khả dụng.</td></tr>}
             </tbody>
           </table>
         </div>
