@@ -61,7 +61,8 @@ module.exports = (db) => {
     router.get('/exams/teacher/:ma_giang_vien', async (req, res) => {
         try {
             const query = `
-                SELECT e.*, m.TenMonHoc 
+                SELECT e.*, m.TenMonHoc,
+                (SELECT COUNT(*) FROM exam_attempts a WHERE a.exam_id = e.id) as attempt_count
                 FROM exams e 
                 LEFT JOIN monhoc m ON e.ma_mon_hoc = m.MaMonHoc
                 WHERE e.ma_giang_vien = ?
@@ -235,7 +236,10 @@ router.get('/exams/history/student/:mssv', async (req, res) => {
 router.delete('/exams/:id', async (req, res) => {
     try {
         const examId = req.params.id;
-        // Tùy thuộc vào CSDL, nếu có foreign key constraint, bạn có thể cần xóa ở bảng exam_attempts trước
+        const [attempts] = await dbPromise.query(`SELECT COUNT(*) as cnt FROM exam_attempts WHERE exam_id = ?`, [examId]);
+        if (attempts && attempts[0] && attempts[0].cnt > 0) {
+            return res.status(400).json({ success: false, message: 'Không thể xóa đợt thi đã có sinh viên tham gia và có kết quả.' });
+        }
         await dbPromise.query(`DELETE FROM exams WHERE id = ?`, [examId]);
         res.json({ success: true, message: 'Đã xóa kỳ thi thành công.' });
     } catch (error) {

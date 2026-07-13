@@ -312,13 +312,19 @@ Yêu cầu bắt buộc: Chỉ trả về đúng 1 từ duy nhất bằng tiến
             });
 
             if (auto_generate !== false && auto_generate !== 'false') {
-                // Thực hiện sinh batch đầu tiên
-                try {
-                    await generateBatch(sessionId, document, Number(so_cau_yeu_cau) || 10, do_kho, chu_de);
-                } catch (err) {
-                    console.error('Initial batch generation error:', err.message);
-                    // Vẫn trả về sessionId để frontend có thể bấm Resume
-                }
+                // Xử lý ngầm không block request (Non-blocking UI theo chuẩn LMS)
+                generateBatch(sessionId, document, Number(so_cau_yeu_cau) || 10, do_kho, chu_de)
+                    .then(async () => {
+                        console.log(`[AI-GENERATION COMPLETED] Session #${sessionId}`);
+                        const session = await repo.getSessionById(sessionId);
+                        const daSinh = session?.so_cau_da_sinh || 0;
+                        const yeuCau = session?.so_cau_yeu_cau || 10;
+                        await repo.updateSessionStatus(sessionId, daSinh >= yeuCau ? 'COMPLETED' : 'FAILED').catch(() => {});
+                    })
+                    .catch(err => {
+                        console.error(`[AI-GENERATION ERROR] Session #${sessionId}:`, err.message);
+                        repo.updateSessionStatus(sessionId, 'FAILED').catch(() => {});
+                    });
             }
 
             return await repo.getSessionById(sessionId);
@@ -337,13 +343,19 @@ Yêu cầu bắt buộc: Chỉ trả về đúng 1 từ duy nhất bằng tiến
             await repo.updateSessionStatus(sessionId, 'RUNNING');
             const document = await repo.getDocumentById(session.document_id);
 
-            try {
-                // Knowledge Graph SẼ ĐƯỢC CACHE — không gọi lại AI cho bước KG
-                await generateBatch(sessionId, document, session.so_cau_yeu_cau, session.do_kho, session.chu_de);
-            } catch (err) {
-                console.error('Resume batch generation error:', err.message);
-                throw err;
-            }
+            // Chạy ngầm để không block request HTTP và polling FE sẽ tự cập nhật khi xong
+            generateBatch(sessionId, document, session.so_cau_yeu_cau, session.do_kho, session.chu_de)
+                .then(async () => {
+                    console.log(`[AI-RESUME COMPLETED] Session #${sessionId}`);
+                    const updatedSession = await repo.getSessionById(sessionId);
+                    const daSinh = updatedSession?.so_cau_da_sinh || 0;
+                    const yeuCau = updatedSession?.so_cau_yeu_cau || 10;
+                    await repo.updateSessionStatus(sessionId, daSinh >= yeuCau ? 'COMPLETED' : 'FAILED').catch(() => {});
+                })
+                .catch(err => {
+                    console.error(`[AI-RESUME ERROR] Session #${sessionId}:`, err.message);
+                    repo.updateSessionStatus(sessionId, 'FAILED').catch(() => {});
+                });
 
             return await repo.getSessionById(sessionId);
         },

@@ -55,6 +55,22 @@ class ExamService {
             GROUP BY dk.MSSV, sv.HoTen, sv.Email
         `, [scheduleId, schedule.ma_lop_hoc_phan]);
         
+        const attemptIds = students.map(s => s.attemptId).filter(id => id);
+        let allViolations = [];
+        if (attemptIds.length > 0) {
+            const [viols] = await this.db.query(`
+                SELECT attempt_id, violation_type, note, occurred_at 
+                FROM exam_attempt_violations 
+                WHERE attempt_id IN (?)
+                ORDER BY occurred_at DESC
+            `, [attemptIds]);
+            allViolations = viols;
+        }
+
+        students.forEach(student => {
+            student.violationsList = allViolations.filter(v => v.attempt_id === student.attemptId);
+        });
+
         return { schedule, students };
     }
 
