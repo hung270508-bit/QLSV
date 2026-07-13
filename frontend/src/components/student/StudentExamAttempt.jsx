@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Clock, Send, AlertTriangle, HelpCircle, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import API_URL from '../../api';
-import { io } from 'socket.io-client';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 
 function StudentExamAttempt() {
@@ -19,7 +18,6 @@ function StudentExamAttempt() {
     const [timeLeft, setTimeLeft] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     
-    const socketRef = useRef(null);
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
     // 1. Khởi tạo: Đồng bộ giờ & Tải đề thi
@@ -72,35 +70,7 @@ function StudentExamAttempt() {
         init();
     }, [attemptId, token, navigate]);
 
-    // 2. Kết nối Socket & Heartbeat
-    useEffect(() => {
-        if (!loading && attemptData) {
-            socketRef.current = io(API_URL, {
-                auth: { token }
-            });
-
-            socketRef.current.on('connect', () => {
-                socketRef.current.emit('register_attempt', { 
-                    attemptId: attemptData.id,
-                    exam_schedule_id: attemptData.exam_schedule_id
-                });
-            });
-
-            // Heartbeat mỗi 15 giây
-            const heartbeatInterval = setInterval(() => {
-                if (socketRef.current && socketRef.current.connected) {
-                    socketRef.current.emit('heartbeat', { attemptId: attemptData.id });
-                }
-            }, 15000);
-
-            return () => {
-                clearInterval(heartbeatInterval);
-                if (socketRef.current) {
-                    socketRef.current.disconnect();
-                }
-            };
-        }
-    }, [loading, attemptData, token]);
+    // 2. Socket removed
 
     // 3. Đếm ngược thời gian
     useEffect(() => {
@@ -159,10 +129,6 @@ function StudentExamAttempt() {
 
             if (res.data.success) {
                 Toast.success('Đã nộp bài thành công!');
-                // Ngắt kết nối socket để không gửi disconnect event lặp
-                if (socketRef.current) {
-                    socketRef.current.disconnect();
-                }
                 setTimeout(() => navigate('/student'), 1500);
             }
         } catch (error) {

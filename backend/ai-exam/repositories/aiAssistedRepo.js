@@ -1,14 +1,4 @@
 module.exports = (dbPromise) => {
-    // Tự động kiểm tra và tạo cột session_id nếu chưa có (tương thích mọi phiên bản MySQL)
-    dbPromise.query(`
-        SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'question_banks' AND COLUMN_NAME = 'session_id'
-    `).then(([rows]) => {
-        if (rows.length === 0) {
-            return dbPromise.query(`ALTER TABLE question_banks ADD COLUMN session_id INT NULL`);
-        }
-    }).catch(err => console.error('Migration error:', err));
-
     return {
         // 1. Quản lý tài liệu Word tải lên
         saveDocument: async ({ ma_mon_hoc, ma_giang_vien, tieu_de, file_name, file_url, text_content }) => {

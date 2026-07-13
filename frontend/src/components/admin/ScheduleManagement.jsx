@@ -144,10 +144,12 @@ const VietnameseDatePicker = ({ value, onChange, error }) => {
   }, []);
 
   const handleTextChange = (e) => {
-    const input = e.target.value;
+    let input = e.target.value;
+    // Chỉ cho phép nhập số và dấu /
+    input = input.replace(/[^0-9/]/g, '');
+    
     setTextVal(input);
-    const cleaned = input.replace(/[-.]/g, '/').trim();
-    const parts = cleaned.split('/');
+    const parts = input.split('/');
     if (parts.length === 3 && parts[2].length === 4) {
       const d = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10);

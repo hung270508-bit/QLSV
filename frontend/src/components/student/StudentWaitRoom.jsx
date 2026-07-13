@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { MonitorPlay, Clock, AlertTriangle, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import API_URL from '../../api';
-import { io } from 'socket.io-client';
 import ModalPortal, { Toast } from '../common/ModalPortal';
 
 function StudentWaitRoom() {
@@ -16,7 +15,6 @@ function StudentWaitRoom() {
     const [timeLeft, setTimeLeft] = useState(null);
     const [starting, setStarting] = useState(false);
     
-    const socketRef = useRef(null);
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
@@ -58,28 +56,7 @@ function StudentWaitRoom() {
         init();
     }, [scheduleId, token, navigate]);
 
-    // Socket.io connection (Báo danh trạng thái WAITING cho GV)
-    useEffect(() => {
-        if (!loading && schedule) {
-            socketRef.current = io(API_URL, {
-                auth: { token }
-            });
-
-            socketRef.current.on('connect', () => {
-                socketRef.current.emit('join_exam', { exam_schedule_id: schedule.id }, (response) => {
-                    if (!response?.success) {
-                        console.error('Join exam room failed:', response?.message);
-                    }
-                });
-            });
-
-            return () => {
-                if (socketRef.current) {
-                    socketRef.current.disconnect();
-                }
-            };
-        }
-    }, [loading, schedule, token]);
+    // Socket.io connection removed
 
     // Đếm ngược
     useEffect(() => {

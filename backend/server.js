@@ -86,132 +86,7 @@ db.getConnection((err, connection) => {
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
-
-    // ================================================================
-    // AUTO-MIGRATION: AI Exam Refactor
-    // Chạy 1 lần khi server khởi động, idempotent (an toàn chạy lại nhiều lần).
-    // Bỏ qua trên Vercel để tránh ảnh hưởng cold start.
-    // ================================================================
-    if (!isVercel) {
-        runAiExamMigration(db.promise()).catch(err =>
-            console.error('[Migration] AI Exam migration lỗi (server vẫn chạy bình thường):', err.message)
-        );
-        runOnlineExamMigration(db.promise()).catch(err =>
-            console.error('[Migration] Online Exam migration lỗi (server vẫn chạy bình thường):', err.message)
-        );
-    }
 });
-
-/**
- * Auto-migration cho module AI Exam — chạy không đồng bộ, không block server start.
- * Kiểm tra INFORMATION_SCHEMA trước mỗi ALTER → chạy lại nhiều lần không lỗi.
- */
-async function runAiExamMigration(pool) {
-    // Tạo bảng Knowledge Graph cache
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS document_knowledge_graph (
-            document_id INT PRIMARY KEY,
-            kg_json     JSON NOT NULL,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `).catch(() => { }); // Bảng documents chưa tồn tại → bỏ qua, tạo lại khi cần
-
-    // Helper: thêm cột nếu chưa có
-    const addColIfMissing = async (table, col, definition) => {
-        const [rows] = await pool.query(
-            `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-            [table, col]
-        );
-        if (rows[0].cnt === 0) {
-            await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN ${col} ${definition}`);
-            console.log(`[Migration] Đã thêm cột ${table}.${col}`);
-        }
-    };
-
-    // Thêm 4 cột mới vào bảng STAGING (ai_generated_questions)
-    await addColIfMissing('ai_generated_questions', 'bloom_level', 'VARCHAR(20) NULL');
-    await addColIfMissing('ai_generated_questions', 'chapter', 'VARCHAR(255) NULL');
-    await addColIfMissing('ai_generated_questions', 'question_type', 'VARCHAR(50) NULL');
-    await addColIfMissing('ai_generated_questions', 'keywords', 'JSON NULL');
-
-    // Thêm 4 cột mới vào bảng BANK chính thức (questions)
-    await addColIfMissing('questions', 'bloom_level', 'VARCHAR(20) NULL');
-    await addColIfMissing('questions', 'chapter', 'VARCHAR(255) NULL');
-    await addColIfMissing('questions', 'question_type', 'VARCHAR(50) NULL');
-    await addColIfMissing('questions', 'keywords', 'JSON NULL');
-    await addColIfMissing('exams', 'bank_id', 'INT NULL');
-
-    console.log('[Migration] AI Exam schema: sẵn sàng ✓');
-}
-
-/**
- * Auto-migration cho module Online Exam
- */
-async function runOnlineExamMigration(pool) {
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS online_exam_schedules (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            ma_lop_hoc_phan VARCHAR(50) NOT NULL,
-            ma_giang_vien VARCHAR(50) NOT NULL,
-            thoi_gian_mo DATETIME NOT NULL,
-            thoi_gian_dong DATETIME NOT NULL,
-            so_cau_hoi INT NOT NULL,
-            thoi_luong_phut INT NOT NULL,
-            trang_thai VARCHAR(20) DEFAULT 'DRAFT',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS online_exam_attempts (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            exam_schedule_id INT NOT NULL,
-            ma_sinh_vien VARCHAR(50) NOT NULL,
-            question_order JSON NOT NULL,
-            option_order_map JSON NOT NULL,
-            status VARCHAR(20) DEFAULT 'WAITING',
-            started_at DATETIME,
-            deadline_at DATETIME,
-            submitted_at DATETIME,
-            last_heartbeat_at DATETIME,
-            UNIQUE KEY idx_unique_attempt (exam_schedule_id, ma_sinh_vien),
-            FOREIGN KEY (exam_schedule_id) REFERENCES online_exam_schedules(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS online_exam_answers (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            attempt_id INT NOT NULL,
-            question_id INT NOT NULL,
-            selected_option_id INT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY idx_unique_answer (attempt_id, question_id),
-            FOREIGN KEY (attempt_id) REFERENCES online_exam_attempts(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS online_exam_violation_events (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            attempt_id INT NOT NULL,
-            violation_type VARCHAR(50) NOT NULL,
-            occurred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            note TEXT,
-            FOREIGN KEY (attempt_id) REFERENCES online_exam_attempts(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS online_exam_connection_events (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            attempt_id INT NOT NULL,
-            event_type VARCHAR(50) NOT NULL,
-            occurred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (attempt_id) REFERENCES online_exam_attempts(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
-    console.log('[Migration] Online Exam schema: sẵn sàng ✓');
-}
-
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
@@ -2201,9 +2076,9 @@ app.delete('/api/enrollment/:mssv/:maLhp', async (req, res) => {
         }
 
         if (check[0].TrangThai === 'Đã đóng tiền') {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Không thể xóa vì học phần đã đóng tiền' 
+            return res.status(400).json({
+                success: false,
+                message: 'Không thể xóa vì học phần đã đóng tiền'
             });
         }
 
@@ -3572,42 +3447,16 @@ app.use('/api/exam', onlineExamRoutes);
 
 
 //=============================================================================
-// TỰ ĐỘNG ĐÓNG ĐỢT ĐĂNG KÝ ĐÃ QUÁ HẠN (NgayDong)
-//=============================================================================
-// Việc chặn đăng ký/sửa/xóa khi quá hạn đã được xử lý ngay tại query (NOW() BETWEEN
-// NgayTao AND NgayDong) nên luôn đúng theo thời gian thực dù job này chưa kịp chạy.
-// Job dưới đây chỉ có nhiệm vụ cập nhật lại TrangThai = 'Đóng' trong DB để trang quản lý
-// đợt đăng ký (EnrollmentPhaseManagement.jsx) hiển thị đúng trạng thái, không cần admin
-// phải nhớ bấm nút "Đóng" thủ công.
-async function autoCloseExpiredPhases() {
-    try {
-        const [result] = await db.promise().query(
-            `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE TrangThai = 'Mo' AND NgayDong < NOW()`
-        );
-        if (result.affectedRows > 0) {
-            console.log(`[Auto-Close] Đã tự động đóng ${result.affectedRows} đợt đăng ký quá hạn.`);
-        }
-    } catch (err) {
-        console.error('[Auto-Close] Lỗi khi tự động đóng đợt đăng ký quá hạn:', err.message);
-    }
-}
-
-//=============================================================================
 // Khởi chạy server backend (Không được xóa)
 //=============================================================================
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 5000;
-    
+
     const http = require('http');
     const server = http.createServer(app);
-    
-    const { initSocket } = require('./online-exam/socketHandler');
-    initSocket(server, db.promise());
-    
+
     server.listen(PORT, () => {
         console.log(`Server Backend đang chạy tại cổng: http://localhost:${PORT}`);
-        autoCloseExpiredPhases();
-        setInterval(autoCloseExpiredPhases, 5 * 60 * 1000); // chạy lại mỗi 5 phút
     });
 }
 //
