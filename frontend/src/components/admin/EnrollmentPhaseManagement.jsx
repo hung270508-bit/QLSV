@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import API_URL from '../../api';
-import { CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle, X, Clock } from 'lucide-react';
 
 // Chỉ cho phép chữ (có dấu tiếng Việt), số, khoảng trắng và một số ký tự thông dụng: - _ ( ) , .
 const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]*$/u;
@@ -18,6 +18,7 @@ function EnrollmentPhaseManagement() {
   const [tenDotError, setTenDotError] = useState('');
   const [toast, setToast] = useState(null); // { message: string, type: 'warning' | 'success' | 'error' }
   const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, confirmLabel, variant, onConfirm }
+  const [now, setNow] = useState(() => new Date()); // dùng để đếm ngược thời gian đóng đợt đang mở
   const [form, setForm] = useState({
     TenDot: '',
     MoTa: '',
@@ -103,6 +104,12 @@ function EnrollmentPhaseManagement() {
   }, [hocKyOptions, editingPhase, form.HocKy]);
 
   useEffect(() => { fetchPhases(); fetchCourseSections(); fetchStudents(); }, []);
+
+  // Cập nhật mốc thời gian hiện tại mỗi phút để đồng hồ đếm ngược luôn chính xác
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Tìm đợt đang mở (còn hạn) thuộc học kỳ khác với học kỳ đang thao tác (dùng để chặn mở song song nhiều học kỳ)
   const findConflictingOpenPhase = (hocKy, excludeId) => {
@@ -254,17 +261,52 @@ function EnrollmentPhaseManagement() {
   const phaseSummary = useMemo(() => {
     const openCount = phases.filter((p) => p.TrangThai === 'Mo').length;
     const closedCount = phases.filter((p) => p.TrangThai === 'Đóng').length;
-    const openPhases = phases.filter((p) => p.TrangThai === 'Mo' && p.NgayDong);
-    const nextClose = openPhases
-      .filter((p) => new Date(p.NgayDong) > new Date())
-      .sort((a, b) => new Date(a.NgayDong) - new Date(b.NgayDong))[0];
 
     return {
       total: phases.length,
       open: openCount,
-      closed: closedCount,
-      nextClose: nextClose ? new Date(nextClose.NgayDong).toLocaleString('vi-VN') : null
+      closed: closedCount
     };
+  }, [phases]);
+
+  // Đếm ngược đến thời điểm đóng của đợt đang mở gần đóng nhất (cập nhật theo `now`)
+  const closingCountdown = useMemo(() => {
+    const upcomingCloses = phases.filter(
+      (p) => p.TrangThai === 'Mo' && p.NgayDong && new Date(p.NgayDong) > now
+    );
+    const nextClose = upcomingCloses.sort((a, b) => new Date(a.NgayDong) - new Date(b.NgayDong))[0];
+    if (!nextClose) return null;
+
+    const diffMs = new Date(nextClose.NgayDong) - now;
+    const totalMinutes = Math.max(0, Math.floor(diffMs / 60000));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    let text;
+    if (days > 0) text = `${days} ngày ${hours} giờ`;
+    else if (hours > 0) text = `${hours} giờ ${minutes} phút`;
+    else text = `${minutes} phút`;
+
+    return { phase: nextClose, text };
+  }, [phases, now]);
+
+  // Sắp xếp các đợt theo ngày mở để hiển thị dạng dòng thời gian (timeline)
+  const timelinePhases = useMemo(() => {
+    const now = new Date();
+    return [...phases]
+      .sort((a, b) => new Date(a.NgayMo) - new Date(b.NgayMo))
+      .map((phase) => {
+        const start = phase.NgayMo ? new Date(phase.NgayMo) : null;
+        const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
+        let timelineStatus = 'closed'; // closed | ongoing | upcoming
+        if (phase.TrangThai === 'Mo' && start && end && start <= now && now <= end) {
+          timelineStatus = 'ongoing';
+        } else if (start && start > now) {
+          timelineStatus = 'upcoming';
+        }
+        return { ...phase, timelineStatus };
+      });
   }, [phases]);
 
   const filteredPhases = useMemo(() => {
@@ -368,8 +410,20 @@ function EnrollmentPhaseManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-5 border border-slate-200 col-span-1 md:col-span-3">
-          <p className="text-sm font-semibold text-slate-500">Đợt sẽ đóng sớm nhất</p>
-          <p className="text-2xl font-black text-[#152238]">{phaseSummary.nextClose || 'Không có đợt mở'}</p>
+          <p className="text-sm font-semibold text-slate-500 flex items-center gap-1.5">
+            <Clock className="w-4 h-4" /> Đếm ngược đợt đang mở
+          </p>
+          {closingCountdown ? (
+            <>
+              <p className="text-2xl font-black text-[#152238]">Còn {closingCountdown.text}</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Đợt "{closingCountdown.phase.TenDot}" ({closingCountdown.phase.HocKy || '—'}) sẽ đóng lúc{' '}
+                {new Date(closingCountdown.phase.NgayDong).toLocaleString('vi-VN')}
+              </p>
+            </>
+          ) : (
+            <p className="text-2xl font-black text-[#152238]">Không có đợt đang mở</p>
+          )}
         </div>
       </div>
 
@@ -611,25 +665,54 @@ function EnrollmentPhaseManagement() {
       </div>
 
       <div className="bg-white rounded-2xl p-5 border border-slate-200">
-        <h3 className="font-bold text-slate-800 mb-4">Tổng quan đợt đăng ký</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200">
-            <p className="text-sm text-slate-500">Tổng số đợt</p>
-            <p className="text-3xl font-black text-[#152238]">{phases.length}</p>
-          </div>
-          <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200">
-            <p className="text-sm text-slate-500">Đợt đang mở</p>
-            <p className="text-3xl font-black text-[#16a34a]">{phaseSummary.pending}</p>
-          </div>
-          <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200">
-            <p className="text-sm text-slate-500">Đợt đã đóng</p>
-            <p className="text-3xl font-black text-[#475569]">{phaseSummary.closed}</p>
-          </div>
+        <div className="mb-4">
+          <h3 className="font-bold text-slate-800">Dòng thời gian đợt đăng ký</h3>
+          <p className="text-sm text-slate-500">Các đợt được sắp xếp theo thời gian mở, giúp theo dõi đợt nào đang diễn ra, sắp mở hay đã kết thúc.</p>
         </div>
-        <div className="mt-4 space-y-2 text-slate-500 text-sm">
-          <p>Đợt tiếp theo mở: {phaseSummary.nextOpening || 'Chưa có dữ liệu'}</p>
-          <p>Đợt tiếp theo đóng: {phaseSummary.nextClosing || 'Chưa có dữ liệu'}</p>
-        </div>
+
+        {timelinePhases.length === 0 ? (
+          <p className="text-sm text-slate-500">Chưa có đợt đăng ký nào để hiển thị.</p>
+        ) : (
+          <ol className="relative border-s-2 border-slate-200 ms-3">
+            {timelinePhases.map((phase, index) => {
+              const dotStyles = {
+                ongoing: 'bg-emerald-500 ring-emerald-100',
+                upcoming: 'bg-amber-400 ring-amber-100',
+                closed: 'bg-slate-300 ring-slate-100'
+              };
+              const badge = {
+                ongoing: { label: 'Đang diễn ra', className: 'bg-emerald-50 text-emerald-700' },
+                upcoming: { label: 'Sắp mở', className: 'bg-amber-50 text-amber-700' },
+                closed: { label: phase.TrangThai === 'Mo' ? 'Đã hết hạn' : 'Đã đóng', className: 'bg-slate-100 text-slate-600' }
+              }[phase.timelineStatus];
+
+              return (
+                <li key={phase.MaDot} className={`ms-6 ${index === timelinePhases.length - 1 ? '' : 'pb-6'}`}>
+                  <span
+                    className={`absolute -start-[9px] flex h-4 w-4 items-center justify-center rounded-full ring-4 ${dotStyles[phase.timelineStatus]}`}
+                  />
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-900">{phase.TenDot}</p>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {phase.HocKy || '—'} / {phase.NamHoc || '—'} / {phase.NienKhoa || '—'}
+                    </p>
+                    <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+                      <Clock className="w-3.5 h-3.5" />
+                      {phase.NgayMo ? new Date(phase.NgayMo).toLocaleString('vi-VN') : '—'}
+                      <span className="text-slate-400">→</span>
+                      {phase.NgayDong ? new Date(phase.NgayDong).toLocaleString('vi-VN') : '—'}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </div>
     </div>
   );
