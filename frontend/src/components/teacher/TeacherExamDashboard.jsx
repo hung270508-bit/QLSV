@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Users, Clock, AlertTriangle, ArrowLeft, Activity, Search, Filter, CheckCircle2, WifiOff, Lock, MonitorPlay } from 'lucide-react';
 import API_URL from '../../api';
+import ModalPortal, { Toast, ConfirmDialog, InfoDialog } from '../common/ModalPortal';
 
 export default function TeacherExamDashboard({ id: propId }) {
     const params = useParams();
@@ -13,6 +14,13 @@ export default function TeacherExamDashboard({ id: propId }) {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [toast, setToast] = useState(null);
+    const [infoDialog, setInfoDialog] = useState({ show: false, message: '', title: '' });
+
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
     const [stats, setStats] = useState({
         WAITING: 0,
         IN_PROGRESS: 0,
@@ -101,9 +109,14 @@ export default function TeacherExamDashboard({ id: propId }) {
 
     const handleViewViolations = async (attemptId) => {
         if (!attemptId) {
-            alert('Sinh viên chưa vào thi nên chưa có lịch sử');
+            setInfoDialog({ 
+                show: true, 
+                title: 'Chưa có dữ liệu', 
+                message: 'Sinh viên này chưa vào thi nên không có lịch sử ghi nhận nào để hiển thị.' 
+            });
             return;
         }
+
         setSelectedAttemptId(attemptId);
         setShowViolationModal(true);
         setLoadingViolations(true);
@@ -116,7 +129,7 @@ export default function TeacherExamDashboard({ id: propId }) {
             }
         } catch (err) {
             console.error(err);
-            alert('Lỗi tải lịch sử vi phạm');
+            showToast('Lỗi tải lịch sử vi phạm', 'error');
         } finally {
             setLoadingViolations(false);
         }
@@ -192,7 +205,7 @@ export default function TeacherExamDashboard({ id: propId }) {
                 </div>
 
                 {/* Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
                     {filteredStudents.length > 0 ? filteredStudents.map(student => {
                         const ui = STATUS_UI[student.status];
                         return (
@@ -213,10 +226,10 @@ export default function TeacherExamDashboard({ id: propId }) {
                                     <h3 className="font-bold text-gray-900 text-lg truncate" title={student.HoTen}>{student.HoTen}</h3>
                                     <p className="text-gray-500 font-mono text-sm mt-1">{student.MSSV}</p>
                                     
-                                    <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                                        <span className="text-xs text-gray-400">ID: {student.attemptId || '---'}</span>
+                                    <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center w-full">
+                                        <span className="text-xs text-gray-400 font-mono">ID: {student.attemptId || '---'}</span>
                                         <button className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors" onClick={() => handleViewViolations(student.attemptId)}>
-                                            Chi tiết lỗi
+                                            Xem chi tiết
                                         </button>
                                     </div>
                                 </div>
@@ -232,7 +245,7 @@ export default function TeacherExamDashboard({ id: propId }) {
 
             {/* Violation Modal */}
             {showViolationModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/10 backdrop-blur-[2px]">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
                             <h3 className="text-lg font-bold text-gray-900">Lịch sử vi phạm (Attempt ID: {selectedAttemptId})</h3>
@@ -268,6 +281,16 @@ export default function TeacherExamDashboard({ id: propId }) {
                     </div>
                 </div>
             )}
+            
+            {/* Info Dialog */}
+            <InfoDialog 
+                show={infoDialog.show} 
+                title={infoDialog.title} 
+                message={infoDialog.message} 
+                onClose={() => setInfoDialog({ show: false, message: '', title: '' })} 
+            />
+
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 }

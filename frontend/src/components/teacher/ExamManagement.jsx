@@ -99,6 +99,10 @@ function ExamManagement() {
 
 
     const handleDeleteExam = async (exam) => {
+        if (Number(exam.attempt_count) > 0) {
+            return showToast('Không thể xóa đợt thi đã có sinh viên tham gia và có kết quả.', 'error');
+        }
+        
         openConfirmDialog(
             'Xác nhận xóa',
             `Bạn có chắc chắn muốn xóa kỳ thi "${exam.tieu_de}" không? Hành động này không thể hoàn tác.`,
@@ -243,6 +247,10 @@ function ExamManagement() {
     };
 
     const handleOpenEditModal = (exam) => {
+        if (new Date(exam.thoi_gian_ket_thuc) <= new Date()) {
+            return showToast('Đợt thi đã kết thúc. Không thể sửa thông tin!', 'error');
+        }
+
         // Date parsing helper to handle timezone cleanly for datetime-local input
         const formatForInput = (isoString) => {
             if (!isoString) return '';
@@ -328,14 +336,14 @@ function ExamManagement() {
 
             <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 w-max">
                 <button
-                    onClick={() => setActiveTab('exams')}
+                    onClick={() => { setActiveTab('exams'); setSelectedExamForResults(null); }}
                     className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'exams' ? 'bg-[#152238] text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}
                 >
                     <BookOpen className="w-4 h-4" />
                     Quản lý đợt thi
                 </button>
                 <button
-                    onClick={() => setActiveTab('history')}
+                    onClick={() => { setActiveTab('history'); setSelectedExamForResults(null); }}
                     className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'history' ? 'bg-[#152238] text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}
                 >
                     <History className="w-4 h-4" />
@@ -348,7 +356,7 @@ function ExamManagement() {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                     <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
+                            <div className="p-3 bg-[#F4C542]/20 text-[#152238] rounded-xl">
                                 <Calendar className="w-6 h-6" />
                             </div>
                             <div>
@@ -385,46 +393,63 @@ function ExamManagement() {
                                             <td className="py-4 px-6 font-bold text-gray-900">{exam.tieu_de}</td>
                                             <td className="py-4 px-6 text-gray-600 font-medium">{exam.TenMonHoc || exam.ma_mon_hoc}</td>
                                             <td className="py-4 px-6 text-center">
-                                                <span className="bg-purple-100 text-gray-700 px-3 py-1 rounded-lg font-bold text-xs">
+                                                <span className="bg-[#F4C542]/20 text-[#152238] px-3 py-1 rounded-lg font-bold text-xs border border-[#F4C542]/30">
                                                     {exam.ma_lop_hoc_phan}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6 text-center font-bold text-gray-700">{exam.thoi_gian_thi_phut}</td>
-                                            <td className="py-4 px-6 text-center font-bold text-blue-600">{exam.tong_so_cau}</td>
-                                            <td className="py-4 px-6 text-center text-sm text-gray-500 font-medium">
-                                                <div className="text-emerald-600">{new Date(exam.thoi_gian_bat_dau).toLocaleString('vi-VN')}</div>
-                                                <div className="text-rose-500">{new Date(exam.thoi_gian_ket_thuc).toLocaleString('vi-VN')}</div>
+                                            <td className="py-4 px-6 text-center">
+                                                <span className="bg-yellow-50 text-yellow-700 px-3 py-1 rounded-lg font-extrabold text-xs shadow-sm border border-yellow-100">
+                                                    {exam.tong_so_cau}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center text-xs font-medium">
+                                                <div className="flex flex-col gap-1.5 items-center">
+                                                    <div className="text-yellow-700 bg-yellow-50 px-2.5 py-1 rounded-md border border-yellow-100 shadow-sm w-max">
+                                                        <span className="font-bold text-yellow-800">Mở:</span> {new Date(exam.thoi_gian_bat_dau).toLocaleString('vi-VN')}
+                                                    </div>
+                                                    <div className="text-yellow-700 bg-yellow-50 px-2.5 py-1 rounded-md border border-yellow-100 shadow-sm w-max">
+                                                        <span className="font-bold text-yellow-800">Đóng:</span> {new Date(exam.thoi_gian_ket_thuc).toLocaleString('vi-VN')}
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    {new Date(exam.thoi_gian_ket_thuc) > new Date() ? (
-                                                        <button 
-                                                            onClick={() => navigate(`/teacher/online-exams/dashboard/${exam.id}`)}
-                                                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-xl transition-all shadow-sm border border-blue-200 bg-blue-50 flex items-center justify-center"
-                                                            title="Giám sát kỳ thi (Real-time)"
-                                                        >
-                                                            <MonitorPlay className="w-5 h-5" />
-                                                        </button>
-                                                    ) : (
-                                                        <button 
-                                                            disabled
-                                                            className="p-2 text-gray-400 rounded-xl transition-all shadow-sm border border-gray-200 bg-gray-50 flex items-center justify-center cursor-not-allowed"
-                                                            title="Kỳ thi đã kết thúc, không thể giám sát"
-                                                        >
-                                                            <MonitorPlay className="w-5 h-5" />
-                                                        </button>
-                                                    )}
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (new Date(exam.thoi_gian_ket_thuc) <= new Date()) {
+                                                                return showToast('Đợt thi đã kết thúc. Không thể vào màn hình giám sát!', 'error');
+                                                            }
+                                                            navigate(`/teacher/online-exams/dashboard/${exam.id}`);
+                                                        }}
+                                                        className={`p-2 rounded-xl transition-all shadow-sm border flex items-center justify-center ${
+                                                            new Date(exam.thoi_gian_ket_thuc) <= new Date()
+                                                            ? 'text-gray-300 border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                                                            : 'text-blue-600 hover:bg-blue-100 border-blue-200 bg-blue-50'
+                                                        }`}
+                                                        title={new Date(exam.thoi_gian_ket_thuc) <= new Date() ? "Kỳ thi đã kết thúc, không thể giám sát" : "Giám sát kỳ thi (Real-time)"}
+                                                    >
+                                                        <MonitorPlay className="w-5 h-5" />
+                                                    </button>
                                                     <button 
                                                         onClick={() => handleOpenEditModal(exam)}
-                                                        className="p-2 text-[#152238] hover:bg-[#F4C542]/20 rounded-xl transition-all shadow-sm border border-[#152238]/20 bg-gray-50 flex items-center justify-center"
-                                                        title="Sửa kỳ thi này"
+                                                        className={`p-2 rounded-xl transition-all shadow-sm border flex items-center justify-center ${
+                                                            new Date(exam.thoi_gian_ket_thuc) <= new Date()
+                                                            ? 'text-gray-300 border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                                                            : 'text-[#152238] hover:bg-[#F4C542]/20 border-[#152238]/20 bg-gray-50'
+                                                        }`}
+                                                        title={new Date(exam.thoi_gian_ket_thuc) <= new Date() ? "Kỳ thi đã kết thúc, không thể sửa" : "Sửa kỳ thi này"}
                                                     >
                                                         <Edit2 className="w-5 h-5" />
                                                     </button>
                                                     <button 
                                                         onClick={() => handleDeleteExam(exam)}
-                                                        className="p-2 text-rose-500 hover:bg-rose-100 rounded-xl transition-all shadow-sm border border-rose-200 bg-rose-50 flex items-center justify-center"
-                                                        title="Xóa kỳ thi này"
+                                                        className={`p-2 rounded-xl transition-all shadow-sm border flex items-center justify-center ${
+                                                            Number(exam.attempt_count) > 0 
+                                                            ? 'text-gray-300 border-gray-100 bg-gray-50 cursor-not-allowed opacity-60' 
+                                                            : 'text-rose-500 hover:bg-rose-100 border-rose-200 bg-rose-50'
+                                                        }`}
+                                                        title={Number(exam.attempt_count) > 0 ? "Không thể xóa đợt thi đã có sinh viên tham gia" : "Xóa kỳ thi này"}
                                                     >
                                                         <Trash2 className="w-5 h-5" />
                                                     </button>
@@ -459,12 +484,16 @@ function ExamManagement() {
                             exit={{ opacity: 0, x: -20 }}
                             className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8"
                         >
-                            <div className="mb-6">
-                                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                    <BarChart2 className="w-6 h-6 text-blue-600" />
-                                    Lịch sử Thi & Bảng Điểm
-                                </h3>
-                                <p className="text-gray-500 text-sm mt-1">Chọn một đợt kiểm tra để xem điểm chi tiết của sinh viên</p>
+                            <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-[#F4C542]/20 text-[#152238] rounded-xl">
+                                        <BarChart2 className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900">Lịch sử Thi & Bảng Điểm</h3>
+                                        <p className="text-sm text-gray-500 font-medium">Chọn một đợt kiểm tra để xem điểm chi tiết của sinh viên</p>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -472,11 +501,11 @@ function ExamManagement() {
                                     <div 
                                         key={exam.id} 
                                         onClick={() => handleViewResults(exam)}
-                                        className="p-5 rounded-2xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group"
+                                        className="p-5 rounded-2xl border border-gray-200 bg-white hover:border-[#F4C542]/50 hover:shadow-lg transition-all cursor-pointer group"
                                     >
                                         <div className="flex items-start justify-between mb-3">
-                                            <h4 className="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors line-clamp-2">{exam.tieu_de}</h4>
-                                            <span className="bg-blue-50 text-blue-600 p-2 rounded-xl"><ClipboardList className="w-5 h-5"/></span>
+                                            <h4 className="font-bold text-gray-800 text-lg group-hover:text-[#D49A00] transition-colors line-clamp-2">{exam.tieu_de}</h4>
+                                            <span className="bg-[#F4C542]/20 text-[#152238] p-2 rounded-xl"><ClipboardList className="w-5 h-5"/></span>
                                         </div>
                                         <div className="space-y-2 text-sm text-gray-600">
                                             <div className="flex items-center gap-2"><BookOpen className="w-4 h-4"/> <span className="font-medium">{exam.TenMonHoc || exam.ma_mon_hoc}</span></div>
@@ -499,21 +528,28 @@ function ExamManagement() {
                             className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
                         >
                             {/* Header Bảng điểm */}
-                            <div className="p-6 md:p-8 bg-gradient-to-r from-blue-900 to-indigo-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 md:p-8 border-b border-gray-100">
+                                <div className="flex flex-col gap-2">
                                     <button 
                                         onClick={() => setSelectedExamForResults(null)}
-                                        className="flex items-center gap-2 text-blue-200 hover:text-white font-medium mb-3 transition-colors"
+                                        className="flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold mb-1 transition-colors w-max"
                                     >
-                                        <ChevronLeft className="w-4 h-4" />
+                                        <ChevronLeft className="w-5 h-5" />
                                         Quay lại danh sách
                                     </button>
-                                    <h3 className="text-2xl font-extrabold">{selectedExamForResults.tieu_de}</h3>
-                                    <p className="text-blue-200 mt-1">Lớp: {selectedExamForResults.ma_lop_hoc_phan} • Môn: {selectedExamForResults.TenMonHoc || selectedExamForResults.ma_mon_hoc}</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                                            <ClipboardList className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-extrabold text-gray-900">{selectedExamForResults.tieu_de}</h3>
+                                            <p className="text-gray-500 font-medium mt-1">Lớp: <span className="font-bold text-gray-700">{selectedExamForResults.ma_lop_hoc_phan}</span> • Môn: <span className="font-bold text-gray-700">{selectedExamForResults.TenMonHoc || selectedExamForResults.ma_mon_hoc}</span></p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="bg-white/10 px-5 py-3 rounded-2xl backdrop-blur-sm text-center">
-                                    <div className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Tổng sinh viên nộp bài</div>
-                                    <div className="text-3xl font-extrabold">{examResults.filter(r => r.trang_thai_hien_thi === 'Đã nộp bài').length}</div>
+                                <div className="bg-blue-50 border border-blue-100 px-6 py-4 rounded-2xl text-center">
+                                    <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Tổng sinh viên nộp bài</div>
+                                    <div className="text-3xl font-extrabold text-blue-700">{examResults.filter(r => r.trang_thai_hien_thi === 'Đã nộp bài').length}</div>
                                 </div>
                             </div>
 
@@ -540,7 +576,11 @@ function ExamManagement() {
                                                     <tr key={result.attempt_id || idx} className="hover:bg-blue-50/50 transition-colors">
                                                         <td className="py-4 px-6 font-bold text-gray-900">{result.mssv}</td>
                                                         <td className="py-4 px-6 text-gray-700 font-medium">{result.HoTen}</td>
-                                                        <td className="py-4 px-6 text-center text-gray-600">{result.MaLop}</td>
+                                                        <td className="py-4 px-6 text-center">
+                                                            <span className="bg-[#F4C542]/20 text-[#152238] px-3 py-1 rounded-lg font-bold text-xs border border-[#F4C542]/30">
+                                                                {result.MaLop}
+                                                            </span>
+                                                        </td>
                                                         <td className="py-4 px-6 text-center">
                                                             <span className={`px-3 py-1 rounded-full font-bold text-xs ${result.trang_thai_hien_thi === 'Đã nộp bài' ? 'bg-blue-100 text-blue-700' : result.trang_thai_hien_thi === 'Chưa nộp bài' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                                                 {result.trang_thai_hien_thi}
@@ -556,7 +596,7 @@ function ExamManagement() {
                                                         </td>
                                                         <td className="py-4 px-6 text-center">
                                                             <span className={`font-extrabold text-lg ${result.diem_so >= 5 ? 'text-blue-600' : 'text-rose-600'}`}>
-                                                                {result.diem_so}
+                                                                {Math.round((Number(result.diem_so) + Number.EPSILON) * 100) / 100}
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -754,6 +794,17 @@ function ExamManagement() {
                                     <XCircle className="w-5 h-5" />
                                 </button>
                             </div>
+                            
+                            {Number(editExamData.attempt_count) > 0 && (
+                                <div className="mx-6 mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex items-start gap-3 shadow-sm">
+                                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold">Đợt thi đã có sinh viên tham gia.</p>
+                                        <p className="text-sm mt-0.5">Bạn không thể thay đổi thời gian làm bài và giờ mở phòng.</p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex-1 overflow-y-auto p-6 md:p-8">
                                 <form id="edit-exam-form" onSubmit={handleUpdateSubmit} noValidate className="space-y-6">
                                     
@@ -774,11 +825,12 @@ function ExamManagement() {
                                             <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Mở phòng thi (Bắt đầu)</label>
                                             <input type="datetime-local" required
                                                 value={editExamData.thoi_gian_bat_dau}
+                                                disabled={Number(editExamData.attempt_count) > 0}
                                                 onChange={e => {
                                                     setEditExamData({...editExamData, thoi_gian_bat_dau: e.target.value});
                                                     setSubmitErrors(prev => ({ ...prev, thoi_gian_bat_dau: undefined }));
                                                 }}
-                                                className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_bat_dau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                                className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_bat_dau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2 ${Number(editExamData.attempt_count) > 0 ? 'opacity-60 cursor-not-allowed' : ''}`} />
                                             {submitErrors.thoi_gian_bat_dau && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_bat_dau}</div>}
                                         </div>
                                         <div>
@@ -798,6 +850,7 @@ function ExamManagement() {
                                         <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thời gian làm bài (phút)</label>
                                         <input type="number" required
                                             value={editExamData.thoi_gian_thi_phut}
+                                            disabled={Number(editExamData.attempt_count) > 0}
                                             onChange={e => {
                                                 const val = e.target.value;
                                                 setEditExamData({...editExamData, thoi_gian_thi_phut: val});
@@ -810,7 +863,7 @@ function ExamManagement() {
                                                     }
                                                 }
                                             }}
-                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2 ${Number(editExamData.attempt_count) > 0 ? 'opacity-60 cursor-not-allowed' : ''}`} />
                                         {submitErrors.thoi_gian_thi_phut && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_thi_phut}</div>}
                                     </div>
                                 </form>

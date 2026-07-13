@@ -66,6 +66,36 @@ function TeacherDashboard({ user, onLogout }) {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const isMobile = useIsMobile();
 
+  // State theo dõi thông báo AI toàn cục trên tất cả màn hình GV
+  const [globalTargetSession, setGlobalTargetSession] = useState(null);
+  const [globalAIAlert, setGlobalAIAlert] = useState(null);
+  const aiSessionsRef = React.useRef([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const pollGlobalAI = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/ai-exams/sessions/teacher/${user.id}`);
+        const newList = res.data?.data || [];
+        newList.forEach(newS => {
+          const oldS = aiSessionsRef.current.find(s => s.id === newS.id);
+          if (oldS && ((newS.so_cau_da_sinh || 0) > (oldS.so_cau_da_sinh || 0) || (oldS.trang_thai === 'RUNNING' && newS.trang_thai !== 'RUNNING'))) {
+            const isFull = (newS.so_cau_da_sinh || 0) >= (newS.so_cau_yeu_cau || 10);
+            setGlobalAIAlert({
+              title: isFull ? `Ting! Hoàn tất tạo bộ đề AI #${newS.id}` : `Ting! Cập nhật tiến độ đề AI #${newS.id}`,
+              message: `Bộ đề "${newS.doc_tieu_de || newS.tieu_de}" môn ${newS.TenMonHoc || newS.ma_mon_hoc} đã có ${newS.so_cau_da_sinh}/${newS.so_cau_yeu_cau} câu hỏi. Nhấn để duyệt ngay!`,
+              session: newS
+            });
+          }
+        });
+        aiSessionsRef.current = newList;
+      } catch (e) {}
+    };
+    pollGlobalAI();
+    const interval = setInterval(pollGlobalAI, 4000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
   useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
   useEffect(() => { 
@@ -147,7 +177,7 @@ function TeacherDashboard({ user, onLogout }) {
       case 'hoso': return <TeacherProfileManagement user={user} onLogout={onLogout} profile={profile} loading={loadingProfile} />;
       case 'thongbao': return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} classes={teachingAssignments} />;
       case 'hotro': return <TeacherSupport user={user} profile={profile} />;
-      case 'nganhang': return <QuestionBankManagement />;
+      case 'nganhang': return <QuestionBankManagement targetSession={globalTargetSession} onClearTargetSession={() => setGlobalTargetSession(null)} />;
       case 'thionline': return <ExamManagement />;
       default: return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={setActiveMenu} />;
     }
@@ -368,6 +398,41 @@ function TeacherDashboard({ user, onLogout }) {
             )}
           </AnimatePresence>
         )}
+
+        {/* Global Floating Notification Toast ra toàn bộ các màn hình Giảng viên */}
+        <AnimatePresence>
+          {globalAIAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.9 }}
+              onClick={() => {
+                const s = globalAIAlert.session;
+                setGlobalAIAlert(null);
+                setGlobalTargetSession(s);
+                setActiveMenu('nganhang');
+              }}
+              className="fixed top-5 right-5 z-[9999] max-w-md bg-gradient-to-r from-[#152238] via-indigo-950 to-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-[#F4C542] flex items-center gap-3.5 cursor-pointer hover:scale-105 transition-all"
+            >
+              <div className="p-3 bg-[#F4C542] text-[#152238] rounded-xl font-black shrink-0 animate-bounce flex items-center justify-center">
+                <Bell className="w-6 h-6 fill-current" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-extrabold text-sm text-[#F4C542] truncate">{globalAIAlert.title}</p>
+                <p className="text-xs text-gray-200 mt-0.5 line-clamp-2 leading-relaxed">{globalAIAlert.message}</p>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setGlobalAIAlert(null);
+                }}
+                className="text-gray-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

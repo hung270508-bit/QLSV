@@ -69,6 +69,10 @@ function StudentOnlineExam({ user, onExamModeChange }) {
         const handleOffline = () => {
             setIsOffline(true);
             showToast('Mất kết nối mạng! Bài làm sẽ được lưu tạm trên máy của bạn.', 'error');
+            if (isTakingExam && currentExam && attemptId) {
+                // Sử dụng event để gọi triggerViolation vì triggerViolation được định nghĩa ở dưới
+                window.dispatchEvent(new CustomEvent('student_disconnected_violation'));
+            }
         };
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
@@ -76,7 +80,7 @@ function StudentOnlineExam({ user, onExamModeChange }) {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, []);
+    }, [isTakingExam, currentExam, attemptId, mssv]);
 
     const autoSubmitRef = useRef();
 
@@ -163,11 +167,19 @@ function StudentOnlineExam({ user, onExamModeChange }) {
             }
         };
 
+        const handleBlur = () => {
+            if (document.activeElement?.tagName === 'IFRAME') return; // Ignore if clicking iframe (e.g. video)
+            triggerViolation('TAB_SWITCH', 'rời khỏi trang');
+        };
+
         const handleVisibilityChange = () => {
             if (document.hidden) triggerViolation('TAB_SWITCH', 'chuyển tab');
         };
         const handleSidebarViolation = () => {
             triggerViolation('TAB_SWITCH', 'click ra khỏi bài thi');
+        };
+        const handleDisconnectedViolation = () => {
+            triggerViolation('DISCONNECTED', 'mất kết nối mạng');
         };
 
         const handleContextMenu = (e) => {
@@ -192,7 +204,9 @@ function StudentOnlineExam({ user, onExamModeChange }) {
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', handleBlur);
         window.addEventListener('student_sidebar_click_violation', handleSidebarViolation);
+        window.addEventListener('student_disconnected_violation', handleDisconnectedViolation);
         document.addEventListener('contextmenu', handleContextMenu);
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('copy', handleCopyPaste);
@@ -200,7 +214,9 @@ function StudentOnlineExam({ user, onExamModeChange }) {
 
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleBlur);
             window.removeEventListener('student_sidebar_click_violation', handleSidebarViolation);
+            window.removeEventListener('student_disconnected_violation', handleDisconnectedViolation);
             document.removeEventListener('contextmenu', handleContextMenu);
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('copy', handleCopyPaste);
@@ -874,7 +890,7 @@ function StudentOnlineExam({ user, onExamModeChange }) {
                                     <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 flex flex-col items-center justify-center">
                                         <span className="text-gray-400 font-bold mb-1 uppercase text-xs tracking-widest">Tổng Điểm</span>
                                         <div className="text-5xl font-black text-[#152238]">
-                                            {resultModalData.score ? resultModalData.score.toFixed(2) : '0.00'}
+                                            {resultModalData.score !== undefined ? (Math.round((Number(resultModalData.score) + Number.EPSILON) * 100) / 100) : '0'}
                                         </div>
                                     </div>
                                     
