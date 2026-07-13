@@ -1688,7 +1688,9 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
                 MIN(lh.NgayHoc) AS NgayBatDau,
                 MAX(lh.NgayHoc) AS NgayKetThuc,
                 COUNT(DISTINCT lh.MaLichHoc) AS SoBuoi,
-                MAX(lh.PhongHoc) AS PhongHoc
+                MAX(lh.PhongHoc) AS PhongHoc,
+                MAX(lh.CaHoc) AS CaHoc,
+                DAYOFWEEK(MIN(lh.NgayHoc)) AS Thu
             FROM lophocphan lhp
             JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
             LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien

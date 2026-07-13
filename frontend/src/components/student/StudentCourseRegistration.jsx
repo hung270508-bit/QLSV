@@ -51,7 +51,7 @@ const handleAddToCart = (course) => {
     }
 
     setCart([...cart, course]);
-    showToast(`Đã thêm môn ${course.TenMonHoc} (${course.SoBuoi || '?'} buổi) vào danh sách tạm`, "success");
+    showToast(`Đã thêm môn ${course.TenMonHoc} vào danh sách tạm`, "success");
 };
   // LOGIC 2: XÓA KHỎI GIỎ HÀNG (Chỉ xóa local)
   const handleRemoveFromCart = (maLHP) => {
@@ -132,6 +132,17 @@ const handleFinalize = () => {
       default:
         return <span className="text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><Wallet className="w-3.5 h-3.5"/> Chờ đóng tiền</span>;
     }
+  };
+
+  // Chuyển field Thu (kết quả DAYOFWEEK() từ MySQL: 1 = Chủ nhật, 2-7 = Thứ 2 - Thứ 7)
+  // thành nhãn hiển thị tiếng Việt
+  const formatThu = (thu) => {
+    if (thu === null || thu === undefined || thu === '') return '—';
+    const val = String(thu).trim().toUpperCase();
+    if (val === 'CN' || val === '1') return 'Chủ nhật';
+    const num = parseInt(val, 10);
+    if (!Number.isNaN(num) && num >= 2 && num <= 7) return `Thứ ${num}`;
+    return val;
   };
 
   if (loading) return <StudentCourseRegistrationSkeleton />;
@@ -223,7 +234,7 @@ const handleFinalize = () => {
           <table className="w-full text-left text-sm border-collapse min-w-[900px]">
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold w-1/3">Môn học</th><th className="p-4 font-bold">Lịch học chi tiết</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Giảng viên</th><th className="p-4 text-center font-bold">Sĩ số</th><th className="p-4 text-center font-bold rounded-tr-xl">Đăng ký</th>
+                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold w-1/3">Môn học</th><th className="p-4 text-center font-bold">Thứ</th><th className="p-4 font-bold">Lịch học chi tiết</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Giảng viên</th><th className="p-4 text-center font-bold">Sĩ số</th><th className="p-4 text-center font-bold rounded-tr-xl">Đăng ký</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -250,6 +261,11 @@ const handleFinalize = () => {
                       <div className="font-bold text-slate-800 text-sm mb-1.5">{c.TenMonHoc}</div>
                       {(c.DiemCu === null || c.DiemCu === undefined) ? <span className="bg-[#3B82F6]/10 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span> : parseFloat(c.DiemCu) < 1.0 ? <span className="bg-[#EF4444]/10 text-red-700 border border-red-200 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại (F)</span> : <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học cải thiện ({parseFloat(c.DiemCu).toFixed(2)})</span>}
                     </td>
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-[#3B82F6] border border-blue-100">
+                        {formatThu(c.Thu)}
+                      </span>
+                    </td>
                     <td className="p-4">
     {c.NgayBatDau ? (
         <div className="space-y-2 text-xs text-slate-600 font-medium">
@@ -269,8 +285,7 @@ const handleFinalize = () => {
 
             {c.CaHoc && (
                 <div className="flex items-center gap-2 text-amber-600 font-semibold">
-    {c.CaHoc ? `Tiết ${c.CaHoc}` : 'Chưa rõ'} 
-    {c.SoBuoi && ` • ${c.SoBuoi} buổi`}
+    {tietStr}
 </div>
             )}
         </div>
@@ -294,7 +309,7 @@ const handleFinalize = () => {
                   </tr>
                 )
               })}
-              {availableCourses.length === 0 && <tr><td colSpan="7" className="p-12 text-center text-slate-400 font-medium">Hiện không có môn học nào khả dụng.</td></tr>}
+              {availableCourses.length === 0 && <tr><td colSpan="8" className="p-12 text-center text-slate-400 font-medium">Hiện không có môn học nào khả dụng.</td></tr>}
             </tbody>
           </table>
         </div>
