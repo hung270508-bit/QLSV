@@ -620,7 +620,7 @@ function StudentGrades({ user }) {
                   <div className="relative z-10">
                     <h4 className="font-bold text-[#F4C542] text-sm uppercase tracking-wider mb-4 border-b border-gray-700 pb-3 flex items-center gap-2">
                       <Award className="w-4 h-4" />
-                      Hành trang hiện tại
+                      Tiến độ hiện tại
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
