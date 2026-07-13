@@ -1709,6 +1709,40 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 });
+
+// Lấy thông tin đợt đăng ký đang mở cho sinh viên
+app.get('/api/enrollment/active-phase/:mssv', async (req, res) => {
+    try {
+        // LẤY NIÊN KHÓA CỦA SINH VIÊN
+        const [[studentCohort]] = await db.promise().query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
+            [req.params.mssv]
+        );
+
+        if (!studentCohort || !studentCohort.NienKhoa) {
+             return res.json({ hasActivePhase: false, phase: null });
+        }
+
+        const [[phase]] = await db.promise().query(
+            `SELECT *, NgayTao AS NgayMo FROM dot_dangky 
+             WHERE TrangThai = 'Mo' 
+             AND (NienKhoa = ? OR NienKhoa IS NULL OR NienKhoa = '') 
+             AND NOW() BETWEEN NgayTao AND NgayDong
+             ORDER BY NgayTao DESC LIMIT 1`,
+            [studentCohort.NienKhoa]
+        );
+
+        if (phase) {
+            res.json({ hasActivePhase: true, phase });
+        } else {
+            res.json({ hasActivePhase: false, phase: null });
+        }
+    } catch (err) {
+        console.error("LỖI /active-phase:", err.message);
+        res.status(500).json({ success: false, message: 'Lỗi server khi lấy thông tin đợt' });
+    }
+});
+
 // Lấy các môn đã đăng ký của sinh viên
 // LẤY MÔN HỌC ĐÃ ĐĂNG KÝ CỦA SINH VIÊN (Phiên bản ổn định)
 app.get('/api/enrollment/my-courses/:mssv', async (req, res) => {
@@ -1960,6 +1994,10 @@ app.post('/api/enrollment/batch', async (req, res) => {
             return { start: 0, end: 0 };
         };
 
+        const tietOverlap = (s1, e1, s2, e2) => {
+            return s1 <= e2 && e1 >= s2;
+        };
+
         // [BƯỚC 1]: Khởi tạo biến để cộng dồn tín chỉ và lưu tên học kỳ
         let tongTinChi = 0;
         let hocKyHienTai = '';
@@ -1972,7 +2010,21 @@ app.post('/api/enrollment/batch', async (req, res) => {
 
             // [BƯỚC 2]: Cộng dồn tín chỉ của môn học này và gán học kỳ
             tongTinChi += (lhp.SoTinChi || 0);
-            hocKyHienTai = lhp.HocKy; // Lấy học kỳ từ lớp học phần để lưu vào bảng học phí
+            hocKyHienTai = lhp.HocKy; 
+
+            // KIỂM TRA TỔNG SỐ TÍN CHỈ VƯỢT QUÁ 23
+            const [[tinChiDaDK]] = await conn.query(`
+                SELECT SUM(mh.SoTinChi) AS Total 
+                FROM dangky_hocphan dk 
+                JOIN lophocphan lhp2 ON dk.MaLopHocPhan = lhp2.MaLopHocPhan 
+                JOIN monhoc mh ON lhp2.MaMonHoc = mh.MaMonHoc 
+                WHERE dk.MSSV = ? AND lhp2.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối')
+            `, [MSSV, hocKyHienTai]);
+            
+            const currentTotal = parseInt(tinChiDaDK?.Total || 0) + tongTinChi;
+            if (currentTotal > 23) {
+                throw new Error(`Tổng số tín chỉ đăng ký vượt quá giới hạn 23 tín chỉ (Đã đăng ký: ${tinChiDaDK?.Total || 0}, Đang chọn: ${tongTinChi}). Không thể đăng ký thêm môn ${lhp.TenMonHoc}.`);
+            }
 
             // KIỂM TRA ĐỢT ĐĂNG KÝ THEO NIÊN KHÓA
             const phaseId = await getOpenPhaseId(conn, lhp.NamHoc, studentCohort.NienKhoa);
@@ -2256,7 +2308,7 @@ app.get('/api/enrollment/phases', async (req, res) => {
 
 // 7. Tạo mới một đợt đăng ký (CHÈN DỮ LIỆU vào dot_dangky)
 app.post('/api/enrollment/phases', async (req, res) => {
-    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { TenDot, HocKy, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
 
     if (!TenDot || !NgayMo || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
@@ -2290,9 +2342,9 @@ app.post('/api/enrollment/phases', async (req, res) => {
 
         // "Ngày mở" của form được lưu vào cột thật NgayTao (không có cột NgayMo trong bảng).
         const [result] = await db.promise().query(
-            `INSERT INTO dot_dangky (TenDot, HocKy, NamHoc, NienKhoa, NgayTao, NgayDong, TrangThai)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [TenDot, HocKy || null, NamHoc || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo']
+            `INSERT INTO dot_dangky (TenDot, HocKy, NienKhoa, NgayTao, NgayDong, TrangThai)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+            [TenDot, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo']
         );
 
         const [[newPhase]] = await db.promise().query(
@@ -2307,7 +2359,7 @@ app.post('/api/enrollment/phases', async (req, res) => {
 });
 // 8. Cập nhật một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.put('/api/enrollment/phases/:id', async (req, res) => {
-    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { TenDot, HocKy, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
     const { id } = req.params;
 
     if (!TenDot || !NgayMo || !NgayDong) {
@@ -2336,9 +2388,9 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
 
         const [result] = await db.promise().query(
             `UPDATE dot_dangky
-       SET TenDot = ?, HocKy = ?, NamHoc = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
+       SET TenDot = ?, HocKy = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
        WHERE MaDot = ?`,
-            [TenDot, HocKy || null, NamHoc || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo', id]
+            [TenDot, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo', id]
         );
 
         if (result.affectedRows === 0) {
