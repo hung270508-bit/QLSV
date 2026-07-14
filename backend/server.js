@@ -2406,7 +2406,6 @@ app.post('/api/enrollment/phases', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
-    const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startDate = parseDateTimeInVN(NgayMo);
     let endDate = parseDateTimeInVN(NgayDong);
     if (NgayDong && NgayDong.length === 10) {
@@ -2414,10 +2413,10 @@ app.post('/api/enrollment/phases', async (req, res) => {
     }
     const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
-    if (startDate.getTime() < todayAtMidnight.getTime()) {
+    if (startDate.getTime() < now.getTime() - 60000) {
         return res.status(400).json({ message: 'Thời gian mở không được nằm trong quá khứ.' });
     }
-    if (startDate.getTime() > todayAtMidnight.getTime() + twoWeeksInMs) {
+    if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
         return res.status(400).json({ message: 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.' });
     }
     if (endDate.getTime() <= startDate.getTime()) {
@@ -2470,7 +2469,6 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
-    const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startDate = parseDateTimeInVN(NgayMo);
     let endDate = parseDateTimeInVN(NgayDong);
     if (NgayDong && NgayDong.length === 10) {
@@ -2489,16 +2487,16 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
         const existingEndTime = parseDateTimeInVN(existingPhase.NgayDong).getTime();
         
         if (Math.abs(startDate.getTime() - existingStartTime) > 60000) {
-            if (startDate.getTime() < todayAtMidnight.getTime()) {
+            if (startDate.getTime() < now.getTime() - 60000) {
                 return res.status(400).json({ message: 'Thời gian mở không được nằm trong quá khứ.' });
             }
-            if (startDate.getTime() > todayAtMidnight.getTime() + twoWeeksInMs) {
+            if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
                 return res.status(400).json({ message: 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.' });
             }
         }
 
         if (Math.abs(endDate.getTime() - existingEndTime) > 60000) {
-            if (endDate.getTime() < todayAtMidnight.getTime()) {
+            if (endDate.getTime() < now.getTime() - 60000) {
                 return res.status(400).json({ message: 'Thời gian đóng không được nằm trong quá khứ.' });
             }
         }
@@ -3506,7 +3504,10 @@ app.put('/api/admin/training-points/:id', (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
 
         const nguoiDuyet = NguoiDuyet || 'admin';
-        const logMsg = `Đã chốt điểm: Cộng thêm ${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
+        let logMsg = `Đã chốt điểm: Cộng thêm ${DiemKhoaDanhGia}đ, Tổng điểm ${TongDiem}đ (${xepLoai}), Trạng thái: ${TrangThai}`;
+        if (logMsg.length > 255) {
+            logMsg = logMsg.substring(0, 252) + '...';
+        }
         db.query('INSERT INTO lichsu_duyet (MaDanhGia, NguoiDuyet, HanhDong) VALUES (?, ?, ?)', [req.params.id, nguoiDuyet, logMsg], (logErr) => {
             if (logErr) console.error('Lỗi lưu log duyệt:', logErr);
             res.json({ success: true, message: 'Đã chốt điểm và lưu nhật ký!' });
