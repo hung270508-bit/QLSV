@@ -215,6 +215,23 @@ function StudentCourseRegistration({ user }) {
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '';
 
+  const renderStatusBadge = (status) => {
+    switch (status) {
+      case 'Thành công':
+      case 'Đã đăng ký':
+        return <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200"><CheckCircle2 className="w-3.5 h-3.5" /> {status}</span>;
+      case 'Chờ đóng tiền':
+      case 'Tạm lưu':
+      case 'Đã lưu':
+        return <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold border border-amber-200"><Wallet className="w-3.5 h-3.5" /> {status}</span>;
+      case 'Đã hủy':
+      case 'Từ chối':
+        return <span className="flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold border border-red-200"><XCircle className="w-3.5 h-3.5" /> {status}</span>;
+      default:
+        return <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">{status}</span>;
+    }
+  };
+
   if (loading) return <StudentCourseRegistrationSkeleton />;
 
   return (
