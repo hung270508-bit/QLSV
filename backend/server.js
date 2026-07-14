@@ -166,6 +166,9 @@ const executeMutation = (query, params, res, successMessage, errorMessage) => {
     db.query(query, params, (err) => {
         if (err) {
             console.error(`[DB Error in executeMutation] ${errorMessage}:`, err);
+            if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+                return res.status(400).json({ success: false, message: 'Dữ liệu này đang được sử dụng và liên kết ở nơi khác, không thể xóa!' });
+            }
             return res.status(500).json({ success: false, message: errorMessage, error: err.message });
         }
         res.json({ success: true, message: successMessage });
@@ -2341,8 +2344,7 @@ const formatMySQLDateTime = (dateStr) => {
 // Cập nhật trạng thái tự động
 async function autoUpdatePhases() {
     try {
-        await db.promise().query(`UPDATE dot_dangky SET TrangThai = 'Mo' WHERE TrangThai = 'Cho' AND NgayTao <= NOW() AND NgayDong > NOW()`);
-        await db.promise().query(`UPDATE dot_dangky SET TrangThai = 'Dong' WHERE TrangThai IN ('Mo', 'Cho') AND NgayDong <= NOW()`);
+        await db.promise().query(`UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE TrangThai = 'Mo' AND NgayDong <= NOW()`);
     } catch (e) {
         console.error("Auto update phases error:", e);
     }
@@ -2355,8 +2357,8 @@ async function findConflictingOpenPhase(ngayMo, ngayDong, excludeId) {
     const formattedNgayMo = formatMySQLDateTime(ngayMo);
     const formattedNgayDong = formatMySQLDateTime(ngayDong);
     
-    let query = `SELECT MaDot, TenDot, HocKy, NienKhoa, NgayTao as NgayMo, NgayDong FROM dot_dangky
-                 WHERE TrangThai != 'Dong'
+    let query = `SELECT MaDot, TenDot, HocKy, NienKhoa, NgayTao, NgayDong FROM dot_dangky
+                 WHERE TrangThai != 'Đóng'
                  AND NgayTao < ? AND ? < NgayDong`;
     const params = [formattedNgayDong, formattedNgayMo];
     if (excludeId) {
@@ -2372,11 +2374,9 @@ async function findConflictingOpenPhase(ngayMo, ngayDong, excludeId) {
 app.get('/api/enrollment/phases', async (req, res) => {
     try {
         await autoUpdatePhases();
-        // Bảng dot_dangky không có cột NgayMo — cột NgayTao đóng vai trò "ngày mở đợt".
-        // Alias NgayTao AS NgayMo để giữ nguyên hợp đồng dữ liệu cho frontend.
         const query = `
             SELECT *, 
-                   DATE_FORMAT(NgayTao, '%Y-%m-%dT%H:%i:%s') AS NgayMo,
+                   DATE_FORMAT(NgayTao, '%Y-%m-%dT%H:%i:%s') AS NgayTao,
                    DATE_FORMAT(NgayDong, '%Y-%m-%dT%H:%i:%s') AS NgayDong 
             FROM dot_dangky 
             ORDER BY NgayTao DESC
@@ -2396,9 +2396,9 @@ app.get('/api/enrollment/phases', async (req, res) => {
 
 // 7. Tạo mới một đợt đăng ký (CHÈN DỮ LIỆU vào dot_dangky)
 app.post('/api/enrollment/phases', async (req, res) => {
-    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { TenDot, HocKy, NienKhoa, NgayTao, NgayDong } = req.body;
 
-    if (!TenDot || !NgayMo || !NgayDong) {
+    if (!TenDot || !NgayTao || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
     const tenDotRegex = /^[\p{L}\p{N}\s\-_(),.]*$/u;
@@ -2406,7 +2406,7 @@ app.post('/api/enrollment/phases', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
-    const startDate = parseDateTimeInVN(NgayMo);
+    const startDate = parseDateTimeInVN(NgayTao);
     let endDate = parseDateTimeInVN(NgayDong);
     if (NgayDong && NgayDong.length === 10) {
         endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000 - 1000); // 23:59:59
@@ -2426,8 +2426,7 @@ app.post('/api/enrollment/phases', async (req, res) => {
         return res.status(400).json({ message: 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.' });
     }
 
-    const isFuture = startDate.getTime() > now.getTime();
-    const trangThaiMoi = isFuture ? 'Cho' : 'Mo';
+    const trangThaiMoi = 'Mo';
 
     const conflictPhase = await findConflictingOpenPhase(startDate, endDate, null);
     if (conflictPhase) {
@@ -2441,13 +2440,13 @@ app.post('/api/enrollment/phases', async (req, res) => {
         const formattedNgayDong = formatMySQLDateTime(endDate);
 
         const [result] = await db.promise().query(
-            `INSERT INTO dot_dangky (TenDot, MoTa, HocKy, NamHoc, NienKhoa, NgayTao, NgayDong, TrangThai)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [TenDot, req.body.MoTa || null, HocKy || null, NamHoc || '', NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi]
+            `INSERT INTO dot_dangky (TenDot, MoTa, HocKy, NienKhoa, NgayTao, NgayDong, TrangThai)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [TenDot, req.body.MoTa || null, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi]
         );
 
         const [[newPhase]] = await db.promise().query(
-            `SELECT *, NgayTao AS NgayMo FROM dot_dangky WHERE MaDot = ?`, [result.insertId]
+            `SELECT * FROM dot_dangky WHERE MaDot = ?`, [result.insertId]
         );
 
         res.status(201).json({ success: true, message: 'Tạo đợt đăng ký thành công!', data: newPhase });
@@ -2458,10 +2457,10 @@ app.post('/api/enrollment/phases', async (req, res) => {
 });
 // 8. Cập nhật một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.put('/api/enrollment/phases/:id', async (req, res) => {
-    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { TenDot, HocKy, NienKhoa, NgayTao, NgayDong } = req.body;
     const { id } = req.params;
 
-    if (!TenDot || !NgayMo || !NgayDong) {
+    if (!TenDot || !NgayTao || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
     const tenDotRegex = /^[\p{L}\p{N}\s\-_(),.]*$/u;
@@ -2469,7 +2468,7 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
-    const startDate = parseDateTimeInVN(NgayMo);
+    const startDate = parseDateTimeInVN(NgayTao);
     let endDate = parseDateTimeInVN(NgayDong);
     if (NgayDong && NgayDong.length === 10) {
         endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000 - 1000); // 23:59:59
@@ -2477,13 +2476,13 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
     const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
     try {
-        const [[existingPhase]] = await db.promise().query('SELECT TrangThai, NgayTao as NgayMo, NgayDong FROM dot_dangky WHERE MaDot = ?', [id]);
+        const [[existingPhase]] = await db.promise().query('SELECT TrangThai, NgayTao, NgayDong FROM dot_dangky WHERE MaDot = ?', [id]);
         if (!existingPhase) return res.status(404).json({ message: 'Không tìm thấy đợt.' });
-        if (existingPhase.TrangThai === 'Dong') {
+        if (existingPhase.TrangThai === 'Đóng') {
             return res.status(403).json({ message: 'Không thể sửa đợt đăng ký đã đóng.' });
         }
         
-        const existingStartTime = parseDateTimeInVN(existingPhase.NgayMo).getTime();
+        const existingStartTime = parseDateTimeInVN(existingPhase.NgayTao).getTime();
         const existingEndTime = parseDateTimeInVN(existingPhase.NgayDong).getTime();
         
         if (Math.abs(startDate.getTime() - existingStartTime) > 60000) {
@@ -2508,8 +2507,7 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
             return res.status(400).json({ message: 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.' });
         }
 
-        const isFuture = startDate.getTime() > now.getTime();
-        const trangThaiMoi = isFuture ? 'Cho' : 'Mo';
+        const trangThaiMoi = 'Mo';
 
         const conflictPhase = await findConflictingOpenPhase(startDate, endDate, id);
         if (conflictPhase) {
@@ -2523,9 +2521,9 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
 
         const [result] = await db.promise().query(
             `UPDATE dot_dangky
-       SET TenDot = ?, MoTa = ?, HocKy = ?, NamHoc = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
+       SET TenDot = ?, MoTa = ?, HocKy = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
        WHERE MaDot = ?`,
-            [TenDot, req.body.MoTa || null, HocKy || null, NamHoc || '', NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi, id]
+            [TenDot, req.body.MoTa || null, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi, id]
         );
 
         if (result.affectedRows === 0) {
@@ -2545,7 +2543,7 @@ app.post('/api/enrollment/phases/:id/close', async (req, res) => {
     try {
         // Chỉ cập nhật duy nhất trạng thái đợt đăng ký trong bảng dot_dangky
         await db.promise().query(
-            `UPDATE dot_dangky SET TrangThai = 'Dong' WHERE MaDot = ?`,
+            `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE MaDot = ?`,
             [req.params.id]
         );
 
@@ -2565,7 +2563,7 @@ app.post('/api/enrollment/phases/:id/reopen', async (req, res) => {
     try {
         const [[existingPhase]] = await db.promise().query('SELECT * FROM dot_dangky WHERE MaDot = ?', [id]);
         if (!existingPhase) return res.status(404).json({ message: 'Không tìm thấy đợt.' });
-        if (existingPhase.TrangThai !== 'Dong') return res.status(400).json({ message: 'Đợt này chưa đóng.' });
+        if (existingPhase.TrangThai !== 'Đóng') return res.status(400).json({ message: 'Đợt này chưa đóng.' });
 
         const now = new Date();
         let newEndDate = existingPhase.NgayDong;
@@ -3420,8 +3418,14 @@ app.get('/api/attendance/percentage/:mssv', (req, res) => {
 // ==================== THÔNG BÁO ====================
 
 app.get('/api/announcements', (req, res) => executeQuery(`SELECT tb.*, u.TaiKhoan as NguoiTaoTen, l.TenLop FROM thongbao tb LEFT JOIN users u ON tb.NguoiTao = u.TaiKhoan LEFT JOIN lophoc l ON tb.MaLop_Nhan = l.MaLop ORDER BY tb.NgayTao DESC`, [], res, 'Lỗi!'));
-app.post('/api/announcements', (req, res) => executeInsert('INSERT INTO thongbao (TieuDe, NoiDung, NguoiTao, MaLop_Nhan) VALUES (?, ?, ?, ?)', [req.body.TieuDe, req.body.NoiDung, req.body.NguoiTao, req.body.MaLop_Nhan], res, 'Thêm thông báo thành công', 'Lỗi'));
-app.put('/api/announcements/:id', (req, res) => executeUpdate('UPDATE thongbao SET TieuDe=?, NoiDung=?, NguoiTao=?, MaLop_Nhan=? WHERE MaThongBao=?', [req.body.TieuDe, req.body.NoiDung, req.body.NguoiTao, req.body.MaLop_Nhan, req.params.id], res, 'Cập nhật thành công', 'Lỗi'));
+app.post('/api/announcements', (req, res) => {
+    const tieuDe = req.body.TieuDe ? req.body.TieuDe.substring(0, 255) : '';
+    executeInsert('INSERT INTO thongbao (TieuDe, NoiDung, NguoiTao, MaLop_Nhan) VALUES (?, ?, ?, ?)', [tieuDe, req.body.NoiDung, req.body.NguoiTao, req.body.MaLop_Nhan], res, 'Thêm thông báo thành công', 'Lỗi');
+});
+app.put('/api/announcements/:id', (req, res) => {
+    const tieuDe = req.body.TieuDe ? req.body.TieuDe.substring(0, 255) : '';
+    executeUpdate('UPDATE thongbao SET TieuDe=?, NoiDung=?, NguoiTao=?, MaLop_Nhan=? WHERE MaThongBao=?', [tieuDe, req.body.NoiDung, req.body.NguoiTao, req.body.MaLop_Nhan, req.params.id], res, 'Cập nhật thành công', 'Lỗi');
+});
 app.delete('/api/announcements/:id', (req, res) => executeDelete('DELETE FROM thongbao WHERE MaThongBao=?', [req.params.id], res, 'Xóa thành công', 'Lỗi'));
 app.get('/api/announcements/student/:mssv', (req, res) => executeQuery(`SELECT tb.*, u.TaiKhoan as NguoiTaoTen, l.TenLop, CASE WHEN tb.MaLop_Nhan IS NULL THEN 'Toàn trường' ELSE l.TenLop END as PhamVi FROM thongbao tb LEFT JOIN users u ON tb.NguoiTao = u.TaiKhoan LEFT JOIN lophoc l ON tb.MaLop_Nhan = l.MaLop WHERE tb.MaLop_Nhan IS NULL OR tb.MaLop_Nhan = (SELECT MaLop FROM sinhvien WHERE MSSV = ?) ORDER BY tb.NgayTao DESC`, [req.params.mssv], res, 'Lỗi!'));
 
@@ -3493,6 +3497,9 @@ app.put('/api/admin/training-points/:id', (req, res) => {
     const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet, GhiChu } = req.body;
     let xepLoai = 'Kém';
     const diem = Number(TongDiem);
+    if (isNaN(diem) || diem < 0 || diem > 150) {
+        return res.status(400).json({ success: false, message: 'Tổng điểm rèn luyện không hợp lệ!' });
+    }
     if (diem >= 90) xepLoai = 'Xuất sắc';
     else if (diem >= 80) xepLoai = 'Tốt';
     else if (diem >= 65) xepLoai = 'Khá';
@@ -3610,7 +3617,11 @@ app.post('/api/training-points', (req, res) => {
         console.log('ChiTiet data:', JSON.stringify(ChiTiet, null, 2));
 
         let xepLoai = 'Kém';
-        if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
+        const diemTdg = Number(DiemTuDanhGia);
+        if (isNaN(diemTdg) || diemTdg < 0 || diemTdg > 150) {
+            return res.status(400).json({ success: false, message: 'Tổng điểm rèn luyện không hợp lệ!' });
+        }
+        if (diemTdg >= 90) xepLoai = 'Xuất sắc';
         else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
         else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
         else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
@@ -3708,8 +3719,9 @@ app.get('/api/support/student/:mssv', (req, res) => {
 
 app.post('/api/support', (req, res) => {
     const { MSSV, LoaiYeuCau, ChuDe, NoiDung } = req.body;
+    const safeChuDe = ChuDe ? ChuDe.substring(0, 255) : '';
     const query = "INSERT INTO yeucau_hotro (MSSV, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Chờ xử lý')";
-    executeInsert(query, [MSSV, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
+    executeInsert(query, [MSSV, LoaiYeuCau, safeChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 
 // ==================== [GIẢNG VIÊN] YÊU CẦU & HỖ TRỢ ====================
@@ -3720,8 +3732,9 @@ app.get('/api/support/teacher/:maGV', (req, res) => {
 
 app.post('/api/support/teacher', (req, res) => {
     const { MaGiangVien, LoaiYeuCau, ChuDe, NoiDung } = req.body;
+    const safeChuDe = ChuDe ? ChuDe.substring(0, 255) : '';
     const query = "INSERT INTO yeucau_hotro (MaGiangVien, LoaiYeuCau, ChuDe, NoiDung, NgayGui, TrangThai) VALUES (?, ?, ?, ?, NOW(), 'Chờ xử lý')";
-    executeInsert(query, [MaGiangVien, LoaiYeuCau, ChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
+    executeInsert(query, [MaGiangVien, LoaiYeuCau, safeChuDe, NoiDung], res, 'Gửi yêu cầu thành công!', 'Lỗi gửi yêu cầu!');
 });
 
 // ==================== [MODULE: ONLINE EXAM] ====================

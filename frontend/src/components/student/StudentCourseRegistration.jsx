@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BookPlus, Plus, Trash2, Clock, CheckCircle2, MapPin, CalendarDays, AlertCircle, Save, XCircle, Wallet, Search, Hourglass, Users, ChevronRight, GraduationCap } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { BookPlus, Plus, Trash2, CheckCircle2, MapPin, CalendarDays, AlertCircle, Save, XCircle, Wallet, Search, Hourglass, Users, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API_URL from '../../api';
-import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
+import { Toast, ConfirmDialog } from '../common/ModalPortal';
 import { StudentCourseRegistrationSkeleton } from '../common/StudentSkeleton';
 
 function StudentCourseRegistration({ user }) {
@@ -27,25 +27,26 @@ function StudentCourseRegistration({ user }) {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [availRes, myRes, phaseRes] = await Promise.all([
-        axios.get(`${API_URL}/api/enrollment/available/${user.username}`),
-        axios.get(`${API_URL}/api/enrollment/my-courses/${user.username}`),
+        axios.get(`${API_URL}/api/enrollment/available?mssv=${user?.username}`),
+        axios.get(`${API_URL}/api/enrollment/my-courses?mssv=${user?.username}`),
         axios.get(`${API_URL}/api/enrollment/phases`)
       ]);
       setAvailableCourses(availRes.data || []);
       setMyCourses(myRes.data || []);
       setPhases(phaseRes.data || []);
-    } catch (error) {
+    } catch (e) {
+      console.error(e);
       showToast('Lỗi tải dữ liệu. Vui lòng refresh lại trang!', 'error');
     } finally { setLoading(false); }
-  };
+  }, [user?.username]);
 
   useEffect(() => {
     if (user?.username) fetchData();
-  }, [user]);
+  }, [fetchData, user?.username]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000);
@@ -53,8 +54,8 @@ function StudentCourseRegistration({ user }) {
   }, []);
 
   const activePhase = useMemo(() => {
-    return phases.find(p => p.TrangThai === 'Mo') || null;
-  }, [phases]);
+    return phases.find(p => p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) <= now && (!p.NgayDong || new Date(p.NgayDong) > now)) || null;
+  }, [phases, now]);
 
   function diffText(ms) {
     const totalMin = Math.max(0, Math.floor(ms / 60000));
@@ -213,7 +214,7 @@ function StudentCourseRegistration({ user }) {
     return val;
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '';
+  // formatDate removed as it is unused
 
   const renderStatusBadge = (status) => {
     switch (status) {
@@ -440,7 +441,7 @@ function StudentCourseRegistration({ user }) {
                   <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, opacity: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
                     key={c.MaLopHocPhan || i}
                     className={`p-5 rounded-3xl border-2 ${c.isLocal ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100 bg-white hover:border-slate-200'} shadow-sm relative group transition-all`}
                   >
