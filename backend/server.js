@@ -2300,7 +2300,13 @@ app.get('/api/enrollment/phases', async (req, res) => {
     try {
         // Bảng dot_dangky không có cột NgayMo — cột NgayTao đóng vai trò "ngày mở đợt".
         // Alias NgayTao AS NgayMo để giữ nguyên hợp đồng dữ liệu cho frontend.
-        const query = 'SELECT *, NgayTao AS NgayMo FROM dot_dangky ORDER BY NgayTao DESC';
+        const query = `
+            SELECT *, 
+                   DATE_FORMAT(NgayTao, '%Y-%m-%dT%H:%i:%s') AS NgayMo,
+                   DATE_FORMAT(NgayDong, '%Y-%m-%dT%H:%i:%s') AS NgayDong 
+            FROM dot_dangky 
+            ORDER BY NgayTao DESC
+        `;
         db.query(query, (error, results) => {
             if (error) {
                 console.error("Lỗi truy vấn SQL:", error);
