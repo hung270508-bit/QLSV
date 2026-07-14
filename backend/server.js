@@ -2150,6 +2150,7 @@ app.delete('/api/enrollment/phases/:id', async (req, res) => {
             [req.params.id]
         );
 
+        notifyPhaseChange();
         res.json({ success: true, message: 'Đã xóa đợt đăng ký thành công!' });
     } catch (err) {
         console.error("Lỗi khi xóa đợt đăng ký:", err);
@@ -2370,6 +2371,32 @@ async function findConflictingOpenPhase(ngayMo, ngayDong, excludeId) {
     return rows[0] || null;
 }
 
+// ==================== SSE CHO ENROLLMENT PHASES ====================
+const phaseStreamClients = [];
+
+app.get('/api/enrollment/phases/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const clientId = Date.now();
+    const newClient = { id: clientId, res };
+    phaseStreamClients.push(newClient);
+
+    req.on('close', () => {
+        const idx = phaseStreamClients.findIndex(c => c.id === clientId);
+        if (idx !== -1) phaseStreamClients.splice(idx, 1);
+    });
+});
+
+const notifyPhaseChange = () => {
+    phaseStreamClients.forEach(client => {
+        client.res.write(`data: ${JSON.stringify({ type: 'PHASE_CHANGED' })}\n\n`);
+    });
+};
+// ====================================================================
+
 // 6. Lấy danh sách các đợt đăng ký
 app.get('/api/enrollment/phases', async (req, res) => {
     try {
@@ -2449,6 +2476,7 @@ app.post('/api/enrollment/phases', async (req, res) => {
             `SELECT * FROM dot_dangky WHERE MaDot = ?`, [result.insertId]
         );
 
+        notifyPhaseChange();
         res.status(201).json({ success: true, message: 'Tạo đợt đăng ký thành công!', data: newPhase });
     } catch (err) {
         console.error('POST /api/enrollment/phases error:', err);
@@ -2530,6 +2558,7 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
             return res.status(404).json({ message: 'Không tìm thấy đợt đăng ký cần cập nhật.' });
         }
 
+        notifyPhaseChange();
         res.json({ success: true, message: 'Cập nhật đợt đăng ký thành công!' });
     } catch (err) {
         console.error('PUT /api/enrollment/phases/:id error:', err);
@@ -2547,6 +2576,7 @@ app.post('/api/enrollment/phases/:id/close', async (req, res) => {
             [req.params.id]
         );
 
+        notifyPhaseChange();
         res.json({
             success: true,
             message: `Đã đóng đợt đăng ký thành công!`
@@ -2587,6 +2617,7 @@ app.post('/api/enrollment/phases/:id/reopen', async (req, res) => {
             [formattedNgayDong, id]
         );
 
+        notifyPhaseChange();
         res.json({ success: true, message: 'Mở lại đợt đăng ký thành công!', extended: isExtended });
     } catch (err) {
         console.error('POST /api/enrollment/phases/:id/reopen error:', err);

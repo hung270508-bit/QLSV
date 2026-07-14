@@ -314,7 +314,23 @@ function EnrollmentPhaseManagement() {
     try { const r = await axios.get(`${API_URL}/api/students`); setStudents(r.data || []); }
     catch (e) { console.error(e); }
   };
-  useEffect(() => { fetchPhases(); fetchCourseSections(); fetchStudents(); }, []);
+  useEffect(() => { 
+    fetchPhases(); 
+    fetchCourseSections(); 
+    fetchStudents(); 
+
+    const eventSource = new EventSource(`${API_URL}/api/enrollment/phases/stream`);
+    eventSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'PHASE_CHANGED') {
+          axios.get(`${API_URL}/api/enrollment/phases`).then(r => setPhases(r.data || [])).catch(console.error);
+        }
+      } catch (err) {}
+    };
+
+    return () => eventSource.close();
+  }, []);
 
   // options
   const hocKyOptions = useMemo(() => {
