@@ -592,7 +592,7 @@ function EnrollmentPhaseManagement() {
       </div>
 
       {/* ── Stats row ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Tổng số đợt', value: stats.total, color: 'text-[#152238]', bg: 'bg-white', border: 'border-slate-200', icon: <TrendingUp className="w-5 h-5 text-[#152238]/40" /> },
           { label: 'Đang mở', value: stats.active, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: <ToggleRight className="w-5 h-5 text-emerald-500" /> },
@@ -668,11 +668,20 @@ function EnrollmentPhaseManagement() {
                       className="hover:bg-slate-50/80 transition-colors group">
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{phase.TenDot}</p>
-                        {phase.TrangThai === 'Mo' && !isExpired && phase.NgayDong && (
-                          <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-[#F4C542] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-fit">
-                            <Hourglass className="w-3 h-3" /> Còn {diffText(new Date(phase.NgayDong) - now)}
-                          </div>
-                        )}
+                        {(() => {
+                          if (phase.TrangThai !== 'Mo' || isExpired) return null;
+                          const start = phase.NgayTao ? new Date(phase.NgayTao) : null;
+                          const isWaiting = start && start > now;
+                          const targetDate = isWaiting ? start : (phase.NgayDong ? new Date(phase.NgayDong) : null);
+                          if (!targetDate) return null;
+                          const prefix = isWaiting ? 'Mở sau' : 'Còn';
+                          const colorClass = isWaiting ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200';
+                          return (
+                            <div className={`flex items-center gap-1.5 mt-1 text-[11px] font-semibold px-2 py-0.5 rounded border w-fit ${colorClass}`}>
+                              <Hourglass className="w-3 h-3" /> {prefix} {diffText(targetDate - now)}
+                            </div>
+                          );
+                        })()}
                         {phase.MoTa && <p className="text-xs text-slate-400 mt-1 line-clamp-1">{phase.MoTa}</p>}
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap hidden md:table-cell">
