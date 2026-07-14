@@ -278,7 +278,9 @@ function StudentCourseRegistration({ user }) {
 
         {/* Left Column: Available Courses List */}
         <div className="flex-1 w-full flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 backdrop-blur-xl p-4 rounded-3xl border border-slate-200/60 shadow-sm sticky top-0 z-20">
+          {activePhase ? (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 backdrop-blur-xl p-4 rounded-3xl border border-slate-200/60 shadow-sm sticky top-0 z-20">
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3 w-full">
               <div className="relative flex-1 min-w-[200px]">
@@ -343,6 +345,9 @@ function StudentCourseRegistration({ user }) {
                         <div>
                           <div className="flex items-center gap-3 mb-1.5 flex-wrap">
                             <h4 className={`font-black text-lg ${disabled ? 'text-slate-600' : 'text-slate-900 group-hover:text-[#152238]'} transition-colors leading-tight`}>{c.TenMonHoc}</h4>
+                            {c.MaLop && (
+                              <span className="bg-purple-50 text-purple-600 border border-purple-100 font-bold text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">Lớp {c.MaLop}</span>
+                            )}
                             <span className="bg-slate-100 text-slate-500 font-bold text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">{c.MaLopHocPhan}</span>
                             {(c.DiemCu === null || c.DiemCu === undefined)
                               ? <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span>
@@ -400,6 +405,16 @@ function StudentCourseRegistration({ user }) {
               </div>
             )}
           </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-12 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-slate-200/60 shadow-sm min-h-[400px]">
+              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                <CalendarDays className="w-12 h-12 text-slate-300" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-700 mb-2">Chưa đến đợt đăng ký</h3>
+              <p className="text-slate-500 text-center max-w-sm">Hiện tại hệ thống không có đợt đăng ký học phần nào đang mở dành cho bạn. Vui lòng theo dõi thông báo và quay lại sau.</p>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Sticky Premium Cart */}
@@ -432,13 +447,16 @@ function StudentCourseRegistration({ user }) {
                     <div className="flex justify-between items-start mb-3">
                       <div className="pr-10">
                         <p className="font-bold text-slate-800 text-base leading-tight mb-1">{c.TenMonHoc}</p>
-                        <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase">{c.MaLopHocPhan}</p>
+                        <div className="flex items-center gap-2">
+                          {c.MaLop && <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 uppercase">Lớp {c.MaLop}</span>}
+                          <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase">{c.MaLopHocPhan}</p>
+                        </div>
                       </div>
 
                       {/* Remove action */}
                       {(() => {
                         const canRemoveSaved = !c.isLocal && !!c.CoTheXoa;
-                        const canRemove = c.isLocal || canRemoveSaved;
+                        const canRemove = (c.isLocal || canRemoveSaved) && !!activePhase;
                         if (!canRemove && c.TrangThai !== 'Chờ đóng tiền' && c.TrangThai !== 'Tạm lưu') return null;
                         return (
                           <button
@@ -455,10 +473,20 @@ function StudentCourseRegistration({ user }) {
 
                     <div className="flex items-center justify-between mt-4">
                       <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">
-                          <CalendarDays className="w-3.5 h-3.5 text-blue-500" /> {formatThu(c.Thu)}
-                        </span>
-                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">Tiết {c.CaHoc}</span>
+                        {(c.Thu || c.CaHoc) ? (
+                          <>
+                            {c.Thu && (
+                              <span className="flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">
+                                <CalendarDays className="w-3.5 h-3.5 text-blue-500" /> {formatThu(c.Thu)}
+                              </span>
+                            )}
+                            {c.CaHoc && (
+                              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">Tiết {c.CaHoc}</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400 italic">Chưa xếp lịch</span>
+                        )}
                       </div>
 
                       {c.isLocal

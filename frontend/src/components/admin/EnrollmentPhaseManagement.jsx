@@ -13,7 +13,7 @@ const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]*$/u;
 const TEN_DOT_INVALID_CHARS_REGEX = /[^\p{L}\p{N}\s\-_(),.]/gu;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const fmtDate = (d) => d ? new Date(d).toLocaleString('vi-VN') : '—';
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
 
 function diffText(ms) {
   const totalMin = Math.max(0, Math.floor(ms / 60000));
@@ -25,26 +25,26 @@ function diffText(ms) {
   return `${mins} phút`;
 }
 
-const getMinDateTimeStr = () => {
+const getMinDateStr = () => {
   const d = new Date();
   const offset = d.getTimezoneOffset() * 60000;
   const localTime = new Date(d.getTime() - offset);
-  return localTime.toISOString().slice(0, 16);
+  return localTime.toISOString().slice(0, 10);
 };
 
 // ── sub-components ────────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
   const cfg = {
-    success: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', icon: <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> },
-    warning: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', icon: <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" /> },
-    error: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', icon: <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" /> },
+    success: { bg: 'bg-[#10B981]', text: 'text-white', icon: <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" /> },
+    warning: { bg: 'bg-[#F59E0B]', text: 'text-white', icon: <AlertTriangle className="w-5 h-5 text-white flex-shrink-0" /> },
+    error: { bg: 'bg-[#EF4444]', text: 'text-white', icon: <AlertCircle className="w-5 h-5 text-white flex-shrink-0" /> },
   }[toast.type] || {};
   return (
-    <motion.div initial={{ opacity: 0, y: -16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -16, scale: 0.97 }}
-      className={`flex items-start gap-3 rounded-2xl border ${cfg.border} ${cfg.bg} p-4 shadow-lg max-w-sm w-full`}>
+    <motion.div initial={{ opacity: 0, y: -24, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.95 }}
+      className={`flex items-center gap-3 rounded-xl shadow-xl px-5 py-3.5 max-w-sm w-full ${cfg.bg} ${cfg.text}`}>
       {cfg.icon}
-      <p className={`flex-1 text-sm leading-relaxed ${cfg.text}`}>{toast.message}</p>
-      <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+      <p className={`flex-1 text-sm font-medium leading-relaxed`}>{toast.message}</p>
+      <button onClick={onClose} className="text-white/70 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
     </motion.div>
   );
 }
@@ -183,10 +183,10 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày mở <span className="text-red-500">*</span></label>
-              <input type="datetime-local"
+              <input type="date"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayMo ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                 value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })}
-                min={isEdit ? undefined : getMinDateTimeStr()}
+                min={isEdit ? undefined : getMinDateStr()}
                 required />
               {dateErrors?.NgayMo
                 ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayMo}</p>
@@ -195,10 +195,10 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày đóng <span className="text-red-500">*</span></label>
-              <input type="datetime-local"
+              <input type="date"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayDong ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                 value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })}
-                min={form.NgayMo || getMinDateTimeStr()}
+                min={form.NgayMo || getMinDateStr()}
                 required />
               {dateErrors?.NgayDong
                 ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayDong}</p>
@@ -240,6 +240,13 @@ function StatusBadge({ phase, now }) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Đang mở
+      </span>
+    );
+  }
+  if (phase.TrangThai === 'Cho') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Chờ mở
       </span>
     );
   }
@@ -301,14 +308,13 @@ function EnrollmentPhaseManagement() {
   useEffect(() => { if (!editingPhase && !form.NienKhoa && nienKhoaOptions.length > 0) setForm(p => ({ ...p, NienKhoa: nienKhoaOptions[0] })); }, [nienKhoaOptions, editingPhase, form.NienKhoa]);
   useEffect(() => { if (!editingPhase && !form.HocKy && hocKyOptions.length > 0) setForm(p => ({ ...p, HocKy: hocKyOptions[0] })); }, [hocKyOptions, editingPhase, form.HocKy]);
 
-  const findConflictingOpenPhase = (hocKy, nienKhoa, ngayMo, ngayDong, excludeId) => {
-    if (!hocKy || !nienKhoa || !ngayMo || !ngayDong) return null;
+  const findConflictingOpenPhase = (ngayMo, ngayDong, excludeId) => {
+    if (!ngayMo || !ngayDong) return null;
     const start = new Date(ngayMo);
     const end = new Date(ngayDong);
     return phases.find(p => {
       if (excludeId && p.MaDot === excludeId) return false;
-      if (p.TrangThai !== 'Mo') return false;
-      if (p.HocKy !== hocKy || p.NienKhoa !== nienKhoa) return false;
+      if (p.TrangThai === 'Dong') return false;
       const pStart = new Date(p.NgayMo);
       const pEnd = new Date(p.NgayDong);
       // Chồng chéo nếu: start < pEnd và pStart < end
@@ -317,7 +323,7 @@ function EnrollmentPhaseManagement() {
   };
 
   const openCreateForm = () => { setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayMo: '', NgayDong: '' }); setFormOpen(true); };
-  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 16) : '', NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 16) : '' }); setFormOpen(true); };
+  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 10) : '', NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 10) : '' }); setFormOpen(true); };
   const closeForm = () => { setFormOpen(false); setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); };
 
   const handleSubmit = (e) => {
@@ -340,24 +346,28 @@ function EnrollmentPhaseManagement() {
 
     if (form.NgayMo && form.NgayDong) {
       const now = new Date();
-      const startDate = new Date(form.NgayMo);
-      const endDate = new Date(form.NgayDong);
+      const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const startDateStr = form.NgayMo.includes('T') ? form.NgayMo : `${form.NgayMo}T00:00:00+07:00`;
+      const endDateStr = form.NgayDong.includes('T') ? form.NgayDong : `${form.NgayDong}T23:59:59+07:00`;
+      
+      const startDate = new Date(startDateStr);
+      const endDate = new Date(endDateStr);
       const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
       let isNgayMoChanged = true;
       if (editingPhase && editingPhase.NgayMo) {
-        const originalStartDate = new Date(editingPhase.NgayMo);
-        if (Math.abs(startDate.getTime() - originalStartDate.getTime()) < 60000) {
+        if (form.NgayMo === editingPhase.NgayMo.slice(0, 10)) {
           isNgayMoChanged = false;
         }
       }
 
       if (isNgayMoChanged) {
-        if (startDate.getTime() < now.getTime() - 2 * 60000) {
+        if (startDate.getTime() < todayAtMidnight.getTime()) {
           newDateErrors.NgayMo = 'Thời gian mở không được nằm trong quá khứ.';
           hasError = true;
         }
-        if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
+        if (startDate.getTime() > todayAtMidnight.getTime() + twoWeeksInMs) {
           newDateErrors.NgayMo = 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.';
           hasError = true;
         }
@@ -365,14 +375,13 @@ function EnrollmentPhaseManagement() {
 
       let isNgayDongChanged = true;
       if (editingPhase && editingPhase.NgayDong) {
-        const originalEndDate = new Date(editingPhase.NgayDong);
-        if (Math.abs(endDate.getTime() - originalEndDate.getTime()) < 60000) {
+        if (form.NgayDong === editingPhase.NgayDong.slice(0, 10)) {
           isNgayDongChanged = false;
         }
       }
 
       if (isNgayDongChanged) {
-        if (endDate.getTime() < now.getTime() - 2 * 60000) {
+        if (endDate.getTime() < todayAtMidnight.getTime()) {
           newDateErrors.NgayDong = 'Thời gian đóng không được nằm trong quá khứ.';
           hasError = true;
         }
@@ -391,11 +400,11 @@ function EnrollmentPhaseManagement() {
     setDateErrors(newDateErrors);
     if (hasError) return;
 
-    const willBeOpen = editingPhase ? editingPhase.TrangThai === 'Mo' : true;
+    const willBeOpen = editingPhase ? editingPhase.TrangThai !== 'Dong' : true;
     if (willBeOpen) {
-      const conflict = findConflictingOpenPhase(form.HocKy, form.NienKhoa, form.NgayMo, form.NgayDong, editingPhase?.MaDot);
+      const conflict = findConflictingOpenPhase(form.NgayMo, form.NgayDong, editingPhase?.MaDot);
       if (conflict) {
-        setHocKyError(`Đã có đợt đang mở ("${conflict.TenDot}").`);
+        setHocKyError(`Thời gian đợt đăng ký bị chồng chéo với đợt "${conflict.TenDot}".`);
         return;
       } else {
         setHocKyError('');
@@ -427,26 +436,40 @@ function EnrollmentPhaseManagement() {
     confirmLabel: 'Đóng đợt', variant: 'warning', onConfirm: () => closePhase(phase.MaDot)
   });
   const closePhase = async (id) => {
-    try { await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`); showToast('Đã đóng đợt.', 'success'); fetchPhases(); }
+    try { await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`); showToast('Đóng đợt đăng ký thành công!', 'success'); fetchPhases(); }
     catch { showToast('Không thể đóng đợt đăng ký', 'error'); }
     finally { setConfirmDialog(null); }
   };
 
   const requestOpen = (phase) => {
-    const conflict = findConflictingOpenPhase(phase.HocKy, phase.NienKhoa, phase.NgayMo, phase.NgayDong, phase.MaDot);
-    if (conflict) { showToast(`Học kỳ "${phase.HocKy}" khóa "${phase.NienKhoa}" đang có đợt mở. Đóng đợt đó trước.`, 'warning'); return; }
+    const now = new Date();
+    let newEnd = new Date(phase.NgayDong);
+    let extendedMsg = '';
+    if (newEnd <= now) {
+      newEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      extendedMsg = ' Đợt đã quá hạn nên hệ thống sẽ tự động gia hạn thêm 3 ngày.';
+    }
+    
+    const conflict = findConflictingOpenPhase(phase.NgayMo, newEnd, phase.MaDot);
+    if (conflict) { showToast(`Thời gian bị chồng chéo với đợt "${conflict.TenDot}". Không thể mở nhiều đợt cùng lúc.`, 'warning'); return; }
+    
     setConfirmDialog({
-      title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?`,
+      title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?${extendedMsg}`,
       confirmLabel: 'Mở lại', variant: 'primary', onConfirm: () => openPhase(phase.MaDot)
     });
   };
   const openPhase = async (id) => {
-    const phase = phases.find(p => p.MaDot === id); if (!phase) return;
     try {
-      await axios.put(`${API_URL}/api/enrollment/phases/${id}`, { ...phase, TrangThai: 'Mo' });
-      showToast('Đã mở lại đợt đăng ký.', 'success'); fetchPhases();
-    } catch { showToast('Không thể mở lại đợt', 'error'); }
-    finally { setConfirmDialog(null); }
+      const res = await axios.post(`${API_URL}/api/enrollment/phases/${id}/reopen`);
+      if (res.data.extended) {
+        showToast('Mở lại thành công và đã tự động gia hạn 3 ngày!', 'success');
+      } else {
+        showToast('Mở đợt đăng ký thành công!', 'success');
+      }
+      fetchPhases();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Không thể mở lại đợt đăng ký', 'error');
+    } finally { setConfirmDialog(null); }
   };
 
   const requestDelete = (phase) => setConfirmDialog({
@@ -455,7 +478,7 @@ function EnrollmentPhaseManagement() {
   });
 
   const performDelete = async (id) => {
-    try { await axios.delete(`${API_URL}/api/enrollment/phases/${id}`); showToast('Đã xóa đợt thành công!', 'success'); fetchPhases(); }
+    try { await axios.delete(`${API_URL}/api/enrollment/phases/${id}`); showToast('Xóa đợt đăng ký thành công!', 'success'); fetchPhases(); }
     catch (err) { showToast(`Không thể xóa: ${err.response?.data?.message || 'Lỗi không xác định'}`, 'error'); }
     finally { setConfirmDialog(null); }
   };
@@ -464,7 +487,8 @@ function EnrollmentPhaseManagement() {
   const phaseSummary = useMemo(() => ({
     total: phases.length,
     open: phases.filter(p => p.TrangThai === 'Mo').length,
-    closed: phases.filter(p => p.TrangThai === 'Đóng').length,
+    cho: phases.filter(p => p.TrangThai === 'Cho').length,
+    closed: phases.filter(p => p.TrangThai === 'Dong').length,
   }), [phases]);
 
   const filteredPhases = useMemo(() => {
@@ -559,7 +583,7 @@ function EnrollmentPhaseManagement() {
             </div>
             {/* filter */}
             <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1">
-              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Đóng', 'Đã đóng']].map(([val, label]) => (
+              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Cho', 'Chờ'], ['Dong', 'Đã đóng']].map(([val, label]) => (
                 <button key={val} onClick={() => setFilterStatus(val)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterStatus === val ? 'bg-[#152238] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
                   {label}
@@ -609,7 +633,7 @@ function EnrollmentPhaseManagement() {
                       <td className="px-5 py-4 whitespace-nowrap hidden md:table-cell">
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium text-slate-700">{phase.HocKy || '—'}</span>
-                          <span className="text-xs text-slate-400">{phase.NamHoc || '—'} · {phase.NienKhoa || '—'}</span>
+                          <span className="text-xs text-slate-400">{phase.NienKhoa || '—'}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap hidden sm:table-cell">
@@ -621,16 +645,19 @@ function EnrollmentPhaseManagement() {
                       <td className="px-5 py-4"><StatusBadge phase={phase} now={now} /></td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openEditForm(phase)} title="Chỉnh sửa"
-                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          {phase.TrangThai === 'Mo' ? (
+                          {phase.TrangThai !== 'Dong' && (
+                            <button onClick={() => openEditForm(phase)} title="Chỉnh sửa"
+                              className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {phase.TrangThai === 'Mo' && (
                             <button onClick={() => requestClose(phase)}
                               className="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold transition-colors">
                               Đóng
                             </button>
-                          ) : (
+                          )}
+                          {phase.TrangThai === 'Dong' && (
                             <button onClick={() => requestOpen(phase)}
                               className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors">
                               Mở lại

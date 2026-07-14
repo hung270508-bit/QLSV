@@ -1694,6 +1694,7 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
         const query = `
             SELECT 
                 lhp.MaLopHocPhan,
+                lhp.MaLop,
                 lhp.MaMonHoc,
                 mh.TenMonHoc,
                 mh.SoTinChi,
@@ -1769,6 +1770,7 @@ app.get('/api/enrollment/my-courses/:mssv', async (req, res) => {
             SELECT 
                 dk.MaDangKy,
                 dk.MaLopHocPhan,
+                lhp.MaLop,
                 dk.HocKy,
                 dk.TrangThai,
                 dk.NgayDangKy,
@@ -1780,6 +1782,8 @@ app.get('/api/enrollment/my-courses/:mssv', async (req, res) => {
                 MAX(lh.NgayHoc) AS NgayKetThuc,
                 COUNT(DISTINCT lh.MaLichHoc) AS SoBuoi,
                 GROUP_CONCAT(DISTINCT CONCAT(lh.PhongHoc, ' - Tiết ', lh.CaHoc) SEPARATOR ', ') AS LichHoc,
+                DAYOFWEEK(MIN(lh.NgayHoc)) AS Thu,
+                MAX(lh.CaHoc) AS CaHoc,
                 'Chờ đóng tiền' as TrangThaiThucTe,
                 CASE WHEN dk.TrangThai = 'Đã hủy' THEN 0 ELSE 1 END as CoTheXoa
             FROM dangky_hocphan dk
@@ -2301,8 +2305,13 @@ const parseDateTimeInVN = (dateStr) => {
     if (dateStr instanceof Date) return dateStr;
     if (typeof dateStr !== 'string') return new Date(dateStr);
     if (!dateStr.includes('Z') && !dateStr.includes('+') && !/-\d{2}:\d{2}$/.test(dateStr)) {
-        const normalized = dateStr.replace(' ', 'T');
-        return new Date(normalized + ':00+07:00');
+        let normalized = dateStr.replace(' ', 'T');
+        if (normalized.length === 10) {
+            normalized += 'T00:00:00';
+        } else if (normalized.length === 16) {
+            normalized += ':00';
+        }
+        return new Date(normalized + '+07:00');
     }
     return new Date(dateStr);
 };
@@ -2318,17 +2327,27 @@ const formatMySQLDateTime = (dateStr) => {
     return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
 };
 
+// Cập nhật trạng thái tự động
+async function autoUpdatePhases() {
+    try {
+        await db.promise().query(`UPDATE dot_dangky SET TrangThai = 'Mo' WHERE TrangThai = 'Cho' AND NgayTao <= NOW() AND NgayDong > NOW()`);
+        await db.promise().query(`UPDATE dot_dangky SET TrangThai = 'Dong' WHERE TrangThai IN ('Mo', 'Cho') AND NgayDong <= NOW()`);
+    } catch (e) {
+        console.error("Auto update phases error:", e);
+    }
+}
+
 // Kiểm tra xem có đợt nào khác đang mở bị chồng chéo thời gian không.
 // Cho phép lên lịch nhiều đợt đăng ký trong tương lai nếu chúng không chồng chéo thời gian.
-async function findConflictingOpenPhase(hocKy, nienKhoa, ngayMo, ngayDong, excludeId) {
-    if (!hocKy || !nienKhoa || !ngayMo || !ngayDong) return null;
+async function findConflictingOpenPhase(ngayMo, ngayDong, excludeId) {
+    if (!ngayMo || !ngayDong) return null;
     const formattedNgayMo = formatMySQLDateTime(ngayMo);
     const formattedNgayDong = formatMySQLDateTime(ngayDong);
     
-    let query = `SELECT MaDot, TenDot, HocKy, NienKhoa, NgayDong FROM dot_dangky
-                 WHERE TrangThai = 'Mo' AND HocKy = ? AND NienKhoa = ?
+    let query = `SELECT MaDot, TenDot, HocKy, NienKhoa, NgayTao as NgayMo, NgayDong FROM dot_dangky
+                 WHERE TrangThai != 'Dong'
                  AND NgayTao < ? AND ? < NgayDong`;
-    const params = [hocKy, nienKhoa, formattedNgayDong, formattedNgayMo];
+    const params = [formattedNgayDong, formattedNgayMo];
     if (excludeId) {
         query += ' AND MaDot != ?';
         params.push(excludeId);
@@ -2341,6 +2360,7 @@ async function findConflictingOpenPhase(hocKy, nienKhoa, ngayMo, ngayDong, exclu
 // 6. Lấy danh sách các đợt đăng ký
 app.get('/api/enrollment/phases', async (req, res) => {
     try {
+        await autoUpdatePhases();
         // Bảng dot_dangky không có cột NgayMo — cột NgayTao đóng vai trò "ngày mở đợt".
         // Alias NgayTao AS NgayMo để giữ nguyên hợp đồng dữ liệu cho frontend.
         const query = `
@@ -2365,7 +2385,7 @@ app.get('/api/enrollment/phases', async (req, res) => {
 
 // 7. Tạo mới một đợt đăng ký (CHÈN DỮ LIỆU vào dot_dangky)
 app.post('/api/enrollment/phases', async (req, res) => {
-    const { TenDot, HocKy, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
 
     if (!TenDot || !NgayMo || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
@@ -2375,41 +2395,45 @@ app.post('/api/enrollment/phases', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
+    const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startDate = parseDateTimeInVN(NgayMo);
-    const endDate = parseDateTimeInVN(NgayDong);
+    let endDate = parseDateTimeInVN(NgayDong);
+    if (NgayDong && NgayDong.length === 10) {
+        endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000 - 1000); // 23:59:59
+    }
     const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
-    if (startDate.getTime() < now.getTime() - 2 * 60000) {
+    if (startDate.getTime() < todayAtMidnight.getTime()) {
         return res.status(400).json({ message: 'Thời gian mở không được nằm trong quá khứ.' });
     }
-    if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
+    if (startDate.getTime() > todayAtMidnight.getTime() + twoWeeksInMs) {
         return res.status(400).json({ message: 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.' });
     }
-    if (endDate <= startDate) {
+    if (endDate.getTime() <= startDate.getTime()) {
         return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
     }
-    if (endDate.getTime() - startDate.getTime() > twoWeeksInMs) {
+    if (endDate.getTime() - startDate.getTime() > twoWeeksInMs + 24 * 60 * 60 * 1000) {
         return res.status(400).json({ message: 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.' });
     }
 
-    const trangThaiMoi = TrangThai || 'Mo';
-    if (trangThaiMoi === 'Mo') {
-        const conflictPhase = await findConflictingOpenPhase(HocKy, NienKhoa, NgayMo, NgayDong, null);
-        if (conflictPhase) {
-            return res.status(409).json({
-                message: `Học kỳ "${HocKy}" khóa "${NienKhoa}" đang có đợt mở bị chồng chéo thời gian ("${conflictPhase.TenDot}").`
-            });
-        }
+    const isFuture = startDate.getTime() > now.getTime();
+    const trangThaiMoi = isFuture ? 'Cho' : 'Mo';
+
+    const conflictPhase = await findConflictingOpenPhase(startDate, endDate, null);
+    if (conflictPhase) {
+        return res.status(409).json({
+            message: `Thời gian bị chồng chéo với đợt "${conflictPhase.TenDot}". Không thể mở nhiều đợt cùng lúc.`
+        });
     }
 
     try {
-        const formattedNgayMo = formatMySQLDateTime(NgayMo);
-        const formattedNgayDong = formatMySQLDateTime(NgayDong);
+        const formattedNgayMo = formatMySQLDateTime(startDate);
+        const formattedNgayDong = formatMySQLDateTime(endDate);
 
         const [result] = await db.promise().query(
             `INSERT INTO dot_dangky (TenDot, MoTa, HocKy, NamHoc, NienKhoa, NgayTao, NgayDong, TrangThai)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [TenDot, req.body.MoTa || null, HocKy || null, '', NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo']
+            [TenDot, req.body.MoTa || null, HocKy || null, NamHoc || '', NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi]
         );
 
         const [[newPhase]] = await db.promise().query(
@@ -2424,7 +2448,7 @@ app.post('/api/enrollment/phases', async (req, res) => {
 });
 // 8. Cập nhật một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.put('/api/enrollment/phases/:id', async (req, res) => {
-    const { TenDot, HocKy, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
+    const { TenDot, HocKy, NamHoc, NienKhoa, NgayMo, NgayDong, TrangThai } = req.body;
     const { id } = req.params;
 
     if (!TenDot || !NgayMo || !NgayDong) {
@@ -2435,57 +2459,64 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
+    const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startDate = parseDateTimeInVN(NgayMo);
-    const endDate = parseDateTimeInVN(NgayDong);
+    let endDate = parseDateTimeInVN(NgayDong);
+    if (NgayDong && NgayDong.length === 10) {
+        endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000 - 1000); // 23:59:59
+    }
     const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
     try {
-        const [[existingPhase]] = await db.promise().query('SELECT NgayTao as NgayMo, NgayDong FROM dot_dangky WHERE MaDot = ?', [id]);
+        const [[existingPhase]] = await db.promise().query('SELECT TrangThai, NgayTao as NgayMo, NgayDong FROM dot_dangky WHERE MaDot = ?', [id]);
         if (!existingPhase) return res.status(404).json({ message: 'Không tìm thấy đợt.' });
+        if (existingPhase.TrangThai === 'Dong') {
+            return res.status(403).json({ message: 'Không thể sửa đợt đăng ký đã đóng.' });
+        }
         
         const existingStartTime = parseDateTimeInVN(existingPhase.NgayMo).getTime();
         const existingEndTime = parseDateTimeInVN(existingPhase.NgayDong).getTime();
         
         if (Math.abs(startDate.getTime() - existingStartTime) > 60000) {
-            if (startDate.getTime() < now.getTime() - 2 * 60000) {
+            if (startDate.getTime() < todayAtMidnight.getTime()) {
                 return res.status(400).json({ message: 'Thời gian mở không được nằm trong quá khứ.' });
             }
-            if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
+            if (startDate.getTime() > todayAtMidnight.getTime() + twoWeeksInMs) {
                 return res.status(400).json({ message: 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.' });
             }
         }
 
         if (Math.abs(endDate.getTime() - existingEndTime) > 60000) {
-            if (endDate.getTime() < now.getTime() - 2 * 60000) {
+            if (endDate.getTime() < todayAtMidnight.getTime()) {
                 return res.status(400).json({ message: 'Thời gian đóng không được nằm trong quá khứ.' });
             }
         }
         
-        if (endDate <= startDate) {
+        if (endDate.getTime() <= startDate.getTime()) {
             return res.status(400).json({ message: 'Ngày đóng phải sau ngày mở.' });
         }
-        if (endDate.getTime() - startDate.getTime() > twoWeeksInMs) {
+        if (endDate.getTime() - startDate.getTime() > twoWeeksInMs + 24 * 60 * 60 * 1000) {
             return res.status(400).json({ message: 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.' });
         }
 
-        const trangThaiMoi = TrangThai || 'Mo';
-        if (trangThaiMoi === 'Mo') {
-            const conflictPhase = await findConflictingOpenPhase(HocKy, NienKhoa, NgayMo, NgayDong, id);
-            if (conflictPhase) {
-                return res.status(409).json({
-                    message: `Học kỳ "${HocKy}" khóa "${NienKhoa}" đang có đợt mở bị chồng chéo thời gian ("${conflictPhase.TenDot}").`
-                });
-            }
+        const isFuture = startDate.getTime() > now.getTime();
+        const trangThaiMoi = isFuture ? 'Cho' : 'Mo';
+
+        const conflictPhase = await findConflictingOpenPhase(startDate, endDate, id);
+        if (conflictPhase) {
+            return res.status(409).json({
+                message: `Thời gian bị chồng chéo với đợt "${conflictPhase.TenDot}". Không thể mở nhiều đợt cùng lúc.`
+            });
         }
 
-        const formattedNgayMo = formatMySQLDateTime(NgayMo);
-        const formattedNgayDong = formatMySQLDateTime(NgayDong);
+        const formattedNgayMo = formatMySQLDateTime(startDate);
+        const formattedNgayDong = formatMySQLDateTime(endDate);
 
         const [result] = await db.promise().query(
             `UPDATE dot_dangky
-       SET TenDot = ?, MoTa = ?, HocKy = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
+       SET TenDot = ?, MoTa = ?, HocKy = ?, NamHoc = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
        WHERE MaDot = ?`,
-            [TenDot, req.body.MoTa || null, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, TrangThai || 'Mo', id]
+            [TenDot, req.body.MoTa || null, HocKy || null, NamHoc || '', NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi, id]
         );
 
         if (result.affectedRows === 0) {
@@ -2505,7 +2536,7 @@ app.post('/api/enrollment/phases/:id/close', async (req, res) => {
     try {
         // Chỉ cập nhật duy nhất trạng thái đợt đăng ký trong bảng dot_dangky
         await db.promise().query(
-            `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE MaDot = ?`,
+            `UPDATE dot_dangky SET TrangThai = 'Dong' WHERE MaDot = ?`,
             [req.params.id]
         );
 
@@ -2516,6 +2547,43 @@ app.post('/api/enrollment/phases/:id/close', async (req, res) => {
     } catch (err) {
         console.error('POST /api/enrollment/phases/:id/close error:', err);
         res.status(500).json({ message: 'Lỗi đóng đợt đăng ký', error: err.message });
+    }
+});
+
+// 10. Mở lại đợt đăng ký đã đóng
+app.post('/api/enrollment/phases/:id/reopen', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [[existingPhase]] = await db.promise().query('SELECT * FROM dot_dangky WHERE MaDot = ?', [id]);
+        if (!existingPhase) return res.status(404).json({ message: 'Không tìm thấy đợt.' });
+        if (existingPhase.TrangThai !== 'Dong') return res.status(400).json({ message: 'Đợt này chưa đóng.' });
+
+        const now = new Date();
+        let newEndDate = existingPhase.NgayDong;
+        let isExtended = false;
+        
+        if (new Date(existingPhase.NgayDong).getTime() <= now.getTime()) {
+            newEndDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+            isExtended = true;
+        }
+
+        const conflictPhase = await findConflictingOpenPhase(existingPhase.NgayTao, newEndDate, id);
+        if (conflictPhase) {
+            return res.status(409).json({
+                message: `Thời gian bị chồng chéo với đợt "${conflictPhase.TenDot}". Không thể mở nhiều đợt cùng lúc.`
+            });
+        }
+
+        const formattedNgayDong = formatMySQLDateTime(newEndDate);
+        await db.promise().query(
+            `UPDATE dot_dangky SET TrangThai = 'Mo', NgayDong = ? WHERE MaDot = ?`,
+            [formattedNgayDong, id]
+        );
+
+        res.json({ success: true, message: 'Mở lại đợt đăng ký thành công!', extended: isExtended });
+    } catch (err) {
+        console.error('POST /api/enrollment/phases/:id/reopen error:', err);
+        res.status(500).json({ message: 'Lỗi mở lại đợt đăng ký!', error: err.message });
     }
 });
 
