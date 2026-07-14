@@ -3413,7 +3413,7 @@ app.get('/api/admin/training-points', (req, res) => {
 });
 
 app.put('/api/admin/training-points/:id', (req, res) => {
-    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet } = req.body;
+    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet, GhiChu } = req.body;
     let xepLoai = 'Yếu';
     const diem = Number(TongDiem);
     if (diem >= 90) xepLoai = 'Xuất sắc';
