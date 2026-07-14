@@ -199,12 +199,16 @@ const DetailRow = ({ hocPhiId }) => {
                 <thead className="bg-gray-100"><tr>
                   <th className="px-3 py-2 text-left">Môn học</th>
                   <th className="px-3 py-2 text-center">TC</th>
-                  <th className="px-3 py-2 text-right">Thành tiền</th>
+                  <th className="px-3 py-2 text-right">Học phí</th>
+                  <th className="px-3 py-2 text-right">Phí tài liệu</th>
+                  <th className="px-3 py-2 text-right">Phải đóng</th>
                 </tr></thead>
                 <tbody>{(data.chi_tiet || []).map((ct, i) => (
                   <tr key={i} className="border-t border-gray-100">
                     <td className="px-3 py-1.5 font-medium">{ct.ten_mon_hoc}</td>
                     <td className="px-3 py-1.5 text-center">{ct.so_tin_chi}</td>
+                    <td className="px-3 py-1.5 text-right font-mono">{Number(ct.hoc_phi ?? ct.thanh_tien).toLocaleString('vi-VN')}đ</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-amber-700">{Number(ct.phi_tai_lieu || 0).toLocaleString('vi-VN')}đ</td>
                     <td className="px-3 py-1.5 text-right font-mono text-emerald-700">{Number(ct.thanh_tien).toLocaleString('vi-VN')}đ</td>
                   </tr>
                 ))}</tbody>
