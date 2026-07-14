@@ -364,7 +364,6 @@ function EnrollmentPhaseManagement() {
 
     if (form.NgayMo && form.NgayDong) {
       const now = new Date();
-      const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
       const startDateStr = form.NgayMo.includes('+') || form.NgayMo.includes('Z') ? form.NgayMo : `${form.NgayMo}:00+07:00`;
       const endDateStr = form.NgayDong.includes('+') || form.NgayDong.includes('Z') ? form.NgayDong : `${form.NgayDong}:00+07:00`;
@@ -381,11 +380,11 @@ function EnrollmentPhaseManagement() {
       }
 
       if (isNgayMoChanged) {
-        if (startDate.getTime() < todayAtMidnight.getTime()) {
+        if (startDate.getTime() < now.getTime() - 60000) {
           newDateErrors.NgayMo = 'Thời gian mở không được nằm trong quá khứ.';
           hasError = true;
         }
-        if (startDate.getTime() > todayAtMidnight.getTime() + twoWeeksInMs) {
+        if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
           newDateErrors.NgayMo = 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.';
           hasError = true;
         }
@@ -399,7 +398,7 @@ function EnrollmentPhaseManagement() {
       }
 
       if (isNgayDongChanged) {
-        if (endDate.getTime() < todayAtMidnight.getTime()) {
+        if (endDate.getTime() < now.getTime() - 60000) {
           newDateErrors.NgayDong = 'Thời gian đóng không được nằm trong quá khứ.';
           hasError = true;
         }
