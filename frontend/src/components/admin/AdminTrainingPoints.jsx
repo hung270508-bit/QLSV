@@ -164,6 +164,7 @@ function AdminTrainingPoints() {
   // States cho khiếu nại (appeal) liên kết
   const [activeAppeal, setActiveAppeal] = useState(null);
   const [resolveAppealCheckbox, setResolveAppealCheckbox] = useState(false);
+  const [confirmReviewDialog, setConfirmReviewDialog] = useState({ show: false, title: '', message: '', action: null });
 
 
 
@@ -537,11 +538,6 @@ function AdminTrainingPoints() {
   };
 
   const handleSubmitReview = async () => {
-    if (!validateReview()) {
-      showToast('Vui lòng kiểm tra lại các mục tiêu chí đã điều chỉnh!', 'error');
-      return;
-    }
-
     try {
       const ghiChuCompiled = compileGhiChu();
       await axios.put(`${API_URL}/api/admin/training-points/${selectedRecord.MaDanhGia}`, {
@@ -567,6 +563,28 @@ function AdminTrainingPoints() {
     } catch {
       showToast('Có lỗi xảy ra khi duyệt điểm!', 'error');
     }
+  };
+
+  const handlePreSubmitReview = () => {
+    if (!validateReview()) {
+      showToast('Vui lòng kiểm tra lại các mục tiêu chí đã điều chỉnh!', 'error');
+      return;
+    }
+
+    const isApprove = trangThaiDuyet === 'Đã xác nhận';
+    const message = isApprove
+      ? `Bạn có chắc chắn phê duyệt và CHỐT ĐIỂM rèn luyện (${tongDiemPreview}đ) cho sinh viên ${selectedRecord?.HoTen}?`
+      : `Bạn có chắc chắn muốn TRẢ LẠI PHIẾU rèn luyện cho sinh viên ${selectedRecord?.HoTen} để yêu cầu chỉnh sửa?`;
+
+    setConfirmReviewDialog({
+      show: true,
+      title: isApprove ? 'Xác nhận chốt điểm' : 'Xác nhận trả lại phiếu',
+      message: message,
+      action: async () => {
+        setConfirmReviewDialog({ show: false, title: '', message: '', action: null });
+        await handleSubmitReview();
+      }
+    });
   };
 
   const getScoreColor = (score) => {
@@ -621,6 +639,16 @@ function AdminTrainingPoints() {
         onConfirm={handleCreatePeriod}
         onCancel={() => setIsConfirmCreateOpen(false)}
         type="confirm"
+      />
+
+      {/* ConfirmDialog xác nhận duyệt/chốt điểm */}
+      <ConfirmDialog
+        show={confirmReviewDialog.show}
+        title={confirmReviewDialog.title}
+        message={confirmReviewDialog.message}
+        onConfirm={confirmReviewDialog.action}
+        onCancel={() => setConfirmReviewDialog({ show: false, title: '', message: '', action: null })}
+        type={confirmReviewDialog.title === 'Xác nhận chốt điểm' ? 'confirm' : 'danger'}
       />
 
 
@@ -1666,7 +1694,7 @@ function AdminTrainingPoints() {
                 {/* Footer Modal */}
                 <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end gap-3 shrink-0 mt-auto">
                   <button onClick={() => setSelectedRecord(null)} className="px-5 py-2.5 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Hủy</button>
-                  <button onClick={handleSubmitReview} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Chốt điểm</button>
+                  <button onClick={handlePreSubmitReview} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Chốt điểm</button>
                 </div>
               </motion.div>
             </div>

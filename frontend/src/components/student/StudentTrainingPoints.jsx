@@ -417,7 +417,7 @@ function StudentTrainingPoints({ user }) {
     }
   };
 
-  const handleSendAppeal = async () => {
+  const handleSendAppeal = () => {
     if (!appealCategory) {
       setAppealError('Vui lòng chọn loại khiếu nại!');
       return;
@@ -431,28 +431,37 @@ function StudentTrainingPoints({ user }) {
       return;
     }
 
-    let compiledContent = ``;
-    if (appealCriteria.length > 0) compiledContent += `- Tiêu chí khiếu nại:\n  + ${appealCriteria.join('\n  + ')}\n`;
-    compiledContent += `- Chi tiết lý do: ${appealReason}`;
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận gửi khiếu nại',
+      message: 'Bạn có chắc chắn muốn gửi đơn khiếu nại này? Mọi thông tin cung cấp phải hoàn toàn trung thực.',
+      action: async () => {
+        let compiledContent = ``;
+        if (appealCriteria.length > 0) compiledContent += `- Tiêu chí khiếu nại:\n  + ${appealCriteria.join('\n  + ')}\n`;
+        compiledContent += `- Chi tiết lý do: ${appealReason}`;
 
-    if (appealFile) {
-      compiledContent += `\n\n[FILE_MINH_CHUNG_START]\n${appealFile.data}\n[FILE_MINH_CHUNG_END]`;
-    }
+        if (appealFile) {
+          compiledContent += `\n\n[FILE_MINH_CHUNG_START]\n${appealFile.data}\n[FILE_MINH_CHUNG_END]`;
+        }
 
-    try {
-      const appealHocKy = appealSemester.replace('HK', 'Học kỳ ').replace(/_/g, ' ');
-      await axios.post(`${API_URL}/api/support`, {
-        MSSV: user.username,
-        LoaiYeuCau: 'Khiếu nại điểm rèn luyện',
-        ChuDe: `[${appealCategory}] Khiếu nại điểm rèn luyện - ${appealHocKy}`,
-        NoiDung: compiledContent
-      });
-      showToast('Gửi khiếu nại thành công!', 'success');
-      setIsAppealModalOpen(false);
-      fetchData(); // reload support requests
-    } catch {
-      showToast('Lỗi gửi khiếu nại!', 'error');
-    }
+        try {
+          const appealHocKy = appealSemester.replace('HK', 'Học kỳ ').replace(/_/g, ' ');
+          await axios.post(`${API_URL}/api/support`, {
+            MSSV: user.username,
+            LoaiYeuCau: 'Khiếu nại điểm rèn luyện',
+            ChuDe: `[${appealCategory}] Khiếu nại điểm rèn luyện - ${appealHocKy}`,
+            NoiDung: compiledContent
+          });
+          showToast('Gửi khiếu nại thành công!', 'success');
+          setIsAppealModalOpen(false);
+          setConfirmDialog({ show: false, title: '', message: '', action: null });
+          fetchData(); // reload support requests
+        } catch {
+          showToast('Lỗi gửi khiếu nại!', 'error');
+          setConfirmDialog({ show: false, title: '', message: '', action: null });
+        }
+      }
+    });
   };
 
   const getDaysLeft = (dateStr) => {
