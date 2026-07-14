@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
     Plus, Calendar, BookOpen, AlertCircle, Sparkles, 
     Trash2, BarChart2, XCircle, CheckCircle, Users,
-    ClipboardList, History, ChevronLeft, Edit2, MonitorPlay
+    ClipboardList, History, ChevronLeft, Edit2, MonitorPlay, Clock
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
@@ -97,6 +97,101 @@ function ExamManagement() {
         }
     };
 
+    const isBankAvailableForClass = (b, maMonHoc, maLopHocPhan) => {
+        if (!maMonHoc || b.ma_mon_hoc !== maMonHoc) return false;
+        if (!maLopHocPhan) return true;
+
+        const shortLhp = maLopHocPhan.split('.').pop(); // VD: HP01, HP02
+        const bankLhp = (b.ma_lop_hoc_phan || '').toString().trim();
+        const hasBracketTag = /\[([^\]]*HP[^\]]*)\]/i.test(b.tieu_de || '');
+
+        // Nếu bộ đề KHÔNG gán riêng cho LHP nào (tạo chung cho môn học ở Ảnh 2)
+        if ((!bankLhp || bankLhp === '[]' || bankLhp === 'null') && !hasBracketTag) {
+            return true;
+        }
+
+        // Nếu bộ đề có gán LHP -> chỉ hiện khi LHP đang chọn khớp với LHP của bộ đề
+        if (bankLhp && (bankLhp.includes(maLopHocPhan) || bankLhp.includes(shortLhp))) {
+            return true;
+        }
+        if (hasBracketTag && ((b.tieu_de || '').includes(shortLhp) || (b.tieu_de || '').includes(maLopHocPhan))) {
+            return true;
+        }
+
+        return false;
+    };
+
+    const VNDateTimePicker = ({ value, onChange, disabled = false, defaultTime = '08:00', hasError = false }) => {
+        const dateRef = useRef(null);
+
+        const parseValue = (val) => {
+            if (!val) return { dateStr: '', timeStr: defaultTime, displayDate: '' };
+            const [d, t] = val.split('T');
+            let displayDate = '';
+            if (d && d.includes('-')) {
+                const [y, m, day] = d.split('-');
+                displayDate = `${day}/${m}/${y}`;
+            }
+            return { dateStr: d || '', timeStr: (t || defaultTime).slice(0, 5), displayDate };
+        };
+
+        const { dateStr, timeStr, displayDate } = parseValue(value);
+
+        const handleDateChange = (newYMD) => {
+            if (!newYMD) {
+                onChange('');
+                return;
+            }
+            onChange(`${newYMD}T${timeStr || defaultTime}`);
+        };
+
+        const handleTimeChange = (newTime) => {
+            const t = newTime || defaultTime;
+            if (!dateStr) {
+                const today = new Date().toISOString().slice(0, 10);
+                onChange(`${today}T${t}`);
+                return;
+            }
+            onChange(`${dateStr}T${t}`);
+        };
+
+        return (
+            <div className={`flex items-center gap-2 w-full p-3.5 bg-gray-50 border ${hasError ? 'border-red-500 bg-red-50/30' : 'border-gray-200'} rounded-xl focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white transition-all ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                {/* Lịch chọn ngày (DD/MM/YYYY) */}
+                <div 
+                    className={`relative flex-1 flex items-center gap-2.5 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                    onClick={() => !disabled && dateRef.current && dateRef.current.showPicker && dateRef.current.showPicker()}
+                >
+                    <Calendar className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                    <span className={`text-sm font-medium ${displayDate ? 'text-gray-800 font-bold' : 'text-gray-400 font-medium'}`}>
+                        {displayDate || 'dd/mm/yyyy'}
+                    </span>
+                    <input
+                        ref={dateRef}
+                        type="date"
+                        disabled={disabled}
+                        value={dateStr}
+                        onChange={(e) => handleDateChange(e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                </div>
+
+                <div className="h-5 w-px bg-gray-200 flex-shrink-0" />
+
+                {/* Chọn giờ (HH:mm) */}
+                <div className="flex items-center gap-1.5 px-1">
+                    <Clock className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    <input
+                        type="time"
+                        disabled={disabled}
+                        value={timeStr}
+                        onChange={(e) => handleTimeChange(e.target.value)}
+                        className="bg-transparent border-0 text-sm font-bold text-gray-800 focus:outline-none cursor-pointer p-0"
+                    />
+                </div>
+            </div>
+        );
+    };
 
     const handleDeleteExam = async (exam) => {
         if (Number(exam.attempt_count) > 0) {
@@ -365,8 +460,12 @@ function ExamManagement() {
                             </div>
                         </div>
                         <button 
-                            onClick={() => setShowCreateModal(true)}
-                            className="flex items-center gap-2 px-6 py-3 bg-[#152238] hover:bg-[#152238]/90 text-white font-bold rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 text-sm"
+                            onClick={() => {
+                                setFormData(initialFormData);
+                                setSubmitErrors({});
+                                setShowCreateModal(true);
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-[#F4C542] hover:bg-[#e3b637] text-[#152238] font-extrabold rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 text-sm"
                         >
                             <Plus className="w-5 h-5" />
                             Tạo kỳ thi mới
@@ -625,9 +724,21 @@ function ExamManagement() {
                             animate={{ scale: 1, opacity: 1 }}
                             className="bg-white rounded-3xl w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl overflow-hidden"
                         >
-                            <div className="p-6 border-b bg-gray-50">
-                                <h3 className="text-2xl font-extrabold text-purple-900">Tạo Đợt Kiểm Tra Mới</h3>
-                                <p className="text-sm text-gray-700 font-medium mt-1">Hệ thống sẽ tạo ra 1 cột điểm độc lập cho đợt thi này</p>
+                            <div className="p-6 border-b bg-gray-50 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-2xl font-extrabold text-[#D49A00]">Tạo Đợt Kiểm Tra Mới</h3>
+                                    <p className="text-sm text-gray-700 font-medium mt-1">Hệ thống sẽ tạo ra 1 cột điểm độc lập cho đợt thi này</p>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setFormData(initialFormData);
+                                        setSubmitErrors({});
+                                    }} 
+                                    className="p-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-full transition-colors"
+                                >
+                                    <XCircle className="w-5 h-5" />
+                                </button>
                             </div>
                             <div className="flex-1 overflow-y-auto p-6 md:p-8">
                                 <form id="exam-form" onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -641,26 +752,26 @@ function ExamManagement() {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2">Lớp học phần</label>
-                                            <select required value={formData.ma_lop_hoc_phan} onChange={e => setFormData({...formData, ma_lop_hoc_phan: e.target.value})} className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium">
+                                            <select required value={formData.ma_lop_hoc_phan} onChange={e => setFormData({...formData, ma_lop_hoc_phan: e.target.value, bank_id: ''})} className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium">
                                                 <option value="">-- Chọn Lớp HP --</option>
                                                 {classes.filter(c => c.MaMonHoc === formData.ma_mon_hoc).map(c => <option key={c.MaLopHocPhan} value={c.MaLopHocPhan}>{c.TenMonHoc} ({c.MaLopHocPhan})</option>)}
                                             </select>
                                         </div>
                                     </div>
 
-                                    {/* NÂNG CẤP: CHỌN ĐÚNG NGÂN HÀNG ĐỀ */}
+                                    {/* NÂNG CẤP: CHỌN ĐÚNG NGÂN HÀNG ĐỀ THEO LỚP HP HỌC HOẶC ĐỀ CHUNG */}
                                     <div>
-                                        <label className="block text-sm font-extrabold text-[#152238] mb-2">Chọn Ngân hàng đề để bốc câu hỏi <span className="text-rose-500">*</span></label>
-                                        <select required value={formData.bank_id} onChange={e => setFormData({...formData, bank_id: e.target.value})} className="w-full p-3.5 bg-[#F4C542]/10/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-900">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Chọn Ngân hàng đề để bốc câu hỏi <span className="text-rose-500">*</span></label>
+                                        <select required value={formData.bank_id} onChange={e => setFormData({...formData, bank_id: e.target.value})} className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white font-medium text-gray-800">
                                             <option value="">-- Chọn bộ đề thi (Vui lòng chọn môn học trước) --</option>
-                                            {banks.filter(b => b.ma_mon_hoc === formData.ma_mon_hoc).map(b => (
+                                            {banks.filter(b => isBankAvailableForClass(b, formData.ma_mon_hoc, formData.ma_lop_hoc_phan)).map(b => (
                                                 <option key={b.id} value={b.id}>{b.tieu_de} (Có {b.tong_so_cau} câu)</option>
                                             ))}
                                         </select>
                                     </div>
                                     
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Tiêu đề đợt thi</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Tiêu đề đợt thi <span className="text-rose-500">*</span></label>
                                         <input type="text" required
                                             value={formData.tieu_de}
                                             onChange={e => {
@@ -668,10 +779,9 @@ function ExamManagement() {
                                                 setSubmitErrors(prev => ({ ...prev, tieu_de: undefined }));
                                             }}
                                             placeholder="VD: Kiểm tra giữa kỳ môn Cơ sở dữ liệu"
-                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.tieu_de ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.tieu_de ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium text-gray-800 focus:bg-white focus:ring-2`} />
                                         {submitErrors.tieu_de && (
                                             <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                                                
                                                 <span className="font-medium">{submitErrors.tieu_de}</span>
                                             </div>
                                         )}
@@ -679,24 +789,26 @@ function ExamManagement() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Mở phòng thi (Bắt đầu)</label>
-                                            <input type="datetime-local" required
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Mở phòng thi (Bắt đầu) <span className="text-rose-500">*</span></label>
+                                            <VNDateTimePicker 
                                                 value={formData.thoi_gian_bat_dau}
-                                                onChange={e => setFormData({...formData, thoi_gian_bat_dau: e.target.value})}
-                                                className="w-full p-3 border-2 border-emerald-300 bg-white rounded-xl text-emerald-900 font-bold focus:ring-2 focus:ring-emerald-500" />
+                                                onChange={val => setFormData({...formData, thoi_gian_bat_dau: val})}
+                                                defaultTime="08:00"
+                                            />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Đóng phòng thi (Kết thúc)</label>
-                                            <input type="datetime-local" required
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Đóng phòng thi (Kết thúc) <span className="text-rose-500">*</span></label>
+                                            <VNDateTimePicker 
                                                 value={formData.thoi_gian_ket_thuc}
-                                                onChange={e => setFormData({...formData, thoi_gian_ket_thuc: e.target.value})}
-                                                className="w-full p-3 border-2 border-rose-300 bg-white rounded-xl text-rose-900 font-bold focus:ring-2 focus:ring-rose-500" />
+                                                onChange={val => setFormData({...formData, thoi_gian_ket_thuc: val})}
+                                                defaultTime="17:00"
+                                            />
                                         </div>
                                     </div>
 
-                                    <div className="bg-gray-50 p-6 rounded-2xl border border-purple-100 space-y-5">
-                                        <div className="flex flex-col border-b border-gray-200/60 pb-4">
-                                            <h4 className="font-extrabold text-purple-900 flex items-center gap-2"> Cấu trúc đề thi</h4>
+                                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 space-y-5">
+                                        <div className="flex flex-col border-b border-gray-200 pb-4">
+                                            <h4 className="font-extrabold text-[#152238] flex items-center gap-2"> Cấu trúc đề thi</h4>
                                             {selectedBankInfo && (
                                                 <span className="text-sm font-semibold text-rose-600 mt-1">
                                                     * Ngân hàng đề hiện có tối đa {maxAvailableQuestions} câu.
@@ -706,7 +818,7 @@ function ExamManagement() {
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tổng số câu hỏi</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Tổng số câu hỏi <span className="text-rose-500">*</span></label>
                                                 <input type="number" required
                                                     value={formData.tong_so_cau}
                                                     onChange={e => {
@@ -724,16 +836,15 @@ function ExamManagement() {
                                                         }
                                                     }}
                                                     onBlur={e => setFormData({...formData, tong_so_cau: Number(formData.tong_so_cau) || 0})}
-                                                    className={`w-full p-3 bg-white border ${submitErrors.tong_so_cau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-xl text-center font-bold text-blue-600 focus:ring-2`} />
+                                                    className={`w-full p-3.5 bg-white border ${submitErrors.tong_so_cau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium text-gray-800 focus:ring-2`} />
                                                 {submitErrors.tong_so_cau && (
                                                     <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                                                        
                                                         <span className="font-medium">{submitErrors.tong_so_cau}</span>
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-extrabold text-gray-700 uppercase mb-1">Thời gian (phút)</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Thời gian (phút) <span className="text-rose-500">*</span></label>
                                                 <input type="number" required
                                                     value={formData.thoi_gian_thi_phut}
                                                     onChange={e => {
@@ -751,10 +862,9 @@ function ExamManagement() {
                                                         }
                                                     }}
                                                     onBlur={e => setFormData({...formData, thoi_gian_thi_phut: Number(formData.thoi_gian_thi_phut) || 0})}
-                                                    className={`w-full p-3 border-2 ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-purple-400 focus:ring-purple-500'} bg-white rounded-xl text-center font-extrabold text-gray-700 focus:ring-2 shadow-inner`} />
+                                                    className={`w-full p-3.5 bg-white border ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium text-gray-800 focus:ring-2`} />
                                                 {submitErrors.thoi_gian_thi_phut && (
                                                     <div className="mt-1 flex items-center gap-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                                                        
                                                         <span className="font-medium">{submitErrors.thoi_gian_thi_phut}</span>
                                                     </div>
                                                 )}
@@ -769,8 +879,24 @@ function ExamManagement() {
                                 </form>
                             </div>
                             <div className="p-5 border-t bg-gray-50 flex gap-4 shrink-0">
-                                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-all">Hủy bỏ</button>
-                                <button type="submit" form="exam-form" className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5">Tạo Kỳ Thi</button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setFormData(initialFormData);
+                                        setSubmitErrors({});
+                                    }} 
+                                    className="flex-1 py-3.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-all"
+                                >
+                                    Hủy bỏ
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    form="exam-form" 
+                                    className="flex-1 py-3.5 bg-[#F4C542] hover:bg-[#e3b637] text-[#152238] font-extrabold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5"
+                                >
+                                    Tạo Kỳ Thi
+                                </button>
                             </div>
                         </motion.div>
                     </div>
@@ -822,32 +948,36 @@ function ExamManagement() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Mở phòng thi (Bắt đầu)</label>
-                                            <input type="datetime-local" required
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Mở phòng thi (Bắt đầu) <span className="text-rose-500">*</span></label>
+                                            <VNDateTimePicker 
                                                 value={editExamData.thoi_gian_bat_dau}
                                                 disabled={Number(editExamData.attempt_count) > 0}
-                                                onChange={e => {
-                                                    setEditExamData({...editExamData, thoi_gian_bat_dau: e.target.value});
+                                                hasError={!!submitErrors.thoi_gian_bat_dau}
+                                                onChange={val => {
+                                                    setEditExamData({...editExamData, thoi_gian_bat_dau: val});
                                                     setSubmitErrors(prev => ({ ...prev, thoi_gian_bat_dau: undefined }));
                                                 }}
-                                                className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_bat_dau ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2 ${Number(editExamData.attempt_count) > 0 ? 'opacity-60 cursor-not-allowed' : ''}`} />
+                                                defaultTime="08:00"
+                                            />
                                             {submitErrors.thoi_gian_bat_dau && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_bat_dau}</div>}
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Đóng phòng thi (Kết thúc)</label>
-                                            <input type="datetime-local" required
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Đóng phòng thi (Kết thúc) <span className="text-rose-500">*</span></label>
+                                            <VNDateTimePicker 
                                                 value={editExamData.thoi_gian_ket_thuc}
-                                                onChange={e => {
-                                                    setEditExamData({...editExamData, thoi_gian_ket_thuc: e.target.value});
+                                                hasError={!!submitErrors.thoi_gian_ket_thuc}
+                                                onChange={val => {
+                                                    setEditExamData({...editExamData, thoi_gian_ket_thuc: val});
                                                     setSubmitErrors(prev => ({ ...prev, thoi_gian_ket_thuc: undefined }));
                                                 }}
-                                                className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_ket_thuc ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2`} />
+                                                defaultTime="17:00"
+                                            />
                                             {submitErrors.thoi_gian_ket_thuc && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_ket_thuc}</div>}
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thời gian làm bài (phút)</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Thời gian làm bài (phút) <span className="text-rose-500">*</span></label>
                                         <input type="number" required
                                             value={editExamData.thoi_gian_thi_phut}
                                             disabled={Number(editExamData.attempt_count) > 0}
@@ -863,7 +993,7 @@ function ExamManagement() {
                                                     }
                                                 }
                                             }}
-                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium focus:bg-white focus:ring-2 ${Number(editExamData.attempt_count) > 0 ? 'opacity-60 cursor-not-allowed' : ''}`} />
+                                            className={`w-full p-3.5 bg-gray-50 border ${submitErrors.thoi_gian_thi_phut ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500'} rounded-xl font-medium text-gray-800 focus:bg-white focus:ring-2 ${Number(editExamData.attempt_count) > 0 ? 'opacity-60 cursor-not-allowed' : ''}`} />
                                         {submitErrors.thoi_gian_thi_phut && <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{submitErrors.thoi_gian_thi_phut}</div>}
                                     </div>
                                 </form>

@@ -38,7 +38,7 @@ module.exports = (service, dbPromise) => {
         // 2. Quản lý phiên sinh AI
         startSession: async (req, res) => {
             try {
-                const { document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de, auto_generate } = req.body;
+                const { document_id, ma_mon_hoc, ma_lop_hoc_phan, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de, auto_generate } = req.body;
                 if (!document_id || !ma_mon_hoc || !ma_giang_vien) {
                     return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc để khởi tạo đề sinh câu hỏi.' });
                 }
@@ -46,6 +46,7 @@ module.exports = (service, dbPromise) => {
                 const session = await service.startSession({
                     document_id,
                     ma_mon_hoc,
+                    ma_lop_hoc_phan: ma_lop_hoc_phan || null,
                     ma_giang_vien,
                     so_cau_yeu_cau: so_cau_yeu_cau || 10,
                     do_kho: do_kho || 'Mixed',
@@ -157,8 +158,17 @@ module.exports = (service, dbPromise) => {
                 const { ma_giang_vien } = req.params;
                 await dbPromise.query(`UPDATE question_banks SET tieu_de = REGEXP_REPLACE(tieu_de, ' \\\\((Phiên|Đề) #[0-9]+\\\\)$', '') WHERE tieu_de REGEXP ' \\\\((Phiên|Đề) #[0-9]+\\\\)$'`).catch(()=>{});
 
+                await dbPromise.query(`
+                    SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'question_banks' AND COLUMN_NAME = 'ma_lop_hoc_phan'
+                `).then(async ([cols]) => {
+                    if (cols.length === 0) {
+                        await dbPromise.query(`ALTER TABLE question_banks ADD COLUMN ma_lop_hoc_phan VARCHAR(255) NULL`);
+                    }
+                }).catch(()=>{});
+
                 const [rows] = await dbPromise.query(
-                    `SELECT b.*, m.TenMonHoc, s.do_kho
+                    `SELECT b.*, m.TenMonHoc, s.do_kho, COALESCE(b.ma_lop_hoc_phan, s.ma_lop_hoc_phan) AS ma_lop_hoc_phan
                      FROM question_banks b
                      JOIN monhoc m ON b.ma_mon_hoc = m.MaMonHoc
                      LEFT JOIN ai_generation_sessions s ON b.session_id = s.id

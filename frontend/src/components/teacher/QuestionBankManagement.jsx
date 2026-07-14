@@ -380,6 +380,9 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                     const startRes = await axios.post(`${API_URL}/api/ai-exams/sessions/start`, {
                         document_id: docId,
                         ma_mon_hoc: uploadForm.ma_mon_hoc,
+                        ma_lop_hoc_phan: Array.isArray(uploadForm.ma_lop_hoc_phan) && uploadForm.ma_lop_hoc_phan.length > 0
+                            ? uploadForm.ma_lop_hoc_phan.join(',')
+                            : (uploadForm.ma_lop_hoc_phan || null),
                         ma_giang_vien: teacherId || 'GVCNTT001',
                         so_cau_yeu_cau: soCau,
                         do_kho: uploadForm.do_kho,
