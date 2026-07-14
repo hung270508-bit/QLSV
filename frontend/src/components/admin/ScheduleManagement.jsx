@@ -788,7 +788,7 @@ function ScheduleManagement() {
       title: editingSchedule || editingLhpSchedule ? 'Xác nhận cập nhật' : 'Xác nhận xếp lịch',
       message: editingSchedule || editingLhpSchedule
         ? `Lưu thay đổi cho lịch học này?`
-        : `Hệ thống sẽ tạo ${sessionsPayload.length} buổi học. Lưu vào Database?`,
+        : `Hệ thống sẽ tạo ${sessionsPayload.length} buổi học.`,
       action: async () => {
         if (isSubmitting) return;
         setIsSubmitting(true);

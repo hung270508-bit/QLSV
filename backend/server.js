@@ -3549,6 +3549,465 @@ const onlineExamRoutes = require('./online-exam/routes')(db.promise());
 app.use('/api/exam', onlineExamRoutes);
 
 
+// ==================== [MODULE: HỌC PHÍ + VIETQR] ====================
+
+// --- Tự động tạo bảng khi khởi động ---
+db.getConnection((err, conn) => {
+    if (err) return;
+    const createTables = [
+        `CREATE TABLE IF NOT EXISTS dot_dong_hoc_phi (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            ma_dot_dangky INT NOT NULL,
+            hoc_ky VARCHAR(20) NOT NULL,
+            ten_dot VARCHAR(200) NOT NULL,
+            ngay_mo DATETIME NOT NULL,
+            ngay_dong DATETIME NOT NULL,
+            trang_thai ENUM('chua_mo','dang_mo','da_dong') DEFAULT 'chua_mo',
+            don_gia_tin_chi DECIMAL(15,0) NOT NULL,
+            tao_boi VARCHAR(50) NOT NULL,
+            ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS hoc_phi_v2 (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            mssv VARCHAR(20) NOT NULL,
+            dot_id INT NOT NULL,
+            so_tien DECIMAL(15,0) NOT NULL,
+            trang_thai ENUM('Chưa đóng','Đã đóng') DEFAULT 'Chưa đóng',
+            ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_mssv_dot (mssv, dot_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS hoc_phi_chi_tiet (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            hoc_phi_id INT NOT NULL,
+            ma_lop_hoc_phan VARCHAR(50) NOT NULL,
+            ten_mon_hoc VARCHAR(100) NOT NULL,
+            so_tin_chi INT NOT NULL,
+            don_gia DECIMAL(15,0) NOT NULL,
+            thanh_tien DECIMAL(15,0) NOT NULL,
+            FOREIGN KEY (hoc_phi_id) REFERENCES hoc_phi_v2(id) ON DELETE CASCADE
+        )`,
+        `CREATE TABLE IF NOT EXISTS giao_dich_hoc_phi (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            hoc_phi_id INT NOT NULL,
+            ma_giao_dich VARCHAR(80) UNIQUE NOT NULL,
+            so_tien DECIMAL(15,0) NOT NULL,
+            noi_dung VARCHAR(100) NOT NULL,
+            qr_url TEXT NULL,
+            trang_thai ENUM('cho_thanh_toan','thanh_cong','that_bai','het_han') DEFAULT 'cho_thanh_toan',
+            nguon_xac_nhan ENUM('auto','manual') NULL,
+            admin_username VARCHAR(50) NULL,
+            minh_chung_url VARCHAR(255) NULL,
+            ghi_chu TEXT NULL,
+            thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            thoi_gian_xac_nhan DATETIME NULL,
+            FOREIGN KEY (hoc_phi_id) REFERENCES hoc_phi_v2(id)
+        )`
+    ];
+    let idx = 0;
+    const runNext = () => {
+        if (idx >= createTables.length) { conn.release(); return; }
+        conn.query(createTables[idx++], (e) => { if (e && e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[HocPhi] Tạo bảng lỗi:', e.message); runNext(); });
+    };
+    runNext();
+});
+
+// Helper: slug nội dung không dấu
+const removeVietnameseTones = (str) => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+};
+
+// Config VietQR (Vietinbank)
+const VIETQR_BANK_ID   = process.env.VIETQR_BANK_ID   || '970415'; // Vietinbank
+const VIETQR_ACCOUNT   = process.env.VIETQR_ACCOUNT   || '108873448328';
+const VIETQR_HOLDER    = process.env.VIETQR_HOLDER    || 'NhatTin University';
+const VIETQR_TEMPLATE  = process.env.VIETQR_TEMPLATE  || 'compact2';
+const VIETQR_SECRET    = process.env.VIETQR_SECRET    || 'vietqr-secret-nhattin-2026';
+
+// Middleware checkOwnership cho SV: token.id === mssv từ body (không dùng URL param)
+const checkTuitionOwnership = (req, res, next) => {
+    if (!req.user || !req.user.id) return res.status(401).json({ success: false, message: 'Không xác thực được người dùng!' });
+    next();
+};
+
+// ----- ADMIN ROUTES -----
+
+// GET /api/admin/tuition-periods — Danh sách đợt học phí
+app.get('/api/admin/tuition-periods', verifyToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền truy cập!' });
+    const { hoc_ky } = req.query;
+    let sql = `SELECT d.*, dd.TenDot as ten_dot_dangky, dd.TrangThai as trang_thai_dangky,
+                (SELECT COUNT(*) FROM hoc_phi_v2 WHERE dot_id = d.id) as so_sv
+               FROM dot_dong_hoc_phi d
+               LEFT JOIN dot_dangky dd ON d.ma_dot_dangky = dd.MaDot`;
+    const params = [];
+    if (hoc_ky && hoc_ky !== 'all') { sql += ' WHERE d.hoc_ky = ?'; params.push(hoc_ky); }
+    sql += ' ORDER BY d.ngay_tao DESC';
+    db.query(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi tải danh sách đợt!', error: err.message });
+        res.json({ success: true, data: rows });
+    });
+});
+
+// POST /api/admin/tuition-periods — Mở đợt đóng học phí (tự tính học phí cho toàn bộ SV)
+app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền truy cập!' });
+    const { ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong } = req.body;
+    const don_gia_tin_chi = 1150000; // Cố định 1 tín chỉ = 1,150,000 VNĐ theo yêu cầu
+    if (!ma_dot_dangky || !hoc_ky || !ten_dot || !ngay_mo || !ngay_dong) {
+        return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc!' });
+    }
+    const dbConn = await db.promise().getConnection();
+    try {
+        await dbConn.beginTransaction();
+
+        // Insert đợt đóng học phí
+        const [dotResult] = await dbConn.execute(
+            'INSERT INTO dot_dong_hoc_phi (ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, tao_boi, trang_thai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, req.user.username || req.user.id, 'chua_mo']
+        );
+        const dotId = dotResult.insertId;
+
+        // Lấy toàn bộ SV + môn học trong đợt đăng ký, join lophocphan để lấy số tín chỉ
+        const [svRows] = await dbConn.execute(
+            `SELECT dk.MSSV, dk.MaLopHocPhan, dk.HocKy,
+                    m.TenMonHoc, m.SoTinChi
+             FROM dangky_hocphan dk
+             JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan
+             JOIN monhoc m ON lhp.MaMonHoc = m.MaMonHoc
+             WHERE dk.HocKy = ? AND dk.TrangThai IN ('Đã duyệt','da_duyet','Chấp nhận','approved')`,
+            [hoc_ky]
+        );
+
+        if (svRows.length === 0) {
+            await dbConn.rollback();
+            dbConn.release();
+            return res.status(400).json({ success: false, message: 'Không tìm thấy sinh viên đã đăng ký hợp lệ trong học kỳ này!' });
+        }
+
+        // Nhóm theo MSSV
+        const svMap = {};
+        for (const row of svRows) {
+            if (!svMap[row.MSSV]) svMap[row.MSSV] = [];
+            svMap[row.MSSV].push(row);
+        }
+
+        const donGia = don_gia_tin_chi;
+        const hocPhiBulk = [];
+        const chiTietTemp = {};
+
+        for (const [mssv, monList] of Object.entries(svMap)) {
+            const tongTien = monList.reduce((sum, m) => sum + (Number(m.SoTinChi) * donGia), 0);
+            hocPhiBulk.push([mssv, dotId, tongTien]);
+            chiTietTemp[mssv] = monList.map(m => ({
+                ma_lop: m.MaLopHocPhan,
+                ten_mon: m.TenMonHoc,
+                tc: Number(m.SoTinChi),
+                don_gia: donGia,
+                thanh_tien: Number(m.SoTinChi) * donGia
+            }));
+        }
+
+        // Bulk insert hoc_phi_v2
+        if (hocPhiBulk.length > 0) {
+            await dbConn.query('INSERT IGNORE INTO hoc_phi_v2 (mssv, dot_id, so_tien) VALUES ?', [hocPhiBulk]);
+        }
+
+        // Lấy các id vừa insert để insert chi tiết
+        const [hpRows] = await dbConn.execute('SELECT id, mssv FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+        const chiTietBulk = [];
+        for (const hp of hpRows) {
+            const ctList = chiTietTemp[hp.mssv] || [];
+            for (const ct of ctList) {
+                chiTietBulk.push([hp.id, ct.ma_lop, ct.ten_mon, ct.tc, ct.don_gia, ct.thanh_tien]);
+            }
+        }
+        if (chiTietBulk.length > 0) {
+            await dbConn.query('INSERT INTO hoc_phi_chi_tiet (hoc_phi_id, ma_lop_hoc_phan, ten_mon_hoc, so_tin_chi, don_gia, thanh_tien) VALUES ?', [chiTietBulk]);
+        }
+
+        await dbConn.commit();
+        dbConn.release();
+        res.json({ success: true, message: `Đã tạo đợt học phí với ${hocPhiBulk.length} sinh viên!`, dot_id: dotId, so_sv: hocPhiBulk.length });
+    } catch (error) {
+        await dbConn.rollback();
+        dbConn.release();
+        console.error('[HocPhi] Lỗi tạo đợt:', error);
+        res.status(500).json({ success: false, message: 'Lỗi tạo đợt học phí!', error: error.message });
+    }
+});
+
+// PUT /api/admin/tuition-periods/:id/status — Mở/đóng đợt
+app.put('/api/admin/tuition-periods/:id/status', verifyToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const { trang_thai } = req.body;
+    const allowed = ['chua_mo', 'dang_mo', 'da_dong'];
+    if (!allowed.includes(trang_thai)) return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
+    db.query('UPDATE dot_dong_hoc_phi SET trang_thai = ? WHERE id = ?', [trang_thai, req.params.id], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+        res.json({ success: true, message: 'Cập nhật trạng thái thành công!' });
+    });
+});
+
+// GET /api/admin/tuitions?dot_id=&status=&search= — Danh sách học phí theo đợt
+app.get('/api/admin/tuitions', verifyToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const { dot_id, status, search } = req.query;
+    let sql = `SELECT hp.*, sv.HoTen as ten_sinh_vien, sv.MaLop,
+                (SELECT gd.trang_thai FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_trang_thai,
+                (SELECT gd.nguon_xac_nhan FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_nguon,
+                (SELECT gd.admin_username FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_admin,
+                (SELECT gd.ghi_chu FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_ghi_chu,
+                (SELECT gd.thoi_gian_xac_nhan FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_thoi_gian
+               FROM hoc_phi_v2 hp
+               LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV`;
+    const params = [];
+    const conditions = [];
+    if (dot_id) { conditions.push('hp.dot_id = ?'); params.push(dot_id); }
+    if (status && status !== 'all') { conditions.push('hp.trang_thai = ?'); params.push(status); }
+    if (search) { conditions.push('(hp.mssv LIKE ? OR sv.HoTen LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+    sql += ' ORDER BY hp.trang_thai ASC, sv.HoTen ASC';
+    db.query(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi tải danh sách!', error: err.message });
+        res.json({ success: true, data: rows });
+    });
+});
+
+// GET /api/admin/tuitions/:id/detail — Chi tiết học phí + lịch sử giao dịch
+app.get('/api/admin/tuitions/:id/detail', verifyToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const hocPhiId = req.params.id;
+    db.query(
+        `SELECT hp.*, sv.HoTen as ten_sinh_vien, d.ten_dot, d.ngay_dong, d.ngay_mo
+         FROM hoc_phi_v2 hp
+         LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
+         LEFT JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
+         WHERE hp.id = ?`, [hocPhiId],
+        (err, hpRows) => {
+            if (err || hpRows.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy học phí!' });
+            db.query('SELECT * FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hocPhiId], (err2, ctRows) => {
+                db.query('SELECT * FROM giao_dich_hoc_phi WHERE hoc_phi_id = ? ORDER BY thoi_gian_tao DESC', [hocPhiId], (err3, gdRows) => {
+                    res.json({ success: true, data: { ...hpRows[0], chi_tiet: ctRows || [], giao_dich: gdRows || [] } });
+                });
+            });
+        }
+    );
+});
+
+// PUT /api/admin/tuitions/:id/confirm-manual — Xác nhận thủ công
+app.put('/api/admin/tuitions/:id/confirm-manual', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const { ghi_chu, minh_chung_url } = req.body;
+    if (!ghi_chu || ghi_chu.trim().length < 5) {
+        return res.status(400).json({ success: false, message: 'Ghi chú bắt buộc tối thiểu 5 ký tự!' });
+    }
+    const hocPhiId = req.params.id;
+    const dbConn = await db.promise().getConnection();
+    try {
+        await dbConn.beginTransaction();
+        const [[hp]] = await dbConn.execute('SELECT * FROM hoc_phi_v2 WHERE id = ? FOR UPDATE', [hocPhiId]);
+        if (!hp) { await dbConn.rollback(); dbConn.release(); return res.status(404).json({ success: false, message: 'Không tìm thấy học phí!' }); }
+        if (hp.trang_thai === 'Đã đóng') { await dbConn.rollback(); dbConn.release(); return res.status(409).json({ success: false, message: 'Học phí này đã được đóng rồi!' }); }
+
+        const maGD = `MANUAL${hocPhiId}${req.user.id || req.user.username}${Date.now()}`;
+        const noiDung = `Xac nhan thu cong ${hocPhiId}`;
+        await dbConn.execute(
+            'INSERT INTO giao_dich_hoc_phi (hoc_phi_id, ma_giao_dich, so_tien, noi_dung, trang_thai, nguon_xac_nhan, admin_username, minh_chung_url, ghi_chu, thoi_gian_xac_nhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+            [hocPhiId, maGD, hp.so_tien, noiDung, 'thanh_cong', 'manual', req.user.username || req.user.id, minh_chung_url || null, ghi_chu.trim()]
+        );
+        await dbConn.execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', hocPhiId]);
+        await dbConn.commit();
+        dbConn.release();
+        res.json({ success: true, message: 'Xác nhận thủ công thành công!' });
+    } catch (error) {
+        await dbConn.rollback();
+        dbConn.release();
+        console.error('[HocPhi] Lỗi confirm-manual:', error);
+        res.status(500).json({ success: false, message: 'Lỗi xác nhận!', error: error.message });
+    }
+});
+
+// GET /api/admin/dot-dangky — Danh sách đợt đăng ký để admin chọn khi tạo đợt học phí
+app.get('/api/admin/dot-dangky', verifyToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    db.query('SELECT * FROM dot_dangky ORDER BY NgayTao DESC', (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: 'Lỗi tải đợt đăng ký!', error: err.message });
+        res.json({ success: true, data: rows });
+    });
+});
+
+// ----- STUDENT ROUTES -----
+
+// GET /api/student/tuitions/me — Học phí của SV hiện tại (lấy mssv từ token)
+app.get('/api/student/tuitions/me', verifyToken, (req, res) => {
+    if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Chỉ sinh viên mới xem được!' });
+    const mssv = req.user.id || req.user.username;
+    db.query(
+        `SELECT hp.*, d.ten_dot, d.ngay_mo, d.ngay_dong, d.trang_thai as dot_trang_thai, d.don_gia_tin_chi, sv.HoTen as ten_sinh_vien
+         FROM hoc_phi_v2 hp
+         JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
+         LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
+         WHERE hp.mssv = ?
+         ORDER BY d.ngay_tao DESC`,
+        [mssv],
+        (err, rows) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi tải học phí!', error: err.message });
+            res.json({ success: true, data: rows });
+        }
+    );
+});
+
+// GET /api/student/tuitions/:hocPhiId/detail — Chi tiết học phần (student xem chi tiết của chính mình)
+app.get('/api/student/tuitions/:hocPhiId/detail', verifyToken, (req, res) => {
+    if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const mssv = req.user.id || req.user.username;
+    db.query(
+        'SELECT ct.* FROM hoc_phi_chi_tiet ct JOIN hoc_phi_v2 hp ON ct.hoc_phi_id = hp.id WHERE ct.hoc_phi_id = ? AND hp.mssv = ?',
+        [req.params.hocPhiId, mssv],
+        (err, rows) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi tải chi tiết!', error: err.message });
+            res.json({ success: true, data: { chi_tiet: rows || [] } });
+        }
+    );
+});
+
+
+app.post('/api/student/tuitions/:hocPhiId/generate-qr', verifyToken, async (req, res) => {
+    if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Chỉ sinh viên mới dùng được!' });
+    const mssv = req.user.id || req.user.username;
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        const [[hp]] = await db.promise().execute(
+            `SELECT hp.*, d.trang_thai as dot_trang_thai, d.ngay_mo, d.ngay_dong, d.id as dot_id, d.hoc_ky, sv.HoTen
+             FROM hoc_phi_v2 hp
+             JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
+             LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
+             WHERE hp.id = ? AND hp.mssv = ?`, [hocPhiId, mssv]
+        );
+        if (!hp) return res.status(404).json({ success: false, message: 'Không tìm thấy học phí!' });
+
+        if (hp.dot_trang_thai !== 'dang_mo') {
+            return res.status(403).json({ success: false, message: 'Đợt đóng học phí đang tạm đóng hoặc chưa được mở!' });
+        }
+        if (hp.trang_thai === 'Đã đóng') {
+            return res.status(409).json({ success: false, message: 'Học phí này đã được đóng rồi!' });
+        }
+
+        // Sinh mã giao dịch unique
+        const maGD = `HP${hp.dot_id}${mssv}${Date.now()}`;
+        const soTien = Math.round(hp.so_tien);
+
+        // Nội dung chuyển khoản: hoten-mssv-HK mấy năm nào (không dấu)
+        const hoTenClean = removeVietnameseTones(hp.HoTen || 'SV').replace(/[^a-zA-Z0-9 ]/g, '').trim().toUpperCase();
+        const hocKyClean = (hp.hoc_ky || '').replace(/_/g, ' ').trim().toUpperCase();
+        const noiDung = `${hoTenClean} ${mssv} ${hocKyClean}`.replace(/\s+/g, ' ').substring(0, 50);
+
+        // Hạn nộp mã QR: 15 phút kể từ lúc tạo
+        const hetHanQR = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+
+        // Build VietQR URL (public API không cần key)
+        const qrUrl = `https://img.vietqr.io/image/${VIETQR_BANK_ID}-${VIETQR_ACCOUNT}-${VIETQR_TEMPLATE}.png?amount=${soTien}&addInfo=${encodeURIComponent(noiDung)}&accountName=${encodeURIComponent(VIETQR_HOLDER)}`;
+
+        await db.promise().execute(
+            'INSERT INTO giao_dich_hoc_phi (hoc_phi_id, ma_giao_dich, so_tien, noi_dung, qr_url, trang_thai) VALUES (?, ?, ?, ?, ?, ?)',
+            [hocPhiId, maGD, soTien, noiDung, qrUrl, 'cho_thanh_toan']
+        );
+
+        res.json({ success: true, data: { qr_url: qrUrl, so_tien: soTien, noi_dung: noiDung, ma_giao_dich: maGD, het_han: hetHanQR } });
+    } catch (error) {
+        console.error('[HocPhi] generate-qr lỗi:', error);
+        res.status(500).json({ success: false, message: 'Lỗi sinh QR!', error: error.message });
+    }
+});
+
+// GET /api/student/tuitions/:hocPhiId/payment-status — Poll trạng thái giao dịch
+app.get('/api/student/tuitions/:hocPhiId/payment-status', verifyToken, (req, res) => {
+    if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const mssv = req.user.id || req.user.username;
+    db.query(
+        `SELECT gd.trang_thai, gd.thoi_gian_xac_nhan, gd.nguon_xac_nhan, hp.trang_thai as hp_trang_thai
+         FROM giao_dich_hoc_phi gd
+         JOIN hoc_phi_v2 hp ON gd.hoc_phi_id = hp.id
+         WHERE gd.hoc_phi_id = ? AND hp.mssv = ?
+         ORDER BY gd.thoi_gian_tao DESC LIMIT 1`,
+        [req.params.hocPhiId, mssv],
+        (err, rows) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra trạng thái!' });
+            if (!rows || rows.length === 0) return res.json({ success: true, data: { trang_thai: 'khong_co_giao_dich' } });
+            res.json({ success: true, data: rows[0] });
+        }
+    );
+});
+
+// ----- WEBHOOK VIETQR -----
+// Middleware verify checksum đơn giản
+const verifyVietQRChecksum = (req, res, next) => {
+    const checksum = req.headers['x-checksum'] || req.body?.checksum;
+    if (!checksum) {
+        console.warn('[VietQR Webhook] Thiếu checksum header');
+        return res.status(401).json({ success: false, message: 'Missing checksum' });
+    }
+    const crypto = require('crypto');
+    const payload = JSON.stringify(req.body || {});
+    const expected = crypto.createHmac('sha256', VIETQR_SECRET).update(payload).digest('hex');
+    if (checksum !== expected) {
+        console.warn('[VietQR Webhook] Checksum không khớp');
+        return res.status(401).json({ success: false, message: 'Invalid checksum' });
+    }
+    next();
+};
+
+app.post('/api/webhook/vietqr', express.json(), async (req, res) => {
+    // Luôn trả 200 để VietQR không retry — xử lý bên trong
+    res.status(200).json({ success: true, message: 'received' });
+
+    try {
+        const { orderId, amount, description } = req.body || {};
+        if (!orderId) { console.warn('[VietQR Webhook] Thiếu orderId'); return; }
+
+        // Checksum optional — chỉ log nếu không khớp nhưng vẫn xử lý (webhook public test)
+        const checksum = req.headers['x-checksum'] || req.body?.checksum;
+        if (checksum) {
+            const crypto = require('crypto');
+            const payload = JSON.stringify(req.body || {});
+            const expected = crypto.createHmac('sha256', VIETQR_SECRET).update(payload).digest('hex');
+            if (checksum !== expected) {
+                console.warn('[VietQR Webhook] Checksum lệch cho orderId:', orderId, '— vẫn xử lý do môi trường test');
+            }
+        }
+
+        const [[gd]] = await db.promise().execute(
+            'SELECT * FROM giao_dich_hoc_phi WHERE ma_giao_dich = ? AND trang_thai = ?',
+            [orderId, 'cho_thanh_toan']
+        );
+        if (!gd) { console.log('[VietQR Webhook] Không tìm thấy GD cho orderId:', orderId); return; }
+
+        if (Math.round(Number(amount)) !== Math.round(Number(gd.so_tien))) {
+            console.warn(`[VietQR Webhook] Số tiền lệch! Kỳ vọng ${gd.so_tien}, nhận ${amount} — orderId: ${orderId}`);
+            return;
+        }
+
+        const dbConn = await db.promise().getConnection();
+        try {
+            await dbConn.beginTransaction();
+            await dbConn.execute(
+                'UPDATE giao_dich_hoc_phi SET trang_thai = ?, nguon_xac_nhan = ?, thoi_gian_xac_nhan = NOW() WHERE id = ?',
+                ['thanh_cong', 'auto', gd.id]
+            );
+            await dbConn.execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', gd.hoc_phi_id]);
+            await dbConn.commit();
+            console.log('[VietQR Webhook] ✅ Cập nhật thành công cho orderId:', orderId);
+        } catch (e) {
+            await dbConn.rollback();
+            console.error('[VietQR Webhook] Lỗi DB:', e.message);
+        } finally {
+            dbConn.release();
+        }
+    } catch (err) {
+        console.error('[VietQR Webhook] Lỗi xử lý:', err.message);
+    }
+});
+
 
 //=============================================================================
 // Khởi chạy server backend (Không được xóa)

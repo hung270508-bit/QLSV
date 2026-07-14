@@ -298,13 +298,14 @@ Yêu cầu bắt buộc: Chỉ trả về đúng 1 từ duy nhất bằng tiến
         },
 
         // 2. Khởi tạo phiên sinh AI & chạy batch đầu tiên
-        startSession: async ({ document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau = 10, do_kho = 'Mixed', chu_de = 'Toàn bộ', auto_generate = true }) => {
+        startSession: async ({ document_id, ma_mon_hoc, ma_lop_hoc_phan, ma_giang_vien, so_cau_yeu_cau = 10, do_kho = 'Mixed', chu_de = 'Toàn bộ', auto_generate = true }) => {
             const document = await repo.getDocumentById(document_id);
             if (!document) throw new Error('Không tìm thấy tài liệu trong hệ thống');
 
             const sessionId = await repo.createSession({
                 document_id,
                 ma_mon_hoc,
+                ma_lop_hoc_phan: ma_lop_hoc_phan || null,
                 ma_giang_vien,
                 so_cau_yeu_cau: Number(so_cau_yeu_cau) || 10,
                 do_kho,

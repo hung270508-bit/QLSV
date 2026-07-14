@@ -34,11 +34,18 @@ module.exports = (dbPromise) => {
         },
 
         // 2. Quản lý phiên sinh AI (Sessions)
-        createSession: async ({ document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de }) => {
+        createSession: async ({ document_id, ma_mon_hoc, ma_lop_hoc_phan, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de }) => {
+            const [colCheck] = await dbPromise.query(`
+                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ai_generation_sessions' AND COLUMN_NAME = 'ma_lop_hoc_phan'
+            `);
+            if (colCheck.length === 0) {
+                await dbPromise.query(`ALTER TABLE ai_generation_sessions ADD COLUMN ma_lop_hoc_phan VARCHAR(255) NULL`);
+            }
             const [res] = await dbPromise.query(
-                `INSERT INTO ai_generation_sessions (document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau, so_cau_da_sinh, do_kho, chu_de, trang_thai) 
-                 VALUES (?, ?, ?, ?, 0, ?, ?, 'RUNNING')`,
-                [document_id, ma_mon_hoc, ma_giang_vien, so_cau_yeu_cau || 10, do_kho || 'Mixed', chu_de || 'Toàn bộ']
+                `INSERT INTO ai_generation_sessions (document_id, ma_mon_hoc, ma_lop_hoc_phan, ma_giang_vien, so_cau_yeu_cau, so_cau_da_sinh, do_kho, chu_de, trang_thai) 
+                 VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'RUNNING')`,
+                [document_id, ma_mon_hoc, ma_lop_hoc_phan || null, ma_giang_vien, so_cau_yeu_cau || 10, do_kho || 'Mixed', chu_de || 'Toàn bộ']
             );
             return res.insertId;
         },
@@ -273,9 +280,17 @@ module.exports = (dbPromise) => {
                     [session.id, session.ma_mon_hoc, session.ma_giang_vien, baseTitle]
                 );
 
+                const [lhpColCheck] = await connection.query(`
+                    SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'question_banks' AND COLUMN_NAME = 'ma_lop_hoc_phan'
+                `);
+                if (lhpColCheck.length === 0) {
+                    await connection.query(`ALTER TABLE question_banks ADD COLUMN ma_lop_hoc_phan VARCHAR(255) NULL`);
+                }
+
                 if (existingBanks.length > 0) {
                     bankId = existingBanks[0].id;
-                    await connection.query(`UPDATE question_banks SET session_id = ? WHERE id = ?`, [session.id, bankId]).catch(()=>{});
+                    await connection.query(`UPDATE question_banks SET session_id = ?, ma_lop_hoc_phan = COALESCE(ma_lop_hoc_phan, ?) WHERE id = ?`, [session.id, session.ma_lop_hoc_phan || null, bankId]).catch(()=>{});
                 } else {
                     const [existingRows] = await connection.query(`SELECT id FROM question_banks ORDER BY id ASC`);
                     let targetBankId = 1;
@@ -284,9 +299,9 @@ module.exports = (dbPromise) => {
                         targetBankId++;
                     }
                     await connection.query(
-                        `INSERT INTO question_banks (id, ma_mon_hoc, ma_giang_vien, tieu_de, tong_so_cau, trang_thai, session_id) 
-                         VALUES (?, ?, ?, ?, 0, 'Approved', ?)`,
-                        [targetBankId, session.ma_mon_hoc, session.ma_giang_vien, baseTitle, session.id]
+                        `INSERT INTO question_banks (id, ma_mon_hoc, ma_lop_hoc_phan, ma_giang_vien, tieu_de, tong_so_cau, trang_thai, session_id) 
+                         VALUES (?, ?, ?, ?, ?, 0, 'Approved', ?)`,
+                        [targetBankId, session.ma_mon_hoc, session.ma_lop_hoc_phan || null, session.ma_giang_vien, baseTitle, session.id]
                     );
                     bankId = targetBankId;
 
