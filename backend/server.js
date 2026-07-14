@@ -3425,12 +3425,13 @@ app.get('/api/admin/training-points', (req, res) => {
 
 app.put('/api/admin/training-points/:id', (req, res) => {
     const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet, GhiChu } = req.body;
-    let xepLoai = 'Yếu';
+    let xepLoai = 'Kém';
     const diem = Number(TongDiem);
     if (diem >= 90) xepLoai = 'Xuất sắc';
     else if (diem >= 80) xepLoai = 'Tốt';
     else if (diem >= 65) xepLoai = 'Khá';
     else if (diem >= 50) xepLoai = 'Trung bình';
+    else if (diem >= 35) xepLoai = 'Yếu';
 
     const query = 'UPDATE danhgia_renluyen SET DiemLopDanhGia = 0, DiemKhoaDanhGia = ?, TongDiem = ?, XepLoai = ?, TrangThai = ?, GhiChu = ? WHERE MaDanhGia = ?';
     db.query(query, [DiemKhoaDanhGia, TongDiem, xepLoai, TrangThai, GhiChu, req.params.id], (err) => {
@@ -3539,11 +3540,12 @@ app.post('/api/training-points', (req, res) => {
 
         console.log('ChiTiet data:', JSON.stringify(ChiTiet, null, 2));
 
-        let xepLoai = 'Yếu';
+        let xepLoai = 'Kém';
         if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
         else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
         else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
         else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+        else if (DiemTuDanhGia >= 35) xepLoai = 'Yếu';
 
         const query = "INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai, MaDotDanhGia) VALUES (?, ?, ?, ?, ?, 'Chờ lớp duyệt', ?)";
         db.query(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai, MaDotDanhGia || null], (err, result) => {
@@ -3600,11 +3602,12 @@ app.put('/api/training-points/:id', (req, res) => {
             return res.status(400).json({ success: false, message: 'Đợt đánh giá đã hết hạn, không thể chỉnh sửa!' });
         }
 
-        let xepLoai = 'Yếu';
+        let xepLoai = 'Kém';
         if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
         else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
         else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
         else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+        else if (DiemTuDanhGia >= 35) xepLoai = 'Yếu';
 
         const query = 'UPDATE danhgia_renluyen SET DiemTuDanhGia=?, TongDiem=?, XepLoai=? WHERE MaDanhGia=?';
         db.query(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], (err) => {

@@ -493,11 +493,11 @@ function StudentTrainingPoints({ user }) {
 
   const getRealTimeRating = (score) => {
     if (score >= 90) return 'Xuất sắc';
-
     if (score >= 80) return 'Tốt';
     if (score >= 65) return 'Khá';
     if (score >= 50) return 'Trung bình';
-    return 'Yếu';
+    if (score >= 35) return 'Yếu';
+    return 'Kém';
   };
 
   const getRatingColor = (score) => {
@@ -505,7 +505,8 @@ function StudentTrainingPoints({ user }) {
     if (score >= 80) return 'text-[#22C55E]';
     if (score >= 65) return 'text-[#3B82F6]';
     if (score >= 50) return 'text-amber-600';
-    return 'text-rose-500';
+    if (score >= 35) return 'text-rose-500';
+    return 'text-red-700 font-black';
   };
 
   const getXepLoaiBadge = (xepLoai) => {
@@ -514,7 +515,8 @@ function StudentTrainingPoints({ user }) {
       'Tốt': 'bg-[#22C55E]/10 text-green-700 border border-green-200',
       'Khá': 'bg-[#3B82F6]/10 text-blue-700 border border-blue-200',
       'Trung bình': 'bg-amber-50 text-amber-700 border border-amber-200',
-      'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200'
+      'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200',
+      'Kém': 'bg-red-50 text-red-700 border border-red-200'
     };
     return colors[xepLoai] || 'bg-[#F7F8FA] text-gray-700 border border-[#E5E7EB]';
   };
