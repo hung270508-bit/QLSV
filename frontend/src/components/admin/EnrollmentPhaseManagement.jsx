@@ -1,717 +1,544 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import API_URL from '../../api';
-import { CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle, X, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle,
+  X, ChevronRight, Calendar, AlertTriangle, Search, Filter,
+  ToggleLeft, ToggleRight, Hourglass, TrendingUp
+} from 'lucide-react';
 
-// Chỉ cho phép chữ (có dấu tiếng Việt), số, khoảng trắng và một số ký tự thông dụng: - _ ( ) , .
 const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]*$/u;
 const TEN_DOT_INVALID_CHARS_REGEX = /[^\p{L}\p{N}\s\-_(),.]/gu;
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+const fmtDate = (d) => d ? new Date(d).toLocaleString('vi-VN') : '—';
+
+function diffText(ms) {
+  const totalMin = Math.max(0, Math.floor(ms / 60000));
+  const days = Math.floor(totalMin / 1440);
+  const hours = Math.floor((totalMin % 1440) / 60);
+  const mins = totalMin % 60;
+  if (days > 0) return `${days}n ${hours}g`;
+  if (hours > 0) return `${hours}g ${mins}p`;
+  return `${mins} phút`;
+}
+
+// ── sub-components ────────────────────────────────────────────────────────────
+function Toast({ toast, onClose }) {
+  const cfg = {
+    success: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', icon: <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> },
+    warning: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', icon: <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" /> },
+    error: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', icon: <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" /> },
+  }[toast.type] || {};
+  return (
+    <motion.div initial={{ opacity: 0, y: -16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -16, scale: 0.97 }}
+      className={`flex items-start gap-3 rounded-2xl border ${cfg.border} ${cfg.bg} p-4 shadow-lg max-w-sm w-full`}>
+      {cfg.icon}
+      <p className={`flex-1 text-sm leading-relaxed ${cfg.text}`}>{toast.message}</p>
+      <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+    </motion.div>
+  );
+}
+
+function ConfirmModal({ dialog, onClose }) {
+  if (!dialog) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className={`px-6 py-4 ${dialog.variant === 'danger' ? 'bg-red-50 border-b border-red-100' : 'bg-slate-50 border-b border-slate-100'}`}>
+          <h3 className={`font-bold text-base ${dialog.variant === 'danger' ? 'text-red-800' : 'text-slate-800'}`}>{dialog.title}</h3>
+        </div>
+        <div className="px-6 py-4">
+          <p className="text-sm text-slate-600 leading-relaxed">{dialog.message}</p>
+        </div>
+        <div className="px-6 pb-5 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Hủy</button>
+          <button onClick={dialog.onConfirm} className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors ${dialog.variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#152238] hover:bg-[#0f1a2b]'}`}>
+            {dialog.confirmLabel || 'Xác nhận'}
+          </button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+}
+
+// ── PhaseFormModal ────────────────────────────────────────────────────────────
+function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, tenDotError, hocKyOptions, nienKhoaOptions }) {
+  if (!open) return null;
+  const isEdit = !!editingPhase;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 12 }}
+        transition={{ duration: 0.18 }}
+        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+      >
+        {/* ── header ── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-[#152238]/10">
+              <CalendarDays className="w-4 h-4 text-[#152238]" />
+            </div>
+            <span className="font-bold text-slate-800 text-base">
+              {isEdit ? 'Chỉnh sửa đợt đăng ký' : 'Tạo đợt đăng ký mới'}
+            </span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* ── body ── */}
+        <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
+
+          {/* Tên đợt */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+              Tên đợt <span className="text-red-500">*</span>
+            </label>
+            <input
+              className={`w-full rounded-xl border px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#152238]/20
+${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#152238]/40'}`}
+              placeholder="VD: Đợt 1 HK1 2024-2025"
+              value={form.TenDot} maxLength={100}
+              onChange={(e) => { const raw = e.target.value; const filtered = raw.replace(TEN_DOT_INVALID_CHARS_REGEX, ''); setForm({ ...form, TenDot: filtered }); }}
+              required
+            />
+            {tenDotError
+              ? <p className="mt-1 text-xs text-red-500">{tenDotError}</p>
+              : <p className="mt-1 text-xs text-slate-400">Cho phép: chữ, số, khoảng trắng, - _ ( ) , .</p>
+            }
+          </div>
+
+          {/* Mô tả */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Mô tả</label>
+            <textarea
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40 resize-none"
+              placeholder="Mô tả ngắn về đợt đăng ký (không bắt buộc)…" rows={2}
+              value={form.MoTa} onChange={(e) => setForm({ ...form, MoTa: e.target.value })}
+            />
+          </div>
+
+          {/* Học kỳ + Niên khóa — 2 cột */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Học kỳ <span className="text-red-500">*</span></label>
+              {hocKyOptions.length > 0 ? (
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                  value={form.HocKy} onChange={(e) => setForm({ ...form, HocKy: e.target.value })} required>
+                  <option value="" disabled>Chọn</option>
+                  {hocKyOptions.map(hk => <option key={hk} value={hk}>{hk}</option>)}
+                </select>
+              ) : (
+                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-400" value="" readOnly disabled placeholder="Chưa có" />
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Niên khóa <span className="text-red-500">*</span></label>
+              {nienKhoaOptions.length > 0 ? (
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                  value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} required>
+                  <option value="" disabled>Chọn</option>
+                  {nienKhoaOptions.map(nk => <option key={nk} value={nk}>{nk}</option>)}
+                </select>
+              ) : (
+                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="VD: 2022-2026"
+                  value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} />
+              )}
+            </div>
+          </div>
+
+          {/* Ngày mở + Ngày đóng — 2 cột */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày mở <span className="text-red-500">*</span></label>
+              <input type="datetime-local"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })} required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày đóng <span className="text-red-500">*</span></label>
+              <input type="datetime-local"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })} required />
+            </div>
+          </div>
+
+          {/* ── footer buttons bên trong form ── */}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+              Hủy
+            </button>
+            <button type="submit"
+              className="flex-1 rounded-xl bg-[#152238] py-2.5 text-sm font-semibold text-white hover:bg-[#0f1a2b] transition-colors flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              {isEdit ? 'Lưu thay đổi' : 'Tạo đợt'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>,
+    document.body
+  );
+}
+
+// ── StatusBadge ───────────────────────────────────────────────────────────────
+function StatusBadge({ phase, now }) {
+  if (phase.TrangThai === 'Mo') {
+    const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
+    if (end && now > end) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-semibold text-amber-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Hết hạn
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Đang mở
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Đã đóng
+    </span>
+  );
+}
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
 function EnrollmentPhaseManagement() {
   const [phases, setPhases] = useState([]);
   const [courseSections, setCourseSections] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingPhase, setEditingPhase] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [students, setStudents] = useState([]);
   const [tenDotError, setTenDotError] = useState('');
-  const [toast, setToast] = useState(null); // { message: string, type: 'warning' | 'success' | 'error' }
-  const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, confirmLabel, variant, onConfirm }
-  const [now, setNow] = useState(() => new Date()); // dùng để đếm ngược thời gian đóng đợt đang mở
-  const [form, setForm] = useState({
-    TenDot: '',
-    MoTa: '',
-    HocKy: '',
-    NamHoc: '',
-    NienKhoa: '',
-    NgayMo: '',
-    NgayDong: ''
-  });
+  const [toast, setToast] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [now, setNow] = useState(() => new Date());
+  const [form, setForm] = useState({ TenDot: '', MoTa: '', HocKy: '', NienKhoa: '', NgayMo: '', NgayDong: '' });
 
-  const showToast = (message, type = 'warning') => {
-    setToast({ message, type });
-  };
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(timer);
-  }, [toast]);
+  const showToast = (message, type = 'warning') => setToast({ message, type });
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }, [toast]);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
 
   const fetchPhases = async () => {
-    try {
-      setLoading(true);
-      const phasesRes = await axios.get(`${API_URL}/api/enrollment/phases`);
-      setPhases(phasesRes.data || []);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+    try { setLoading(true); const r = await axios.get(`${API_URL}/api/enrollment/phases`); setPhases(r.data || []); }
+    catch (e) { console.error(e); } finally { setLoading(false); }
   };
-
   const fetchCourseSections = async () => {
-    try {
-      const sectionsRes = await axios.get(`${API_URL}/api/course-sections`);
-      setCourseSections(sectionsRes.data || []);
-    } catch (error) {
-      console.error('Lỗi lấy danh sách học phần:', error);
-    }
+    try { const r = await axios.get(`${API_URL}/api/course-sections`); setCourseSections(r.data || []); }
+    catch (e) { console.error(e); }
   };
-
   const fetchStudents = async () => {
-    try {
-      const studentsRes = await axios.get(`${API_URL}/api/students`);
-      setStudents(studentsRes.data || []);
-    } catch (error) {
-      console.error('Lỗi lấy danh sách sinh viên:', error);
-    }
+    try { const r = await axios.get(`${API_URL}/api/students`); setStudents(r.data || []); }
+    catch (e) { console.error(e); }
   };
-
-  const courseYearOptions = useMemo(() => {
-    const years = Array.from(new Set(courseSections.map((cs) => cs.NamHoc).filter(Boolean)));
-    return years.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-  }, [courseSections]);
-
-  // Học kỳ chỉ được lấy từ dữ liệu các lớp học phần đã có, không cho nhập tay
-  const hocKyOptions = useMemo(() => {
-    const values = Array.from(new Set(courseSections.map((cs) => cs.HocKy).filter(Boolean)));
-    return values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [courseSections]);
-
-  const nienKhoaOptions = useMemo(() => {
-    const values = Array.from(new Set(students.map((sv) => sv.NienKhoa).filter(Boolean)));
-    return values.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-  }, [students]);
-
-  useEffect(() => {
-    if (!editingPhase && !form.NamHoc && courseYearOptions.length > 0) {
-      setForm((prev) => ({ ...prev, NamHoc: courseYearOptions[0] }));
-    }
-  }, [courseYearOptions, editingPhase, form.NamHoc]);
-
-  useEffect(() => {
-    if (!editingPhase && !form.NienKhoa && nienKhoaOptions.length > 0) {
-      setForm((prev) => ({ ...prev, NienKhoa: nienKhoaOptions[0] }));
-    }
-  }, [nienKhoaOptions, editingPhase, form.NienKhoa]);
-
-  useEffect(() => {
-    if (!editingPhase && !form.HocKy && hocKyOptions.length > 0) {
-      setForm((prev) => ({ ...prev, HocKy: hocKyOptions[0] }));
-    }
-  }, [hocKyOptions, editingPhase, form.HocKy]);
-
   useEffect(() => { fetchPhases(); fetchCourseSections(); fetchStudents(); }, []);
 
-  // Cập nhật mốc thời gian hiện tại mỗi phút để đồng hồ đếm ngược luôn chính xác
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
+  // options
+  const hocKyOptions = useMemo(() => {
+    const vals = [...new Set(courseSections.map(cs => cs.HocKy).filter(Boolean))];
+    return vals.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [courseSections]);
+  const nienKhoaOptions = useMemo(() => {
+    const vals = [...new Set(students.map(sv => sv.NienKhoa).filter(Boolean))];
+    return vals.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+  }, [students]);
 
-  // Tìm đợt đang mở (còn hạn) thuộc học kỳ khác với học kỳ đang thao tác (dùng để chặn mở song song nhiều học kỳ)
+  // auto-fill defaults
+  useEffect(() => { if (!editingPhase && !form.NienKhoa && nienKhoaOptions.length > 0) setForm(p => ({ ...p, NienKhoa: nienKhoaOptions[0] })); }, [nienKhoaOptions, editingPhase, form.NienKhoa]);
+  useEffect(() => { if (!editingPhase && !form.HocKy && hocKyOptions.length > 0) setForm(p => ({ ...p, HocKy: hocKyOptions[0] })); }, [hocKyOptions, editingPhase, form.HocKy]);
+
   const findConflictingOpenPhase = (hocKy, excludeId) => {
     if (!hocKy) return null;
     const now = new Date();
-    return (
-      phases.find((p) => {
-        if (excludeId && p.MaDot === excludeId) return false;
-        if (p.TrangThai !== 'Mo') return false;
-        if (!p.HocKy || p.HocKy === hocKy) return false;
-        if (p.NgayDong && new Date(p.NgayDong) <= now) return false; // đã hết hạn thì không tính là đang mở
-        return true;
-      }) || null
-    );
+    return phases.find(p => {
+      if (excludeId && p.MaDot === excludeId) return false;
+      if (p.TrangThai !== 'Mo') return false;
+      if (!p.HocKy || p.HocKy === hocKy) return false;
+      if (p.NgayDong && new Date(p.NgayDong) <= now) return false;
+      return true;
+    }) || null;
   };
+
+  const openCreateForm = () => { setEditingPhase(null); setTenDotError(''); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayMo: '', NgayDong: '' }); setFormOpen(true); };
+  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 16) : '', NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 16) : '' }); setFormOpen(true); };
+  const closeForm = () => { setFormOpen(false); setEditingPhase(null); setTenDotError(''); };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // Ràng buộc ký tự đặc biệt cho tên đợt
-    if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) {
-      setTenDotError('Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .');
-      return;
-    }
+    if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { setTenDotError('Tên đợt chứa ký tự không hợp lệ.'); return; }
     setTenDotError('');
-
-    // Chỉ cho phép mở đăng ký của 1 học kỳ duy nhất tại một thời điểm.
-    // Đợt đang chỉnh sửa (nếu có) sẽ giữ trạng thái hiện tại; nếu đợt đó đang mở
-    // hoặc đợt mới sẽ được tạo (mặc định mở), thì kiểm tra xung đột học kỳ.
     const willBeOpen = editingPhase ? editingPhase.TrangThai === 'Mo' : true;
     if (willBeOpen) {
-      const conflictPhase = findConflictingOpenPhase(form.HocKy, editingPhase?.MaDot);
-      if (conflictPhase) {
-        showToast(
-          `Học kỳ "${conflictPhase.HocKy}" đang có đợt đăng ký mở ("${conflictPhase.TenDot}"). ` +
-          `Chỉ được mở đăng ký cho 1 học kỳ duy nhất — vui lòng đóng đợt của học kỳ "${conflictPhase.HocKy}" ` +
-          `hoặc chờ đến khi đợt đó hết hạn (${conflictPhase.NgayDong ? new Date(conflictPhase.NgayDong).toLocaleString('vi-VN') : '—'}) trước khi mở đợt cho học kỳ "${form.HocKy}".`,
-          'warning'
-        );
+      const conflict = findConflictingOpenPhase(form.HocKy, editingPhase?.MaDot);
+      if (conflict) {
+        showToast(`Học kỳ "${conflict.HocKy}" đang có đợt mở ("${conflict.TenDot}"). Đóng đợt đó trước khi mở đợt cho học kỳ "${form.HocKy}".`, 'warning');
         return;
       }
     }
-
-    // Mọi điều kiện hợp lệ -> mở popup xác nhận trước khi thực sự lưu
     setConfirmDialog({
-      title: editingPhase ? 'Xác nhận cập nhật đợt đăng ký' : 'Xác nhận tạo đợt đăng ký',
-      message: editingPhase
-        ? `Bạn có chắc muốn lưu thay đổi cho đợt "${form.TenDot}" không?`
-        : `Bạn có chắc muốn tạo đợt đăng ký "${form.TenDot}" không?`,
-      confirmLabel: 'Lưu',
-      variant: 'primary',
-      onConfirm: performSave
+      title: editingPhase ? 'Xác nhận cập nhật' : 'Xác nhận tạo đợt',
+      message: editingPhase ? `Lưu thay đổi cho đợt "${form.TenDot}"?` : `Tạo đợt đăng ký "${form.TenDot}"?`,
+      confirmLabel: 'Lưu', variant: 'primary', onConfirm: performSave
     });
   };
 
   const performSave = async () => {
     try {
       if (editingPhase) {
-        await axios.put(`${API_URL}/api/enrollment/phases/${editingPhase.MaDot}`, {
-          ...form,
-          TrangThai: editingPhase.TrangThai || 'Mo'
-        });
+        await axios.put(`${API_URL}/api/enrollment/phases/${editingPhase.MaDot}`, { ...form, TrangThai: editingPhase.TrangThai || 'Mo' });
       } else {
         await axios.post(`${API_URL}/api/enrollment/phases`, form);
       }
       showToast('Lưu đợt đăng ký thành công!', 'success');
-      resetForm();
-      fetchPhases();
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Không thể lưu đợt đăng ký', 'error');
-    } finally {
-      setConfirmDialog(null);
-    }
+      closeForm(); fetchPhases();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Không thể lưu đợt đăng ký', 'error');
+    } finally { setConfirmDialog(null); }
   };
 
+  const requestClose = (phase) => setConfirmDialog({
+    title: 'Đóng đợt đăng ký', message: `Xác nhận đóng đợt "${phase.TenDot}"?`,
+    confirmLabel: 'Đóng đợt', variant: 'warning', onConfirm: () => closePhase(phase.MaDot)
+  });
   const closePhase = async (id) => {
-    try {
-      await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`);
-      showToast('Đã đóng đợt đăng ký.', 'success');
-      fetchPhases();
-    } catch (error) {
-      showToast('Không thể đóng đợt đăng ký', 'error');
-    }
+    try { await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`); showToast('Đã đóng đợt.', 'success'); fetchPhases(); }
+    catch { showToast('Không thể đóng đợt đăng ký', 'error'); }
+    finally { setConfirmDialog(null); }
   };
 
-  const openPhase = async (id) => {
-    const phase = phases.find((item) => item.MaDot === id);
-    if (!phase) return;
-
-    try {
-      await axios.put(`${API_URL}/api/enrollment/phases/${id}`, {
-        TenDot: phase.TenDot,
-        MoTa: phase.MoTa,
-        HocKy: phase.HocKy,
-        NamHoc: phase.NamHoc,
-        NienKhoa: phase.NienKhoa,
-        NgayMo: phase.NgayMo,
-        NgayDong: phase.NgayDong,
-        TrangThai: 'Mo'
-      });
-      showToast('Đã mở lại đợt đăng ký.', 'success');
-      fetchPhases();
-    } catch (error) {
-      showToast('Không thể mở lại đợt đăng ký', 'error');
-    }
-  };
-
-  const requestDeletePhase = (phase) => {
+  const requestOpen = (phase) => {
+    const conflict = findConflictingOpenPhase(phase.HocKy, phase.MaDot);
+    if (conflict) { showToast(`Học kỳ "${conflict.HocKy}" đang có đợt mở. Đóng đợt đó trước.`, 'warning'); return; }
     setConfirmDialog({
-      title: 'Xóa đợt đăng ký',
-      message: `Bạn có chắc muốn xóa đợt "${phase.TenDot}" không? Hành động này không thể hoàn tác.`,
-      confirmLabel: 'Xóa',
-      variant: 'danger',
-      onConfirm: () => performDeletePhase(phase.MaDot)
+      title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?`,
+      confirmLabel: 'Mở lại', variant: 'primary', onConfirm: () => openPhase(phase.MaDot)
     });
   };
-
-  const performDeletePhase = async (id) => {
+  const openPhase = async (id) => {
+    const phase = phases.find(p => p.MaDot === id); if (!phase) return;
     try {
-      await axios.delete(`${API_URL}/api/enrollment/phases/${id}`);
-      showToast('Đã xóa đợt đăng ký thành công!', 'success');
-      fetchPhases();
-    } catch (error) {
-      showToast(`Không thể xóa đợt đăng ký: ${error.response?.data?.message || 'Lỗi không xác định'}`, 'error');
-    } finally {
-      setConfirmDialog(null);
-    }
-  };
-  const resetForm = () => {
-    setEditingPhase(null);
-    setTenDotError('');
-    setForm({ TenDot: '', MoTa: '', HocKy: '', NamHoc: '', NienKhoa: '', NgayMo: '', NgayDong: '' });
+      await axios.put(`${API_URL}/api/enrollment/phases/${id}`, { ...phase, TrangThai: 'Mo' });
+      showToast('Đã mở lại đợt đăng ký.', 'success'); fetchPhases();
+    } catch { showToast('Không thể mở lại đợt', 'error'); }
+    finally { setConfirmDialog(null); }
   };
 
-  const handleEditPhase = (phase) => {
-    setEditingPhase(phase);
-    setTenDotError('');
-    setForm({
-      TenDot: phase.TenDot || '',
-      MoTa: phase.MoTa || '',
-      HocKy: phase.HocKy || '',
-      NamHoc: phase.NamHoc || '',
-      NienKhoa: phase.NienKhoa || '',
-      NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 16) : '',
-      NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 16) : ''
-    });
+  const requestDelete = (phase) => setConfirmDialog({
+    title: 'Xóa đợt đăng ký', message: `Xóa đợt "${phase.TenDot}"? Không thể hoàn tác.`,
+    confirmLabel: 'Xóa', variant: 'danger', onConfirm: () => performDelete(phase.MaDot)
+  });
+
+  const performDelete = async (id) => {
+    try { await axios.delete(`${API_URL}/api/enrollment/phases/${id}`); showToast('Đã xóa đợt thành công!', 'success'); fetchPhases(); }
+    catch (err) { showToast(`Không thể xóa: ${err.response?.data?.message || 'Lỗi không xác định'}`, 'error'); }
+    finally { setConfirmDialog(null); }
   };
 
-  const phaseSummary = useMemo(() => {
-    const openCount = phases.filter((p) => p.TrangThai === 'Mo').length;
-    const closedCount = phases.filter((p) => p.TrangThai === 'Đóng').length;
-
-    return {
-      total: phases.length,
-      open: openCount,
-      closed: closedCount
-    };
-  }, [phases]);
-
-  // Đếm ngược đến thời điểm đóng của đợt đang mở gần đóng nhất (cập nhật theo `now`)
-  const closingCountdown = useMemo(() => {
-    const upcomingCloses = phases.filter(
-      (p) => p.TrangThai === 'Mo' && p.NgayDong && new Date(p.NgayDong) > now
-    );
-    const nextClose = upcomingCloses.sort((a, b) => new Date(a.NgayDong) - new Date(b.NgayDong))[0];
-    if (!nextClose) return null;
-
-    const diffMs = new Date(nextClose.NgayDong) - now;
-    const totalMinutes = Math.max(0, Math.floor(diffMs / 60000));
-    const days = Math.floor(totalMinutes / (60 * 24));
-    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-    const minutes = totalMinutes % 60;
-
-    let text;
-    if (days > 0) text = `${days} ngày ${hours} giờ`;
-    else if (hours > 0) text = `${hours} giờ ${minutes} phút`;
-    else text = `${minutes} phút`;
-
-    return { phase: nextClose, text };
-  }, [phases, now]);
-
-  // Sắp xếp các đợt theo ngày mở để hiển thị dạng dòng thời gian (timeline)
-  const timelinePhases = useMemo(() => {
-    const now = new Date();
-    return [...phases]
-      .sort((a, b) => new Date(a.NgayMo) - new Date(b.NgayMo))
-      .map((phase) => {
-        const start = phase.NgayMo ? new Date(phase.NgayMo) : null;
-        const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
-        let timelineStatus = 'closed'; // closed | ongoing | upcoming
-        if (phase.TrangThai === 'Mo' && start && end && start <= now && now <= end) {
-          timelineStatus = 'ongoing';
-        } else if (start && start > now) {
-          timelineStatus = 'upcoming';
-        }
-        return { ...phase, timelineStatus };
-      });
-  }, [phases]);
+  // derived data
+  const phaseSummary = useMemo(() => ({
+    total: phases.length,
+    open: phases.filter(p => p.TrangThai === 'Mo').length,
+    closed: phases.filter(p => p.TrangThai === 'Đóng').length,
+  }), [phases]);
 
   const filteredPhases = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return phases.filter((phase) => {
-      if (filterStatus !== 'all' && phase.TrangThai !== filterStatus) {
-        return false;
-      }
+    return phases.filter(p => {
+      if (filterStatus !== 'all' && p.TrangThai !== filterStatus) return false;
       if (!term) return true;
-      return [phase.TenDot, phase.HocKy, phase.NamHoc, phase.NienKhoa]
-        .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(term));
+      return [p.TenDot, p.HocKy, p.NamHoc, p.NienKhoa].filter(Boolean).some(f => f.toLowerCase().includes(term));
     });
   }, [phases, filterStatus, searchTerm]);
 
-  const toastStyles = {
-    warning: { border: 'border-amber-200', bg: 'bg-amber-50', text: 'text-amber-800', icon: 'text-amber-600' },
-    success: { border: 'border-emerald-200', bg: 'bg-emerald-50', text: 'text-emerald-800', icon: 'text-emerald-600' },
-    error: { border: 'border-red-200', bg: 'bg-red-50', text: 'text-red-800', icon: 'text-red-600' }
-  };
-
+  // ── render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {toast && (() => {
-        const style = toastStyles[toast.type] || toastStyles.warning;
-        return (
-          <div className="fixed top-4 right-4 z-50 w-full max-w-sm animate-in fade-in slide-in-from-top-2">
-            <div className={`flex items-start gap-3 rounded-2xl border ${style.border} ${style.bg} p-4 shadow-lg`}>
-              {toast.type === 'success' ? (
-                <CheckCircle2 className={`w-5 h-5 mt-0.5 flex-shrink-0 ${style.icon}`} />
-              ) : (
-                <AlertCircle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${style.icon}`} />
-              )}
-              <div className={`flex-1 text-sm ${style.text}`}>{toast.message}</div>
-              <button
-                type="button"
-                onClick={() => setToast(null)}
-                className={`${style.icon} hover:opacity-70`}
-                aria-label="Đóng thông báo"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {confirmDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-800">{confirmDialog.title}</h3>
-            <p className="mt-2 text-sm text-slate-600">{confirmDialog.message}</p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDialog(null)}
-                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={confirmDialog.onConfirm}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
-                  confirmDialog.variant === 'danger'
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-[#152238] hover:bg-[#0f1a2b]'
-                }`}
-              >
-                {confirmDialog.confirmLabel || 'Xác nhận'}
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6 pb-8">
+      {/* Toast */}
+      {createPortal(
+        <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+          <AnimatePresence>
+            {toast && <div className="pointer-events-auto"><Toast toast={toast} onClose={() => setToast(null)} /></div>}
+          </AnimatePresence>
+        </div>,
+        document.body
       )}
 
-      <div className="bg-[#F4C542] rounded-2xl p-6 text-[#152238] shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-white/50"><CalendarDays className="w-6 h-6" /></div>
+      {/* Confirm dialog */}
+      <AnimatePresence>
+        {confirmDialog && <ConfirmModal dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />}
+      </AnimatePresence>
+
+      {/* Form slide-over */}
+      <AnimatePresence>
+        {formOpen && (
+          <PhaseFormModal open={formOpen} onClose={closeForm} editingPhase={editingPhase}
+            form={form} setForm={setForm} onSubmit={handleSubmit} tenDotError={tenDotError}
+            hocKyOptions={hocKyOptions} nienKhoaOptions={nienKhoaOptions} />
+        )}
+      </AnimatePresence>
+
+      {/* ── Page header ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#152238] to-[#1e3a5f] p-6 text-white shadow-lg">
+        <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_80%_50%,white_0%,transparent_60%)]" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20">
+              <CalendarDays className="w-7 h-7" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black tracking-tight">Quản lý đợt đăng ký học phần</h2>
+              <p className="text-sm text-white/70 mt-0.5">Thiết lập và theo dõi các đợt đăng ký theo học kỳ, năm học, niên khóa</p>
+            </div>
+          </div>
+          <button onClick={openCreateForm}
+            className="flex items-center gap-2 rounded-xl bg-[#F4C542] px-5 py-2.5 text-sm font-bold text-[#152238] hover:bg-[#e6b83a] transition-colors shadow-md flex-shrink-0 self-start sm:self-auto">
+            <Plus className="w-4 h-4" /> Tạo đợt mới
+          </button>
+        </div>
+      </div>
+
+      {/* ── Stats row ── */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Tổng số đợt', value: phaseSummary.total, color: 'text-[#152238]', bg: 'bg-white', border: 'border-slate-200', icon: <TrendingUp className="w-5 h-5 text-[#152238]/40" /> },
+          { label: 'Đang mở', value: phaseSummary.open, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: <ToggleRight className="w-5 h-5 text-emerald-500" /> },
+          { label: 'Đã đóng', value: phaseSummary.closed, color: 'text-slate-600', bg: 'bg-white', border: 'border-slate-200', icon: <ToggleLeft className="w-5 h-5 text-slate-400" /> },
+        ].map(s => (
+          <div key={s.label} className={`rounded-2xl border ${s.border} ${s.bg} p-5 flex items-center justify-between`}>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
+              <p className={`text-3xl font-black mt-1 ${s.color}`}>{s.value}</p>
+            </div>
+            <div className="p-2 rounded-xl bg-white/60">{s.icon}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Phase list ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* toolbar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100">
           <div>
-            <h2 className="text-xl font-black">Quản lý đợt đăng ký học phần</h2>
-            <p className="text-sm font-medium text-[#152238]/70">Thiết lập thời gian mở/đóng theo từng khóa, năm học và theo từng đợt đăng ký.</p>
+            <h3 className="font-bold text-slate-800">Danh sách đợt đăng ký</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{filteredPhases.length} đợt{filterStatus !== 'all' || searchTerm ? ' (đã lọc)' : ''}</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input className="pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                placeholder="Tìm tên đợt, học kỳ, niên khóa…"
+                value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>}
+            </div>
+            {/* filter */}
+            <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1">
+              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Đóng', 'Đã đóng']].map(([val, label]) => (
+                <button key={val} onClick={() => setFilterStatus(val)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterStatus === val ? 'bg-[#152238] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl p-5 border border-slate-200">
-          <p className="text-sm font-semibold text-slate-500">Tổng số đợt</p>
-          <p className="text-3xl font-black text-[#152238]">{phaseSummary.total}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 border border-slate-200">
-          <p className="text-sm font-semibold text-slate-500">Đợt đang mở</p>
-          <p className="text-3xl font-black text-[#16a34a]">{phaseSummary.open}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 border border-slate-200">
-          <p className="text-sm font-semibold text-slate-500">Đợt đã đóng</p>
-          <p className="text-3xl font-black text-[#475569]">{phaseSummary.closed}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 col-span-1 md:col-span-3">
-          <p className="text-sm font-semibold text-slate-500 flex items-center gap-1.5">
-            <Clock className="w-4 h-4" /> Đếm ngược đợt đang mở
-          </p>
-          {closingCountdown ? (
-            <>
-              <p className="text-2xl font-black text-[#152238]">Còn {closingCountdown.text}</p>
-              <p className="mt-1 text-sm text-slate-500">
-                Đợt "{closingCountdown.phase.TenDot}" ({closingCountdown.phase.HocKy || '—'}) sẽ đóng lúc{' '}
-                {new Date(closingCountdown.phase.NgayDong).toLocaleString('vi-VN')}
-              </p>
-            </>
-          ) : (
-            <p className="text-2xl font-black text-[#152238]">Không có đợt đang mở</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-1 bg-white rounded-2xl p-5 border border-slate-200">
-          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-[#F4C542]" /> {editingPhase ? 'Chỉnh sửa đợt' : 'Tạo đợt mới'}</h3>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <input
-                className={`w-full rounded-xl border px-3 py-2 ${tenDotError ? 'border-red-400' : 'border-slate-200'}`}
-                placeholder="Tên đợt"
-                value={form.TenDot}
-                maxLength={100}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  // Lọc ngay các ký tự đặc biệt không cho phép khi gõ
-                  const filtered = raw.replace(TEN_DOT_INVALID_CHARS_REGEX, '');
-                  setForm({ ...form, TenDot: filtered });
-                  setTenDotError(
-                    raw !== filtered
-                      ? 'Đã tự động loại bỏ ký tự đặc biệt không hợp lệ trong tên đợt.'
-                      : ''
-                  );
-                }}
-                required
-              />
-              {tenDotError ? (
-                <p className="mt-1 text-xs text-red-500">{tenDotError}</p>
-              ) : (
-                <p className="mt-1 text-xs text-slate-400">Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .</p>
-              )}
-            </div>
-            <textarea className="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Mô tả" value={form.MoTa} onChange={(e) => setForm({ ...form, MoTa: e.target.value })} rows={3} />
-            {hocKyOptions.length > 0 ? (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Học kỳ</label>
-                <select
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
-                  value={form.HocKy}
-                  onChange={(e) => {
-                    const newHocKy = e.target.value;
-                    setForm({ ...form, HocKy: newHocKy });
-                    const conflictPhase = findConflictingOpenPhase(newHocKy, editingPhase?.MaDot);
-                    if (conflictPhase) {
-                      showToast(
-                        `Đang có đợt đăng ký mở cho học kỳ "${conflictPhase.HocKy}" ("${conflictPhase.TenDot}"). ` +
-                        `Không thể mở song song đợt cho học kỳ "${newHocKy}" cho đến khi đợt đó đóng/hết hạn.`
-                      );
-                    }
-                  }}
-                  required
-                >
-                  <option value="" disabled>Chọn học kỳ từ dữ liệu lớp học phần</option>
-                  {hocKyOptions.map((hk) => (
-                    <option key={hk} value={hk}>{hk}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-500">Học kỳ được lấy tự động từ dữ liệu các lớp học phần, không thể nhập tay.</p>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Học kỳ</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-400"
-                  placeholder="Chưa có dữ liệu học kỳ từ lớp học phần"
-                  value=""
-                  readOnly
-                  disabled
-                />
-                <p className="mt-1 text-xs text-slate-500">Cần có dữ liệu lớp học phần trước khi tạo đợt đăng ký.</p>
-              </div>
-            )}
-            {courseYearOptions.length > 0 ? (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Năm học</label>
-                <select
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
-                  value={form.NamHoc}
-                  onChange={(e) => setForm({ ...form, NamHoc: e.target.value })}
-                  required
-                >
-                  <option value="" disabled>Chọn năm học từ học phần</option>
-                  {courseYearOptions.map((year) => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Năm học</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2"
-                  placeholder="Không có học phần để chọn"
-                  value={form.NamHoc}
-                  onChange={(e) => setForm({ ...form, NamHoc: e.target.value })}
-                />
-                <p className="mt-1 text-xs text-slate-500">Năm học sẽ hiển thị từ dữ liệu học phần.</p>
-              </div>
-            )}
-            {nienKhoaOptions.length > 0 ? (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Niên khóa</label>
-                <select
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
-                  value={form.NienKhoa}
-                  onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })}
-                  required
-                >
-                  <option value="" disabled>Chọn niên khóa theo sinh viên</option>
-                  {nienKhoaOptions.map((nienKhoa) => (
-                    <option key={nienKhoa} value={nienKhoa}>{nienKhoa}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Niên khóa</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2"
-                  placeholder="Không có sinh viên để chọn niên khóa"
-                  value={form.NienKhoa}
-                  onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })}
-                />
-                <p className="mt-1 text-xs text-slate-500">Niên khóa sẽ hiển thị từ dữ liệu sinh viên.</p>
-              </div>
-            )}
-            <label className="block text-sm font-medium text-slate-700">Ngày mở</label>
-            <input type="datetime-local" className="w-full rounded-xl border border-slate-200 px-3 py-2" value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })} required />
-            <label className="block text-sm font-medium text-slate-700">Ngày đóng</label>
-            <input type="datetime-local" className="w-full rounded-xl border border-slate-200 px-3 py-2" value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })} required />
-            <div className="flex gap-3">
-              <button type="submit" className="flex-1 rounded-xl bg-[#152238] text-white py-2.5 font-semibold">Lưu</button>
-              {editingPhase && <button type="button" onClick={resetForm} className="flex-1 rounded-xl border border-slate-300 text-slate-700 py-2.5 font-semibold">Hủy</button>}
-            </div>
-          </form>
-        </div>
-
-        <div className="xl:col-span-2 bg-white rounded-2xl p-5 border border-slate-200">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-slate-800">Danh sách đợt đăng ký</h3>
-              <p className="text-sm text-slate-500">Xem, tìm kiếm và quản lý các đợt đăng ký của trường.</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                className="w-full sm:w-72 rounded-xl border border-slate-200 px-3 py-2"
-                placeholder="Tìm theo tên, học kỳ, niên khóa"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <select
-                className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="Mo">Đang mở</option>
-                <option value="Đóng">Đã đóng</option>
-              </select>
-            </div>
+        {/* table */}
+        {loading ? (
+          <div className="p-12 text-center text-sm text-slate-500">Đang tải dữ liệu…</div>
+        ) : filteredPhases.length === 0 ? (
+          <div className="p-12 text-center">
+            <CalendarDays className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-slate-500">Không tìm thấy đợt nào</p>
+            <p className="text-xs text-slate-400 mt-1">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
           </div>
-
-          {loading ? <p className="text-sm text-slate-500">Đang tải...</p> : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-left text-slate-600">
-                    <th className="px-4 py-3">Tên đợt</th>
-                    <th className="px-4 py-3">Học kỳ / Năm học / Niên khóa</th>
-                    <th className="px-4 py-3">Thời gian</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3 text-right">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredPhases.map((phase) => (
-                    <tr key={phase.MaDot}>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="font-semibold text-slate-900">{phase.TenDot}</div>
-                        <div className="text-slate-500">{phase.MoTa || 'Không có mô tả'}</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-slate-600">
-                        {phase.HocKy || '—'} / {phase.NamHoc || '—'} / {phase.NienKhoa || '—'}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-slate-600">
-                        {new Date(phase.NgayMo).toLocaleString('vi-VN')}<br />
-                        <span className="text-slate-400">→ {new Date(phase.NgayDong).toLocaleString('vi-VN')}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        {phase.TrangThai === 'Mo' ? (
-                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Đang mở</span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Đã đóng</span>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Đợt đăng ký</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">HK / Năm / Niên khóa</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Thời gian</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                <AnimatePresence>
+                  {filteredPhases.map((phase, i) => {
+                    const isExpired = phase.TrangThai === 'Mo' && phase.NgayDong && new Date(phase.NgayDong) < now;
+                    return (
+                    <motion.tr key={phase.MaDot} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                      className="hover:bg-slate-50/80 transition-colors group">
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-slate-900">{phase.TenDot}</p>
+                        {phase.TrangThai === 'Mo' && !isExpired && phase.NgayDong && (
+                          <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-[#F4C542] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-fit">
+                            <Hourglass className="w-3 h-3" /> Còn {diffText(new Date(phase.NgayDong) - now)}
+                          </div>
                         )}
+                        {phase.MoTa && <p className="text-xs text-slate-400 mt-1 line-clamp-1">{phase.MoTa}</p>}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right">
-                        <div className="inline-flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEditPhase(phase)}
-                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50"
-                          >
-                            <Pencil className="w-4 h-4" />
+                      <td className="px-5 py-4 whitespace-nowrap hidden md:table-cell">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-slate-700">{phase.HocKy || '—'}</span>
+                          <span className="text-xs text-slate-400">{phase.NamHoc || '—'} · {phase.NienKhoa || '—'}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap hidden sm:table-cell">
+                        <div className="flex flex-col gap-0.5 text-xs text-slate-500">
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(phase.NgayMo)}</span>
+                          <span className="flex items-center gap-1 text-slate-400"><ChevronRight className="w-3 h-3" />{fmtDate(phase.NgayDong)}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4"><StatusBadge phase={phase} now={now} /></td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEditForm(phase)} title="Chỉnh sửa"
+                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
                           {phase.TrangThai === 'Mo' ? (
-                            <button
-                              type="button"
-                              onClick={() => closePhase(phase.MaDot)}
-                              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 hover:bg-amber-100"
-                            >Đóng</button>
+                            <button onClick={() => requestClose(phase)}
+                              className="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold transition-colors">
+                              Đóng
+                            </button>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => openPhase(phase.MaDot)}
-                              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 hover:bg-slate-100"
-                            >Mở lại</button>
+                            <button onClick={() => requestOpen(phase)}
+                              className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors">
+                              Mở lại
+                            </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => requestDeletePhase(phase)}
-                            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100"
-                          >
-                            <Trash2 className="w-4 h-4" />
+                          <button onClick={() => requestDelete(phase)} title="Xóa"
+                            className="p-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
-                    </tr>
-                  ))}
-                  {filteredPhases.length === 0 && (
-                    <tr>
-                      <td colSpan="5" className="px-4 py-8 text-center text-slate-500">Không tìm thấy đợt đăng ký phù hợp.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl p-5 border border-slate-200">
-        <div className="mb-4">
-          <h3 className="font-bold text-slate-800">Dòng thời gian đợt đăng ký</h3>
-          <p className="text-sm text-slate-500">Các đợt được sắp xếp theo thời gian mở, giúp theo dõi đợt nào đang diễn ra, sắp mở hay đã kết thúc.</p>
-        </div>
-
-        {timelinePhases.length === 0 ? (
-          <p className="text-sm text-slate-500">Chưa có đợt đăng ký nào để hiển thị.</p>
-        ) : (
-          <ol className="relative border-s-2 border-slate-200 ms-3">
-            {timelinePhases.map((phase, index) => {
-              const dotStyles = {
-                ongoing: 'bg-emerald-500 ring-emerald-100',
-                upcoming: 'bg-amber-400 ring-amber-100',
-                closed: 'bg-slate-300 ring-slate-100'
-              };
-              const badge = {
-                ongoing: { label: 'Đang diễn ra', className: 'bg-emerald-50 text-emerald-700' },
-                upcoming: { label: 'Sắp mở', className: 'bg-amber-50 text-amber-700' },
-                closed: { label: phase.TrangThai === 'Mo' ? 'Đã hết hạn' : 'Đã đóng', className: 'bg-slate-100 text-slate-600' }
-              }[phase.timelineStatus];
-
-              return (
-                <li key={phase.MaDot} className={`ms-6 ${index === timelinePhases.length - 1 ? '' : 'pb-6'}`}>
-                  <span
-                    className={`absolute -start-[9px] flex h-4 w-4 items-center justify-center rounded-full ring-4 ${dotStyles[phase.timelineStatus]}`}
-                  />
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-900">{phase.TenDot}</p>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badge.className}`}>
-                        {badge.label}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {phase.HocKy || '—'} / {phase.NamHoc || '—'} / {phase.NienKhoa || '—'}
-                    </p>
-                    <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
-                      <Clock className="w-3.5 h-3.5" />
-                      {phase.NgayMo ? new Date(phase.NgayMo).toLocaleString('vi-VN') : '—'}
-                      <span className="text-slate-400">→</span>
-                      {phase.NgayDong ? new Date(phase.NgayDong).toLocaleString('vi-VN') : '—'}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+                    </motion.tr>
+                  )})}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

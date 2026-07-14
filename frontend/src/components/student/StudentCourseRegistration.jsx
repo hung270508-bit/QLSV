@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BookPlus, Plus, Trash2, Clock, CheckCircle2, MapPin, CalendarDays, AlertCircle, Save, XCircle, Wallet } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BookPlus, Plus, Trash2, Clock, CheckCircle2, MapPin, CalendarDays, AlertCircle, Save, XCircle, Wallet, Search, Hourglass, Users, ChevronRight, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API_URL from '../../api';
@@ -9,11 +9,18 @@ import { StudentCourseRegistrationSkeleton } from '../common/StudentSkeleton';
 function StudentCourseRegistration({ user }) {
   const [availableCourses, setAvailableCourses] = useState([]);
   const [myCourses, setMyCourses] = useState([]);
-  const [cart, setCart] = useState([]); // GIỎ HÀNG ẢO CHƯA LƯU
+  const [phases, setPhases] = useState([]);
+  const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter & Search states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterThu, setFilterThu] = useState('all');
+  const [hideFull, setHideFull] = useState(false);
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
+  const [now, setNow] = useState(() => new Date());
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -23,54 +30,119 @@ function StudentCourseRegistration({ user }) {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [availRes, myRes] = await Promise.all([
+      const [availRes, myRes, phaseRes] = await Promise.all([
         axios.get(`${API_URL}/api/enrollment/available/${user.username}`),
-        axios.get(`${API_URL}/api/enrollment/my-courses/${user.username}`) 
+        axios.get(`${API_URL}/api/enrollment/my-courses/${user.username}`),
+        axios.get(`${API_URL}/api/enrollment/phases`)
       ]);
-      setAvailableCourses(availRes.data);
-      setMyCourses(myRes.data);
-    } catch (error) { 
+      setAvailableCourses(availRes.data || []);
+      setMyCourses(myRes.data || []);
+      setPhases(phaseRes.data || []);
+    } catch (error) {
       showToast('Lỗi tải dữ liệu. Vui lòng refresh lại trang!', 'error');
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { console.log("User data:", user);           // ← thêm dòng này
-    if (user?.username) fetchData(); }, [user]);
+  useEffect(() => {
+    if (user?.username) fetchData();
+  }, [user]);
 
-  // LOGIC 1: ĐƯA VÀO GIỎ HÀNG TẠM (Chưa ném lên Server)
-  // LOGIC 1: CHỈ CHO CHỌN 1 LỚP CHO 1 MÔN + ẨN NÚT CHỌN KHI ĐÃ CÓ
-const handleAddToCart = (course) => {
-    // Kiểm tra đã có trong giỏ tạm
-    if (cart.find(c => c.MaMonHoc === course.MaMonHoc)) {
-        return showToast(`Môn ${course.TenMonHoc} đã có trong danh sách tạm!`, "error");
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  const activePhase = useMemo(() => {
+    return phases.find(p => p.TrangThai === 'Mo') || null;
+  }, [phases]);
+
+  function diffText(ms) {
+    const totalMin = Math.max(0, Math.floor(ms / 60000));
+    const days = Math.floor(totalMin / 1440);
+    const hours = Math.floor((totalMin % 1440) / 60);
+    const mins = totalMin % 60;
+    if (days > 0) return `${days} ngày ${hours} giờ`;
+    if (hours > 0) return `${hours} giờ ${mins} phút`;
+    return `${mins} phút`;
+  }
+
+  let countdownText = null;
+  if (activePhase && activePhase.NgayDong) {
+    const end = new Date(activePhase.NgayDong);
+    if (end > now) {
+      countdownText = diffText(end - now);
+    }
+  }
+
+  const checkClash = (newCourse) => {
+    const activeEnrolled = myCourses.filter(c => c.TrangThai !== 'Đã hủy' && c.TrangThai !== 'Từ chối');
+    const allChecking = [...cart, ...activeEnrolled];
+
+    for (const c of allChecking) {
+      if (c.Thu === newCourse.Thu && c.Thu) {
+        const getRange = (ca) => {
+          if (!ca) return null;
+          const match = String(ca).match(/(\d+)\s*-\s*(\d+)/);
+          if (match) return [parseInt(match[1]), parseInt(match[2])];
+          const caStr = String(ca).replace(/\D/g, '');
+          if (caStr === '1') return [1, 3];
+          if (caStr === '2') return [4, 6];
+          if (caStr === '3') return [7, 9];
+          if (caStr === '4') return [10, 12];
+          return null;
+        };
+        const r1 = getRange(c.CaHoc);
+        const r2 = getRange(newCourse.CaHoc);
+        if (r1 && r2) {
+          if (r1[0] <= r2[1] && r1[1] >= r2[0]) {
+            return `Trùng lịch với môn ${c.TenMonHoc} (Thứ ${formatThu(c.Thu)}, Tiết ${c.CaHoc})`;
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  const handleAddToCart = (course) => {
+    // 1. Kiểm tra giới hạn tín chỉ (23 tín)
+    const activeEnrolled = myCourses.filter(c => c.TrangThai !== 'Đã hủy' && c.TrangThai !== 'Từ chối');
+    const currentActiveCredits = [...cart, ...activeEnrolled].reduce((acc, c) => acc + (parseInt(c.SoTinChi) || 0), 0);
+    const newTotalCredits = currentActiveCredits + parseInt(course.SoTinChi || 0, 10);
+    if (newTotalCredits > 23) {
+      return showToast(`Vượt giới hạn 23 tín chỉ! Không thể chọn thêm môn ${course.TenMonHoc}.`, "error");
     }
 
-    // Kiểm tra đã đăng ký rồi
-    if (myCourses.find(c => c.MaMonHoc === course.MaMonHoc)) {
-        return showToast(`Bạn đã đăng ký môn ${course.TenMonHoc} rồi!`, "error");
+    // 2. Kiểm tra trùng môn trong giỏ
+    if (cart.find(c => c.MaMonHoc === course.MaMonHoc)) {
+      return showToast(`Môn ${course.TenMonHoc} đã có trong danh sách tạm!`, "error");
+    }
+
+    // 3. Kiểm tra đã đăng ký
+    if (activeEnrolled.find(c => c.MaMonHoc === course.MaMonHoc)) {
+      return showToast(`Bạn đã đăng ký môn ${course.TenMonHoc} rồi!`, "error");
+    }
+
+    // 4. Kiểm tra trùng lịch
+    const clashMsg = checkClash(course);
+    if (clashMsg) {
+      return showToast(clashMsg, "error");
     }
 
     setCart([...cart, course]);
     showToast(`Đã thêm môn ${course.TenMonHoc} vào danh sách tạm`, "success");
-};
-  // LOGIC 2: XÓA KHỎI GIỎ HÀNG (Chỉ xóa local)
+  };
+
   const handleRemoveFromCart = (maLHP) => {
     setCart(cart.filter(c => c.MaLopHocPhan !== maLHP));
   };
 
-  // LOGIC 2b: XÓA HỌC PHẦN ĐÃ LƯU TRONG DB.
-  // Chỉ hiện/enable nút này khi TrangThai còn "Chờ đóng tiền" (chưa đóng tiền, chưa hủy).
-  // Việc đợt đăng ký còn "Mở" hay đã đóng do BACKEND kiểm tra và quyết định thật sự
-  // (theo đúng niên khóa của từng SV) — nếu đợt đã đóng, server sẽ từ chối và trả lỗi
-  // rõ ràng, hiển thị qua toast bên dưới.
   const handleRemoveSaved = (course) => {
     setConfirmDialog({
       show: true,
       title: 'Xóa học phần đã đăng ký',
-      message: `Bạn có chắc muốn xóa lớp học phần ${course.MaLopHocPhan} - ${course.TenMonHoc} khỏi danh sách đã đăng ký? Sau khi xóa bạn có thể chọn môn/lớp khác trong đợt đăng ký này.`,
+      message: `Bạn có chắc muốn xóa lớp học phần ${course.MaLopHocPhan} - ${course.TenMonHoc} khỏi danh sách đã đăng ký?`,
       action: async () => {
         try {
-          // Đúng thứ tự tham số backend: DELETE /api/enrollment/:mssv/:maLhp
           await axios.delete(`${API_URL}/api/enrollment/${user.username}/${course.MaLopHocPhan}`);
           showToast('Đã xóa học phần khỏi danh sách đăng ký!', 'success');
           fetchData();
@@ -83,59 +155,55 @@ const handleAddToCart = (course) => {
     });
   };
 
-  // LOGIC 3: LƯU TOÀN BỘ VÀO DATABASE
-  // LOGIC 3: LƯU TOÀN BỘ VÀO DATABASE
-const handleFinalize = () => {
+  const handleFinalize = () => {
     if (cart.length === 0) return showToast("Tiến trình đang trống!", "error");
-    
-    setConfirmDialog({
-        show: true,
-        title: 'Lưu thông tin đăng ký',
-        message: `Hệ thống sẽ tiến hành kiểm tra trùng lịch và lưu tạm ${cart.length} môn học này với trạng thái "Chờ đóng tiền"...`,
-        action: async () => {
-            try {
-                const res = await axios.post(`${API_URL}/api/enrollment/batch`, { 
-                    MSSV: user.username, 
-                    cart: cart.map(c => ({ 
-                        ...c, 
-                        HocKy: '2025.1'   // ← Thêm dòng này (hoặc năm học hiện tại)
-                    })) 
-                });
-                
-                showToast(res.data.message || "Lưu thông tin đăng ký thành công!", "success");
-                setCart([]); 
-                fetchData(); 
-                setConfirmDialog({ show: false });
-            } catch (error) {
-                showToast(error.response?.data?.message || "Có lỗi xảy ra khi kiểm tra môn học!", "error");
-                setConfirmDialog({ show: false });
-            }
-        }
-    });
-};
 
-  // Lấy tổng hợp danh sách đang hiển thị ở Tiến trình (Mix giữa DB và Local)
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận Đăng ký',
+      message: `Hệ thống sẽ lưu tạm ${cart.length} môn học này. Vui lòng đóng học phí để hoàn tất đăng ký chính thức.`,
+      action: async () => {
+        try {
+          const res = await axios.post(`${API_URL}/api/enrollment/batch`, {
+            MSSV: user.username,
+            cart: cart.map(c => ({
+              ...c,
+              HocKy: activePhase ? activePhase.HocKy : (c.HocKy || '')
+            }))
+          });
+
+          showToast(res.data.message || "Gửi yêu cầu đăng ký thành công!", "success");
+          setCart([]);
+          fetchData();
+          setConfirmDialog({ show: false });
+        } catch (error) {
+          showToast(error.response?.data?.message || "Có lỗi xảy ra khi lưu đăng ký!", "error");
+          setConfirmDialog({ show: false });
+        }
+      }
+    });
+  };
+
+  const filteredCourses = useMemo(() => {
+    return availableCourses.filter(c => {
+      if (hideFull && c.DaDangKy >= (c.SoLuongToiDa || 40)) return false;
+      if (filterThu !== 'all' && String(c.Thu) !== String(filterThu)) return false;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        return c.TenMonHoc?.toLowerCase().includes(term) || c.MaLopHocPhan?.toLowerCase().includes(term);
+      }
+      return true;
+    });
+  }, [availableCourses, searchTerm, filterThu, hideFull]);
+
   const displayList = [
     ...cart.map(c => ({ ...c, isLocal: true, TrangThai: 'Tạm lưu' })),
     ...myCourses.map(c => ({ ...c, isLocal: false }))
   ];
 
-  // Hiển thị đúng trạng thái đăng ký/đóng tiền trả về từ server
-  const renderStatusBadge = (trangThai) => {
-    switch (trangThai) {
-      case 'Đã đóng tiền':
-        return <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><CheckCircle2 className="w-3.5 h-3.5"/> Đã đóng tiền</span>;
-      case 'Đã hủy':
-      case 'Từ chối':
-        return <span className="text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><XCircle className="w-3.5 h-3.5"/> Đã hủy</span>;
-      case 'Chờ đóng tiền':
-      default:
-        return <span className="text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><Wallet className="w-3.5 h-3.5"/> Chờ đóng tiền</span>;
-    }
-  };
+  const activeDisplayList = displayList.filter(c => c.TrangThai !== 'Đã hủy' && c.TrangThai !== 'Từ chối');
+  const totalCredits = activeDisplayList.reduce((acc, c) => acc + (parseInt(c.SoTinChi) || 0), 0);
 
-  // Chuyển field Thu (kết quả DAYOFWEEK() từ MySQL: 1 = Chủ nhật, 2-7 = Thứ 2 - Thứ 7)
-  // thành nhãn hiển thị tiếng Việt
   const formatThu = (thu) => {
     if (thu === null || thu === undefined || thu === '') return '—';
     const val = String(thu).trim().toUpperCase();
@@ -145,173 +213,269 @@ const handleFinalize = () => {
     return val;
   };
 
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '';
+
   if (loading) return <StudentCourseRegistrationSkeleton />;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 relative pb-10">
+    <div className="max-w-[1600px] mx-auto space-y-8 relative pb-12 px-4 xl:px-8">
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ show: false, message: '', type: 'success' })} />
       <ConfirmDialog show={confirmDialog.show} title={confirmDialog.title} message={confirmDialog.message} onConfirm={confirmDialog.action} onCancel={() => setConfirmDialog({ show: false, title: '', message: '', action: null })} />
 
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#F4C542] rounded-3xl p-8 text-[#152238] shadow-xl shadow-amber-500/20 relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-5">
-          <div className="p-4 bg-white/40 backdrop-blur-sm rounded-2xl"><BookPlus className="w-10 h-10" /></div>
-          <div><h2 className="text-3xl font-black mb-1">Đăng ký môn học</h2><p className="text-[#152238]/70 font-medium">Học kỳ hiện tại - Danh sách lớp học phần đang mở</p></div>
+      {/* Header Banner - Premium Glassmorphism */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative overflow-hidden rounded-[2.5rem] bg-[#152238] p-8 md:p-10 text-white shadow-2xl">
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_100%_0%,#F4C542_0%,transparent_50%)]" />
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_0%_100%,#ffffff_0%,transparent_50%)]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <div className="p-4 md:p-5 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+              <GraduationCap className="w-10 h-10 md:w-12 md:h-12 text-[#F4C542]" />
+            </div>
+            <div>
+              <h2 className="text-3xl md:text-5xl font-black mb-2 tracking-tight">Đăng ký học phần</h2>
+              <div className="flex items-center gap-3">
+                <p className="text-white/80 font-medium text-sm md:text-lg">
+                  {activePhase ? `Thuộc: ${activePhase.TenDot} (${activePhase.HocKy || ''})` : 'Hệ thống Đăng ký Tín chỉ'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {countdownText && (
+            <div className="flex items-center gap-4 bg-white/10 border border-white/20 px-6 py-4 rounded-3xl backdrop-blur-md self-start lg:self-auto shadow-inner">
+              <div className="p-2.5 bg-[#F4C542]/20 rounded-2xl">
+                <Hourglass className="w-6 h-6 text-[#F4C542] animate-pulse" />
+              </div>
+              <div>
+                <p className="text-xs text-white/70 font-semibold uppercase tracking-wider mb-0.5">Thời gian còn lại</p>
+                <p className="text-xl md:text-2xl font-black text-[#F4C542] leading-none tracking-tight">{countdownText}</p>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
 
-      {/* TIẾN TRÌNH ĐĂNG KÝ VÀ NÚT CHỐT LƯU */}
-      <div className="bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 border-b border-slate-100 pb-4">
-          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#F4C542]" /> Tiến trình đăng ký ({displayList.length} môn)
-          </h3>
-          {cart.length > 0 && (
-            <button onClick={handleFinalize} className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/30 flex items-center gap-2 transition-all hover:scale-105 animate-pulse">
-              <Save className="w-4 h-4"/> Lưu lại ngay
-            </button>
-          )}
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse min-w-[700px]">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold">Tên môn học</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Trạng thái</th><th className="p-4 text-center font-bold rounded-tr-xl">Tác vụ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {displayList.map((c, i) => (
-                <tr key={i} className={`hover:bg-slate-50/80 transition-colors ${c.isLocal ? 'bg-[#FFF7D6]/30' : ''}`}>
-                  <td className="p-4 font-bold text-[#3B82F6]">{c.MaLopHocPhan}</td>
-                  <td className="p-4 font-bold text-slate-700">{c.TenMonHoc}</td>
-                  <td className="p-4 text-center font-bold text-slate-600">{c.SoTinChi}</td>
-                  <td className="p-4">
-                    {c.isLocal 
-                      ? <span className="text-[#F4C542] bg-[#FFF7D6] border border-[#FFF7D6] px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 w-fit text-xs"><AlertCircle className="w-3.5 h-3.5"/> Tạm lưu</span>
-                      : renderStatusBadge(c.TrangThai)
-                    }
-                  </td>
-                  <td className="p-4 text-center">
-                    {(() => {
-                      // Học phần local (chưa lưu): luôn xóa được khỏi giỏ.
-                      // Học phần đã lưu (DB): dùng field CoTheXoa do BACKEND tính sẵn
-                      // (đúng theo niên khóa của SV + trạng thái đợt đăng ký thật sự) —
-                      // đợt đóng thì nút tự chuyển xám ngay, không cần bấm thử mới biết.
-                      const canRemoveSaved = !c.isLocal && !!c.CoTheXoa;
-                      const canRemove = c.isLocal || canRemoveSaved;
-                      const title = c.isLocal
-                        ? 'Xóa khỏi danh sách tạm'
-                        : canRemoveSaved
-                          ? 'Xóa học phần đã đăng ký (đợt đang mở)'
-                          : c.TrangThai !== 'Chờ đóng tiền'
-                            ? 'Đã đóng tiền hoặc đã hủy, không thể xóa'
-                            : 'Đợt đăng ký đã đóng, không thể sửa/xóa';
-                      return (
-                        <button
-                          onClick={() => {
-                            if (c.isLocal) return handleRemoveFromCart(c.MaLopHocPhan);
-                            if (canRemoveSaved) return handleRemoveSaved(c);
-                          }}
-                          disabled={!canRemove}
-                          title={title}
-                          className={`p-2.5 rounded-lg transition-all mx-auto shadow-sm flex items-center justify-center ${canRemove ? 'bg-[#FFFFFF] border border-red-200 text-[#EF4444] hover:bg-[#EF4444]/100 hover:text-white' : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'}`}
-                        >
-                          <Trash2 className="w-4 h-4"/>
-                        </button>
-                      );
-                    })()}
-                  </td>
-                </tr>
-              ))}
-              {displayList.length === 0 && <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-medium">Bạn chưa chọn môn học nào.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Main Two-Column Layout */}
+      <div className="flex flex-col xl:flex-row gap-8 items-start">
 
-      <div className="bg-[#FFFFFF] p-6 rounded-3xl shadow-sm border border-slate-100">
-        <h3 className="font-bold text-slate-800 text-lg mb-5 border-b border-slate-100 pb-4 flex items-center gap-2"><BookPlus className="w-5 h-5 text-[#3B82F6]" /> Danh sách lớp học phần đang mở</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse min-w-[900px]">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                <th className="p-4 font-bold rounded-tl-xl">Mã LHP</th><th className="p-4 font-bold w-1/3">Môn học</th><th className="p-4 text-center font-bold">Thứ</th><th className="p-4 font-bold">Lịch học chi tiết</th><th className="p-4 text-center font-bold">Tín chỉ</th><th className="p-4 font-bold">Giảng viên</th><th className="p-4 text-center font-bold">Sĩ số</th><th className="p-4 text-center font-bold rounded-tr-xl">Đăng ký</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {availableCourses.map((c, i) => {
+        {/* Left Column: Available Courses List */}
+        <div className="flex-1 w-full flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 backdrop-blur-xl p-4 rounded-3xl border border-slate-200/60 shadow-sm sticky top-0 z-20">
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3 w-full">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm môn học, mã LHP..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 focus:border-[#3B82F6] font-medium shadow-sm transition-all"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  value={filterThu}
+                  onChange={e => setFilterThu(e.target.value)}
+                  className="px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 text-slate-700 font-semibold shadow-sm cursor-pointer"
+                >
+                  <option value="all">Tất cả thứ</option>
+                  <option value="2">Thứ 2</option>
+                  <option value="3">Thứ 3</option>
+                  <option value="4">Thứ 4</option>
+                  <option value="5">Thứ 5</option>
+                  <option value="6">Thứ 6</option>
+                  <option value="7">Thứ 7</option>
+                  <option value="CN">Chủ nhật</option>
+                </select>
+                <label className="flex items-center gap-2 text-sm text-slate-700 font-bold cursor-pointer bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-sm hover:bg-slate-50 transition-colors select-none">
+                  <input type="checkbox" checked={hideFull} onChange={e => setHideFull(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-[#152238] focus:ring-[#152238]" />
+                  Ẩn lớp đầy
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Modern Card List for Courses */}
+          <div className="space-y-4">
+            <AnimatePresence>
+              {filteredCourses.map((c, i) => {
                 const isFull = c.DaDangKy >= (c.SoLuongToiDa || 40);
                 const isInCart = cart.some(cartItem => cartItem.MaLopHocPhan === c.MaLopHocPhan);
-                // Lớp học phần bắt buộc phải được xếp lịch (có NgayBatDau) trước khi cho SV đăng ký.
+                const isEnrolled = myCourses.some(en => en.MaLopHocPhan === c.MaLopHocPhan && en.TrangThai !== 'Đã hủy');
                 const noSchedule = !c.NgayBatDau;
-                
-                let tietStr = "Chưa rõ";
-                if (c.CaHoc) {
-                  const match = String(c.CaHoc).match(/(\d+)\s*-\s*(\d+)/);
-                  if (match) { tietStr = `Tiết ${match[1]}-${match[2]}`; } 
-                  else {
-                    const caStr = String(c.CaHoc).replace(/\D/g, ''); 
-                    if (caStr === '1') tietStr = 'Tiết 1-3'; else if (caStr === '2') tietStr = 'Tiết 4-6'; else if (caStr === '3') tietStr = 'Tiết 7-9'; else if (caStr === '4') tietStr = 'Tiết 10-12';
-                  }
-                }
-                const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '';
-                return (
-                  <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${(isFull || isInCart || noSchedule) ? 'opacity-70 bg-slate-50' : ''}`}>
-                    <td className="p-4 font-bold text-slate-700 bg-slate-50/30">{c.MaLopHocPhan}</td>
-                    <td className="p-4">
-                      <div className="font-bold text-slate-800 text-sm mb-1.5">{c.TenMonHoc}</div>
-                      {(c.DiemCu === null || c.DiemCu === undefined) ? <span className="bg-[#3B82F6]/10 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span> : parseFloat(c.DiemCu) < 1.0 ? <span className="bg-[#EF4444]/10 text-red-700 border border-red-200 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại (F)</span> : <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học cải thiện ({parseFloat(c.DiemCu).toFixed(2)})</span>}
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-[#3B82F6] border border-blue-100">
-                        {formatThu(c.Thu)}
-                      </span>
-                    </td>
-                    <td className="p-4">
-    {c.NgayBatDau ? (
-        <div className="space-y-2 text-xs text-slate-600 font-medium">
-            <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[#3B82F6]">
-                    <CalendarDays className="w-3 h-3" />
-                </div>
-                {formatDate(c.NgayBatDau)} → {formatDate(c.NgayKetThuc)}
-            </div>
-            
-            <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-[#FFF7D6] flex items-center justify-center text-[#F4C542]">
-                    <MapPin className="w-3 h-3" />
-                </div>
-                Phòng: {c.PhongHoc || 'Chưa cập nhật'}
-            </div>
+                const disabled = isFull || isInCart || isEnrolled || noSchedule;
 
-            {c.CaHoc && (
-                <div className="flex items-center gap-2 text-amber-600 font-semibold">
-    {tietStr}
-</div>
-            )}
-        </div>
-    ) : (
-        <span className="text-slate-400 italic text-xs">Đang cập nhật lịch...</span>
-    )}
-</td>
-                    <td className="p-4 text-center font-bold text-slate-700">{c.SoTinChi}</td>
-                    <td className="p-4 font-semibold text-slate-700">{c.TenGiangVien || 'Chưa xếp'}</td>
-                    <td className="p-4 text-center"><span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isFull ? 'bg-red-100 text-[#DC2626] border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{c.DaDangKy} / {c.SoLuongToiDa || 40}</span></td>
-                    <td className="p-4 text-center">
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: i > 10 ? 0 : i * 0.03 }}
+                    key={c.MaLopHocPhan}
+                    className={`bg-white rounded-3xl p-5 md:p-6 shadow-sm border ${disabled ? 'border-slate-100 opacity-75' : 'border-slate-200 hover:border-blue-300 hover:shadow-md'} transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 group`}
+                  >
+                    {/* Left: Info */}
+                    <div className="flex items-start md:items-center gap-5 md:gap-6 flex-1">
+                      <div className={`w-14 h-14 shrink-0 rounded-2xl flex flex-col items-center justify-center font-black shadow-inner border ${disabled ? 'bg-slate-50 text-slate-400 border-slate-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                        <span className="text-xl leading-none">{c.SoTinChi}</span>
+                        <span className="text-[10px] uppercase font-bold tracking-wider mt-0.5">Tín chỉ</span>
+                      </div>
+                      <div className="space-y-2.5 flex-1">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+                            <h4 className={`font-black text-lg ${disabled ? 'text-slate-600' : 'text-slate-900 group-hover:text-[#152238]'} transition-colors leading-tight`}>{c.TenMonHoc}</h4>
+                            <span className="bg-slate-100 text-slate-500 font-bold text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">{c.MaLopHocPhan}</span>
+                            {(c.DiemCu === null || c.DiemCu === undefined)
+                              ? <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span>
+                              : parseFloat(c.DiemCu) < 1.0
+                                ? <span className="bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại</span>
+                                : <span className="bg-amber-50 text-amber-600 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Cải thiện</span>
+                            }
+                          </div>
+                        </div>
+
+                        {/* Schedule Details */}
+                        {c.NgayBatDau ? (
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 font-medium">
+                            <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><CalendarDays className="w-4 h-4 text-blue-500" /> {formatThu(c.Thu)} • Tiết {c.CaHoc}</span>
+                            <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><MapPin className="w-4 h-4 text-amber-500" /> P.{c.PhongHoc || 'Chưa XĐ'}</span>
+                            <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><Users className="w-4 h-4 text-emerald-500" /> GV: {c.TenGiangVien || 'Chưa phân công'}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-sm">Lớp chưa có lịch cụ thể</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Status & Action */}
+                    <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
+                      <div className="text-left md:text-right">
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Sĩ số</p>
+                        <div className="text-base font-black text-slate-700">
+                          <span className={isFull ? 'text-red-500' : 'text-emerald-500'}>{c.DaDangKy}</span>
+                          <span className="text-slate-300 mx-1">/</span>
+                          {c.SoLuongToiDa || 40}
+                        </div>
+                      </div>
+
                       <button
                         onClick={() => handleAddToCart(c)}
-                        disabled={isFull || isInCart || noSchedule}
-                        title={noSchedule ? 'Lớp học phần chưa được xếp lịch, chưa thể đăng ký' : undefined}
-                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs mx-auto shadow-sm transition-all ${(isFull || isInCart || noSchedule) ? 'bg-slate-100 text-slate-400 cursor-not-allowed border' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:scale-105 shadow-blue-500/30'}`}
+                        disabled={disabled}
+                        className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm min-w-[120px] transition-all duration-300 ${disabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-[#152238] text-white hover:bg-[#1e3a5f] hover:shadow-xl hover:shadow-[#152238]/20 hover:-translate-y-0.5'}`}
                       >
-                        {isInCart ? 'Đã Chọn' : isFull ? 'Lớp đầy' : noSchedule ? 'Chưa có lịch' : <><Plus className="w-4 h-4"/> Chọn</>}
+                        {isInCart || isEnrolled ? 'Đã Chọn' : isFull ? 'Đã đầy' : noSchedule ? 'Chưa có lịch' : <><Plus className="w-5 h-5" /> Chọn môn</>}
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </motion.div>
                 )
               })}
-              {availableCourses.length === 0 && <tr><td colSpan="8" className="p-12 text-center text-slate-400 font-medium">Hiện không có môn học nào khả dụng.</td></tr>}
-            </tbody>
-          </table>
+            </AnimatePresence>
+
+            {filteredCourses.length === 0 && (
+              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-5">
+                  <BookPlus className="w-10 h-10 text-slate-300" />
+                </div>
+                <p className="text-slate-600 font-bold text-lg">Không tìm thấy môn học nào</p>
+                <p className="text-slate-400 text-sm mt-2">Vui lòng thử thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Sticky Premium Cart */}
+        <div className="w-full xl:w-[480px] xl:sticky xl:top-6 flex flex-col gap-6">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col max-h-[calc(100vh-60px)] relative">
+            {/* Cart Header */}
+            <div className="p-8 pb-6 bg-gradient-to-b from-slate-50 to-white relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-black text-2xl text-slate-800 flex items-center gap-3">
+                  Giỏ Đăng Ký
+                </h3>
+                <div className="bg-[#152238] text-[#F4C542] px-4 py-1.5 rounded-xl font-black text-lg shadow-md">
+                  {totalCredits} <span className="text-xs font-semibold text-white/70 uppercase">Tín chỉ</span>
+                </div>
+              </div>
+              <p className="text-slate-500 font-medium text-sm">Tiến trình chọn môn học hiện tại của bạn</p>
+            </div>
+
+            {/* Cart Items List */}
+            <div className="px-6 pb-6 overflow-y-auto flex-1 space-y-4">
+              <AnimatePresence mode="popLayout">
+                {displayList.map((c, i) => (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, opacity: 0 }}
+                    key={c.MaLopHocPhan || i}
+                    className={`p-5 rounded-3xl border-2 ${c.isLocal ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100 bg-white hover:border-slate-200'} shadow-sm relative group transition-all`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="pr-10">
+                        <p className="font-bold text-slate-800 text-base leading-tight mb-1">{c.TenMonHoc}</p>
+                        <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase">{c.MaLopHocPhan}</p>
+                      </div>
+
+                      {/* Remove action */}
+                      {(() => {
+                        const canRemoveSaved = !c.isLocal && !!c.CoTheXoa;
+                        const canRemove = c.isLocal || canRemoveSaved;
+                        if (!canRemove && c.TrangThai !== 'Chờ đóng tiền' && c.TrangThai !== 'Tạm lưu') return null;
+                        return (
+                          <button
+                            onClick={() => c.isLocal ? handleRemoveFromCart(c.MaLopHocPhan) : handleRemoveSaved(c)}
+                            disabled={!canRemove}
+                            title={canRemove ? 'Hủy chọn môn này' : 'Không thể hủy lúc này'}
+                            className={`absolute top-5 right-5 p-2 rounded-xl transition-all ${canRemove ? 'text-red-400 bg-red-50 hover:bg-red-500 hover:text-white shadow-sm' : 'text-slate-300 cursor-not-allowed opacity-50'}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )
+                      })()}
+                    </div>
+
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">
+                          <CalendarDays className="w-3.5 h-3.5 text-blue-500" /> {formatThu(c.Thu)}
+                        </span>
+                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">Tiết {c.CaHoc}</span>
+                      </div>
+
+                      {c.isLocal
+                        ? <span className="text-amber-600 bg-amber-100 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Tạm lưu</span>
+                        : <div className="scale-90 origin-right">{renderStatusBadge(c.TrangThai)}</div>
+                      }
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {displayList.length === 0 && (
+                <div className="text-center py-16 h-full flex flex-col items-center justify-center">
+                  <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                    <BookPlus className="w-10 h-10 text-slate-300" />
+                  </div>
+                  <p className="text-slate-600 font-bold text-lg mb-2">Chưa chọn môn nào</p>
+                  <p className="text-slate-400 text-sm max-w-[250px] mx-auto">Vui lòng chọn môn học từ danh sách bên trái để thêm vào giỏ.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action Button Footer */}
+            {cart.length > 0 && (
+              <div className="p-6 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] z-10 relative">
+                <button onClick={handleFinalize} className="w-full py-4 bg-[#F4C542] hover:bg-[#eab308] text-[#152238] rounded-2xl text-base font-black shadow-xl shadow-amber-500/20 flex items-center justify-center gap-3 transition-all hover:scale-[1.02]">
+                  <Save className="w-5 h-5" /> Gửi Đăng Ký Lên Hệ Thống
+                </button>
+                <p className="text-center text-xs text-slate-400 mt-4 font-semibold flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Sẽ tự động kiểm tra điều kiện & tạo phiếu thu
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
