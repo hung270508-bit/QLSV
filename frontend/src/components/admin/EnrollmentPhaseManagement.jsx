@@ -12,8 +12,17 @@ import {
 const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]*$/u;
 const TEN_DOT_INVALID_CHARS_REGEX = /[^\p{L}\p{N}\s\-_(),.]/gu;
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
+const fmtDateTime = (d) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
 
 function diffText(ms) {
   const totalMin = Math.max(0, Math.floor(ms / 60000));
@@ -25,11 +34,20 @@ function diffText(ms) {
   return `${mins} phút`;
 }
 
-const getMinDateStr = () => {
+const getMinDateTimeStr = () => {
   const d = new Date();
   const offset = d.getTimezoneOffset() * 60000;
   const localTime = new Date(d.getTime() - offset);
-  return localTime.toISOString().slice(0, 10);
+  return localTime.toISOString().slice(0, 16);
+};
+
+const toLocalISOString = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const offset = d.getTimezoneOffset() * 60000;
+  const localTime = new Date(d.getTime() - offset);
+  return localTime.toISOString().slice(0, 16);
 };
 
 // ── sub-components ────────────────────────────────────────────────────────────
@@ -179,14 +197,14 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
             </div>
           </div>
 
-          {/* Ngày mở + Ngày đóng — 2 cột */}
+          {/* Thời gian mở + Thời gian đóng — 2 cột */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày mở <span className="text-red-500">*</span></label>
-              <input type="date"
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian mở <span className="text-red-500">*</span></label>
+              <input type="datetime-local"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayMo ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                 value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })}
-                min={isEdit ? undefined : getMinDateStr()}
+                min={isEdit ? undefined : getMinDateTimeStr()}
                 required />
               {dateErrors?.NgayMo
                 ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayMo}</p>
@@ -194,11 +212,11 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
               }
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày đóng <span className="text-red-500">*</span></label>
-              <input type="date"
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian đóng <span className="text-red-500">*</span></label>
+              <input type="datetime-local"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayDong ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                 value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })}
-                min={form.NgayMo || getMinDateStr()}
+                min={form.NgayMo || getMinDateTimeStr()}
                 required />
               {dateErrors?.NgayDong
                 ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayDong}</p>
@@ -323,7 +341,7 @@ function EnrollmentPhaseManagement() {
   };
 
   const openCreateForm = () => { setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayMo: '', NgayDong: '' }); setFormOpen(true); };
-  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 10) : '', NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 10) : '' }); setFormOpen(true); };
+  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? toLocalISOString(phase.NgayMo) : '', NgayDong: phase.NgayDong ? toLocalISOString(phase.NgayDong) : '' }); setFormOpen(true); };
   const closeForm = () => { setFormOpen(false); setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); };
 
   const handleSubmit = (e) => {
@@ -348,8 +366,8 @@ function EnrollmentPhaseManagement() {
       const now = new Date();
       const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
-      const startDateStr = form.NgayMo.includes('T') ? form.NgayMo : `${form.NgayMo}T00:00:00+07:00`;
-      const endDateStr = form.NgayDong.includes('T') ? form.NgayDong : `${form.NgayDong}T23:59:59+07:00`;
+      const startDateStr = form.NgayMo.includes('+') || form.NgayMo.includes('Z') ? form.NgayMo : `${form.NgayMo}:00+07:00`;
+      const endDateStr = form.NgayDong.includes('+') || form.NgayDong.includes('Z') ? form.NgayDong : `${form.NgayDong}:00+07:00`;
       
       const startDate = new Date(startDateStr);
       const endDate = new Date(endDateStr);
@@ -357,7 +375,7 @@ function EnrollmentPhaseManagement() {
 
       let isNgayMoChanged = true;
       if (editingPhase && editingPhase.NgayMo) {
-        if (form.NgayMo === editingPhase.NgayMo.slice(0, 10)) {
+        if (form.NgayMo === toLocalISOString(editingPhase.NgayMo)) {
           isNgayMoChanged = false;
         }
       }
@@ -375,7 +393,7 @@ function EnrollmentPhaseManagement() {
 
       let isNgayDongChanged = true;
       if (editingPhase && editingPhase.NgayDong) {
-        if (form.NgayDong === editingPhase.NgayDong.slice(0, 10)) {
+        if (form.NgayDong === toLocalISOString(editingPhase.NgayDong)) {
           isNgayDongChanged = false;
         }
       }
@@ -638,8 +656,8 @@ function EnrollmentPhaseManagement() {
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap hidden sm:table-cell">
                         <div className="flex flex-col gap-0.5 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(phase.NgayMo)}</span>
-                          <span className="flex items-center gap-1 text-slate-400"><ChevronRight className="w-3 h-3" />{fmtDate(phase.NgayDong)}</span>
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDateTime(phase.NgayMo)}</span>
+                          <span className="flex items-center gap-1 text-slate-400"><ChevronRight className="w-3 h-3" />{fmtDateTime(phase.NgayDong)}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4"><StatusBadge phase={phase} now={now} /></td>
