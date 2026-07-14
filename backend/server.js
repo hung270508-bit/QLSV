@@ -85,6 +85,11 @@ db.getConnection((err, connection) => {
         connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => { });
         connection.query("ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;", () => { });
         connection.query("ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;", () => { });
+        connection.query("ALTER TABLE lophocphan ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;", () => { });
+        connection.query("ALTER TABLE lophocphan ADD COLUMN mien_hoc_phi BOOLEAN DEFAULT FALSE;", () => { });
+        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;", () => { });
+        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;", () => { });
+        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;", () => { });
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
@@ -1844,15 +1849,19 @@ app.post('/api/enrollment/batch', async (req, res) => {
             }
         }
 
-        // Insert
-        const values = cart.map(c => [
-            MSSV, c.MaLopHocPhan, c.HocKy || '2025.1', 'Chờ đóng tiền', new Date()
-        ]);
+        // Insert (lấy đúng Học kỳ từ lophocphan)
+        const values = [];
+        for (const c of cart) {
+            const [[lhpRow]] = await connection.query('SELECT HocKy FROM lophocphan WHERE MaLopHocPhan = ?', [c.MaLopHocPhan]);
+            const finalHocKy = lhpRow?.HocKy || c.HocKy || 'HK1_2026_2027';
+            values.push([MSSV, c.MaLopHocPhan, finalHocKy, 'Chờ đóng tiền', new Date()]);
+        }
 
         await connection.query(
             `INSERT INTO dangky_hocphan 
              (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) 
-             VALUES ?`,
+             VALUES ?
+             ON DUPLICATE KEY UPDATE TrangThai = VALUES(TrangThai), NgayDangKy = VALUES(NgayDangKy), HocKy = VALUES(HocKy)`,
             [values]
         );
 
@@ -2084,7 +2093,7 @@ app.post('/api/enrollment/batch', async (req, res) => {
                 }
             }
 
-            await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW())`, [MSSV, MaLopHocPhan, lhp.HocKy]);
+            await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW()) ON DUPLICATE KEY UPDATE TrangThai = 'Chờ đóng tiền', NgayDangKy = NOW(), HocKy = VALUES(HocKy)`, [MSSV, MaLopHocPhan, lhp.HocKy]);
         }
 
         // [BƯỚC 3]: CẬP NHẬT HOẶC TẠO MỚI HỌC PHÍ DỰA TRÊN TỔNG TÍN CHỈ
@@ -3941,37 +3950,114 @@ app.get('/api/admin/dot-dangky', verifyToken, (req, res) => {
 
 // ----- STUDENT ROUTES -----
 
-// GET /api/student/tuitions/me — Học phí của SV hiện tại (lấy mssv từ token)
-app.get('/api/student/tuitions/me', verifyToken, (req, res) => {
+// Hàm tự động đồng bộ học phí theo môn đăng ký mới nhất của sinh viên
+async function autoSyncStudentTuition(dbConn, hocPhiId, mssv, hocKy, donGiaTinChi) {
+    if (!hocPhiId || !mssv || !hocKy) return;
+    const [dkRows] = await dbConn.execute(
+        `SELECT dk.MaLopHocPhan, m.TenMonHoc, m.SoTinChi,
+                COALESCE(lhp.phi_tai_lieu, 0) AS PhiTaiLieu,
+                COALESCE(lhp.mien_hoc_phi, 0) AS MienHocPhi
+         FROM dangky_hocphan dk
+         JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan
+         JOIN monhoc m ON lhp.MaMonHoc = m.MaMonHoc
+         WHERE dk.MSSV = ? AND (dk.HocKy = ? OR lhp.HocKy = ?) AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối')`,
+        [mssv, hocKy, hocKy]
+    );
+
+    if (dkRows.length > 0) {
+        const donGia = Number(donGiaTinChi || 1150000);
+        let tongTienMoi = 0;
+        const chiTietMoi = dkRows.map(m => {
+            const isMien = !!Number(m.MienHocPhi);
+            const hoc_phi = isMien ? 0 : Number(m.SoTinChi) * donGia;
+            const phi_tai_lieu = isMien ? 0 : Number(m.PhiTaiLieu || 0);
+            const mien_giam = 0;
+            const thanh_tien = hoc_phi + phi_tai_lieu - mien_giam;
+            tongTienMoi += thanh_tien;
+            return [hocPhiId, m.MaLopHocPhan, m.TenMonHoc, Number(m.SoTinChi), donGia, phi_tai_lieu, hoc_phi, mien_giam, thanh_tien];
+        });
+
+        await dbConn.execute('DELETE FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hocPhiId]);
+        await dbConn.query(
+            'INSERT INTO hoc_phi_chi_tiet (hoc_phi_id, ma_lop_hoc_phan, ten_mon_hoc, so_tin_chi, don_gia, phi_tai_lieu, hoc_phi, mien_giam, thanh_tien) VALUES ?',
+            [chiTietMoi]
+        );
+        await dbConn.execute('UPDATE hoc_phi_v2 SET so_tien = ? WHERE id = ?', [tongTienMoi, hocPhiId]);
+    }
+}
+
+// GET /api/student/tuitions/me — Học phí của SV hiện tại (tự động đồng bộ môn học mới)
+app.get('/api/student/tuitions/me', verifyToken, async (req, res) => {
     if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Chỉ sinh viên mới xem được!' });
     const mssv = req.user.id || req.user.username;
-    db.query(
-        `SELECT hp.*, d.ten_dot, d.ngay_mo, d.ngay_dong, d.trang_thai as dot_trang_thai, d.don_gia_tin_chi, sv.HoTen as ten_sinh_vien
-         FROM hoc_phi_v2 hp
-         JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
-         LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
-         WHERE hp.mssv = ?
-         ORDER BY d.ngay_tao DESC`,
-        [mssv],
-        (err, rows) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi tải học phí!', error: err.message });
+    try {
+        const dbConn = await db.promise().getConnection();
+        try {
+            const [hpRows] = await dbConn.execute(
+                `SELECT hp.*, d.hoc_ky, d.don_gia_tin_chi
+                 FROM hoc_phi_v2 hp
+                 JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
+                 WHERE hp.mssv = ? AND hp.trang_thai != 'Đã đóng'`,
+                [mssv]
+            );
+            for (const hp of hpRows) {
+                await autoSyncStudentTuition(dbConn, hp.id, mssv, hp.hoc_ky, hp.don_gia_tin_chi);
+            }
+
+            const [rows] = await dbConn.execute(
+                `SELECT hp.*, d.ten_dot, d.ngay_mo, d.ngay_dong, d.trang_thai as dot_trang_thai, d.don_gia_tin_chi, sv.HoTen as ten_sinh_vien
+                 FROM hoc_phi_v2 hp
+                 JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
+                 LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
+                 WHERE hp.mssv = ?
+                 ORDER BY d.ngay_tao DESC`,
+                [mssv]
+            );
+            dbConn.release();
             res.json({ success: true, data: rows });
+        } catch (err) {
+            dbConn.release();
+            throw err;
         }
-    );
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Lỗi tải học phí!', error: err.message });
+    }
 });
 
-// GET /api/student/tuitions/:hocPhiId/detail — Chi tiết học phần (student xem chi tiết của chính mình)
-app.get('/api/student/tuitions/:hocPhiId/detail', verifyToken, (req, res) => {
+// GET /api/student/tuitions/:hocPhiId/detail — Chi tiết học phần (tự động đồng bộ môn học mới đăng ký)
+app.get('/api/student/tuitions/:hocPhiId/detail', verifyToken, async (req, res) => {
     if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Không có quyền!' });
     const mssv = req.user.id || req.user.username;
-    db.query(
-        'SELECT ct.* FROM hoc_phi_chi_tiet ct JOIN hoc_phi_v2 hp ON ct.hoc_phi_id = hp.id WHERE ct.hoc_phi_id = ? AND hp.mssv = ?',
-        [req.params.hocPhiId, mssv],
-        (err, rows) => {
-            if (err) return res.status(500).json({ success: false, message: 'Lỗi tải chi tiết!', error: err.message });
+    const hocPhiId = req.params.hocPhiId;
+
+    try {
+        const dbConn = await db.promise().getConnection();
+        try {
+            const [[hp]] = await dbConn.execute(
+                `SELECT hp.*, d.hoc_ky, d.don_gia_tin_chi 
+                 FROM hoc_phi_v2 hp 
+                 JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id 
+                 WHERE hp.id = ? AND hp.mssv = ?`,
+                [hocPhiId, mssv]
+            );
+
+            if (hp && hp.trang_thai !== 'Đã đóng') {
+                await autoSyncStudentTuition(dbConn, hocPhiId, mssv, hp.hoc_ky, hp.don_gia_tin_chi);
+            }
+
+            const [rows] = await dbConn.execute(
+                'SELECT ct.* FROM hoc_phi_chi_tiet ct JOIN hoc_phi_v2 hp ON ct.hoc_phi_id = hp.id WHERE ct.hoc_phi_id = ? AND hp.mssv = ?',
+                [hocPhiId, mssv]
+            );
+            dbConn.release();
             res.json({ success: true, data: { chi_tiet: rows || [] } });
+        } catch (err) {
+            dbConn.release();
+            throw err;
         }
-    );
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi tải chi tiết!', error: error.message });
+    }
 });
 
 
