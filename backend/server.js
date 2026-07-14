@@ -1617,6 +1617,22 @@ app.put('/api/teaching-assignments/:id', (req, res) => {
     });
 });
 
+// PUT /api/teaching-assignments/:id/phi — Cập nhật phí tài liệu / miễn học phí cho Lớp Học Phần
+app.put('/api/teaching-assignments/:id/phi', verifyToken, (req, res) => {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const { phi_tai_lieu, mien_hoc_phi } = req.body;
+    const isMien = !!mien_hoc_phi;
+    const phiTL = isMien ? 0 : Math.max(0, Number(phi_tai_lieu) || 0);
+    db.query(
+        'UPDATE lophocphan SET phi_tai_lieu = ?, mien_hoc_phi = ? WHERE MaLopHocPhan = ?',
+        [phiTL, isMien, req.params.id],
+        (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật phí!', error: err.message });
+            res.json({ success: true, message: 'Cập nhật cấu hình phí học phần thành công!' });
+        }
+    );
+});
+
 app.delete('/api/teaching-assignments/:id', (req, res) => {
     db.query('SELECT TrangThaiLich FROM lophocphan WHERE MaLopHocPhan = ?', [req.params.id], (errLock, resLock) => {
         const isChot = resLock && resLock.length > 0 && resLock[0].TrangThaiLich === 'DA_CHOT';
@@ -3696,10 +3712,12 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
         );
         const dotId = dotResult.insertId;
 
-        // Lấy toàn bộ SV + môn học trong đợt đăng ký, join lophocphan để lấy số tín chỉ
+        // Lấy toàn bộ SV + môn học trong đợt đăng ký, join lophocphan để lấy số tín chỉ + cấu hình phí tài liệu
         const [svRows] = await dbConn.execute(
             `SELECT dk.MSSV, dk.MaLopHocPhan, dk.HocKy,
-                    m.TenMonHoc, m.SoTinChi
+                    m.TenMonHoc, m.SoTinChi,
+                    COALESCE(lhp.phi_tai_lieu, 0) AS PhiTaiLieu,
+                    COALESCE(lhp.mien_hoc_phi, 0) AS MienHocPhi
              FROM dangky_hocphan dk
              JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan
              JOIN monhoc m ON lhp.MaMonHoc = m.MaMonHoc
@@ -3725,15 +3743,17 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
         const chiTietTemp = {};
 
         for (const [mssv, monList] of Object.entries(svMap)) {
-            const tongTien = monList.reduce((sum, m) => sum + (Number(m.SoTinChi) * donGia), 0);
+            let tongTien = 0;
+            chiTietTemp[mssv] = monList.map(m => {
+                const isMien = !!Number(m.MienHocPhi);
+                const hoc_phi = isMien ? 0 : Number(m.SoTinChi) * donGia;
+                const phi_tai_lieu = isMien ? 0 : Number(m.PhiTaiLieu || 0);
+                const mien_giam = 0;
+                const thanh_tien = hoc_phi + phi_tai_lieu - mien_giam;
+                tongTien += thanh_tien;
+                return { ma_lop: m.MaLopHocPhan, ten_mon: m.TenMonHoc, tc: Number(m.SoTinChi), don_gia: donGia, hoc_phi, phi_tai_lieu, mien_giam, thanh_tien };
+            });
             hocPhiBulk.push([mssv, dotId, tongTien]);
-            chiTietTemp[mssv] = monList.map(m => ({
-                ma_lop: m.MaLopHocPhan,
-                ten_mon: m.TenMonHoc,
-                tc: Number(m.SoTinChi),
-                don_gia: donGia,
-                thanh_tien: Number(m.SoTinChi) * donGia
-            }));
         }
 
         // Bulk insert hoc_phi_v2
@@ -3747,11 +3767,11 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
         for (const hp of hpRows) {
             const ctList = chiTietTemp[hp.mssv] || [];
             for (const ct of ctList) {
-                chiTietBulk.push([hp.id, ct.ma_lop, ct.ten_mon, ct.tc, ct.don_gia, ct.thanh_tien]);
+                chiTietBulk.push([hp.id, ct.ma_lop, ct.ten_mon, ct.tc, ct.don_gia, ct.phi_tai_lieu, ct.hoc_phi, ct.mien_giam, ct.thanh_tien]);
             }
         }
         if (chiTietBulk.length > 0) {
-            await dbConn.query('INSERT INTO hoc_phi_chi_tiet (hoc_phi_id, ma_lop_hoc_phan, ten_mon_hoc, so_tin_chi, don_gia, thanh_tien) VALUES ?', [chiTietBulk]);
+            await dbConn.query('INSERT INTO hoc_phi_chi_tiet (hoc_phi_id, ma_lop_hoc_phan, ten_mon_hoc, so_tin_chi, don_gia, phi_tai_lieu, hoc_phi, mien_giam, thanh_tien) VALUES ?', [chiTietBulk]);
         }
 
         await dbConn.commit();
@@ -3932,6 +3952,7 @@ app.post('/api/student/tuitions/:hocPhiId/generate-qr', verifyToken, async (req,
         const noiDung = `${hoTenClean} ${mssv} ${hocKyClean}`.replace(/\s+/g, ' ').substring(0, 50);
 
         // Hạn nộp mã QR: 15 phút kể từ lúc tạo
+        const now = new Date();
         const hetHanQR = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
         // Build VietQR URL (public API không cần key)

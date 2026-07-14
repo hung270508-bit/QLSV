@@ -56,14 +56,15 @@ function TeachingAssignment() {
     MaKhoa: '',
     TenKhoa: '',
     LoaiMonHoc: '',
-    PhamViDangKy: '', // 'TOAN_TRUONG' | 'THEO_KHOA' - tự động suy ra từ Loại môn
+    PhamViDangKy: '',
     MaLopHocPhan: '',
     MaMonHoc: '',
     MaGiangVien: '',
     MaLop: '',
     HocKy: '',
     NamHoc: '',
-    SoLuongToiDa: 40
+    SoLuongToiDa: 40,
+    phi_tai_lieu: 0
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -294,6 +295,19 @@ function TeachingAssignment() {
         setIsSubmitting(true);
         try {
           await axios.post(`${API_URL}/api/teaching-assignments`, payload);
+          // Lưu cấu hình phí tài liệu / miễn học phí cho lớp vừa tạo
+          const newLHP = payload.MaLopHocPhan || (payload.MaMonHoc + '_' + payload.HocKy);
+          try {
+            // Lấy lại danh sách sau khi tạo để biết MaLopHocPhan chính xác
+            const updated = await axios.get(`${API_URL}/api/teaching-assignments`);
+            const latest = (updated.data || []).find(a => a.MaMonHoc === payload.MaMonHoc && a.HocKy === payload.HocKy && a.MaLop === (payload.MaLop || null));
+            if (latest?.MaLopHocPhan && Number(formData.phi_tai_lieu) > 0) {
+              await axios.put(`${API_URL}/api/teaching-assignments/${latest.MaLopHocPhan}/phi`, {
+                phi_tai_lieu: formData.phi_tai_lieu,
+                mien_hoc_phi: false
+              });
+            }
+          } catch (_) { /* không block luồng chính */ }
           showToast('Thêm phân công giảng dạy thành công.', 'success');
           fetchData();
           handleCloseModal();
@@ -699,6 +713,19 @@ function TeachingAssignment() {
                     <div className="pt-1">
                       {hocKyError ? <p className="text-amber-600 text-sm font-bold flex items-center gap-1.5"><AlertCircle className="w-4 h-4" /> {hocKyError}</p> : <p className="text-[#22C55E] text-sm font-bold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Sẽ lưu với thông số: {hocKyInfo}</p>}
                     </div>
+                  </div>
+
+                  {/* Cấu hình phí học phần */}
+                  <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50/60 space-y-2">
+                    <p className="text-sm font-black text-gray-700 uppercase">Phí tài liệu / Giáo trình</p>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Mức phí tài liệu bắt buộc SV đóng kèm học phí (VNĐ) — để trống hoặc nhập 0 nếu không có</label>
+                    <input
+                      type="number" min="0" step="1000"
+                      value={formData.phi_tai_lieu || 0}
+                      onChange={e => setFormData(f => ({ ...f, phi_tai_lieu: Number(e.target.value) }))}
+                      placeholder="VD: 60000"
+                      className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#F4BE2C]"
+                    />
                   </div>
 
                 </form>

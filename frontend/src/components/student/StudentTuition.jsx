@@ -343,6 +343,8 @@ const StudentTuition = () => {
 
   const isPaid = selectedTuition?.trang_thai === 'Đã đóng';
   const totalSTC = chiTietList.reduce((acc, cur) => acc + Number(cur.so_tin_chi || 0), 0);
+  const totalPhiTaiLieu = chiTietList.reduce((acc, cur) => acc + Number(cur.phi_tai_lieu || 0), 0);
+  const totalMienGiam = chiTietList.reduce((acc, cur) => acc + Number(cur.mien_giam || 0), 0);
   const tenDotHoacHocKy = selectedTuition?.ten_dot || selectedTuition?.hoc_ky || 'Học kỳ';
 
   return (
@@ -474,9 +476,9 @@ const StudentTuition = () => {
                         <td className="py-4 px-6 font-mono font-bold text-gray-900">{ct.ma_lop_hoc_phan}</td>
                         <td className="py-4 px-6 font-semibold text-gray-900">{ct.ten_mon_hoc}</td>
                         <td className="py-4 px-4 text-center font-extrabold text-gray-900">{ct.so_tin_chi}</td>
-                        <td className="py-4 px-6 text-right text-gray-400 font-mono">0đ</td>
-                        <td className="py-4 px-6 text-right font-mono font-semibold text-gray-800">{fmtMoney(ct.thanh_tien)}</td>
-                        <td className="py-4 px-6 text-right text-gray-400 font-mono">0đ</td>
+                        <td className="py-4 px-6 text-right font-mono">{fmtMoney(ct.phi_tai_lieu)}</td>
+                        <td className="py-4 px-6 text-right font-mono font-semibold text-gray-800">{fmtMoney(ct.hoc_phi ?? ct.thanh_tien)}</td>
+                        <td className="py-4 px-6 text-right font-mono">{fmtMoney(ct.mien_giam)}</td>
                         <td className="py-4 px-6 text-right font-mono font-black text-gray-900">{fmtMoney(ct.thanh_tien)}</td>
                       </tr>
                     ))
@@ -490,9 +492,9 @@ const StudentTuition = () => {
                       Tổng cộng ({tenDotHoacHocKy})
                     </td>
                     <td className="py-4 px-4 text-center font-black text-base">{totalSTC}</td>
-                    <td className="py-4 px-6 text-right font-mono text-gray-400">0đ</td>
+                    <td className="py-4 px-6 text-right font-mono">{fmtMoney(totalPhiTaiLieu)}</td>
                     <td className="py-4 px-6 text-right font-mono font-bold">{fmtMoney(selectedTuition.so_tien)}</td>
-                    <td className="py-4 px-6 text-right font-mono text-gray-400">0đ</td>
+                    <td className="py-4 px-6 text-right font-mono">{fmtMoney(totalMienGiam)}</td>
                     <td className="py-4 px-6 text-right font-mono font-black text-blue-700 text-lg">
                       {fmtMoney(selectedTuition.so_tien)}
                     </td>
