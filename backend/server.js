@@ -2304,13 +2304,40 @@ app.get('/api/enrollment/phases/:id/thong-ke', async (req, res) => {
 // Ràng buộc ký tự đặc biệt cho tên đợt (đồng bộ với frontend EnrollmentPhaseManagement.jsx)
 const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]+$/u;
 
-// Kiểm tra xem có đợt nào khác đang mở (còn hạn) thuộc học kỳ khác với hocKy đang thao tác không.
-// Chỉ cho phép mở đăng ký của 1 học kỳ duy nhất tại một thời điểm.
-async function findConflictingOpenPhase(hocKy, nienKhoa, excludeId) {
-    if (!hocKy || !nienKhoa) return null;
+// Hàm parse chuỗi ngày tháng theo múi giờ Việt Nam (+07:00) nếu không có thông tin múi giờ
+const parseDateTimeInVN = (dateStr) => {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) return dateStr;
+    if (typeof dateStr !== 'string') return new Date(dateStr);
+    if (!dateStr.includes('Z') && !dateStr.includes('+') && !/-\d{2}:\d{2}$/.test(dateStr)) {
+        const normalized = dateStr.replace(' ', 'T');
+        return new Date(normalized + ':00+07:00');
+    }
+    return new Date(dateStr);
+};
+
+// HÀM CHUẨN HÓA ĐỊNH DẠNG NGÀY THÁNG CHO MYSQL
+const formatMySQLDateTime = (dateStr) => {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) {
+        const offset = dateStr.getTimezoneOffset() * 60000;
+        const localTime = new Date(dateStr.getTime() - offset);
+        return localTime.toISOString().slice(0, 19).replace('T', ' ');
+    }
+    return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
+};
+
+// Kiểm tra xem có đợt nào khác đang mở bị chồng chéo thời gian không.
+// Cho phép lên lịch nhiều đợt đăng ký trong tương lai nếu chúng không chồng chéo thời gian.
+async function findConflictingOpenPhase(hocKy, nienKhoa, ngayMo, ngayDong, excludeId) {
+    if (!hocKy || !nienKhoa || !ngayMo || !ngayDong) return null;
+    const formattedNgayMo = formatMySQLDateTime(ngayMo);
+    const formattedNgayDong = formatMySQLDateTime(ngayDong);
+    
     let query = `SELECT MaDot, TenDot, HocKy, NienKhoa, NgayDong FROM dot_dangky
-                 WHERE TrangThai = 'Mo' AND HocKy = ? AND NienKhoa = ? AND NgayDong > NOW()`;
-    const params = [hocKy, nienKhoa];
+                 WHERE TrangThai = 'Mo' AND HocKy = ? AND NienKhoa = ?
+                 AND NgayTao < ? AND ? < NgayDong`;
+    const params = [hocKy, nienKhoa, formattedNgayDong, formattedNgayMo];
     if (excludeId) {
         query += ' AND MaDot != ?';
         params.push(excludeId);
@@ -2357,8 +2384,8 @@ app.post('/api/enrollment/phases', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
-    const startDate = new Date(NgayMo);
-    const endDate = new Date(NgayDong);
+    const startDate = parseDateTimeInVN(NgayMo);
+    const endDate = parseDateTimeInVN(NgayDong);
     const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
     if (startDate.getTime() < now.getTime() - 2 * 60000) {
@@ -2374,21 +2401,15 @@ app.post('/api/enrollment/phases', async (req, res) => {
         return res.status(400).json({ message: 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.' });
     }
 
-    // Đợt mới mặc định ở trạng thái 'Mo' nếu không truyền TrangThai -> kiểm tra xung đột học kỳ và niên khóa
     const trangThaiMoi = TrangThai || 'Mo';
     if (trangThaiMoi === 'Mo') {
-        const conflictPhase = await findConflictingOpenPhase(HocKy, NienKhoa, null);
+        const conflictPhase = await findConflictingOpenPhase(HocKy, NienKhoa, NgayMo, NgayDong, null);
         if (conflictPhase) {
             return res.status(409).json({
-                message: `Học kỳ "${HocKy}" khóa "${NienKhoa}" đang có đợt mở ("${conflictPhase.TenDot}"). Vui lòng đóng đợt đó trước.`
+                message: `Học kỳ "${HocKy}" khóa "${NienKhoa}" đang có đợt mở bị chồng chéo thời gian ("${conflictPhase.TenDot}").`
             });
         }
     }
-
-    const formatMySQLDateTime = (dateStr) => {
-        if (!dateStr) return null;
-        return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
-    };
 
     try {
         const formattedNgayMo = formatMySQLDateTime(NgayMo);
@@ -2423,15 +2444,16 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
     }
     const now = new Date();
-    const startDate = new Date(NgayMo);
-    const endDate = new Date(NgayDong);
+    const startDate = parseDateTimeInVN(NgayMo);
+    const endDate = parseDateTimeInVN(NgayDong);
     const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
     try {
-        const [[existingPhase]] = await db.promise().query('SELECT NgayTao as NgayMo FROM dot_dangky WHERE MaDot = ?', [id]);
+        const [[existingPhase]] = await db.promise().query('SELECT NgayTao as NgayMo, NgayDong FROM dot_dangky WHERE MaDot = ?', [id]);
         if (!existingPhase) return res.status(404).json({ message: 'Không tìm thấy đợt.' });
         
-        const existingStartTime = new Date(existingPhase.NgayMo).getTime();
+        const existingStartTime = parseDateTimeInVN(existingPhase.NgayMo).getTime();
+        const existingEndTime = parseDateTimeInVN(existingPhase.NgayDong).getTime();
         
         if (Math.abs(startDate.getTime() - existingStartTime) > 60000) {
             if (startDate.getTime() < now.getTime() - 2 * 60000) {
@@ -2439,6 +2461,12 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
             }
             if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
                 return res.status(400).json({ message: 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.' });
+            }
+        }
+
+        if (Math.abs(endDate.getTime() - existingEndTime) > 60000) {
+            if (endDate.getTime() < now.getTime() - 2 * 60000) {
+                return res.status(400).json({ message: 'Thời gian đóng không được nằm trong quá khứ.' });
             }
         }
         
@@ -2451,18 +2479,13 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
 
         const trangThaiMoi = TrangThai || 'Mo';
         if (trangThaiMoi === 'Mo') {
-            const conflictPhase = await findConflictingOpenPhase(HocKy, NienKhoa, id);
+            const conflictPhase = await findConflictingOpenPhase(HocKy, NienKhoa, NgayMo, NgayDong, id);
             if (conflictPhase) {
                 return res.status(409).json({
-                    message: `Học kỳ "${HocKy}" khóa "${NienKhoa}" đang có đợt mở ("${conflictPhase.TenDot}"). Vui lòng đóng đợt đó trước.`
+                    message: `Học kỳ "${HocKy}" khóa "${NienKhoa}" đang có đợt mở bị chồng chéo thời gian ("${conflictPhase.TenDot}").`
                 });
             }
-        }    // HÀM CHUẨN HÓA ĐỊNH DẠNG NGÀY THÁNG CHO MYSQL
-    const formatMySQLDateTime = (dateStr) => {
-        if (!dateStr) return null;
-        // Chuyển chữ 'T' thành khoảng trắng, bỏ phần đuôi '.000Z' và lấy đúng 19 ký tự đầu (YYYY-MM-DD HH:mm:ss)
-        return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
-    };
+        }
 
         const formattedNgayMo = formatMySQLDateTime(NgayMo);
         const formattedNgayDong = formatMySQLDateTime(NgayDong);
@@ -3399,7 +3422,7 @@ app.get('/api/admin/training-points', (req, res) => {
 });
 
 app.put('/api/admin/training-points/:id', (req, res) => {
-    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet } = req.body;
+    const { DiemKhoaDanhGia, TongDiem, TrangThai, NguoiDuyet, GhiChu } = req.body;
     let xepLoai = 'Yếu';
     const diem = Number(TongDiem);
     if (diem >= 90) xepLoai = 'Xuất sắc';

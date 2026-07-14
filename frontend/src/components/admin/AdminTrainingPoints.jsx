@@ -142,6 +142,8 @@ function AdminTrainingPoints() {
 
   // States hỗ trợ điều chỉnh chi tiết và ghi chú lý do
   const [adjustedItems, setAdjustedItems] = useState({});
+  const [tempAdjustments, setTempAdjustments] = useState({});
+  const [showAdjustmentForm, setShowAdjustmentForm] = useState({});
   const [adminComment, setAdminComment] = useState('');
 
   // State cho xem ảnh popup
@@ -1285,7 +1287,20 @@ function AdminTrainingPoints() {
                                               <div className="flex bg-[#F7F8FA] p-1 rounded-xl border border-gray-200">
                                                 <button
                                                   type="button"
-                                                  onClick={() => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...(prev[item.id] || {}), status: 'approved', diem: sel.diem } }))}
+                                                  onClick={() => {
+                                                    setAdjustedItems(prev => ({ ...prev, [item.id]: { status: 'approved', diem: sel.diem, lyDo: '' } }));
+                                                    setShowAdjustmentForm(prev => ({ ...prev, [item.id]: false }));
+                                                    setTempAdjustments(prev => {
+                                                      const copy = { ...prev };
+                                                      delete copy[item.id];
+                                                      return copy;
+                                                    });
+                                                    setReviewErrors(prev => {
+                                                      const copy = { ...prev };
+                                                      delete copy[item.id];
+                                                      return copy;
+                                                    });
+                                                  }}
                                                   className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${(!adjustedItems[item.id] || adjustedItems[item.id].status === 'approved')
                                                     ? 'bg-emerald-100 text-emerald-700 shadow-sm'
                                                     : 'text-[#6B7280] hover:bg-gray-100'
@@ -1295,7 +1310,20 @@ function AdminTrainingPoints() {
                                                 </button>
                                                 <button
                                                   type="button"
-                                                  onClick={() => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...(prev[item.id] || {}), status: 'adjusted', diem: prev[item.id]?.diem !== undefined ? prev[item.id].diem : sel.diem } }))}
+                                                  onClick={() => {
+                                                    setShowAdjustmentForm(prev => ({ ...prev, [item.id]: true }));
+                                                    setTempAdjustments(prev => ({
+                                                      ...prev,
+                                                      [item.id]: {
+                                                        diem: tempAdjustments[item.id]?.diem !== undefined 
+                                                          ? tempAdjustments[item.id].diem 
+                                                          : (adjustedItems[item.id]?.status !== 'approved' ? adjustedItems[item.id].diem : sel.diem),
+                                                        lyDo: tempAdjustments[item.id]?.lyDo !== undefined 
+                                                          ? tempAdjustments[item.id].lyDo 
+                                                          : (adjustedItems[item.id]?.status !== 'approved' ? adjustedItems[item.id].lyDo : '')
+                                                      }
+                                                    }));
+                                                  }}
                                                   className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${(adjustedItems[item.id] && adjustedItems[item.id].status !== 'approved')
                                                     ? 'bg-amber-100 text-amber-700 shadow-sm'
                                                     : 'text-[#6B7280] hover:bg-gray-100'
@@ -1306,33 +1334,119 @@ function AdminTrainingPoints() {
                                               </div>
                                             </div>
 
+                                            {/* Summary of applied adjustment when form is closed */}
+                                            {adjustedItems[item.id] && adjustedItems[item.id].status !== 'approved' && !showAdjustmentForm[item.id] && (
+                                              <div className="mt-2 text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200 flex justify-between items-center">
+                                                <span>
+                                                  <b>Đã điều chỉnh:</b> {adjustedItems[item.id].diem}đ (Lý do: {adjustedItems[item.id].lyDo || 'Không có lý do riêng'})
+                                                </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setTempAdjustments(prev => ({
+                                                      ...prev,
+                                                      [item.id]: { diem: adjustedItems[item.id].diem, lyDo: adjustedItems[item.id].lyDo }
+                                                    }));
+                                                    setShowAdjustmentForm(prev => ({ ...prev, [item.id]: true }));
+                                                  }}
+                                                  className="text-blue-600 hover:text-blue-800 font-bold transition-colors ml-2"
+                                                >
+                                                  Sửa
+                                                </button>
+                                              </div>
+                                            )}
+
                                             <AnimatePresence>
-                                              {adjustedItems[item.id] && adjustedItems[item.id].status !== 'approved' && (
+                                              {showAdjustmentForm[item.id] && tempAdjustments[item.id] && (
                                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 pt-3 border-t border-gray-100 overflow-hidden">
                                                   <div className="flex flex-wrap items-center gap-3">
                                                     <span className="text-xs text-gray-700 font-bold shrink-0">Điểm thực tế:</span>
                                                     <input
                                                       type="number"
                                                       min="0" max={maxPossible}
-                                                      value={adjustedItems[item.id].diem}
+                                                      value={tempAdjustments[item.id].diem}
                                                       onChange={e => {
                                                         const val = e.target.value;
-                                                        setAdjustedItems(prev => ({ ...prev, [item.id]: { ...prev[item.id], diem: val === '' ? '' : Number(val) } }));
+                                                        setTempAdjustments(prev => ({
+                                                          ...prev,
+                                                          [item.id]: { ...prev[item.id], diem: val === '' ? '' : Number(val) }
+                                                        }));
                                                       }}
                                                       className={`w-24 px-3 py-1.5 text-sm border rounded-lg font-bold text-center bg-[#FFFFFF] shadow-sm outline-none transition-all ${reviewErrors[item.id] ? 'border-red-500 text-red-600 focus:ring-2 focus:ring-red-100' : 'border-gray-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100'
                                                         }`}
                                                     />
                                                     <span className="text-xs text-gray-400 font-medium">(Tối đa: {maxPossible}đ)</span>
                                                   </div>
-                                                  {reviewErrors[item.id] && <p className="text-[11px] text-red-500 font-bold">{reviewErrors[item.id]}</p>}
+                                                  
                                                   <div className="flex flex-col gap-1.5">
                                                     <span className="text-xs text-gray-700 font-bold">Lý do điều chỉnh:</span>
                                                     <input
                                                       type="text" placeholder="Nhập lý do..."
-                                                      value={adjustedItems[item.id].lyDo || ''}
-                                                      onChange={e => setAdjustedItems(prev => ({ ...prev, [item.id]: { ...prev[item.id], lyDo: e.target.value } }))}
+                                                      value={tempAdjustments[item.id].lyDo || ''}
+                                                      onChange={e => {
+                                                        const val = e.target.value;
+                                                        setTempAdjustments(prev => ({
+                                                          ...prev,
+                                                          [item.id]: { ...prev[item.id], lyDo: val }
+                                                        }));
+                                                      }}
                                                       className="w-full px-3 py-2 text-sm border border-gray-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 rounded-lg outline-none bg-[#FFFFFF] font-medium shadow-sm transition-all"
                                                     />
+                                                  </div>
+                                                  {reviewErrors[item.id] && <p className="text-[11px] text-red-500 font-bold">{reviewErrors[item.id]}</p>}
+
+                                                  <div className="flex gap-2 justify-end pt-1">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setShowAdjustmentForm(prev => ({ ...prev, [item.id]: false }));
+                                                        setReviewErrors(prev => {
+                                                          const copy = { ...prev };
+                                                          delete copy[item.id];
+                                                          return copy;
+                                                        });
+                                                      }}
+                                                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-lg transition-colors border border-gray-200"
+                                                    >
+                                                      Hủy
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        const temp = tempAdjustments[item.id];
+                                                        if (!temp || temp.diem === '' || temp.diem === null || isNaN(temp.diem)) {
+                                                          setReviewErrors(prev => ({ ...prev, [item.id]: 'Vui lòng nhập điểm!' }));
+                                                          return;
+                                                        }
+                                                        const score = Number(temp.diem);
+                                                        if (score < 0) {
+                                                          setReviewErrors(prev => ({ ...prev, [item.id]: 'Điểm không được âm!' }));
+                                                          return;
+                                                        }
+                                                        if (score > maxPossible) {
+                                                          setReviewErrors(prev => ({ ...prev, [item.id]: `Điểm tối đa là ${maxPossible}đ!` }));
+                                                          return;
+                                                        }
+                                                        if (!temp.lyDo || !temp.lyDo.trim()) {
+                                                          setReviewErrors(prev => ({ ...prev, [item.id]: 'Vui lòng nhập lý do điều chỉnh!' }));
+                                                          return;
+                                                        }
+
+                                                        setAdjustedItems(prev => ({
+                                                          ...prev,
+                                                          [item.id]: { status: 'adjusted', diem: score, lyDo: temp.lyDo.trim() }
+                                                        }));
+                                                        setShowAdjustmentForm(prev => ({ ...prev, [item.id]: false }));
+                                                        setReviewErrors(prev => {
+                                                          const copy = { ...prev };
+                                                          delete copy[item.id];
+                                                          return copy;
+                                                        });
+                                                      }}
+                                                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                                                    >
+                                                      Xác nhận
+                                                    </button>
                                                   </div>
                                                 </motion.div>
                                               )}
