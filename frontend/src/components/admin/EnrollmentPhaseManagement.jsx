@@ -67,7 +67,7 @@ function ConfirmModal({ dialog, onClose }) {
 }
 
 // ── PhaseFormModal ────────────────────────────────────────────────────────────
-function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, tenDotError, hocKyOptions, nienKhoaOptions }) {
+function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, tenDotError, hocKyError, nienKhoaError, dateErrors, hocKyOptions, nienKhoaOptions }) {
   if (!open) return null;
   const isEdit = !!editingPhase;
   return createPortal(
@@ -95,7 +95,7 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
         </div>
 
         {/* ── body ── */}
-        <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
+        <form onSubmit={onSubmit} className="px-6 py-5 space-y-4" noValidate>
 
           {/* Tên đợt */}
           <div>
@@ -132,28 +132,30 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Học kỳ <span className="text-red-500">*</span></label>
               {hocKyOptions.length > 0 ? (
                 <select
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${hocKyError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                   value={form.HocKy} onChange={(e) => setForm({ ...form, HocKy: e.target.value })} required>
                   <option value="" disabled>Chọn</option>
                   {hocKyOptions.map(hk => <option key={hk} value={hk}>{hk}</option>)}
                 </select>
               ) : (
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-400" value="" readOnly disabled placeholder="Chưa có" />
+                <input className={`w-full rounded-xl border px-3 py-2.5 text-sm ${hocKyError ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-200 bg-slate-50 text-slate-400'}`} value="" readOnly disabled placeholder="Chưa có" />
               )}
+              {hocKyError && <p className="mt-1 text-xs text-red-500">{hocKyError}</p>}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Niên khóa <span className="text-red-500">*</span></label>
               {nienKhoaOptions.length > 0 ? (
                 <select
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${nienKhoaError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} required>
                   <option value="" disabled>Chọn</option>
                   {nienKhoaOptions.map(nk => <option key={nk} value={nk}>{nk}</option>)}
                 </select>
               ) : (
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="VD: 2022-2026"
+                <input className={`w-full rounded-xl border px-3 py-2.5 text-sm ${nienKhoaError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`} placeholder="VD: 2022-2026"
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} />
               )}
+              {nienKhoaError && <p className="mt-1 text-xs text-red-500">{nienKhoaError}</p>}
             </div>
           </div>
 
@@ -162,14 +164,16 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày mở <span className="text-red-500">*</span></label>
               <input type="datetime-local"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayMo ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                 value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })} required />
+              {dateErrors?.NgayMo && <p className="mt-1 text-xs text-red-500">{dateErrors.NgayMo}</p>}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày đóng <span className="text-red-500">*</span></label>
               <input type="datetime-local"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayDong ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                 value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })} required />
+              {dateErrors?.NgayDong && <p className="mt-1 text-xs text-red-500">{dateErrors.NgayDong}</p>}
             </div>
           </div>
 
@@ -227,6 +231,9 @@ function EnrollmentPhaseManagement() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [tenDotError, setTenDotError] = useState('');
+  const [hocKyError, setHocKyError] = useState('');
+  const [nienKhoaError, setNienKhoaError] = useState('');
+  const [dateErrors, setDateErrors] = useState({ NgayMo: '', NgayDong: '' });
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [now, setNow] = useState(() => new Date());
@@ -264,32 +271,84 @@ function EnrollmentPhaseManagement() {
   useEffect(() => { if (!editingPhase && !form.NienKhoa && nienKhoaOptions.length > 0) setForm(p => ({ ...p, NienKhoa: nienKhoaOptions[0] })); }, [nienKhoaOptions, editingPhase, form.NienKhoa]);
   useEffect(() => { if (!editingPhase && !form.HocKy && hocKyOptions.length > 0) setForm(p => ({ ...p, HocKy: hocKyOptions[0] })); }, [hocKyOptions, editingPhase, form.HocKy]);
 
-  const findConflictingOpenPhase = (hocKy, excludeId) => {
-    if (!hocKy) return null;
+  const findConflictingOpenPhase = (hocKy, nienKhoa, excludeId) => {
+    if (!hocKy || !nienKhoa) return null;
     const now = new Date();
     return phases.find(p => {
       if (excludeId && p.MaDot === excludeId) return false;
       if (p.TrangThai !== 'Mo') return false;
-      if (!p.HocKy || p.HocKy === hocKy) return false;
-      if (p.NgayDong && new Date(p.NgayDong) <= now) return false;
-      return true;
+      if (p.HocKy === hocKy && p.NienKhoa === nienKhoa && (!p.NgayDong || new Date(p.NgayDong) > now)) return true;
+      return false;
     }) || null;
   };
 
-  const openCreateForm = () => { setEditingPhase(null); setTenDotError(''); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayMo: '', NgayDong: '' }); setFormOpen(true); };
-  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 16) : '', NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 16) : '' }); setFormOpen(true); };
-  const closeForm = () => { setFormOpen(false); setEditingPhase(null); setTenDotError(''); };
+  const openCreateForm = () => { setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayMo: '', NgayDong: '' }); setFormOpen(true); };
+  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 16) : '', NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 16) : '' }); setFormOpen(true); };
+  const closeForm = () => { setFormOpen(false); setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { setTenDotError('Tên đợt chứa ký tự không hợp lệ.'); return; }
-    setTenDotError('');
+    let hasError = false;
+    let newDateErrors = { NgayMo: '', NgayDong: '' };
+
+    if (!form.TenDot.trim()) { setTenDotError('Vui lòng nhập tên đợt.'); hasError = true; }
+    else if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { setTenDotError('Tên đợt chứa ký tự không hợp lệ.'); hasError = true; }
+    else { setTenDotError(''); }
+
+    if (!form.HocKy) { setHocKyError('Vui lòng chọn học kỳ.'); hasError = true; }
+    else { setHocKyError(''); }
+
+    if (!form.NienKhoa) { setNienKhoaError('Vui lòng chọn niên khóa.'); hasError = true; }
+    else { setNienKhoaError(''); }
+
+    if (!form.NgayMo) { newDateErrors.NgayMo = 'Vui lòng chọn ngày mở.'; hasError = true; }
+    if (!form.NgayDong) { newDateErrors.NgayDong = 'Vui lòng chọn ngày đóng.'; hasError = true; }
+
+    if (form.NgayMo && form.NgayDong) {
+      const now = new Date();
+      const startDate = new Date(form.NgayMo);
+      const endDate = new Date(form.NgayDong);
+      const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
+
+      let isNgayMoChanged = true;
+      if (editingPhase && editingPhase.NgayMo) {
+        const originalStartDate = new Date(editingPhase.NgayMo);
+        if (Math.abs(startDate.getTime() - originalStartDate.getTime()) < 60000) {
+          isNgayMoChanged = false;
+        }
+      }
+
+      if (isNgayMoChanged) {
+        if (startDate.getTime() < now.getTime() - 2 * 60000) {
+          newDateErrors.NgayMo = 'Thời gian mở không được nằm trong quá khứ.';
+          hasError = true;
+        }
+        if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
+          newDateErrors.NgayMo = 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.';
+          hasError = true;
+        }
+      }
+      if (endDate <= startDate) {
+        newDateErrors.NgayDong = 'Ngày đóng phải sau ngày mở.';
+        hasError = true;
+      }
+      if (endDate.getTime() - startDate.getTime() > twoWeeksInMs) {
+        newDateErrors.NgayDong = 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.';
+        hasError = true;
+      }
+    }
+
+    setDateErrors(newDateErrors);
+    if (hasError) return;
+
     const willBeOpen = editingPhase ? editingPhase.TrangThai === 'Mo' : true;
     if (willBeOpen) {
-      const conflict = findConflictingOpenPhase(form.HocKy, editingPhase?.MaDot);
+      const conflict = findConflictingOpenPhase(form.HocKy, form.NienKhoa, editingPhase?.MaDot);
       if (conflict) {
-        showToast(`Học kỳ "${conflict.HocKy}" đang có đợt mở ("${conflict.TenDot}"). Đóng đợt đó trước khi mở đợt cho học kỳ "${form.HocKy}".`, 'warning');
+        setHocKyError(`Đã có đợt đang mở ("${conflict.TenDot}").`);
         return;
+      } else {
+        setHocKyError('');
       }
     }
     setConfirmDialog({
@@ -324,8 +383,8 @@ function EnrollmentPhaseManagement() {
   };
 
   const requestOpen = (phase) => {
-    const conflict = findConflictingOpenPhase(phase.HocKy, phase.MaDot);
-    if (conflict) { showToast(`Học kỳ "${conflict.HocKy}" đang có đợt mở. Đóng đợt đó trước.`, 'warning'); return; }
+    const conflict = findConflictingOpenPhase(phase.HocKy, phase.NienKhoa, phase.MaDot);
+    if (conflict) { showToast(`Học kỳ "${phase.HocKy}" khóa "${phase.NienKhoa}" đang có đợt mở. Đóng đợt đó trước.`, 'warning'); return; }
     setConfirmDialog({
       title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?`,
       confirmLabel: 'Mở lại', variant: 'primary', onConfirm: () => openPhase(phase.MaDot)
@@ -389,7 +448,7 @@ function EnrollmentPhaseManagement() {
       <AnimatePresence>
         {formOpen && (
           <PhaseFormModal open={formOpen} onClose={closeForm} editingPhase={editingPhase}
-            form={form} setForm={setForm} onSubmit={handleSubmit} tenDotError={tenDotError}
+            form={form} setForm={setForm} onSubmit={handleSubmit} tenDotError={tenDotError} hocKyError={hocKyError} nienKhoaError={nienKhoaError} dateErrors={dateErrors}
             hocKyOptions={hocKyOptions} nienKhoaOptions={nienKhoaOptions} />
         )}
       </AnimatePresence>
