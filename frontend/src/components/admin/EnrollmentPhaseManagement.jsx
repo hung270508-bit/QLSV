@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import API_URL from '../../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle,
-  X, ChevronRight, Calendar, AlertTriangle, Search, Filter,
+  X, ChevronRight, Calendar, AlertTriangle, Search,
   ToggleLeft, ToggleRight, Hourglass, TrendingUp
 } from 'lucide-react';
 
@@ -24,6 +24,13 @@ function diffText(ms) {
   if (hours > 0) return `${hours}g ${mins}p`;
   return `${mins} phút`;
 }
+
+const getMinDateTimeStr = () => {
+  const d = new Date();
+  const offset = d.getTimezoneOffset() * 60000;
+  const localTime = new Date(d.getTime() - offset);
+  return localTime.toISOString().slice(0, 16);
+};
 
 // ── sub-components ────────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
@@ -97,6 +104,19 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
         {/* ── body ── */}
         <form onSubmit={onSubmit} className="px-6 py-5 space-y-4" noValidate>
 
+          {/* Info Alert Box */}
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 flex gap-2.5 text-xs text-slate-600">
+            <AlertCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-slate-700">Quy tắc xếp lịch & thời gian:</p>
+              <ul className="list-disc pl-4 space-y-0.5 text-slate-500">
+                <li>Không chọn ngày mở trong quá khứ hoặc trước quá 2 tuần.</li>
+                <li>Thời hạn đợt đăng ký tối đa 2 tuần kể từ thời điểm mở.</li>
+                <li>Không chồng chéo thời gian với đợt mở khác của cùng học kỳ & khóa.</li>
+              </ul>
+            </div>
+          </div>
+
           {/* Tên đợt */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -165,15 +185,25 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày mở <span className="text-red-500">*</span></label>
               <input type="datetime-local"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayMo ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-                value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })} required />
-              {dateErrors?.NgayMo && <p className="mt-1 text-xs text-red-500">{dateErrors.NgayMo}</p>}
+                value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })}
+                min={isEdit ? undefined : getMinDateTimeStr()}
+                required />
+              {dateErrors?.NgayMo
+                ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayMo}</p>
+                : <p className="mt-1 text-xs text-slate-400">Lên lịch trước tối đa 2 tuần.</p>
+              }
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày đóng <span className="text-red-500">*</span></label>
               <input type="datetime-local"
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayDong ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-                value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })} required />
-              {dateErrors?.NgayDong && <p className="mt-1 text-xs text-red-500">{dateErrors.NgayDong}</p>}
+                value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })}
+                min={form.NgayMo || getMinDateTimeStr()}
+                required />
+              {dateErrors?.NgayDong
+                ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayDong}</p>
+                : <p className="mt-1 text-xs text-slate-400">Thời hạn mở tối đa 2 tuần.</p>
+              }
             </div>
           </div>
 
@@ -271,14 +301,18 @@ function EnrollmentPhaseManagement() {
   useEffect(() => { if (!editingPhase && !form.NienKhoa && nienKhoaOptions.length > 0) setForm(p => ({ ...p, NienKhoa: nienKhoaOptions[0] })); }, [nienKhoaOptions, editingPhase, form.NienKhoa]);
   useEffect(() => { if (!editingPhase && !form.HocKy && hocKyOptions.length > 0) setForm(p => ({ ...p, HocKy: hocKyOptions[0] })); }, [hocKyOptions, editingPhase, form.HocKy]);
 
-  const findConflictingOpenPhase = (hocKy, nienKhoa, excludeId) => {
-    if (!hocKy || !nienKhoa) return null;
-    const now = new Date();
+  const findConflictingOpenPhase = (hocKy, nienKhoa, ngayMo, ngayDong, excludeId) => {
+    if (!hocKy || !nienKhoa || !ngayMo || !ngayDong) return null;
+    const start = new Date(ngayMo);
+    const end = new Date(ngayDong);
     return phases.find(p => {
       if (excludeId && p.MaDot === excludeId) return false;
       if (p.TrangThai !== 'Mo') return false;
-      if (p.HocKy === hocKy && p.NienKhoa === nienKhoa && (!p.NgayDong || new Date(p.NgayDong) > now)) return true;
-      return false;
+      if (p.HocKy !== hocKy || p.NienKhoa !== nienKhoa) return false;
+      const pStart = new Date(p.NgayMo);
+      const pEnd = new Date(p.NgayDong);
+      // Chồng chéo nếu: start < pEnd và pStart < end
+      return start < pEnd && pStart < end;
     }) || null;
   };
 
@@ -328,6 +362,22 @@ function EnrollmentPhaseManagement() {
           hasError = true;
         }
       }
+
+      let isNgayDongChanged = true;
+      if (editingPhase && editingPhase.NgayDong) {
+        const originalEndDate = new Date(editingPhase.NgayDong);
+        if (Math.abs(endDate.getTime() - originalEndDate.getTime()) < 60000) {
+          isNgayDongChanged = false;
+        }
+      }
+
+      if (isNgayDongChanged) {
+        if (endDate.getTime() < now.getTime() - 2 * 60000) {
+          newDateErrors.NgayDong = 'Thời gian đóng không được nằm trong quá khứ.';
+          hasError = true;
+        }
+      }
+
       if (endDate <= startDate) {
         newDateErrors.NgayDong = 'Ngày đóng phải sau ngày mở.';
         hasError = true;
@@ -343,7 +393,7 @@ function EnrollmentPhaseManagement() {
 
     const willBeOpen = editingPhase ? editingPhase.TrangThai === 'Mo' : true;
     if (willBeOpen) {
-      const conflict = findConflictingOpenPhase(form.HocKy, form.NienKhoa, editingPhase?.MaDot);
+      const conflict = findConflictingOpenPhase(form.HocKy, form.NienKhoa, form.NgayMo, form.NgayDong, editingPhase?.MaDot);
       if (conflict) {
         setHocKyError(`Đã có đợt đang mở ("${conflict.TenDot}").`);
         return;
@@ -383,7 +433,7 @@ function EnrollmentPhaseManagement() {
   };
 
   const requestOpen = (phase) => {
-    const conflict = findConflictingOpenPhase(phase.HocKy, phase.NienKhoa, phase.MaDot);
+    const conflict = findConflictingOpenPhase(phase.HocKy, phase.NienKhoa, phase.NgayMo, phase.NgayDong, phase.MaDot);
     if (conflict) { showToast(`Học kỳ "${phase.HocKy}" khóa "${phase.NienKhoa}" đang có đợt mở. Đóng đợt đó trước.`, 'warning'); return; }
     setConfirmDialog({
       title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?`,
