@@ -115,6 +115,18 @@ function AdminTrainingPoints() {
     return `${year}-${month}-${day}`;
   };
 
+  const parseAppealContent = (content) => {
+    if (!content) return { text: '', fileData: null };
+    const match = content.match(/\[FILE_MINH_CHUNG_START\]\n([\s\S]*?)\n\[FILE_MINH_CHUNG_END\]/);
+    let text = content;
+    let fileData = null;
+    if (match) {
+      text = content.replace(`\n\n[FILE_MINH_CHUNG_START]\n${match[1]}\n[FILE_MINH_CHUNG_END]`, '').trim();
+      fileData = match[1];
+    }
+    return { text, fileData };
+  };
+
   // === STATES: ĐỢT ĐÁNH GIÁ ===
   const [periods, setPeriods] = useState([]);
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
@@ -148,6 +160,11 @@ function AdminTrainingPoints() {
 
   // State cho xem ảnh popup
   const [previewImage, setPreviewImage] = useState(null);
+
+  // States cho khiếu nại (appeal) liên kết
+  const [activeAppeal, setActiveAppeal] = useState(null);
+  const [resolveAppealCheckbox, setResolveAppealCheckbox] = useState(false);
+  const [confirmReviewDialog, setConfirmReviewDialog] = useState({ show: false, title: '', message: '', action: null });
 
 
 
@@ -390,14 +407,28 @@ function AdminTrainingPoints() {
     setRecordDetails([]);
     setAdjustedItems({});
     setAdminComment('');
+    setActiveAppeal(null);
+    setResolveAppealCheckbox(false);
 
     setLoadingDetails(true);
     try {
-      const [detailsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/training-points/${record.MaDanhGia}/details`)
+      const [detailsRes, supportRes] = await Promise.all([
+        axios.get(`${API_URL}/api/training-points/${record.MaDanhGia}/details`),
+        axios.get(`${API_URL}/api/support/student/${record.MSSV}`)
       ]);
       const details = detailsRes.data || [];
       setRecordDetails(details);
+
+      // Find active appeal for this student in this semester
+      const supportRequests = supportRes.data || [];
+      const appealHocKy = record.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ');
+      const appeal = supportRequests.find(req => 
+        req.LoaiYeuCau === 'Khiếu nại điểm rèn luyện' &&
+        req.ChuDe.includes(appealHocKy) &&
+        req.TrangThai === 'Chờ xử lý'
+      );
+      setActiveAppeal(appeal || null);
+      setResolveAppealCheckbox(!!appeal);
 
       // Khởi tạo trạng thái mặc định của các tiêu chí là đã đồng ý
       const initialAdjusted = {};
@@ -507,11 +538,6 @@ function AdminTrainingPoints() {
   };
 
   const handleSubmitReview = async () => {
-    if (!validateReview()) {
-      showToast('Vui lòng kiểm tra lại các mục tiêu chí đã điều chỉnh!', 'error');
-      return;
-    }
-
     try {
       const ghiChuCompiled = compileGhiChu();
       await axios.put(`${API_URL}/api/admin/training-points/${selectedRecord.MaDanhGia}`, {
@@ -521,6 +547,15 @@ function AdminTrainingPoints() {
         NguoiDuyet: 'admin',
         GhiChu: ghiChuCompiled
       });
+
+      // Nếu có khiếu nại hoạt động liên kết và admin chọn giải quyết khiếu nại này
+      if (activeAppeal && resolveAppealCheckbox) {
+        await axios.put(`${API_URL}/api/admin/support-requests/${activeAppeal.MaYeuCau}`, {
+          TrangThai: 'Đã xử lý',
+          PhanHoi: 'Đã cập nhật/xác nhận điểm rèn luyện sau khi xem xét khiếu nại.'
+        });
+      }
+
       setSelectedRecord(null);
       setReviewErrors({});
       fetchData();
@@ -530,12 +565,35 @@ function AdminTrainingPoints() {
     }
   };
 
+  const handlePreSubmitReview = () => {
+    if (!validateReview()) {
+      showToast('Vui lòng kiểm tra lại các mục tiêu chí đã điều chỉnh!', 'error');
+      return;
+    }
+
+    const isApprove = trangThaiDuyet === 'Đã xác nhận';
+    const message = isApprove
+      ? `Bạn có chắc chắn phê duyệt và CHỐT ĐIỂM rèn luyện (${tongDiemPreview}đ) cho sinh viên ${selectedRecord?.HoTen}?`
+      : `Bạn có chắc chắn muốn TRẢ LẠI PHIẾU rèn luyện cho sinh viên ${selectedRecord?.HoTen} để yêu cầu chỉnh sửa?`;
+
+    setConfirmReviewDialog({
+      show: true,
+      title: isApprove ? 'Xác nhận chốt điểm' : 'Xác nhận trả lại phiếu',
+      message: message,
+      action: async () => {
+        setConfirmReviewDialog({ show: false, title: '', message: '', action: null });
+        await handleSubmitReview();
+      }
+    });
+  };
+
   const getScoreColor = (score) => {
     if (score >= 90) return 'text-emerald-600';
     if (score >= 80) return 'text-[#22C55E]';
     if (score >= 65) return 'text-[#3B82F6]';
     if (score >= 50) return 'text-amber-600';
-    return 'text-[#EF4444]';
+    if (score >= 35) return 'text-[#EF4444]';
+    return 'text-red-700 font-black';
   };
 
   const getXepLoaiBadge = (xepLoai) => {
@@ -544,7 +602,8 @@ function AdminTrainingPoints() {
       'Tốt': 'bg-[#22C55E]/10 text-green-700 border border-green-200',
       'Khá': 'bg-[#3B82F6]/10 text-blue-700 border border-blue-200',
       'Trung bình': 'bg-amber-50 text-amber-700 border border-amber-200',
-      'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200'
+      'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200',
+      'Kém': 'bg-red-50 text-red-700 border border-red-200'
     };
     return colors[xepLoai] || 'bg-[#F7F8FA] text-gray-700 border border-[#E5E7EB]';
   };
@@ -580,6 +639,16 @@ function AdminTrainingPoints() {
         onConfirm={handleCreatePeriod}
         onCancel={() => setIsConfirmCreateOpen(false)}
         type="confirm"
+      />
+
+      {/* ConfirmDialog xác nhận duyệt/chốt điểm */}
+      <ConfirmDialog
+        show={confirmReviewDialog.show}
+        title={confirmReviewDialog.title}
+        message={confirmReviewDialog.message}
+        onConfirm={confirmReviewDialog.action}
+        onCancel={() => setConfirmReviewDialog({ show: false, title: '', message: '', action: null })}
+        type={confirmReviewDialog.title === 'Xác nhận chốt điểm' ? 'confirm' : 'danger'}
       />
 
 
@@ -1049,7 +1118,7 @@ function AdminTrainingPoints() {
                                         setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                       }}
                                       className="w-16 text-sm font-bold text-center border-b-2 border-gray-300 focus:border-blue-500 bg-transparent outline-none py-1 transition-colors"
-                                      placeholder="Mã"
+                                      placeholder="Mã số (VD: 1.1)"
                                     />
                                     <textarea
                                       value={item.label}
@@ -1060,7 +1129,7 @@ function AdminTrainingPoints() {
                                       }}
                                       rows={1}
                                       className="flex-1 text-sm font-semibold border border-[#E5E7EB] rounded-lg p-2.5 bg-[#FFFFFF] focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none resize-none transition-all"
-                                      placeholder="Nội dung tiêu chí..."
+                                      placeholder="Nhập nội dung mô tả của tiêu chí này..."
                                     />
                                     <button onClick={() => {
                                       const newCriteria = [...periodForm.CauTrucTieuChi];
@@ -1082,7 +1151,7 @@ function AdminTrainingPoints() {
                                             setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                           }}
                                           className="flex-1 text-sm border-b border-dashed border-gray-300 focus:border-blue-500 focus:border-solid bg-transparent px-1 py-1 outline-none transition-colors"
-                                          placeholder="Mô tả mức điểm..."
+                                          placeholder="Mô tả mức điểm (VD: Học lực Xuất sắc, Đi học đầy đủ...)"
                                         />
                                         <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400">
                                           <input
@@ -1094,7 +1163,7 @@ function AdminTrainingPoints() {
                                               setPeriodForm({ ...periodForm, CauTrucTieuChi: newCriteria });
                                             }}
                                             className="w-16 text-sm text-center py-1.5 font-bold text-blue-600 bg-transparent outline-none"
-                                            placeholder="Điểm"
+                                            placeholder="Điểm số"
                                           />
                                           <span className="text-xs font-bold text-gray-400 pr-2">đ</span>
                                         </div>
@@ -1364,6 +1433,7 @@ function AdminTrainingPoints() {
                                                     <input
                                                       type="number"
                                                       min="0" max={maxPossible}
+                                                      placeholder="Nhập số điểm..."
                                                       value={tempAdjustments[item.id].diem}
                                                       onChange={e => {
                                                         const val = e.target.value;
@@ -1381,7 +1451,7 @@ function AdminTrainingPoints() {
                                                   <div className="flex flex-col gap-1.5">
                                                     <span className="text-xs text-gray-700 font-bold">Lý do điều chỉnh:</span>
                                                     <input
-                                                      type="text" placeholder="Nhập lý do..."
+                                                      type="text" placeholder="Nhập lý do điều chỉnh cụ thể..."
                                                       value={tempAdjustments[item.id].lyDo || ''}
                                                       onChange={e => {
                                                         const val = e.target.value;
@@ -1515,6 +1585,63 @@ function AdminTrainingPoints() {
 
                     {/* Right Col: Phê duyệt & Nhật ký (4 cols) */}
                     <div className="lg:col-span-4 flex flex-col gap-5 overflow-y-auto custom-scrollbar pr-1 pb-1 min-h-0">
+                      {/* Active Appeal Box */}
+                      {activeAppeal && (
+                        <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-5 shadow-sm space-y-4 shrink-0">
+                          <div className="flex items-center gap-2 text-rose-800">
+                            <AlertCircle className="w-5 h-5 animate-pulse" />
+                            <span className="text-sm font-black uppercase tracking-wider">Đơn khiếu nại chưa xử lý</span>
+                          </div>
+                          <div className="space-y-2.5">
+                            <div>
+                              <span className="text-[10px] font-bold text-rose-500 uppercase">Chủ đề:</span>
+                              <p className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{activeAppeal.ChuDe}</p>
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold text-rose-500 uppercase">Nội dung khiếu nại:</span>
+                              <div className="bg-white border border-rose-100 p-3 rounded-xl text-xs text-slate-700 leading-relaxed max-h-40 overflow-y-auto custom-scrollbar mt-0.5">
+                                {(() => {
+                                  const parsed = parseAppealContent(activeAppeal.NoiDung);
+                                  return (
+                                    <div className="space-y-3">
+                                      <p className="font-semibold whitespace-pre-wrap">{parsed.text}</p>
+                                      {parsed.fileData && (
+                                        <div className="pt-2 border-t border-rose-100">
+                                          <p className="text-[10px] font-bold text-rose-400 uppercase mb-1.5 flex items-center gap-1">🔗 Tệp khiếu nại:</p>
+                                          {parsed.fileData.startsWith('data:image/') ? (
+                                            <div className="relative group cursor-pointer w-24" onClick={() => setPreviewImage(parsed.fileData)}>
+                                              <img src={parsed.fileData} alt="Minh chứng khiếu nại" className="w-24 h-24 object-cover rounded-lg border border-rose-200" />
+                                              <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <Search className="w-4 h-4 text-white" />
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <span className="text-xs text-blue-600 font-bold">Minh chứng đính kèm</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="pt-1">
+                            <label className="flex items-center gap-2 cursor-pointer group bg-white border border-rose-200 p-2.5 rounded-xl hover:bg-rose-50/50 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={resolveAppealCheckbox}
+                                onChange={e => setResolveAppealCheckbox(e.target.checked)}
+                                className="w-4 h-4 text-rose-600 border-rose-300 rounded focus:ring-rose-500 cursor-pointer shrink-0"
+                              />
+                              <span className="text-xs font-black text-rose-800 group-hover:text-rose-950 leading-tight">
+                                Đồng bộ xử lý đơn khiếu nại
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="bg-[#FFFFFF] rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col shrink-0">
                         <div className="bg-[#F7F8FA] px-5 py-4 border-b border-[#E5E7EB]">
                           <h5 className="text-sm font-bold text-gray-700 flex items-center gap-2">
@@ -1537,7 +1664,7 @@ function AdminTrainingPoints() {
                             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Nhận xét/Ý kiến</label>
                             <textarea
                               rows="3"
-                              placeholder="Nhập nhận xét chung..."
+                              placeholder="Nhập nhận xét chung về kết quả rèn luyện của sinh viên..."
                               value={adminComment}
                               onChange={e => setAdminComment(e.target.value)}
                               className="w-full p-3 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl outline-none focus:border-blue-400 focus:bg-[#FFFFFF] text-sm font-semibold text-gray-700 transition-all resize-none custom-scrollbar"
@@ -1567,7 +1694,7 @@ function AdminTrainingPoints() {
                 {/* Footer Modal */}
                 <div className="bg-[#F7F8FA] p-4 border-t border-[#E5E7EB] flex justify-end gap-3 shrink-0 mt-auto">
                   <button onClick={() => setSelectedRecord(null)} className="px-5 py-2.5 font-semibold text-[#6B7280] bg-[#FFFFFF] border border-gray-300 rounded-xl hover:bg-[#F7F8FA]">Hủy</button>
-                  <button onClick={handleSubmitReview} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Chốt điểm</button>
+                  <button onClick={handlePreSubmitReview} className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Chốt điểm</button>
                 </div>
               </motion.div>
             </div>
