@@ -53,6 +53,7 @@ const db = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
+    charset: 'utf8mb4',
     timezone: '+07:00', // Đảm bảo Node.js hiểu DB đang chạy ở múi giờ VN
     waitForConnections: true,
     // Tránh lỗi "Too many connections" trên Vercel Serverless bằng cách giới hạn pool rất nhỏ
@@ -63,9 +64,10 @@ const db = mysql.createPool({
     }
 });
 
-// Ép tất cả các luồng kết nối MySQL phải sử dụng múi giờ Việt Nam
+// Ép tất cả các luồng kết nối MySQL phải sử dụng múi giờ Việt Nam và UTF-8
 db.on('connection', function (connection) {
     connection.query("SET time_zone = '+07:00'");
+    connection.query("SET NAMES utf8mb4");
 });
 
 // Kiểm tra kết nối DB
@@ -2311,7 +2313,7 @@ const parseDateTimeInVN = (dateStr) => {
 const formatMySQLDateTime = (dateStr) => {
     if (!dateStr) return null;
     if (dateStr instanceof Date) {
-        const offset = dateStr.getTimezoneOffset() * 60000;
+        const offset = dateStr.getTimezoneOffset() * 60000; 
         const localTime = new Date(dateStr.getTime() - offset);
         return localTime.toISOString().slice(0, 19).replace('T', ' ');
     }
@@ -3502,66 +3504,118 @@ app.get('/api/training-points/student/:mssv', (req, res) => {
 app.post('/api/training-points', (req, res) => {
     const { MSSV, HocKy, DiemTuDanhGia, ChiTiet, MaDotDanhGia } = req.body;
     console.log('POST /api/training-points - Received data:', { MSSV, HocKy, DiemTuDanhGia, ChiTiet: ChiTiet ? ChiTiet.length : 0, MaDotDanhGia });
-    console.log('ChiTiet data:', JSON.stringify(ChiTiet, null, 2));
 
-    let xepLoai = 'Yếu';
-    if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
-    else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
-    else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
-    else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+    // Validate that the evaluation period is active and not expired
+    const checkQuery = MaDotDanhGia 
+        ? 'SELECT TrangThai, NgayKetThuc FROM dot_danhgia WHERE MaDotDanhGia = ?'
+        : 'SELECT TrangThai, NgayKetThuc FROM dot_danhgia WHERE HocKy = ? AND TrangThai = "Đang tự đánh giá"';
+    const checkParams = MaDotDanhGia ? [MaDotDanhGia] : [HocKy];
 
-    const query = "INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai, MaDotDanhGia) VALUES (?, ?, ?, ?, ?, 'Chờ lớp duyệt', ?)";
-    db.query(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai, MaDotDanhGia || null], (err, result) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi nộp đánh giá!', error: err.message });
-
-        const maDanhGia = result.insertId;
-        console.log('Created MaDanhGia:', maDanhGia);
-
-        if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
-            const values = ChiTiet.map(ct => [maDanhGia, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.Files ? JSON.stringify(ct.Files) : null]);
-            console.log('Inserting details values:', values);
-            const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
-            db.query(detailQuery, [values], (detailErr) => {
-                if (detailErr) {
-                    console.error('Lỗi lưu chi tiết đánh giá:', detailErr);
-                    return res.json({ success: true, message: 'Nộp đánh giá thành công (không lưu được chi tiết)!' });
-                }
-                console.log('Details saved successfully for MaDanhGia:', maDanhGia);
-                res.json({ success: true, message: 'Nộp đánh giá thành công!' });
-            });
-        } else {
-            console.log('No ChiTiet data to save');
-            res.json({ success: true, message: 'Nộp đánh giá thành công!' });
+    db.query(checkQuery, checkParams, (checkErr, results) => {
+        if (checkErr) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra đợt đánh giá!', error: checkErr.message });
+        if (results.length === 0) return res.status(400).json({ success: false, message: 'Không tìm thấy đợt đánh giá hợp lệ cho học kỳ này!' });
+        
+        const period = results[0];
+        if (period.TrangThai !== 'Đang tự đánh giá') {
+            return res.status(400).json({ success: false, message: 'Đợt đánh giá đã đóng, không thể nộp phiếu!' });
         }
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(period.NgayKetThuc);
+        deadline.setHours(0, 0, 0, 0);
+        if (today > deadline) {
+            return res.status(400).json({ success: false, message: 'Đợt đánh giá đã hết hạn nộp phiếu!' });
+        }
+
+        console.log('ChiTiet data:', JSON.stringify(ChiTiet, null, 2));
+
+        let xepLoai = 'Yếu';
+        if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
+        else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
+        else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
+        else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+
+        const query = "INSERT INTO danhgia_renluyen (MSSV, HocKy, DiemTuDanhGia, TongDiem, XepLoai, TrangThai, MaDotDanhGia) VALUES (?, ?, ?, ?, ?, 'Chờ lớp duyệt', ?)";
+        db.query(query, [MSSV, HocKy, DiemTuDanhGia, DiemTuDanhGia, xepLoai, MaDotDanhGia || null], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi nộp đánh giá!', error: err.message });
+
+            const maDanhGia = result.insertId;
+            console.log('Created MaDanhGia:', maDanhGia);
+
+            if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
+                const values = ChiTiet.map(ct => [maDanhGia, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.Files ? JSON.stringify(ct.Files) : null]);
+                console.log('Inserting details values:', values);
+                const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
+                db.query(detailQuery, [values], (detailErr) => {
+                    if (detailErr) {
+                        console.error('Lỗi lưu chi tiết đánh giá:', detailErr);
+                        return res.json({ success: true, message: 'Nộp đánh giá thành công (không lưu được chi tiết)!' });
+                    }
+                    console.log('Details saved successfully for MaDanhGia:', maDanhGia);
+                    res.json({ success: true, message: 'Nộp đánh giá thành công!' });
+                });
+            } else {
+                console.log('No ChiTiet data to save');
+                res.json({ success: true, message: 'Nộp đánh giá thành công!' });
+            }
+        });
     });
 });
 
 app.put('/api/training-points/:id', (req, res) => {
     const { DiemTuDanhGia, ChiTiet } = req.body;
-    let xepLoai = 'Yếu';
-    if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
-    else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
-    else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
-    else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
 
-    const query = 'UPDATE danhgia_renluyen SET DiemTuDanhGia=?, TongDiem=?, XepLoai=? WHERE MaDanhGia=?';
-    db.query(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
+    // Validate that the evaluation period is active and not expired
+    const checkQuery = `
+        SELECT dd.TrangThai, dd.NgayKetThuc 
+        FROM danhgia_renluyen d
+        JOIN dot_danhgia dd ON d.MaDotDanhGia = dd.MaDotDanhGia
+        WHERE d.MaDanhGia = ?
+    `;
 
-        if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
-            db.query('DELETE FROM chitiet_danhgia WHERE MaDanhGia = ?', [req.params.id], (delErr) => {
-                if (delErr) return res.json({ success: true, message: 'Cập nhật điểm thành công (không cập nhật được chi tiết)!' });
-
-                const values = ChiTiet.map(ct => [req.params.id, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.Files ? JSON.stringify(ct.Files) : null]);
-                const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
-                db.query(detailQuery, [values], (insertErr) => {
-                    if (insertErr) console.error('Lỗi lưu chi tiết đánh giá:', insertErr);
-                    res.json({ success: true, message: 'Cập nhật điểm thành công!' });
-                });
-            });
-        } else {
-            res.json({ success: true, message: 'Cập nhật điểm thành công!' });
+    db.query(checkQuery, [req.params.id], (checkErr, results) => {
+        if (checkErr) return res.status(500).json({ success: false, message: 'Lỗi kiểm tra đợt đánh giá!', error: checkErr.message });
+        if (results.length === 0) return res.status(400).json({ success: false, message: 'Không tìm thấy phiếu đánh giá hoặc đợt đánh giá tương ứng đã bị đóng!' });
+        
+        const period = results[0];
+        if (period.TrangThai !== 'Đang tự đánh giá') {
+            return res.status(400).json({ success: false, message: 'Đợt đánh giá đã đóng, không thể chỉnh sửa!' });
         }
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(period.NgayKetThuc);
+        deadline.setHours(0, 0, 0, 0);
+        if (today > deadline) {
+            return res.status(400).json({ success: false, message: 'Đợt đánh giá đã hết hạn, không thể chỉnh sửa!' });
+        }
+
+        let xepLoai = 'Yếu';
+        if (DiemTuDanhGia >= 90) xepLoai = 'Xuất sắc';
+        else if (DiemTuDanhGia >= 80) xepLoai = 'Tốt';
+        else if (DiemTuDanhGia >= 65) xepLoai = 'Khá';
+        else if (DiemTuDanhGia >= 50) xepLoai = 'Trung bình';
+
+        const query = 'UPDATE danhgia_renluyen SET DiemTuDanhGia=?, TongDiem=?, XepLoai=? WHERE MaDanhGia=?';
+        db.query(query, [DiemTuDanhGia, DiemTuDanhGia, xepLoai, req.params.id], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật điểm!', error: err.message });
+
+            if (ChiTiet && Array.isArray(ChiTiet) && ChiTiet.length > 0) {
+                db.query('DELETE FROM chitiet_danhgia WHERE MaDanhGia = ?', [req.params.id], (delErr) => {
+                    if (delErr) return res.json({ success: true, message: 'Cập nhật điểm thành công (không cập nhật được chi tiết)!' });
+
+                    const values = ChiTiet.map(ct => [req.params.id, ct.MaTieuChi, ct.DiemChon, ct.ChiSoOption, ct.Files ? JSON.stringify(ct.Files) : null]);
+                    const detailQuery = 'INSERT INTO chitiet_danhgia (MaDanhGia, MaTieuChi, DiemChon, ChiSoOption, MinhChung) VALUES ?';
+                    db.query(detailQuery, [values], (insertErr) => {
+                        if (insertErr) console.error('Lỗi lưu chi tiết đánh giá:', insertErr);
+                        res.json({ success: true, message: 'Cập nhật điểm thành công!' });
+                    });
+                });
+            } else {
+                res.json({ success: true, message: 'Cập nhật điểm thành công!' });
+            }
+        });
     });
 });
 

@@ -720,10 +720,29 @@ function StudentTrainingPoints({ user }) {
                         r.LoaiYeuCau === 'Khiếu nại điểm rèn luyện' &&
                         r.ChuDe.includes(p.HocKy)
                       );
+                      const { comment, adjustments } = parseAdminFeedback(p.GhiChu);
+                      const hasAdjustments = Object.keys(adjustments).length > 0;
+                      const hasComment = comment && comment.trim().length > 0;
 
                       return (
                         <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-5 font-bold text-slate-700 whitespace-nowrap">{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</td>
+                          <td className="p-5 font-bold text-slate-700 whitespace-nowrap">
+                            <div>{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</div>
+                            {(hasComment || hasAdjustments) && (
+                              <div className="flex gap-1.5 mt-1">
+                                {hasComment && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 flex items-center gap-0.5" title={comment}>
+                                    <MessageSquare className="w-3 h-3" /> Phản hồi
+                                  </span>
+                                )}
+                                {hasAdjustments && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 flex items-center gap-0.5" title="Có tiêu chí bị điều chỉnh điểm">
+                                    <AlertCircle className="w-3 h-3" /> Bị điều chỉnh
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
                           <td className="p-5 text-center font-bold text-[#3B82F6] whitespace-nowrap"><span className="bg-[#3B82F6]/10 px-3 py-1.5 rounded-lg border border-blue-100">{p.DiemTuDanhGia}đ</span></td>
                           <td className="p-5 text-center text-slate-600 font-semibold whitespace-nowrap">{p.DiemKhoaDanhGia || '0'}đ</td>
                           <td className="p-5 text-center font-black text-[#F4C542] text-lg whitespace-nowrap">{p.TongDiem || p.DiemTuDanhGia}đ</td>
