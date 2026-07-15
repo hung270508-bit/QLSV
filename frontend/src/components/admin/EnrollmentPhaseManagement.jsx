@@ -626,7 +626,10 @@ function EnrollmentPhaseManagement() {
               <tbody className="divide-y divide-slate-100">
                 <AnimatePresence>
                   {filteredPhases.map((phase, i) => {
-                    const isExpired = phase.TrangThai === 'Mo' && phase.NgayDong && new Date(phase.NgayDong) < now;
+                    const start = phase.NgayTao ? new Date(phase.NgayTao) : null;
+                    const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
+                    const isExpired = phase.TrangThai === 'Mo' && end && end < now;
+                    const isActive = phase.TrangThai === 'Mo' && (!start || start <= now) && (!end || end >= now);
                     return (
                     <motion.tr key={phase.MaDot} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                       className="hover:bg-slate-50/80 transition-colors group">
@@ -634,9 +637,8 @@ function EnrollmentPhaseManagement() {
                         <p className="font-semibold text-slate-900">{phase.TenDot}</p>
                         {(() => {
                           if (phase.TrangThai !== 'Mo' || isExpired) return null;
-                          const start = phase.NgayTao ? new Date(phase.NgayTao) : null;
                           const isWaiting = start && start > now;
-                          const targetDate = isWaiting ? start : (phase.NgayDong ? new Date(phase.NgayDong) : null);
+                          const targetDate = isWaiting ? start : end;
                           if (!targetDate) return null;
                           const prefix = isWaiting ? 'Mở sau' : 'Còn';
                           const colorClass = isWaiting ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200';
@@ -664,8 +666,8 @@ function EnrollmentPhaseManagement() {
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
                           {phase.TrangThai !== 'Dong' && (
-                            <button onClick={() => openEditForm(phase)} title="Chỉnh sửa"
-                              className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                            <button onClick={() => openEditForm(phase)} title={isActive ? "Không thể sửa đợt đang mở" : "Chỉnh sửa"} disabled={isActive}
+                              className={`p-2 rounded-xl border transition-colors ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300'}`}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                           )}
@@ -681,8 +683,8 @@ function EnrollmentPhaseManagement() {
                               Mở lại
                             </button>
                           )}
-                          <button onClick={() => requestDelete(phase)} title="Xóa"
-                            className="p-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                          <button onClick={() => requestDelete(phase)} title={isActive ? "Không thể xóa đợt đang mở" : "Xóa"} disabled={isActive}
+                            className={`p-2 rounded-xl border transition-colors ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'}`}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>

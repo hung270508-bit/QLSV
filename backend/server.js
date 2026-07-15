@@ -1727,11 +1727,16 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
             JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
             LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
             LEFT JOIN lichhoc lh ON lhp.MaLopHocPhan = lh.MaLopHocPhan
+            LEFT JOIN lophoc lh_class ON lhp.MaLop = lh_class.MaLop
+            WHERE (
+                lh_class.NienKhoa = (SELECT l.NienKhoa FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE s.MSSV = ?)
+                OR lhp.MaLop IS NULL OR lhp.MaLop = ''
+            )
             GROUP BY lhp.MaLopHocPhan
             ORDER BY mh.TenMonHoc, lhp.MaLopHocPhan
         `;
 
-        const [rows] = await db.promise().query(query);
+        const [rows] = await db.promise().query(query, [req.params.mssv]);
         res.json(rows);
     } catch (err) {
         console.error("LỖI /available:", err.message);

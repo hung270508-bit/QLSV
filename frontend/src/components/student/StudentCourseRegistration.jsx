@@ -9,7 +9,7 @@ import { StudentCourseRegistrationSkeleton } from '../common/StudentSkeleton';
 function StudentCourseRegistration({ user }) {
   const [availableCourses, setAvailableCourses] = useState([]);
   const [myCourses, setMyCourses] = useState([]);
-  const [phases, setPhases] = useState([]);
+  const [fetchedPhase, setFetchedPhase] = useState(null);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,14 +30,14 @@ function StudentCourseRegistration({ user }) {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [availRes, myRes, phaseRes] = await Promise.all([
+      const [availRes, myRes, activePhaseRes] = await Promise.all([
         axios.get(`${API_URL}/api/enrollment/available/${user?.username}`),
         axios.get(`${API_URL}/api/enrollment/my-courses/${user?.username}`),
-        axios.get(`${API_URL}/api/enrollment/phases`)
+        axios.get(`${API_URL}/api/enrollment/active-phase/${user?.username}`)
       ]);
       setAvailableCourses(availRes.data || []);
       setMyCourses(myRes.data || []);
-      setPhases(phaseRes.data || []);
+      setFetchedPhase(activePhaseRes.data?.phase || null);
     } catch (e) {
       console.error(e);
       showToast('Lỗi tải dữ liệu. Vui lòng refresh lại trang!', 'error');
@@ -54,8 +54,10 @@ function StudentCourseRegistration({ user }) {
   }, []);
 
   const activePhase = useMemo(() => {
-    return phases.find(p => p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) <= now && (!p.NgayDong || new Date(p.NgayDong) > now)) || null;
-  }, [phases, now]);
+    if (!fetchedPhase) return null;
+    const p = fetchedPhase;
+    return (p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) <= now && (!p.NgayDong || new Date(p.NgayDong) > now)) ? p : null;
+  }, [fetchedPhase, now]);
 
   function diffText(ms) {
     const totalMin = Math.max(0, Math.floor(ms / 60000));
