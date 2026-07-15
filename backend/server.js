@@ -1701,6 +1701,11 @@ async function getOpenPhaseId(conn, namHoc, nienKhoa) {
 // API HIỂN THỊ DANH SÁCH LHP ĐANG MỞ - CHỈ 1 DÒNG / 1 LHP
 app.get('/api/enrollment/available/:mssv', async (req, res) => {
     try {
+        const [[phase]] = await db.promise().query(
+            `SELECT NienKhoa FROM dot_dangky WHERE TrangThai = 'Mo' AND NOW() BETWEEN NgayTao AND NgayDong ORDER BY NgayTao DESC LIMIT 1`
+        );
+        const phaseNienKhoa = phase ? phase.NienKhoa : null;
+
         const query = `
             SELECT 
                 lhp.MaLopHocPhan,
@@ -1729,14 +1734,17 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
             LEFT JOIN lichhoc lh ON lhp.MaLopHocPhan = lh.MaLopHocPhan
             LEFT JOIN lophoc lh_class ON lhp.MaLop = lh_class.MaLop
             WHERE (
-                lh_class.NienKhoa = (SELECT l.NienKhoa FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE s.MSSV = ?)
-                OR lhp.MaLop IS NULL OR lhp.MaLop = ''
+                lhp.MaLop IS NULL OR lhp.MaLop = '' 
+                OR (
+                    lh_class.NienKhoa = (SELECT l.NienKhoa FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE s.MSSV = ?)
+                    AND (? IS NULL OR ? = '' OR lh_class.NienKhoa = ?)
+                )
             )
             GROUP BY lhp.MaLopHocPhan
             ORDER BY mh.TenMonHoc, lhp.MaLopHocPhan
         `;
 
-        const [rows] = await db.promise().query(query, [req.params.mssv]);
+        const [rows] = await db.promise().query(query, [req.params.mssv, phaseNienKhoa, phaseNienKhoa, phaseNienKhoa]);
         res.json(rows);
     } catch (err) {
         console.error("LỖI /available:", err.message);
@@ -1747,23 +1755,11 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
 // Lấy thông tin đợt đăng ký đang mở cho sinh viên
 app.get('/api/enrollment/active-phase/:mssv', async (req, res) => {
     try {
-        // LẤY NIÊN KHÓA CỦA SINH VIÊN
-        const [[studentCohort]] = await db.promise().query(
-            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
-            [req.params.mssv]
-        );
-
-        if (!studentCohort || !studentCohort.NienKhoa) {
-             return res.json({ hasActivePhase: false, phase: null });
-        }
-
         const [[phase]] = await db.promise().query(
             `SELECT *, NgayTao AS NgayMo FROM dot_dangky 
              WHERE TrangThai = 'Mo' 
-             AND (NienKhoa = ? OR NienKhoa IS NULL OR NienKhoa = '') 
              AND NOW() BETWEEN NgayTao AND NgayDong
-             ORDER BY NgayTao DESC LIMIT 1`,
-            [studentCohort.NienKhoa]
+             ORDER BY NgayTao DESC LIMIT 1`
         );
 
         if (phase) {
