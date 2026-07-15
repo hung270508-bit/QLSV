@@ -31,8 +31,8 @@ function StudentCourseRegistration({ user }) {
     try {
       setLoading(true);
       const [availRes, myRes, phaseRes] = await Promise.all([
-        axios.get(`${API_URL}/api/enrollment/available?mssv=${user?.username}`),
-        axios.get(`${API_URL}/api/enrollment/my-courses?mssv=${user?.username}`),
+        axios.get(`${API_URL}/api/enrollment/available/${user?.username}`),
+        axios.get(`${API_URL}/api/enrollment/my-courses/${user?.username}`),
         axios.get(`${API_URL}/api/enrollment/phases`)
       ]);
       setAvailableCourses(availRes.data || []);

@@ -2359,7 +2359,7 @@ async function findConflictingOpenPhase(ngayMo, ngayDong, excludeId) {
     const formattedNgayDong = formatMySQLDateTime(ngayDong);
     
     let query = `SELECT MaDot, TenDot, HocKy, NienKhoa, NgayTao, NgayDong FROM dot_dangky
-                 WHERE TrangThai != 'Đóng'
+                 WHERE TrangThai != 'Dong'
                  AND NgayTao < ? AND ? < NgayDong`;
     const params = [formattedNgayDong, formattedNgayMo];
     if (excludeId) {
@@ -2455,6 +2455,16 @@ app.post('/api/enrollment/phases', async (req, res) => {
 
     const trangThaiMoi = 'Mo';
 
+    if (HocKy && NienKhoa) {
+        const [existingPhases] = await db.promise().query(
+            'SELECT MaDot FROM dot_dangky WHERE HocKy = ? AND NienKhoa = ?',
+            [HocKy, NienKhoa]
+        );
+        if (existingPhases.length > 0) {
+            return res.status(400).json({ message: `Đã tồn tại đợt đăng ký cho Học kỳ ${HocKy} - Niên khóa ${NienKhoa}. Mỗi học kỳ chỉ được tạo 1 đợt.` });
+        }
+    }
+
     const conflictPhase = await findConflictingOpenPhase(startDate, endDate, null);
     if (conflictPhase) {
         return res.status(409).json({
@@ -2506,7 +2516,7 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
     try {
         const [[existingPhase]] = await db.promise().query('SELECT TrangThai, NgayTao, NgayDong FROM dot_dangky WHERE MaDot = ?', [id]);
         if (!existingPhase) return res.status(404).json({ message: 'Không tìm thấy đợt.' });
-        if (existingPhase.TrangThai === 'Đóng') {
+        if (existingPhase.TrangThai === 'Dong') {
             return res.status(403).json({ message: 'Không thể sửa đợt đăng ký đã đóng.' });
         }
         
@@ -2536,6 +2546,16 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
         }
 
         const trangThaiMoi = 'Mo';
+
+        if (HocKy && NienKhoa) {
+            const [existingPhases] = await db.promise().query(
+                'SELECT MaDot FROM dot_dangky WHERE HocKy = ? AND NienKhoa = ? AND MaDot != ?',
+                [HocKy, NienKhoa, id]
+            );
+            if (existingPhases.length > 0) {
+                return res.status(400).json({ message: `Đã tồn tại đợt đăng ký cho Học kỳ ${HocKy} - Niên khóa ${NienKhoa}. Mỗi học kỳ chỉ được tạo 1 đợt.` });
+            }
+        }
 
         const conflictPhase = await findConflictingOpenPhase(startDate, endDate, id);
         if (conflictPhase) {
@@ -2570,9 +2590,8 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
 // 9. Đóng một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.post('/api/enrollment/phases/:id/close', async (req, res) => {
     try {
-        // Chỉ cập nhật duy nhất trạng thái đợt đăng ký trong bảng dot_dangky
         await db.promise().query(
-            `UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE MaDot = ?`,
+            `UPDATE dot_dangky SET TrangThai = 'Dong' WHERE MaDot = ?`,
             [req.params.id]
         );
 
@@ -2593,7 +2612,7 @@ app.post('/api/enrollment/phases/:id/reopen', async (req, res) => {
     try {
         const [[existingPhase]] = await db.promise().query('SELECT * FROM dot_dangky WHERE MaDot = ?', [id]);
         if (!existingPhase) return res.status(404).json({ message: 'Không tìm thấy đợt.' });
-        if (existingPhase.TrangThai !== 'Đóng') return res.status(400).json({ message: 'Đợt này chưa đóng.' });
+        if (existingPhase.TrangThai !== 'Dong') return res.status(400).json({ message: 'Đợt này chưa đóng.' });
 
         const now = new Date();
         let newEndDate = existingPhase.NgayDong;

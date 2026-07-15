@@ -92,7 +92,7 @@ function ConfirmModal({ dialog, onClose }) {
 }
 
 // ── PhaseFormModal ────────────────────────────────────────────────────────────
-function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, tenDotError, hocKyError, nienKhoaError, dateErrors, hocKyOptions, nienKhoaOptions }) {
+function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, hocKyOptions, nienKhoaOptions }) {
   if (!open) return null;
   const isEdit = !!editingPhase;
   return createPortal(
@@ -141,17 +141,13 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
               Tên đợt <span className="text-red-500">*</span>
             </label>
             <input
-              className={`w-full rounded-xl border px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#152238]/20
-${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#152238]/40'}`}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40"
               placeholder="VD: Đợt 1 HK1 2024-2025"
               value={form.TenDot} maxLength={100}
               onChange={(e) => { const raw = e.target.value; const filtered = raw.replace(TEN_DOT_INVALID_CHARS_REGEX, ''); setForm({ ...form, TenDot: filtered }); }}
               required
             />
-            {tenDotError
-              ? <p className="mt-1 text-xs text-red-500">{tenDotError}</p>
-              : <p className="mt-1 text-xs text-slate-400">Cho phép: chữ, số, khoảng trắng, - _ ( ) , .</p>
-            }
+            <p className="mt-1 text-xs text-slate-400">Cho phép: chữ, số, khoảng trắng, - _ ( ) , .</p>
           </div>
 
           {/* Mô tả */}
@@ -170,30 +166,28 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Học kỳ <span className="text-red-500">*</span></label>
               {hocKyOptions.length > 0 ? (
                 <select
-                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${hocKyError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
                   value={form.HocKy} onChange={(e) => setForm({ ...form, HocKy: e.target.value })} required>
                   <option value="" disabled>Chọn</option>
                   {hocKyOptions.map(hk => <option key={hk} value={hk}>{hk}</option>)}
                 </select>
               ) : (
-                <input className={`w-full rounded-xl border px-3 py-2.5 text-sm ${hocKyError ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-200 bg-slate-50 text-slate-400'}`} value="" readOnly disabled placeholder="Chưa có" />
+                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-400" value="" readOnly disabled placeholder="Chưa có" />
               )}
-              {hocKyError && <p className="mt-1 text-xs text-red-500">{hocKyError}</p>}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Niên khóa <span className="text-red-500">*</span></label>
               {nienKhoaOptions.length > 0 ? (
                 <select
-                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${nienKhoaError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} required>
                   <option value="" disabled>Chọn</option>
                   {nienKhoaOptions.map(nk => <option key={nk} value={nk}>{nk}</option>)}
                 </select>
               ) : (
-                <input className={`w-full rounded-xl border px-3 py-2.5 text-sm ${nienKhoaError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`} placeholder="VD: 2022-2026"
+                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="VD: 2022-2026"
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} />
               )}
-              {nienKhoaError && <p className="mt-1 text-xs text-red-500">{nienKhoaError}</p>}
             </div>
           </div>
 
@@ -202,26 +196,20 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian mở <span className="text-red-500">*</span></label>
               <input type="datetime-local"
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayTao ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
                 value={form.NgayTao} onChange={(e) => setForm({ ...form, NgayTao: e.target.value })}
                 min={isEdit ? undefined : getMinDateTimeStr()}
                 required />
-              {dateErrors?.NgayTao
-                ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayTao}</p>
-                : <p className="mt-1 text-xs text-slate-400">Lên lịch trước tối đa 2 tuần.</p>
-              }
+              <p className="mt-1 text-xs text-slate-400">Lên lịch trước tối đa 2 tuần.</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian đóng <span className="text-red-500">*</span></label>
               <input type="datetime-local"
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayDong ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
                 value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })}
                 min={form.NgayTao || getMinDateTimeStr()}
                 required />
-              {dateErrors?.NgayDong
-                ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayDong}</p>
-                : <p className="mt-1 text-xs text-slate-400">Thời hạn mở tối đa 2 tuần.</p>
-              }
+              <p className="mt-1 text-xs text-slate-400">Thời hạn mở tối đa 2 tuần.</p>
             </div>
           </div>
 
@@ -269,7 +257,7 @@ function StatusBadge({ phase, now }) {
       </span>
     );
   }
-  if (phase.TrangThai === 'Đóng') {
+  if (phase.TrangThai === 'Dong') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
         <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Đã đóng
@@ -289,10 +277,6 @@ function EnrollmentPhaseManagement() {
   const [formOpen, setFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [tenDotError, setTenDotError] = useState('');
-  const [hocKyError, setHocKyError] = useState('');
-  const [nienKhoaError, setNienKhoaError] = useState('');
-  const [dateErrors, setDateErrors] = useState({ NgayTao: '', NgayDong: '' });
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [now, setNow] = useState(() => new Date());
@@ -352,7 +336,7 @@ function EnrollmentPhaseManagement() {
     const end = new Date(ngayDong);
     return phases.find(p => {
       if (excludeId && p.MaDot === excludeId) return false;
-      if (p.TrangThai === 'Đóng') return false;
+      if (p.TrangThai === 'Dong') return false;
       const pStart = new Date(p.NgayTao);
       const pEnd = new Date(p.NgayDong);
       // Chồng chéo nếu: start < pEnd và pStart < end
@@ -360,31 +344,24 @@ function EnrollmentPhaseManagement() {
     }) || null;
   };
 
-  const openCreateForm = () => { setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayTao: '', NgayDong: '' }); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayTao: '', NgayDong: '' }); setFormOpen(true); };
-  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayTao: '', NgayDong: '' }); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayTao: phase.NgayTao ? toLocalISOString(phase.NgayTao) : '', NgayDong: phase.NgayDong ? toLocalISOString(phase.NgayDong) : '' }); setFormOpen(true); };
-  const closeForm = () => { setFormOpen(false); setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayTao: '', NgayDong: '' }); };
+  const openCreateForm = () => { setEditingPhase(null); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayTao: '', NgayDong: '' }); setFormOpen(true); };
+  const openEditForm = (phase) => { setEditingPhase(phase); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayTao: phase.NgayTao ? toLocalISOString(phase.NgayTao) : '', NgayDong: phase.NgayDong ? toLocalISOString(phase.NgayDong) : '' }); setFormOpen(true); };
+  const closeForm = () => { setFormOpen(false); setEditingPhase(null); };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    let hasError = false;
-    let newDateErrors = { NgayTao: '', NgayDong: '' };
+    let errors = [];
 
-    if (!form.TenDot.trim()) { setTenDotError('Vui lòng nhập tên đợt.'); hasError = true; }
-    else if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { setTenDotError('Tên đợt chứa ký tự không hợp lệ.'); hasError = true; }
-    else { setTenDotError(''); }
+    if (!form.TenDot.trim()) { errors.push('Vui lòng nhập tên đợt.'); }
+    else if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { errors.push('Tên đợt chứa ký tự không hợp lệ.'); }
 
-    if (!form.HocKy) { setHocKyError('Vui lòng chọn học kỳ.'); hasError = true; }
-    else { setHocKyError(''); }
-
-    if (!form.NienKhoa) { setNienKhoaError('Vui lòng chọn niên khóa.'); hasError = true; }
-    else { setNienKhoaError(''); }
-
-    if (!form.NgayTao) { newDateErrors.NgayTao = 'Vui lòng chọn ngày mở.'; hasError = true; }
-    if (!form.NgayDong) { newDateErrors.NgayDong = 'Vui lòng chọn ngày đóng.'; hasError = true; }
+    if (!form.HocKy) { errors.push('Vui lòng chọn học kỳ.'); }
+    if (!form.NienKhoa) { errors.push('Vui lòng chọn niên khóa.'); }
+    if (!form.NgayTao) { errors.push('Vui lòng chọn ngày mở.'); }
+    if (!form.NgayDong) { errors.push('Vui lòng chọn ngày đóng.'); }
 
     if (form.NgayTao && form.NgayDong) {
       const now = new Date();
-      
       const startDateStr = form.NgayTao.includes('+') || form.NgayTao.includes('Z') ? form.NgayTao : `${form.NgayTao}:00+07:00`;
       const endDateStr = form.NgayDong.includes('+') || form.NgayDong.includes('Z') ? form.NgayDong : `${form.NgayDong}:00+07:00`;
       
@@ -394,58 +371,43 @@ function EnrollmentPhaseManagement() {
 
       let isNgayTaoChanged = true;
       if (editingPhase && editingPhase.NgayTao) {
-        if (form.NgayTao === toLocalISOString(editingPhase.NgayTao)) {
-          isNgayTaoChanged = false;
-        }
+        if (form.NgayTao === toLocalISOString(editingPhase.NgayTao)) isNgayTaoChanged = false;
       }
 
       if (isNgayTaoChanged) {
-        if (startDate.getTime() < now.getTime() - 60000) {
-          newDateErrors.NgayTao = 'Thời gian mở không được nằm trong quá khứ.';
-          hasError = true;
-        }
-        if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
-          newDateErrors.NgayTao = 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.';
-          hasError = true;
-        }
+        if (startDate.getTime() < now.getTime() - 60000) errors.push('Thời gian mở không được nằm trong quá khứ.');
+        if (startDate.getTime() > now.getTime() + twoWeeksInMs) errors.push('Chỉ có thể đặt lịch mở tối đa trước 2 tuần.');
       }
 
       let isNgayDongChanged = true;
       if (editingPhase && editingPhase.NgayDong) {
-        if (form.NgayDong === toLocalISOString(editingPhase.NgayDong)) {
-          isNgayDongChanged = false;
-        }
+        if (form.NgayDong === toLocalISOString(editingPhase.NgayDong)) isNgayDongChanged = false;
       }
 
       if (isNgayDongChanged) {
-        if (endDate.getTime() < now.getTime() - 60000) {
-          newDateErrors.NgayDong = 'Thời gian đóng không được nằm trong quá khứ.';
-          hasError = true;
-        }
+        if (endDate.getTime() < now.getTime() - 60000) errors.push('Thời gian đóng không được nằm trong quá khứ.');
       }
 
-      if (endDate <= startDate) {
-        newDateErrors.NgayDong = 'Ngày đóng phải sau ngày mở.';
-        hasError = true;
-      }
-      if (endDate.getTime() - startDate.getTime() > twoWeeksInMs) {
-        newDateErrors.NgayDong = 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.';
-        hasError = true;
-      }
+      if (endDate <= startDate) errors.push('Ngày đóng phải sau ngày mở.');
+      if (endDate.getTime() - startDate.getTime() > twoWeeksInMs) errors.push('Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.');
     }
 
-    setDateErrors(newDateErrors);
-    if (hasError) return;
+    const duplicatePhase = phases.find(p => p.HocKy === form.HocKy && p.NienKhoa === form.NienKhoa && (!editingPhase || p.MaDot !== editingPhase.MaDot));
+    if (duplicatePhase) {
+      errors.push(`Học kỳ ${form.HocKy} đã tồn tại.`);
+    }
 
-    const willBeOpen = editingPhase ? editingPhase.TrangThai !== 'Đóng' : true;
+    const willBeOpen = editingPhase ? editingPhase.TrangThai !== 'Dong' : true;
     if (willBeOpen) {
       const conflict = findConflictingOpenPhase(form.NgayTao, form.NgayDong, editingPhase?.MaDot);
       if (conflict) {
-        setHocKyError(`Thời gian đợt đăng ký bị chồng chéo với đợt "${conflict.TenDot}".`);
-        return;
-      } else {
-        setHocKyError('');
+        errors.push(`Thời gian đợt đăng ký bị chồng chéo với đợt "${conflict.TenDot}".`);
       }
+    }
+
+    if (errors.length > 0) {
+      showToast(errors[0], 'error'); // Hiển thị lỗi đầu tiên
+      return;
     }
     setConfirmDialog({
       title: editingPhase ? 'Xác nhận cập nhật' : 'Xác nhận tạo đợt',
@@ -456,10 +418,12 @@ function EnrollmentPhaseManagement() {
 
   const performSave = async () => {
     try {
+      const payload = { ...form };
+
       if (editingPhase) {
-        await axios.put(`${API_URL}/api/enrollment/phases/${editingPhase.MaDot}`, { ...form, TrangThai: editingPhase.TrangThai || 'Mo' });
+        await axios.put(`${API_URL}/api/enrollment/phases/${editingPhase.MaDot}`, { ...payload, TrangThai: editingPhase.TrangThai || 'Mo' });
       } else {
-        await axios.post(`${API_URL}/api/enrollment/phases`, form);
+        await axios.post(`${API_URL}/api/enrollment/phases`, payload);
       }
       showToast('Lưu đợt đăng ký thành công!', 'success');
       closeForm(); fetchPhases();
@@ -525,7 +489,7 @@ function EnrollmentPhaseManagement() {
     total: phases.length,
     active: phases.filter(p => p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) <= now).length,
     cho: phases.filter(p => p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) > now).length,
-    closed: phases.filter(p => p.TrangThai === 'Đóng').length,
+    closed: phases.filter(p => p.TrangThai === 'Dong').length,
   }), [phases, now]);
 
   const filteredPhases = useMemo(() => {
@@ -534,11 +498,11 @@ function EnrollmentPhaseManagement() {
         const isUpcoming = phase.TrangThai === 'Mo' && phase.NgayTao && new Date(phase.NgayTao) > now;
         if (filterStatus === 'Cho' && !isUpcoming) return false;
         if (filterStatus === 'Mo' && (phase.TrangThai !== 'Mo' || isUpcoming)) return false;
-        if (filterStatus === 'Đóng' && phase.TrangThai !== 'Đóng') return false;
+        if (filterStatus === 'Dong' && phase.TrangThai !== 'Dong') return false;
       }
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        return phase.TenDot?.toLowerCase().includes(term) || phase.HocKy?.toLowerCase().includes(term);
+        return phase.TenDot?.toLowerCase().includes(term) || phase.HocKy?.toLowerCase().includes(term) || phase.NienKhoa?.toLowerCase().includes(term);
       }
       return true;
     });
@@ -549,7 +513,7 @@ function EnrollmentPhaseManagement() {
     <div className="space-y-6 pb-8">
       {/* Toast */}
       {createPortal(
-        <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+        <div className="fixed top-4 right-4 z-[999999] flex flex-col gap-2 pointer-events-none">
           <AnimatePresence>
             {toast && <div className="pointer-events-auto"><Toast toast={toast} onClose={() => setToast(null)} /></div>}
           </AnimatePresence>
@@ -566,7 +530,7 @@ function EnrollmentPhaseManagement() {
       <AnimatePresence>
         {formOpen && (
           <PhaseFormModal open={formOpen} onClose={closeForm} editingPhase={editingPhase}
-            form={form} setForm={setForm} onSubmit={handleSubmit} tenDotError={tenDotError} hocKyError={hocKyError} nienKhoaError={nienKhoaError} dateErrors={dateErrors}
+            form={form} setForm={setForm} onSubmit={handleSubmit}
             hocKyOptions={hocKyOptions} nienKhoaOptions={nienKhoaOptions} />
         )}
       </AnimatePresence>
@@ -628,7 +592,7 @@ function EnrollmentPhaseManagement() {
             </div>
             {/* filter */}
             <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1">
-              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Cho', 'Chờ'], ['Đóng', 'Đã đóng']].map(([val, label]) => (
+              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Cho', 'Chờ'], ['Dong', 'Đã đóng']].map(([val, label]) => (
                 <button key={val} onClick={() => setFilterStatus(val)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterStatus === val ? 'bg-[#152238] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
                   {label}
@@ -653,7 +617,7 @@ function EnrollmentPhaseManagement() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Đợt đăng ký</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">HK / Năm / Niên khóa</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Học kỳ / Niên khóa</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Thời gian</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Thao tác</th>
@@ -699,7 +663,7 @@ function EnrollmentPhaseManagement() {
                       <td className="px-5 py-4"><StatusBadge phase={phase} now={now} /></td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                          {phase.TrangThai !== 'Đóng' && (
+                          {phase.TrangThai !== 'Dong' && (
                             <button onClick={() => openEditForm(phase)} title="Chỉnh sửa"
                               className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
                               <Pencil className="w-3.5 h-3.5" />
@@ -711,7 +675,7 @@ function EnrollmentPhaseManagement() {
                               Đóng
                             </button>
                           )}
-                          {phase.TrangThai === 'Đóng' && (
+                          {phase.TrangThai === 'Dong' && (
                             <button onClick={() => requestOpen(phase)}
                               className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors">
                               Mở lại
