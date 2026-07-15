@@ -2337,14 +2337,18 @@ const parseDateTimeInVN = (dateStr) => {
 };
 
 // HÀM CHUẨN HÓA ĐỊNH DẠNG NGÀY THÁNG CHO MYSQL
-const formatMySQLDateTime = (dateStr) => {
-    if (!dateStr) return null;
-    if (dateStr instanceof Date) {
-        const offset = dateStr.getTimezoneOffset() * 60000; 
-        const localTime = new Date(dateStr.getTime() - offset);
-        return localTime.toISOString().slice(0, 19).replace('T', ' ');
-    }
-    return dateStr.replace('T', ' ').replace(/\.\d+Z$/, '').slice(0, 19);
+const formatMySQLDateTime = (dateInput) => {
+    if (!dateInput) return null;
+    const dateObj = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(dateObj.getTime())) return null;
+    
+    // Bắt buộc chuyển đổi ra giờ Việt Nam (+07:00) không phụ thuộc server timezone
+    const utcMs = dateObj.getTime();
+    const vnMs = utcMs + (7 * 60 * 60 * 1000);
+    const vnDate = new Date(vnMs);
+    
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${vnDate.getUTCFullYear()}-${pad(vnDate.getUTCMonth() + 1)}-${pad(vnDate.getUTCDate())} ${pad(vnDate.getUTCHours())}:${pad(vnDate.getUTCMinutes())}:${pad(vnDate.getUTCSeconds())}`;
 };
 
 // Cập nhật trạng thái tự động
@@ -2433,9 +2437,28 @@ app.post('/api/enrollment/phases', async (req, res) => {
     if (!TenDot || !NgayTao || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
+    const tenDotTrimmed = TenDot.trim();
+    if (tenDotTrimmed.length < 3) {
+        return res.status(400).json({ message: 'Tên đợt phải có ít nhất 3 ký tự.' });
+    }
+    if (tenDotTrimmed.length > 50) {
+        return res.status(400).json({ message: 'Tên đợt không được vượt quá 50 ký tự.' });
+    }
+    if (req.body.MoTa && req.body.MoTa.length > 1000) {
+        return res.status(400).json({ message: 'Mô tả không được vượt quá 1000 ký tự.' });
+    }
     const tenDotRegex = /^[\p{L}\p{N}\s\-_(),.]*$/u;
     if (!tenDotRegex.test(TenDot)) {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
+    if (/\s{2,}/.test(TenDot)) {
+        return res.status(400).json({ message: 'Tên đợt không được chứa nhiều khoảng trắng liên tiếp.' });
+    }
+    if (req.body.MoTa && !tenDotRegex.test(req.body.MoTa)) {
+        return res.status(400).json({ message: 'Mô tả chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
+    if (req.body.MoTa && /\s{2,}/.test(req.body.MoTa)) {
+        return res.status(400).json({ message: 'Mô tả không được chứa nhiều khoảng trắng liên tiếp.' });
     }
     const now = new Date();
     const startDate = parseDateTimeInVN(NgayTao);
@@ -2506,9 +2529,28 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
     if (!TenDot || !NgayTao || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
     }
+    const tenDotTrimmed = TenDot.trim();
+    if (tenDotTrimmed.length < 3) {
+        return res.status(400).json({ message: 'Tên đợt phải có ít nhất 3 ký tự.' });
+    }
+    if (tenDotTrimmed.length > 50) {
+        return res.status(400).json({ message: 'Tên đợt không được vượt quá 50 ký tự.' });
+    }
+    if (req.body.MoTa && req.body.MoTa.length > 1000) {
+        return res.status(400).json({ message: 'Mô tả không được vượt quá 1000 ký tự.' });
+    }
     const tenDotRegex = /^[\p{L}\p{N}\s\-_(),.]*$/u;
     if (!tenDotRegex.test(TenDot)) {
         return res.status(400).json({ message: 'Tên đợt chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
+    if (/\s{2,}/.test(TenDot)) {
+        return res.status(400).json({ message: 'Tên đợt không được chứa nhiều khoảng trắng liên tiếp.' });
+    }
+    if (req.body.MoTa && !tenDotRegex.test(req.body.MoTa)) {
+        return res.status(400).json({ message: 'Mô tả chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .' });
+    }
+    if (req.body.MoTa && /\s{2,}/.test(req.body.MoTa)) {
+        return res.status(400).json({ message: 'Mô tả không được chứa nhiều khoảng trắng liên tiếp.' });
     }
     const now = new Date();
     const startDate = parseDateTimeInVN(NgayTao);

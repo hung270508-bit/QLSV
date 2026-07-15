@@ -143,7 +143,7 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
             <input
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40"
               placeholder="VD: Đợt 1 HK1 2024-2025"
-              value={form.TenDot} maxLength={100}
+              value={form.TenDot} minLength={3} maxLength={50}
               onChange={(e) => { const raw = e.target.value; const filtered = raw.replace(TEN_DOT_INVALID_CHARS_REGEX, ''); setForm({ ...form, TenDot: filtered }); }}
               required
             />
@@ -156,6 +156,7 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
             <textarea
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40 resize-none"
               placeholder="Mô tả ngắn về đợt đăng ký (không bắt buộc)…" rows={2}
+              maxLength={1000}
               value={form.MoTa} onChange={(e) => setForm({ ...form, MoTa: e.target.value })}
             />
           </div>
@@ -232,6 +233,44 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
   );
 }
 
+function PhaseViewModal({ phase, onClose }) {
+  if (!phase) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }}
+        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-[#152238]/10">
+              <CalendarDays className="w-4 h-4 text-[#152238]" />
+            </div>
+            <span className="font-bold text-slate-800 text-base">Thông tin đợt đăng ký</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-6 space-y-5">
+          <div><p className="text-xs text-slate-500 mb-1 font-medium">Tên đợt</p><p className="font-semibold text-slate-800">{phase.TenDot}</p></div>
+          {phase.MoTa && <div><p className="text-xs text-slate-500 mb-1 font-medium">Mô tả</p><p className="text-slate-700 text-sm whitespace-pre-wrap">{phase.MoTa}</p></div>}
+          <div className="grid grid-cols-2 gap-4">
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Học kỳ</p><p className="font-semibold text-slate-800">{phase.HocKy}</p></div>
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Niên khóa</p><p className="font-semibold text-slate-800">{phase.NienKhoa}</p></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Thời gian mở</p><p className="font-semibold text-slate-800">{fmtDateTime(phase.NgayTao)}</p></div>
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Thời gian đóng</p><p className="font-semibold text-slate-800">{fmtDateTime(phase.NgayDong)}</p></div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
+          <button onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Đóng</button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+}
+
 // ── StatusBadge ───────────────────────────────────────────────────────────────
 function StatusBadge({ phase, now }) {
   if (phase.TrangThai === 'Mo') {
@@ -279,6 +318,7 @@ function EnrollmentPhaseManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [viewingPhase, setViewingPhase] = useState(null);
   const [now, setNow] = useState(() => new Date());
   const [form, setForm] = useState({ TenDot: '', MoTa: '', HocKy: '', NienKhoa: '', NgayTao: '', NgayDong: '' });
 
@@ -352,8 +392,21 @@ function EnrollmentPhaseManagement() {
     e.preventDefault();
     let errors = [];
 
-    if (!form.TenDot.trim()) { errors.push('Vui lòng nhập tên đợt.'); }
+    const tenDotTrimmed = form.TenDot.trim();
+    if (!tenDotTrimmed) { errors.push('Vui lòng nhập tên đợt.'); }
+    else if (tenDotTrimmed.length < 3) { errors.push('Tên đợt phải có ít nhất 3 ký tự.'); }
+    else if (tenDotTrimmed.length > 50) { errors.push('Tên đợt không được vượt quá 50 ký tự.'); }
     else if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { errors.push('Tên đợt chứa ký tự không hợp lệ.'); }
+    else if (/\s{2,}/.test(form.TenDot)) { errors.push('Tên đợt không được chứa nhiều khoảng trắng liên tiếp.'); }
+
+    if (form.MoTa) {
+      if (form.MoTa.length > 1000) { errors.push('Mô tả không được vượt quá 1000 ký tự.'); }
+      else if (!TEN_DOT_ALLOWED_REGEX.test(form.MoTa)) {
+        errors.push('Mô tả chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .');
+      } else if (/\s{2,}/.test(form.MoTa)) {
+        errors.push('Mô tả không được chứa nhiều khoảng trắng liên tiếp.');
+      }
+    }
 
     if (!form.HocKy) { errors.push('Vui lòng chọn học kỳ.'); }
     if (!form.NienKhoa) { errors.push('Vui lòng chọn niên khóa.'); }
@@ -632,7 +685,8 @@ function EnrollmentPhaseManagement() {
                     const isActive = phase.TrangThai === 'Mo' && (!start || start <= now) && (!end || end >= now);
                     return (
                     <motion.tr key={phase.MaDot} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      className="hover:bg-slate-50/80 transition-colors group">
+                      onClick={() => setViewingPhase(phase)}
+                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer">
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{phase.TenDot}</p>
                         {(() => {
@@ -663,7 +717,7 @@ function EnrollmentPhaseManagement() {
                         </div>
                       </td>
                       <td className="px-5 py-4"><StatusBadge phase={phase} now={now} /></td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
                           {phase.TrangThai !== 'Dong' && (
                             <button onClick={() => openEditForm(phase)} title={isActive ? "Không thể sửa đợt đang mở" : "Chỉnh sửa"} disabled={isActive}
@@ -697,6 +751,7 @@ function EnrollmentPhaseManagement() {
           </div>
         )}
       </div>
+      <PhaseViewModal phase={viewingPhase} onClose={() => setViewingPhase(null)} />
     </div>
   );
 }
