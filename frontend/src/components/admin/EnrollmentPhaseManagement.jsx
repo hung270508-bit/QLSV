@@ -327,7 +327,7 @@ function EnrollmentPhaseManagement() {
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
 
   const fetchPhases = async () => {
-    try { setLoading(true); const r = await axios.get(`${API_URL}/api/enrollment/phases`); setPhases(r.data || []); }
+    try { setLoading(true); const r = await axios.get(`${API_URL}/api/enrollment/phases?_t=${Date.now()}`); setPhases(r.data || []); }
     catch (e) { console.error(e); } finally { setLoading(false); }
   };
   const fetchCourseSections = async () => {

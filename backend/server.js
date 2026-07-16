@@ -1702,9 +1702,10 @@ async function getOpenPhaseId(conn, namHoc, nienKhoa) {
 app.get('/api/enrollment/available/:mssv', async (req, res) => {
     try {
         const [[phase]] = await db.promise().query(
-            `SELECT NienKhoa FROM dot_dangky WHERE TrangThai = 'Mo' AND NOW() BETWEEN NgayTao AND NgayDong ORDER BY NgayTao DESC LIMIT 1`
+            `SELECT NienKhoa, HocKy FROM dot_dangky WHERE TrangThai = 'Mo' AND NOW() BETWEEN NgayTao AND NgayDong ORDER BY NgayTao DESC LIMIT 1`
         );
         const phaseNienKhoa = phase ? phase.NienKhoa : null;
+        const phaseHocKy = phase ? phase.HocKy : null;
 
         const query = `
             SELECT 
@@ -1727,24 +1728,35 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
                 COUNT(DISTINCT lh.MaLichHoc) AS SoBuoi,
                 MAX(lh.PhongHoc) AS PhongHoc,
                 MAX(lh.CaHoc) AS CaHoc,
-                DAYOFWEEK(MIN(lh.NgayHoc)) AS Thu
+                DAYOFWEEK(MIN(lh.NgayHoc)) AS Thu,
+                mh.MaKhoa AS MaKhoaMonHoc,
+                sv_khoa.MaKhoa AS MaKhoaSinhVien,
+                mh.LoaiMonHoc
             FROM lophocphan lhp
             JOIN monhoc mh ON lhp.MaMonHoc = mh.MaMonHoc
             LEFT JOIN giangvien gv ON lhp.MaGiangVien = gv.MaGiangVien
             LEFT JOIN lichhoc lh ON lhp.MaLopHocPhan = lh.MaLopHocPhan
             LEFT JOIN lophoc lh_class ON lhp.MaLop = lh_class.MaLop
-            WHERE (
+            CROSS JOIN (
+                SELECT lh.MaKhoa 
+                FROM sinhvien s 
+                JOIN lophoc lh ON s.MaLop = lh.MaLop 
+                WHERE s.MSSV = ? 
+                LIMIT 1
+            ) AS sv_khoa
+            WHERE (lhp.HocKy = ?) 
+            AND (
                 lhp.MaLop IS NULL OR lhp.MaLop = '' 
                 OR (
                     lh_class.NienKhoa = (SELECT l.NienKhoa FROM sinhvien s JOIN lophoc l ON s.MaLop = l.MaLop WHERE s.MSSV = ?)
                     AND (? IS NULL OR ? = '' OR lh_class.NienKhoa = ?)
                 )
             )
-            GROUP BY lhp.MaLopHocPhan
+            GROUP BY lhp.MaLopHocPhan, mh.MaKhoa, sv_khoa.MaKhoa, mh.LoaiMonHoc
             ORDER BY mh.TenMonHoc, lhp.MaLopHocPhan
         `;
 
-        const [rows] = await db.promise().query(query, [req.params.mssv, phaseNienKhoa, phaseNienKhoa, phaseNienKhoa]);
+        const [rows] = await db.promise().query(query, [req.params.mssv, phaseHocKy, req.params.mssv, phaseNienKhoa, phaseNienKhoa, phaseNienKhoa]);
         res.json(rows);
     } catch (err) {
         console.error("LỖI /available:", err.message);
@@ -1825,6 +1837,28 @@ app.post('/api/enrollment/batch', async (req, res) => {
     const connection = await db.promise().getConnection();
     try {
         await connection.beginTransaction();
+
+        // 1. Kiểm tra đợt đăng ký có hợp lệ với Niên khóa sinh viên không
+        const [[studentInfo]] = await connection.query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
+            [MSSV]
+        );
+        if (!studentInfo || !studentInfo.NienKhoa) {
+            throw new Error('Không tìm thấy thông tin niên khóa sinh viên');
+        }
+
+        const [[phase]] = await connection.query(
+            `SELECT * FROM dot_dangky 
+             WHERE TrangThai = 'Mo' 
+             AND (NienKhoa = ? OR NienKhoa IS NULL OR NienKhoa = '') 
+             AND NOW() BETWEEN NgayTao AND NgayDong
+             ORDER BY NgayTao DESC LIMIT 1`,
+            [studentInfo.NienKhoa]
+        );
+
+        if (!phase) {
+            throw new Error('Hiện tại không có đợt đăng ký nào mở cho khóa của bạn');
+        }
 
         // Kiểm tra trùng môn
         const monDaCo = new Set();
@@ -2350,7 +2384,7 @@ const formatMySQLDateTime = (dateInput) => {
 // Cập nhật trạng thái tự động
 async function autoUpdatePhases() {
     try {
-        await db.promise().query(`UPDATE dot_dangky SET TrangThai = 'Đóng' WHERE TrangThai = 'Mo' AND NgayDong <= NOW()`);
+        await db.promise().query(`UPDATE dot_dangky SET TrangThai = 'Dong' WHERE TrangThai = 'Mo' AND NgayDong <= NOW()`);
     } catch (e) {
         console.error("Auto update phases error:", e);
     }
