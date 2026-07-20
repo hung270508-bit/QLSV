@@ -3694,6 +3694,35 @@ app.delete('/api/admin/support-requests/:id', (req, res) => {
     executeUpdate('UPDATE yeucau_hotro SET IsDeletedByAdmin = 1 WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
 });
 
+app.get('/api/admin/support-requests/deleted', (req, res) => {
+    const query = `
+        SELECT y.*, 
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN y.MSSV
+            ELSE y.MaGiangVien
+        END as NguoiGui,
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN 'SinhVien'
+            ELSE 'GiangVien'
+        END as VaiTro,
+        y.ChuDe as TieuDe,
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN (SELECT HoTen FROM sinhvien WHERE MSSV = y.MSSV)
+            ELSE (SELECT HoTen FROM giangvien WHERE MaGiangVien = y.MaGiangVien)
+        END as TenNguoiGui
+        FROM yeucau_hotro y WHERE y.IsDeletedByAdmin = 1 ORDER BY y.NgayGui DESC
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy yêu cầu!');
+});
+
+app.put('/api/admin/support-requests/:id/restore', (req, res) => {
+    executeUpdate('UPDATE yeucau_hotro SET IsDeletedByAdmin = 0 WHERE MaYeuCau = ?', [req.params.id], res, 'Khôi phục yêu cầu thành công!', 'Lỗi khôi phục yêu cầu!');
+});
+
+app.delete('/api/admin/support-requests/:id/hard', (req, res) => {
+    executeUpdate('UPDATE yeucau_hotro SET IsDeletedByAdmin = 2 WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa vĩnh viễn yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
+});
+
 // Lấy chi tiết tiêu chí đã tích của 1 phiếu đánh giá (dùng chung cho SV xem lại / Admin xem breakdown)
 app.get('/api/training-points/:id/details', (req, res) => {
     console.log('GET /api/training-points/:id/details - MaDanhGia:', req.params.id);
