@@ -2692,29 +2692,27 @@ app.post('/api/enrollment/phases/:id/reopen', async (req, res) => {
         if (existingPhase.TrangThai !== 'Dong') return res.status(400).json({ message: 'Đợt này chưa đóng.' });
 
         const now = new Date();
-        let newEndDate = existingPhase.NgayDong;
-        let isExtended = false;
+        const endDate = new Date(existingPhase.NgayDong);
         
-        if (new Date(existingPhase.NgayDong).getTime() <= now.getTime()) {
-            newEndDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-            isExtended = true;
+        if (endDate.getTime() <= now.getTime()) {
+            return res.status(400).json({ message: 'Không thể mở lại đợt đăng ký đã kết thúc trong quá khứ.' });
         }
 
-        const conflictPhase = await findConflictingOpenPhase(existingPhase.NgayTao, newEndDate, id);
+        const conflictPhase = await findConflictingOpenPhase(existingPhase.NgayTao, endDate, id);
         if (conflictPhase) {
             return res.status(409).json({
                 message: `Thời gian bị chồng chéo với đợt "${conflictPhase.TenDot}". Không thể mở nhiều đợt cùng lúc.`
             });
         }
 
-        const formattedNgayDong = formatMySQLDateTime(newEndDate);
+        const formattedNgayDong = formatMySQLDateTime(endDate);
         await db.promise().query(
             `UPDATE dot_dangky SET TrangThai = 'Mo', NgayDong = ? WHERE MaDot = ?`,
             [formattedNgayDong, id]
         );
 
         notifyPhaseChange();
-        res.json({ success: true, message: 'Mở lại đợt đăng ký thành công!', extended: isExtended });
+        res.json({ success: true, message: 'Mở lại đợt đăng ký thành công!' });
     } catch (err) {
         console.error('POST /api/enrollment/phases/:id/reopen error:', err);
         res.status(500).json({ message: 'Lỗi mở lại đợt đăng ký!', error: err.message });

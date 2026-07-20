@@ -497,29 +497,25 @@ function EnrollmentPhaseManagement() {
 
   const requestOpen = (phase) => {
     const now = new Date();
-    let newEnd = new Date(phase.NgayDong);
-    let extendedMsg = '';
-    if (newEnd <= now) {
-      newEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-      extendedMsg = ' Đợt đã quá hạn nên hệ thống sẽ tự động gia hạn thêm 3 ngày.';
+    const end = new Date(phase.NgayDong);
+    
+    if (end <= now) {
+      showToast('Không thể mở lại đợt đăng ký đã kết thúc trong quá khứ.', 'error');
+      return;
     }
     
-    const conflict = findConflictingOpenPhase(phase.NgayTao, newEnd, phase.MaDot);
+    const conflict = findConflictingOpenPhase(phase.NgayTao, end, phase.MaDot);
     if (conflict) { showToast(`Thời gian bị chồng chéo với đợt "${conflict.TenDot}". Không thể mở nhiều đợt cùng lúc.`, 'warning'); return; }
     
     setConfirmDialog({
-      title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?${extendedMsg}`,
+      title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?`,
       confirmLabel: 'Mở lại', variant: 'primary', onConfirm: () => openPhase(phase.MaDot)
     });
   };
   const openPhase = async (id) => {
     try {
-      const res = await axios.post(`${API_URL}/api/enrollment/phases/${id}/reopen`);
-      if (res.data.extended) {
-        showToast('Mở lại thành công và đã tự động gia hạn 3 ngày!', 'success');
-      } else {
-        showToast('Mở đợt đăng ký thành công!', 'success');
-      }
+      await axios.post(`${API_URL}/api/enrollment/phases/${id}/reopen`);
+      showToast('Mở đợt đăng ký thành công!', 'success');
       fetchPhases();
     } catch (err) {
       showToast(err.response?.data?.message || 'Không thể mở lại đợt đăng ký', 'error');
@@ -733,7 +729,9 @@ function EnrollmentPhaseManagement() {
                           )}
                           {phase.TrangThai === 'Dong' && (
                             <button onClick={() => requestOpen(phase)}
-                              className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors">
+                              title={end && end <= now ? "Không thể mở lại đợt đã kết thúc" : "Mở lại đợt"}
+                              disabled={end && end <= now}
+                              className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${end && end <= now ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
                               Mở lại
                             </button>
                           )}
