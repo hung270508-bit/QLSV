@@ -417,7 +417,7 @@ function StudentTrainingPoints({ user }) {
     }
   };
 
-  const handleSendAppeal = async () => {
+  const handleSendAppeal = () => {
     if (!appealCategory) {
       setAppealError('Vui lòng chọn loại khiếu nại!');
       return;
@@ -431,28 +431,37 @@ function StudentTrainingPoints({ user }) {
       return;
     }
 
-    let compiledContent = ``;
-    if (appealCriteria.length > 0) compiledContent += `- Tiêu chí khiếu nại:\n  + ${appealCriteria.join('\n  + ')}\n`;
-    compiledContent += `- Chi tiết lý do: ${appealReason}`;
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận gửi khiếu nại',
+      message: 'Bạn có chắc chắn muốn gửi đơn khiếu nại này? Mọi thông tin cung cấp phải hoàn toàn trung thực.',
+      action: async () => {
+        let compiledContent = ``;
+        if (appealCriteria.length > 0) compiledContent += `- Tiêu chí khiếu nại:\n  + ${appealCriteria.join('\n  + ')}\n`;
+        compiledContent += `- Chi tiết lý do: ${appealReason}`;
 
-    if (appealFile) {
-      compiledContent += `\n\n[FILE_MINH_CHUNG_START]\n${appealFile.data}\n[FILE_MINH_CHUNG_END]`;
-    }
+        if (appealFile) {
+          compiledContent += `\n\n[FILE_MINH_CHUNG_START]\n${appealFile.data}\n[FILE_MINH_CHUNG_END]`;
+        }
 
-    try {
-      const appealHocKy = appealSemester.replace('HK', 'Học kỳ ').replace(/_/g, ' ');
-      await axios.post(`${API_URL}/api/support`, {
-        MSSV: user.username,
-        LoaiYeuCau: 'Khiếu nại điểm rèn luyện',
-        ChuDe: `[${appealCategory}] Khiếu nại điểm rèn luyện - ${appealHocKy}`,
-        NoiDung: compiledContent
-      });
-      showToast('Gửi khiếu nại thành công!', 'success');
-      setIsAppealModalOpen(false);
-      fetchData(); // reload support requests
-    } catch {
-      showToast('Lỗi gửi khiếu nại!', 'error');
-    }
+        try {
+          const appealHocKy = appealSemester.replace('HK', 'Học kỳ ').replace(/_/g, ' ');
+          await axios.post(`${API_URL}/api/support`, {
+            MSSV: user.username,
+            LoaiYeuCau: 'Khiếu nại điểm rèn luyện',
+            ChuDe: `[${appealCategory}] Khiếu nại điểm rèn luyện - ${appealHocKy}`,
+            NoiDung: compiledContent
+          });
+          showToast('Gửi khiếu nại thành công!', 'success');
+          setIsAppealModalOpen(false);
+          setConfirmDialog({ show: false, title: '', message: '', action: null });
+          fetchData(); // reload support requests
+        } catch {
+          showToast('Lỗi gửi khiếu nại!', 'error');
+          setConfirmDialog({ show: false, title: '', message: '', action: null });
+        }
+      }
+    });
   };
 
   const getDaysLeft = (dateStr) => {
@@ -493,11 +502,11 @@ function StudentTrainingPoints({ user }) {
 
   const getRealTimeRating = (score) => {
     if (score >= 90) return 'Xuất sắc';
-
     if (score >= 80) return 'Tốt';
     if (score >= 65) return 'Khá';
     if (score >= 50) return 'Trung bình';
-    return 'Yếu';
+    if (score >= 35) return 'Yếu';
+    return 'Kém';
   };
 
   const getRatingColor = (score) => {
@@ -505,7 +514,8 @@ function StudentTrainingPoints({ user }) {
     if (score >= 80) return 'text-[#22C55E]';
     if (score >= 65) return 'text-[#3B82F6]';
     if (score >= 50) return 'text-amber-600';
-    return 'text-rose-500';
+    if (score >= 35) return 'text-rose-500';
+    return 'text-red-700 font-black';
   };
 
   const getXepLoaiBadge = (xepLoai) => {
@@ -514,7 +524,8 @@ function StudentTrainingPoints({ user }) {
       'Tốt': 'bg-[#22C55E]/10 text-green-700 border border-green-200',
       'Khá': 'bg-[#3B82F6]/10 text-blue-700 border border-blue-200',
       'Trung bình': 'bg-amber-50 text-amber-700 border border-amber-200',
-      'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200'
+      'Yếu': 'bg-rose-50 text-rose-700 border border-rose-200',
+      'Kém': 'bg-red-50 text-red-700 border border-red-200'
     };
     return colors[xepLoai] || 'bg-[#F7F8FA] text-gray-700 border border-[#E5E7EB]';
   };
@@ -720,10 +731,29 @@ function StudentTrainingPoints({ user }) {
                         r.LoaiYeuCau === 'Khiếu nại điểm rèn luyện' &&
                         r.ChuDe.includes(p.HocKy)
                       );
+                      const { comment, adjustments } = parseAdminFeedback(p.GhiChu);
+                      const hasAdjustments = Object.keys(adjustments).length > 0;
+                      const hasComment = comment && comment.trim().length > 0;
 
                       return (
                         <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-5 font-bold text-slate-700 whitespace-nowrap">{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</td>
+                          <td className="p-5 font-bold text-slate-700 whitespace-nowrap">
+                            <div>{p.HocKy.replace('HK', 'Học kỳ ').replace(/_/g, ' ')}</div>
+                            {(hasComment || hasAdjustments) && (
+                              <div className="flex gap-1.5 mt-1">
+                                {hasComment && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 flex items-center gap-0.5" title={comment}>
+                                    <MessageSquare className="w-3 h-3" /> Phản hồi
+                                  </span>
+                                )}
+                                {hasAdjustments && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 flex items-center gap-0.5" title="Có tiêu chí bị điều chỉnh điểm">
+                                    <AlertCircle className="w-3 h-3" /> Bị điều chỉnh
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
                           <td className="p-5 text-center font-bold text-[#3B82F6] whitespace-nowrap"><span className="bg-[#3B82F6]/10 px-3 py-1.5 rounded-lg border border-blue-100">{p.DiemTuDanhGia}đ</span></td>
                           <td className="p-5 text-center text-slate-600 font-semibold whitespace-nowrap">{p.DiemKhoaDanhGia || '0'}đ</td>
                           <td className="p-5 text-center font-black text-[#F4C542] text-lg whitespace-nowrap">{p.TongDiem || p.DiemTuDanhGia}đ</td>

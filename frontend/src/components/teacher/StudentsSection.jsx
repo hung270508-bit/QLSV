@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Users, ChevronDown, ChevronRight, X, Loader2, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import API_URL from '../../api';
 import axios from 'axios';
 
@@ -179,9 +180,10 @@ function StudentsSection({ students, teachingAssignments, grades }) {
       )}
 
       {/* MODAL THÔNG TIN SINH VIÊN */}
-      <AnimatePresence>
-        {selectedStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {createPortal(
+        <AnimatePresence>
+          {selectedStudent && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -384,7 +386,9 @@ function StudentsSection({ students, teachingAssignments, grades }) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

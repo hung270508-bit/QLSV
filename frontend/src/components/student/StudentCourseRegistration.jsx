@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BookPlus, Plus, Trash2, Clock, CheckCircle2, MapPin, CalendarDays, AlertCircle, Save, XCircle, Wallet, Search, Hourglass, Users, ChevronRight, GraduationCap } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { BookPlus, Plus, Trash2, CheckCircle2, MapPin, CalendarDays, AlertCircle, Save, XCircle, Wallet, Search, Hourglass, Users, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API_URL from '../../api';
-import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
+import { Toast, ConfirmDialog } from '../common/ModalPortal';
 import { StudentCourseRegistrationSkeleton } from '../common/StudentSkeleton';
 
 function StudentCourseRegistration({ user }) {
   const [availableCourses, setAvailableCourses] = useState([]);
   const [myCourses, setMyCourses] = useState([]);
-  const [phases, setPhases] = useState([]);
+  const [fetchedPhase, setFetchedPhase] = useState(null);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,6 +17,7 @@ function StudentCourseRegistration({ user }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterThu, setFilterThu] = useState('all');
   const [hideFull, setHideFull] = useState(false);
+  const [activeTab, setActiveTab] = useState('TrongNganh'); // 'TrongNganh' | 'NgoaiNganh'
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
@@ -27,25 +28,26 @@ function StudentCourseRegistration({ user }) {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [availRes, myRes, phaseRes] = await Promise.all([
-        axios.get(`${API_URL}/api/enrollment/available/${user.username}`),
-        axios.get(`${API_URL}/api/enrollment/my-courses/${user.username}`),
-        axios.get(`${API_URL}/api/enrollment/phases`)
+      const [availRes, myRes, activePhaseRes] = await Promise.all([
+        axios.get(`${API_URL}/api/enrollment/available/${user?.username}`),
+        axios.get(`${API_URL}/api/enrollment/my-courses/${user?.username}`),
+        axios.get(`${API_URL}/api/enrollment/active-phase/${user?.username}`)
       ]);
       setAvailableCourses(availRes.data || []);
       setMyCourses(myRes.data || []);
-      setPhases(phaseRes.data || []);
-    } catch (error) {
+      setFetchedPhase(activePhaseRes.data?.phase || null);
+    } catch (e) {
+      console.error(e);
       showToast('Lỗi tải dữ liệu. Vui lòng refresh lại trang!', 'error');
     } finally { setLoading(false); }
-  };
+  }, [user?.username]);
 
   useEffect(() => {
     if (user?.username) fetchData();
-  }, [user]);
+  }, [fetchData, user?.username]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000);
@@ -53,8 +55,10 @@ function StudentCourseRegistration({ user }) {
   }, []);
 
   const activePhase = useMemo(() => {
-    return phases.find(p => p.TrangThai === 'Mo') || null;
-  }, [phases]);
+    if (!fetchedPhase) return null;
+    const p = fetchedPhase;
+    return (p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) <= now && (!p.NgayDong || new Date(p.NgayDong) > now)) ? p : null;
+  }, [fetchedPhase, now]);
 
   function diffText(ms) {
     const totalMin = Math.max(0, Math.floor(ms / 60000));
@@ -186,6 +190,22 @@ function StudentCourseRegistration({ user }) {
 
   const filteredCourses = useMemo(() => {
     return availableCourses.filter(c => {
+      const isTuDo = !c.MaLop || c.MaLop.trim() === '';
+      const isDaiCuong = c.LoaiMonHoc === 'Đại cương' || c.LoaiMonHoc === 'Cơ bản';
+      const isDungKhoa = c.MaKhoaMonHoc === c.MaKhoaSinhVien;
+
+      // 1. Môn đại cương chỉ hiển thị các lớp tự do
+      if (isDaiCuong && !isTuDo) return false;
+
+      // 2. Phân Tab
+      if (activeTab === 'TrongNganh') {
+        // Môn chuyên ngành: Đúng khoa và đúng niên khóa (lớp có MaLop cụ thể)
+        if (!isDungKhoa || isTuDo) return false;
+      } else {
+        // Tab 2 (Ngoài ngành / Tự chọn): Chỉ hiển thị các lớp tự do
+        if (!isTuDo) return false;
+      }
+
       if (hideFull && c.DaDangKy >= (c.SoLuongToiDa || 40)) return false;
       if (filterThu !== 'all' && String(c.Thu) !== String(filterThu)) return false;
       if (searchTerm) {
@@ -194,7 +214,7 @@ function StudentCourseRegistration({ user }) {
       }
       return true;
     });
-  }, [availableCourses, searchTerm, filterThu, hideFull]);
+  }, [availableCourses, searchTerm, filterThu, hideFull, activeTab]);
 
   const displayList = [
     ...cart.map(c => ({ ...c, isLocal: true, TrangThai: 'Tạm lưu' })),
@@ -213,7 +233,7 @@ function StudentCourseRegistration({ user }) {
     return val;
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '';
+  // formatDate removed as it is unused
 
   const renderStatusBadge = (status) => {
     switch (status) {
@@ -278,128 +298,162 @@ function StudentCourseRegistration({ user }) {
 
         {/* Left Column: Available Courses List */}
         <div className="flex-1 w-full flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 backdrop-blur-xl p-4 rounded-3xl border border-slate-200/60 shadow-sm sticky top-0 z-20">
-            {/* Filters */}
-            <div className="flex flex-wrap items-center gap-3 w-full">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm môn học, mã LHP..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 focus:border-[#3B82F6] font-medium shadow-sm transition-all"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <select
-                  value={filterThu}
-                  onChange={e => setFilterThu(e.target.value)}
-                  className="px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 text-slate-700 font-semibold shadow-sm cursor-pointer"
-                >
-                  <option value="all">Tất cả thứ</option>
-                  <option value="2">Thứ 2</option>
-                  <option value="3">Thứ 3</option>
-                  <option value="4">Thứ 4</option>
-                  <option value="5">Thứ 5</option>
-                  <option value="6">Thứ 6</option>
-                  <option value="7">Thứ 7</option>
-                  <option value="CN">Chủ nhật</option>
-                </select>
-                <label className="flex items-center gap-2 text-sm text-slate-700 font-bold cursor-pointer bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-sm hover:bg-slate-50 transition-colors select-none">
-                  <input type="checkbox" checked={hideFull} onChange={e => setHideFull(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-[#152238] focus:ring-[#152238]" />
-                  Ẩn lớp đầy
-                </label>
-              </div>
-            </div>
-          </div>
+          {activePhase ? (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 backdrop-blur-xl p-4 rounded-3xl border border-slate-200/60 shadow-sm sticky top-0 z-20">
+                {/* Filters & Tabs */}
+                <div className="flex flex-col gap-4 w-full">
+                  {/* Tabs */}
+                  <div className="flex items-center gap-4 border-b border-slate-200">
+                    <button
+                      onClick={() => setActiveTab('TrongNganh')}
+                      className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'TrongNganh' ? 'border-[#152238] text-[#152238]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Môn chuyên ngành
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('NgoaiNganh')}
+                      className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'NgoaiNganh' ? 'border-[#152238] text-[#152238]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Môn đại cương
+                    </button>
+                  </div>
 
-          {/* Modern Card List for Courses */}
-          <div className="space-y-4">
-            <AnimatePresence>
-              {filteredCourses.map((c, i) => {
-                const isFull = c.DaDangKy >= (c.SoLuongToiDa || 40);
-                const isInCart = cart.some(cartItem => cartItem.MaLopHocPhan === c.MaLopHocPhan);
-                const isEnrolled = myCourses.some(en => en.MaLopHocPhan === c.MaLopHocPhan && en.TrangThai !== 'Đã hủy');
-                const noSchedule = !c.NgayBatDau;
-                const disabled = isFull || isInCart || isEnrolled || noSchedule;
-
-                return (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i > 10 ? 0 : i * 0.03 }}
-                    key={c.MaLopHocPhan}
-                    className={`bg-white rounded-3xl p-5 md:p-6 shadow-sm border ${disabled ? 'border-slate-100 opacity-75' : 'border-slate-200 hover:border-blue-300 hover:shadow-md'} transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 group`}
-                  >
-                    {/* Left: Info */}
-                    <div className="flex items-start md:items-center gap-5 md:gap-6 flex-1">
-                      <div className={`w-14 h-14 shrink-0 rounded-2xl flex flex-col items-center justify-center font-black shadow-inner border ${disabled ? 'bg-slate-50 text-slate-400 border-slate-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                        <span className="text-xl leading-none">{c.SoTinChi}</span>
-                        <span className="text-[10px] uppercase font-bold tracking-wider mt-0.5">Tín chỉ</span>
-                      </div>
-                      <div className="space-y-2.5 flex-1">
-                        <div>
-                          <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-                            <h4 className={`font-black text-lg ${disabled ? 'text-slate-600' : 'text-slate-900 group-hover:text-[#152238]'} transition-colors leading-tight`}>{c.TenMonHoc}</h4>
-                            <span className="bg-slate-100 text-slate-500 font-bold text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">{c.MaLopHocPhan}</span>
-                            {(c.DiemCu === null || c.DiemCu === undefined)
-                              ? <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span>
-                              : parseFloat(c.DiemCu) < 1.0
-                                ? <span className="bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại</span>
-                                : <span className="bg-amber-50 text-amber-600 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Cải thiện</span>
-                            }
-                          </div>
-                        </div>
-
-                        {/* Schedule Details */}
-                        {c.NgayBatDau ? (
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 font-medium">
-                            <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><CalendarDays className="w-4 h-4 text-blue-500" /> {formatThu(c.Thu)} • Tiết {c.CaHoc}</span>
-                            <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><MapPin className="w-4 h-4 text-amber-500" /> P.{c.PhongHoc || 'Chưa XĐ'}</span>
-                            <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><Users className="w-4 h-4 text-emerald-500" /> GV: {c.TenGiangVien || 'Chưa phân công'}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-sm">Lớp chưa có lịch cụ thể</span>
-                        )}
-                      </div>
+                  {/* Search & Filters */}
+                  <div className="flex flex-wrap items-center gap-3 w-full">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm môn học, mã LHP..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 focus:border-[#3B82F6] font-medium shadow-sm transition-all"
+                      />
                     </div>
-
-                    {/* Right: Status & Action */}
-                    <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
-                      <div className="text-left md:text-right">
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Sĩ số</p>
-                        <div className="text-base font-black text-slate-700">
-                          <span className={isFull ? 'text-red-500' : 'text-emerald-500'}>{c.DaDangKy}</span>
-                          <span className="text-slate-300 mx-1">/</span>
-                          {c.SoLuongToiDa || 40}
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleAddToCart(c)}
-                        disabled={disabled}
-                        className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm min-w-[120px] transition-all duration-300 ${disabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-[#152238] text-white hover:bg-[#1e3a5f] hover:shadow-xl hover:shadow-[#152238]/20 hover:-translate-y-0.5'}`}
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={filterThu}
+                        onChange={e => setFilterThu(e.target.value)}
+                        className="px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 text-slate-700 font-semibold shadow-sm cursor-pointer"
                       >
-                        {isInCart || isEnrolled ? 'Đã Chọn' : isFull ? 'Đã đầy' : noSchedule ? 'Chưa có lịch' : <><Plus className="w-5 h-5" /> Chọn môn</>}
-                      </button>
+                        <option value="all">Tất cả thứ</option>
+                        <option value="2">Thứ 2</option>
+                        <option value="3">Thứ 3</option>
+                        <option value="4">Thứ 4</option>
+                        <option value="5">Thứ 5</option>
+                        <option value="6">Thứ 6</option>
+                        <option value="7">Thứ 7</option>
+                        <option value="CN">Chủ nhật</option>
+                      </select>
+                      <label className="flex items-center gap-2 text-sm text-slate-700 font-bold cursor-pointer bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-sm hover:bg-slate-50 transition-colors select-none">
+                        <input type="checkbox" checked={hideFull} onChange={e => setHideFull(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-[#152238] focus:ring-[#152238]" />
+                        Ẩn lớp đầy
+                      </label>
                     </div>
-                  </motion.div>
-                )
-              })}
-            </AnimatePresence>
-
-            {filteredCourses.length === 0 && (
-              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <BookPlus className="w-10 h-10 text-slate-300" />
+                  </div>
                 </div>
-                <p className="text-slate-600 font-bold text-lg">Không tìm thấy môn học nào</p>
-                <p className="text-slate-400 text-sm mt-2">Vui lòng thử thay đổi từ khóa hoặc bộ lọc của bạn.</p>
               </div>
-            )}
-          </div>
+
+              {/* Modern Card List for Courses */}
+              <div className="space-y-4">
+                <AnimatePresence>
+                  {filteredCourses.map((c, i) => {
+                    const isFull = c.DaDangKy >= (c.SoLuongToiDa || 40);
+                    const isInCart = cart.some(cartItem => cartItem.MaLopHocPhan === c.MaLopHocPhan);
+                    const isEnrolled = myCourses.some(en => en.MaLopHocPhan === c.MaLopHocPhan && en.TrangThai !== 'Đã hủy');
+                    const noSchedule = !c.NgayBatDau;
+                    const disabled = isFull || isInCart || isEnrolled || noSchedule;
+
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ delay: i > 10 ? 0 : i * 0.03 }}
+                        key={c.MaLopHocPhan}
+                        className={`bg-white rounded-3xl p-5 md:p-6 shadow-sm border ${disabled ? 'border-slate-100 opacity-75' : 'border-slate-200 hover:border-blue-300 hover:shadow-md'} transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 group`}
+                      >
+                        {/* Left: Info */}
+                        <div className="flex items-start md:items-center gap-5 md:gap-6 flex-1">
+                          <div className={`w-14 h-14 shrink-0 rounded-2xl flex flex-col items-center justify-center font-black shadow-inner border ${disabled ? 'bg-slate-50 text-slate-400 border-slate-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                            <span className="text-xl leading-none">{c.SoTinChi}</span>
+                            <span className="text-[10px] uppercase font-bold tracking-wider mt-0.5">Tín chỉ</span>
+                          </div>
+                          <div className="space-y-2.5 flex-1">
+                            <div>
+                              <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+                                <h4 className={`font-black text-lg ${disabled ? 'text-slate-600' : 'text-slate-900 group-hover:text-[#152238]'} transition-colors leading-tight`}>{c.TenMonHoc}</h4>
+                                {c.MaLop && (
+                                  <span className="bg-purple-50 text-purple-600 border border-purple-100 font-bold text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">Lớp {c.MaLop}</span>
+                                )}
+                                <span className="bg-slate-100 text-slate-500 font-bold text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">{c.MaLopHocPhan}</span>
+                                {(c.DiemCu === null || c.DiemCu === undefined)
+                                  ? <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học mới</span>
+                                  : parseFloat(c.DiemCu) < 1.0
+                                    ? <span className="bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Học lại</span>
+                                    : <span className="bg-amber-50 text-amber-600 border border-amber-100 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">Cải thiện</span>
+                                }
+                              </div>
+                            </div>
+
+                            {/* Schedule Details */}
+                            {c.NgayBatDau ? (
+                              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 font-medium">
+                                <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><CalendarDays className="w-4 h-4 text-blue-500" /> {formatThu(c.Thu)} • Tiết {c.CaHoc}</span>
+                                <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><MapPin className="w-4 h-4 text-amber-500" /> P.{c.PhongHoc || 'Chưa XĐ'}</span>
+                                <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100"><Users className="w-4 h-4 text-emerald-500" /> GV: {c.TenGiangVien || 'Chưa phân công'}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic text-sm">Lớp chưa có lịch cụ thể</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: Status & Action */}
+                        <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
+                          <div className="text-left md:text-right">
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Sĩ số</p>
+                            <div className="text-base font-black text-slate-700">
+                              <span className={isFull ? 'text-red-500' : 'text-emerald-500'}>{c.DaDangKy}</span>
+                              <span className="text-slate-300 mx-1">/</span>
+                              {c.SoLuongToiDa || 40}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleAddToCart(c)}
+                            disabled={disabled}
+                            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm min-w-[120px] transition-all duration-300 ${disabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-[#152238] text-white hover:bg-[#1e3a5f] hover:shadow-xl hover:shadow-[#152238]/20 hover:-translate-y-0.5'}`}
+                          >
+                            {isInCart || isEnrolled ? 'Đã Chọn' : isFull ? 'Đã đầy' : noSchedule ? 'Chưa có lịch' : <><Plus className="w-5 h-5" /> Chọn môn</>}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+
+                {filteredCourses.length === 0 && (
+                  <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-5">
+                      <BookPlus className="w-10 h-10 text-slate-300" />
+                    </div>
+                    <p className="text-slate-600 font-bold text-lg">Không tìm thấy môn học nào</p>
+                    <p className="text-slate-400 text-sm mt-2">Vui lòng thử thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-12 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-slate-200/60 shadow-sm min-h-[400px]">
+              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                <CalendarDays className="w-12 h-12 text-slate-300" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-700 mb-2">Chưa đến đợt đăng ký</h3>
+              <p className="text-slate-500 text-center max-w-sm">Hiện tại hệ thống không có đợt đăng ký học phần nào đang mở dành cho bạn. Vui lòng theo dõi thông báo và quay lại sau.</p>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Sticky Premium Cart */}
@@ -425,20 +479,23 @@ function StudentCourseRegistration({ user }) {
                   <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, opacity: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
                     key={c.MaLopHocPhan || i}
                     className={`p-5 rounded-3xl border-2 ${c.isLocal ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100 bg-white hover:border-slate-200'} shadow-sm relative group transition-all`}
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="pr-10">
                         <p className="font-bold text-slate-800 text-base leading-tight mb-1">{c.TenMonHoc}</p>
-                        <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase">{c.MaLopHocPhan}</p>
+                        <div className="flex items-center gap-2">
+                          {c.MaLop && <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 uppercase">Lớp {c.MaLop}</span>}
+                          <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase">{c.MaLopHocPhan}</p>
+                        </div>
                       </div>
 
                       {/* Remove action */}
                       {(() => {
                         const canRemoveSaved = !c.isLocal && !!c.CoTheXoa;
-                        const canRemove = c.isLocal || canRemoveSaved;
+                        const canRemove = (c.isLocal || canRemoveSaved) && !!activePhase;
                         if (!canRemove && c.TrangThai !== 'Chờ đóng tiền' && c.TrangThai !== 'Tạm lưu') return null;
                         return (
                           <button
@@ -455,10 +512,20 @@ function StudentCourseRegistration({ user }) {
 
                     <div className="flex items-center justify-between mt-4">
                       <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">
-                          <CalendarDays className="w-3.5 h-3.5 text-blue-500" /> {formatThu(c.Thu)}
-                        </span>
-                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">Tiết {c.CaHoc}</span>
+                        {(c.Thu || c.CaHoc) ? (
+                          <>
+                            {c.Thu && (
+                              <span className="flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">
+                                <CalendarDays className="w-3.5 h-3.5 text-blue-500" /> {formatThu(c.Thu)}
+                              </span>
+                            )}
+                            {c.CaHoc && (
+                              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">Tiết {c.CaHoc}</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400 italic">Chưa xếp lịch</span>
+                        )}
                       </div>
 
                       {c.isLocal

@@ -6,14 +6,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle,
   X, ChevronRight, Calendar, AlertTriangle, Search,
-  ToggleLeft, ToggleRight, Hourglass, TrendingUp
+  ToggleLeft, ToggleRight, Hourglass, TrendingUp, Clock
 } from 'lucide-react';
 
 const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]*$/u;
 const TEN_DOT_INVALID_CHARS_REGEX = /[^\p{L}\p{N}\s\-_(),.]/gu;
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-const fmtDate = (d) => d ? new Date(d).toLocaleString('vi-VN') : '—';
+const fmtDateTime = (d) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
 
 function diffText(ms) {
   const totalMin = Math.max(0, Math.floor(ms / 60000));
@@ -32,19 +41,28 @@ const getMinDateTimeStr = () => {
   return localTime.toISOString().slice(0, 16);
 };
 
+const toLocalISOString = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const offset = d.getTimezoneOffset() * 60000;
+  const localTime = new Date(d.getTime() - offset);
+  return localTime.toISOString().slice(0, 16);
+};
+
 // ── sub-components ────────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
   const cfg = {
-    success: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', icon: <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> },
-    warning: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', icon: <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" /> },
-    error: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', icon: <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" /> },
+    success: { bg: 'bg-[#10B981]', text: 'text-white', icon: <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" /> },
+    warning: { bg: 'bg-[#F59E0B]', text: 'text-white', icon: <AlertTriangle className="w-5 h-5 text-white flex-shrink-0" /> },
+    error: { bg: 'bg-[#EF4444]', text: 'text-white', icon: <AlertCircle className="w-5 h-5 text-white flex-shrink-0" /> },
   }[toast.type] || {};
   return (
-    <motion.div initial={{ opacity: 0, y: -16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -16, scale: 0.97 }}
-      className={`flex items-start gap-3 rounded-2xl border ${cfg.border} ${cfg.bg} p-4 shadow-lg max-w-sm w-full`}>
+    <motion.div initial={{ opacity: 0, y: -24, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.95 }}
+      className={`flex items-center gap-3 rounded-xl shadow-xl px-5 py-3.5 max-w-sm w-full ${cfg.bg} ${cfg.text}`}>
       {cfg.icon}
-      <p className={`flex-1 text-sm leading-relaxed ${cfg.text}`}>{toast.message}</p>
-      <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+      <p className={`flex-1 text-sm font-medium leading-relaxed`}>{toast.message}</p>
+      <button onClick={onClose} className="text-white/70 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
     </motion.div>
   );
 }
@@ -74,7 +92,7 @@ function ConfirmModal({ dialog, onClose }) {
 }
 
 // ── PhaseFormModal ────────────────────────────────────────────────────────────
-function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, tenDotError, hocKyError, nienKhoaError, dateErrors, hocKyOptions, nienKhoaOptions }) {
+function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, hocKyOptions, nienKhoaOptions }) {
   if (!open) return null;
   const isEdit = !!editingPhase;
   return createPortal(
@@ -123,17 +141,13 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
               Tên đợt <span className="text-red-500">*</span>
             </label>
             <input
-              className={`w-full rounded-xl border px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#152238]/20
-${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#152238]/40'}`}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40"
               placeholder="VD: Đợt 1 HK1 2024-2025"
-              value={form.TenDot} maxLength={100}
+              value={form.TenDot} minLength={3} maxLength={50}
               onChange={(e) => { const raw = e.target.value; const filtered = raw.replace(TEN_DOT_INVALID_CHARS_REGEX, ''); setForm({ ...form, TenDot: filtered }); }}
               required
             />
-            {tenDotError
-              ? <p className="mt-1 text-xs text-red-500">{tenDotError}</p>
-              : <p className="mt-1 text-xs text-slate-400">Cho phép: chữ, số, khoảng trắng, - _ ( ) , .</p>
-            }
+            <p className="mt-1 text-xs text-slate-400">Cho phép: chữ, số, khoảng trắng, - _ ( ) , .</p>
           </div>
 
           {/* Mô tả */}
@@ -142,6 +156,7 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
             <textarea
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40 resize-none"
               placeholder="Mô tả ngắn về đợt đăng ký (không bắt buộc)…" rows={2}
+              maxLength={1000}
               value={form.MoTa} onChange={(e) => setForm({ ...form, MoTa: e.target.value })}
             />
           </div>
@@ -152,58 +167,50 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Học kỳ <span className="text-red-500">*</span></label>
               {hocKyOptions.length > 0 ? (
                 <select
-                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${hocKyError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
                   value={form.HocKy} onChange={(e) => setForm({ ...form, HocKy: e.target.value })} required>
                   <option value="" disabled>Chọn</option>
                   {hocKyOptions.map(hk => <option key={hk} value={hk}>{hk}</option>)}
                 </select>
               ) : (
-                <input className={`w-full rounded-xl border px-3 py-2.5 text-sm ${hocKyError ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-200 bg-slate-50 text-slate-400'}`} value="" readOnly disabled placeholder="Chưa có" />
+                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-400" value="" readOnly disabled placeholder="Chưa có" />
               )}
-              {hocKyError && <p className="mt-1 text-xs text-red-500">{hocKyError}</p>}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Niên khóa <span className="text-red-500">*</span></label>
               {nienKhoaOptions.length > 0 ? (
                 <select
-                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${nienKhoaError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} required>
                   <option value="" disabled>Chọn</option>
                   {nienKhoaOptions.map(nk => <option key={nk} value={nk}>{nk}</option>)}
                 </select>
               ) : (
-                <input className={`w-full rounded-xl border px-3 py-2.5 text-sm ${nienKhoaError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`} placeholder="VD: 2022-2026"
+                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="VD: 2022-2026"
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} />
               )}
-              {nienKhoaError && <p className="mt-1 text-xs text-red-500">{nienKhoaError}</p>}
             </div>
           </div>
 
-          {/* Ngày mở + Ngày đóng — 2 cột */}
+          {/* Thời gian mở + Thời gian đóng — 2 cột */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày mở <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian mở <span className="text-red-500">*</span></label>
               <input type="datetime-local"
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayMo ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-                value={form.NgayMo} onChange={(e) => setForm({ ...form, NgayMo: e.target.value })}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                value={form.NgayTao} onChange={(e) => setForm({ ...form, NgayTao: e.target.value })}
                 min={isEdit ? undefined : getMinDateTimeStr()}
                 required />
-              {dateErrors?.NgayMo
-                ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayMo}</p>
-                : <p className="mt-1 text-xs text-slate-400">Lên lịch trước tối đa 2 tuần.</p>
-              }
+              <p className="mt-1 text-xs text-slate-400">Lên lịch trước tối đa 2 tuần.</p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày đóng <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian đóng <span className="text-red-500">*</span></label>
               <input type="datetime-local"
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 ${dateErrors?.NgayDong ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
                 value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })}
-                min={form.NgayMo || getMinDateTimeStr()}
+                min={form.NgayTao || getMinDateTimeStr()}
                 required />
-              {dateErrors?.NgayDong
-                ? <p className="mt-1 text-xs text-red-500">{dateErrors.NgayDong}</p>
-                : <p className="mt-1 text-xs text-slate-400">Thời hạn mở tối đa 2 tuần.</p>
-              }
+              <p className="mt-1 text-xs text-slate-400">Thời hạn mở tối đa 2 tuần.</p>
             </div>
           </div>
 
@@ -226,10 +233,56 @@ ${tenDotError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-[#15
   );
 }
 
+function PhaseViewModal({ phase, onClose }) {
+  if (!phase) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }}
+        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-[#152238]/10">
+              <CalendarDays className="w-4 h-4 text-[#152238]" />
+            </div>
+            <span className="font-bold text-slate-800 text-base">Thông tin đợt đăng ký</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-6 space-y-5">
+          <div><p className="text-xs text-slate-500 mb-1 font-medium">Tên đợt</p><p className="font-semibold text-slate-800">{phase.TenDot}</p></div>
+          {phase.MoTa && <div><p className="text-xs text-slate-500 mb-1 font-medium">Mô tả</p><p className="text-slate-700 text-sm whitespace-pre-wrap">{phase.MoTa}</p></div>}
+          <div className="grid grid-cols-2 gap-4">
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Học kỳ</p><p className="font-semibold text-slate-800">{phase.HocKy}</p></div>
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Niên khóa</p><p className="font-semibold text-slate-800">{phase.NienKhoa}</p></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Thời gian mở</p><p className="font-semibold text-slate-800">{fmtDateTime(phase.NgayTao)}</p></div>
+            <div><p className="text-xs text-slate-500 mb-1 font-medium">Thời gian đóng</p><p className="font-semibold text-slate-800">{fmtDateTime(phase.NgayDong)}</p></div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
+          <button onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Đóng</button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+}
+
 // ── StatusBadge ───────────────────────────────────────────────────────────────
 function StatusBadge({ phase, now }) {
   if (phase.TrangThai === 'Mo') {
+    const start = phase.NgayTao ? new Date(phase.NgayTao) : null;
     const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
+    if (start && now < start) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Chờ mở
+        </span>
+      );
+    }
     if (end && now > end) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-semibold text-amber-700">
@@ -243,11 +296,14 @@ function StatusBadge({ phase, now }) {
       </span>
     );
   }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
-      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Đã đóng
-    </span>
-  );
+  if (phase.TrangThai === 'Dong') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Đã đóng
+      </span>
+    );
+  }
+  return null;
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
@@ -260,21 +316,18 @@ function EnrollmentPhaseManagement() {
   const [formOpen, setFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [tenDotError, setTenDotError] = useState('');
-  const [hocKyError, setHocKyError] = useState('');
-  const [nienKhoaError, setNienKhoaError] = useState('');
-  const [dateErrors, setDateErrors] = useState({ NgayMo: '', NgayDong: '' });
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [viewingPhase, setViewingPhase] = useState(null);
   const [now, setNow] = useState(() => new Date());
-  const [form, setForm] = useState({ TenDot: '', MoTa: '', HocKy: '', NienKhoa: '', NgayMo: '', NgayDong: '' });
+  const [form, setForm] = useState({ TenDot: '', MoTa: '', HocKy: '', NienKhoa: '', NgayTao: '', NgayDong: '' });
 
   const showToast = (message, type = 'warning') => setToast({ message, type });
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }, [toast]);
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
 
   const fetchPhases = async () => {
-    try { setLoading(true); const r = await axios.get(`${API_URL}/api/enrollment/phases`); setPhases(r.data || []); }
+    try { setLoading(true); const r = await axios.get(`${API_URL}/api/enrollment/phases?_t=${Date.now()}`); setPhases(r.data || []); }
     catch (e) { console.error(e); } finally { setLoading(false); }
   };
   const fetchCourseSections = async () => {
@@ -285,7 +338,23 @@ function EnrollmentPhaseManagement() {
     try { const r = await axios.get(`${API_URL}/api/students`); setStudents(r.data || []); }
     catch (e) { console.error(e); }
   };
-  useEffect(() => { fetchPhases(); fetchCourseSections(); fetchStudents(); }, []);
+  useEffect(() => { 
+    fetchPhases(); 
+    fetchCourseSections(); 
+    fetchStudents(); 
+
+    const eventSource = new EventSource(`${API_URL}/api/enrollment/phases/stream`);
+    eventSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'PHASE_CHANGED') {
+          axios.get(`${API_URL}/api/enrollment/phases`).then(r => setPhases(r.data || [])).catch(console.error);
+        }
+      } catch (err) {}
+    };
+
+    return () => eventSource.close();
+  }, []);
 
   // options
   const hocKyOptions = useMemo(() => {
@@ -301,105 +370,97 @@ function EnrollmentPhaseManagement() {
   useEffect(() => { if (!editingPhase && !form.NienKhoa && nienKhoaOptions.length > 0) setForm(p => ({ ...p, NienKhoa: nienKhoaOptions[0] })); }, [nienKhoaOptions, editingPhase, form.NienKhoa]);
   useEffect(() => { if (!editingPhase && !form.HocKy && hocKyOptions.length > 0) setForm(p => ({ ...p, HocKy: hocKyOptions[0] })); }, [hocKyOptions, editingPhase, form.HocKy]);
 
-  const findConflictingOpenPhase = (hocKy, nienKhoa, ngayMo, ngayDong, excludeId) => {
-    if (!hocKy || !nienKhoa || !ngayMo || !ngayDong) return null;
+  const findConflictingOpenPhase = (ngayMo, ngayDong, excludeId) => {
+    if (!ngayMo || !ngayDong) return null;
     const start = new Date(ngayMo);
     const end = new Date(ngayDong);
     return phases.find(p => {
       if (excludeId && p.MaDot === excludeId) return false;
-      if (p.TrangThai !== 'Mo') return false;
-      if (p.HocKy !== hocKy || p.NienKhoa !== nienKhoa) return false;
-      const pStart = new Date(p.NgayMo);
+      if (p.TrangThai === 'Dong') return false;
+      const pStart = new Date(p.NgayTao);
       const pEnd = new Date(p.NgayDong);
       // Chồng chéo nếu: start < pEnd và pStart < end
       return start < pEnd && pStart < end;
     }) || null;
   };
 
-  const openCreateForm = () => { setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayMo: '', NgayDong: '' }); setFormOpen(true); };
-  const openEditForm = (phase) => { setEditingPhase(phase); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayMo: phase.NgayMo ? phase.NgayMo.slice(0, 16) : '', NgayDong: phase.NgayDong ? phase.NgayDong.slice(0, 16) : '' }); setFormOpen(true); };
-  const closeForm = () => { setFormOpen(false); setEditingPhase(null); setTenDotError(''); setHocKyError(''); setNienKhoaError(''); setDateErrors({ NgayMo: '', NgayDong: '' }); };
+  const openCreateForm = () => { setEditingPhase(null); setForm({ TenDot: '', MoTa: '', HocKy: hocKyOptions[0] || '', NienKhoa: nienKhoaOptions[0] || '', NgayTao: '', NgayDong: '' }); setFormOpen(true); };
+  const openEditForm = (phase) => { setEditingPhase(phase); setForm({ TenDot: phase.TenDot || '', MoTa: phase.MoTa || '', HocKy: phase.HocKy || '', NienKhoa: phase.NienKhoa || '', NgayTao: phase.NgayTao ? toLocalISOString(phase.NgayTao) : '', NgayDong: phase.NgayDong ? toLocalISOString(phase.NgayDong) : '' }); setFormOpen(true); };
+  const closeForm = () => { setFormOpen(false); setEditingPhase(null); };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    let hasError = false;
-    let newDateErrors = { NgayMo: '', NgayDong: '' };
+    let errors = [];
 
-    if (!form.TenDot.trim()) { setTenDotError('Vui lòng nhập tên đợt.'); hasError = true; }
-    else if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { setTenDotError('Tên đợt chứa ký tự không hợp lệ.'); hasError = true; }
-    else { setTenDotError(''); }
+    const tenDotTrimmed = form.TenDot.trim();
+    if (!tenDotTrimmed) { errors.push('Vui lòng nhập tên đợt.'); }
+    else if (tenDotTrimmed.length < 3) { errors.push('Tên đợt phải có ít nhất 3 ký tự.'); }
+    else if (tenDotTrimmed.length > 50) { errors.push('Tên đợt không được vượt quá 50 ký tự.'); }
+    else if (!TEN_DOT_ALLOWED_REGEX.test(form.TenDot)) { errors.push('Tên đợt chứa ký tự không hợp lệ.'); }
+    else if (/\s{2,}/.test(form.TenDot)) { errors.push('Tên đợt không được chứa nhiều khoảng trắng liên tiếp.'); }
 
-    if (!form.HocKy) { setHocKyError('Vui lòng chọn học kỳ.'); hasError = true; }
-    else { setHocKyError(''); }
+    if (form.MoTa) {
+      if (form.MoTa.length > 1000) { errors.push('Mô tả không được vượt quá 1000 ký tự.'); }
+      else if (!TEN_DOT_ALLOWED_REGEX.test(form.MoTa)) {
+        errors.push('Mô tả chứa ký tự không hợp lệ. Chỉ cho phép chữ, số, khoảng trắng và - _ ( ) , .');
+      } else if (/\s{2,}/.test(form.MoTa)) {
+        errors.push('Mô tả không được chứa nhiều khoảng trắng liên tiếp.');
+      }
+    }
 
-    if (!form.NienKhoa) { setNienKhoaError('Vui lòng chọn niên khóa.'); hasError = true; }
-    else { setNienKhoaError(''); }
+    if (!form.HocKy) { errors.push('Vui lòng chọn học kỳ.'); }
+    if (!form.NienKhoa) { errors.push('Vui lòng chọn niên khóa.'); }
+    if (!form.NgayTao) { errors.push('Vui lòng chọn ngày mở.'); }
+    if (!form.NgayDong) { errors.push('Vui lòng chọn ngày đóng.'); }
 
-    if (!form.NgayMo) { newDateErrors.NgayMo = 'Vui lòng chọn ngày mở.'; hasError = true; }
-    if (!form.NgayDong) { newDateErrors.NgayDong = 'Vui lòng chọn ngày đóng.'; hasError = true; }
-
-    if (form.NgayMo && form.NgayDong) {
+    if (form.NgayTao && form.NgayDong) {
       const now = new Date();
-      const startDate = new Date(form.NgayMo);
-      const endDate = new Date(form.NgayDong);
+      const startDateStr = form.NgayTao.includes('+') || form.NgayTao.includes('Z') ? form.NgayTao : `${form.NgayTao}:00+07:00`;
+      const endDateStr = form.NgayDong.includes('+') || form.NgayDong.includes('Z') ? form.NgayDong : `${form.NgayDong}:00+07:00`;
+      
+      const startDate = new Date(startDateStr);
+      const endDate = new Date(endDateStr);
       const twoWeeksInMs = 14 * 24 * 60 * 60 * 1000;
 
-      let isNgayMoChanged = true;
-      if (editingPhase && editingPhase.NgayMo) {
-        const originalStartDate = new Date(editingPhase.NgayMo);
-        if (Math.abs(startDate.getTime() - originalStartDate.getTime()) < 60000) {
-          isNgayMoChanged = false;
-        }
+      let isNgayTaoChanged = true;
+      if (editingPhase && editingPhase.NgayTao) {
+        if (form.NgayTao === toLocalISOString(editingPhase.NgayTao)) isNgayTaoChanged = false;
       }
 
-      if (isNgayMoChanged) {
-        if (startDate.getTime() < now.getTime() - 2 * 60000) {
-          newDateErrors.NgayMo = 'Thời gian mở không được nằm trong quá khứ.';
-          hasError = true;
-        }
-        if (startDate.getTime() > now.getTime() + twoWeeksInMs) {
-          newDateErrors.NgayMo = 'Chỉ có thể đặt lịch mở tối đa trước 2 tuần.';
-          hasError = true;
-        }
+      if (isNgayTaoChanged) {
+        if (startDate.getTime() < now.getTime() - 60000) errors.push('Thời gian mở không được nằm trong quá khứ.');
+        if (startDate.getTime() > now.getTime() + twoWeeksInMs) errors.push('Chỉ có thể đặt lịch mở tối đa trước 2 tuần.');
       }
 
       let isNgayDongChanged = true;
       if (editingPhase && editingPhase.NgayDong) {
-        const originalEndDate = new Date(editingPhase.NgayDong);
-        if (Math.abs(endDate.getTime() - originalEndDate.getTime()) < 60000) {
-          isNgayDongChanged = false;
-        }
+        if (form.NgayDong === toLocalISOString(editingPhase.NgayDong)) isNgayDongChanged = false;
       }
 
       if (isNgayDongChanged) {
-        if (endDate.getTime() < now.getTime() - 2 * 60000) {
-          newDateErrors.NgayDong = 'Thời gian đóng không được nằm trong quá khứ.';
-          hasError = true;
-        }
+        if (endDate.getTime() < now.getTime() - 60000) errors.push('Thời gian đóng không được nằm trong quá khứ.');
       }
 
-      if (endDate <= startDate) {
-        newDateErrors.NgayDong = 'Ngày đóng phải sau ngày mở.';
-        hasError = true;
-      }
-      if (endDate.getTime() - startDate.getTime() > twoWeeksInMs) {
-        newDateErrors.NgayDong = 'Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.';
-        hasError = true;
+      if (endDate <= startDate) errors.push('Ngày đóng phải sau ngày mở.');
+      if (endDate.getTime() - startDate.getTime() > twoWeeksInMs) errors.push('Thời hạn ngày đóng tối đa là 2 tuần kể từ ngày mở.');
+    }
+
+    const duplicatePhase = phases.find(p => p.HocKy === form.HocKy && p.NienKhoa === form.NienKhoa && (!editingPhase || p.MaDot !== editingPhase.MaDot));
+    if (duplicatePhase) {
+      errors.push(`Học kỳ ${form.HocKy} đã tồn tại.`);
+    }
+
+    const willBeOpen = editingPhase ? editingPhase.TrangThai !== 'Dong' : true;
+    if (willBeOpen) {
+      const conflict = findConflictingOpenPhase(form.NgayTao, form.NgayDong, editingPhase?.MaDot);
+      if (conflict) {
+        errors.push(`Thời gian đợt đăng ký bị chồng chéo với đợt "${conflict.TenDot}".`);
       }
     }
 
-    setDateErrors(newDateErrors);
-    if (hasError) return;
-
-    const willBeOpen = editingPhase ? editingPhase.TrangThai === 'Mo' : true;
-    if (willBeOpen) {
-      const conflict = findConflictingOpenPhase(form.HocKy, form.NienKhoa, form.NgayMo, form.NgayDong, editingPhase?.MaDot);
-      if (conflict) {
-        setHocKyError(`Đã có đợt đang mở ("${conflict.TenDot}").`);
-        return;
-      } else {
-        setHocKyError('');
-      }
+    if (errors.length > 0) {
+      showToast(errors[0], 'error'); // Hiển thị lỗi đầu tiên
+      return;
     }
     setConfirmDialog({
       title: editingPhase ? 'Xác nhận cập nhật' : 'Xác nhận tạo đợt',
@@ -410,10 +471,12 @@ function EnrollmentPhaseManagement() {
 
   const performSave = async () => {
     try {
+      const payload = { ...form };
+
       if (editingPhase) {
-        await axios.put(`${API_URL}/api/enrollment/phases/${editingPhase.MaDot}`, { ...form, TrangThai: editingPhase.TrangThai || 'Mo' });
+        await axios.put(`${API_URL}/api/enrollment/phases/${editingPhase.MaDot}`, { ...payload, TrangThai: editingPhase.TrangThai || 'Mo' });
       } else {
-        await axios.post(`${API_URL}/api/enrollment/phases`, form);
+        await axios.post(`${API_URL}/api/enrollment/phases`, payload);
       }
       showToast('Lưu đợt đăng ký thành công!', 'success');
       closeForm(); fetchPhases();
@@ -427,26 +490,36 @@ function EnrollmentPhaseManagement() {
     confirmLabel: 'Đóng đợt', variant: 'warning', onConfirm: () => closePhase(phase.MaDot)
   });
   const closePhase = async (id) => {
-    try { await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`); showToast('Đã đóng đợt.', 'success'); fetchPhases(); }
+    try { await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`); showToast('Đóng đợt đăng ký thành công!', 'success'); fetchPhases(); }
     catch { showToast('Không thể đóng đợt đăng ký', 'error'); }
     finally { setConfirmDialog(null); }
   };
 
   const requestOpen = (phase) => {
-    const conflict = findConflictingOpenPhase(phase.HocKy, phase.NienKhoa, phase.NgayMo, phase.NgayDong, phase.MaDot);
-    if (conflict) { showToast(`Học kỳ "${phase.HocKy}" khóa "${phase.NienKhoa}" đang có đợt mở. Đóng đợt đó trước.`, 'warning'); return; }
+    const now = new Date();
+    const end = new Date(phase.NgayDong);
+    
+    if (end <= now) {
+      showToast('Không thể mở lại đợt đăng ký đã kết thúc trong quá khứ.', 'error');
+      return;
+    }
+    
+    const conflict = findConflictingOpenPhase(phase.NgayTao, end, phase.MaDot);
+    if (conflict) { showToast(`Thời gian bị chồng chéo với đợt "${conflict.TenDot}". Không thể mở nhiều đợt cùng lúc.`, 'warning'); return; }
+    
     setConfirmDialog({
       title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?`,
       confirmLabel: 'Mở lại', variant: 'primary', onConfirm: () => openPhase(phase.MaDot)
     });
   };
   const openPhase = async (id) => {
-    const phase = phases.find(p => p.MaDot === id); if (!phase) return;
     try {
-      await axios.put(`${API_URL}/api/enrollment/phases/${id}`, { ...phase, TrangThai: 'Mo' });
-      showToast('Đã mở lại đợt đăng ký.', 'success'); fetchPhases();
-    } catch { showToast('Không thể mở lại đợt', 'error'); }
-    finally { setConfirmDialog(null); }
+      await axios.post(`${API_URL}/api/enrollment/phases/${id}/reopen`);
+      showToast('Mở đợt đăng ký thành công!', 'success');
+      fetchPhases();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Không thể mở lại đợt đăng ký', 'error');
+    } finally { setConfirmDialog(null); }
   };
 
   const requestDelete = (phase) => setConfirmDialog({
@@ -455,33 +528,41 @@ function EnrollmentPhaseManagement() {
   });
 
   const performDelete = async (id) => {
-    try { await axios.delete(`${API_URL}/api/enrollment/phases/${id}`); showToast('Đã xóa đợt thành công!', 'success'); fetchPhases(); }
+    try { await axios.delete(`${API_URL}/api/enrollment/phases/${id}`); showToast('Xóa đợt đăng ký thành công!', 'success'); fetchPhases(); }
     catch (err) { showToast(`Không thể xóa: ${err.response?.data?.message || 'Lỗi không xác định'}`, 'error'); }
     finally { setConfirmDialog(null); }
   };
 
   // derived data
-  const phaseSummary = useMemo(() => ({
+  const stats = useMemo(() => ({
     total: phases.length,
-    open: phases.filter(p => p.TrangThai === 'Mo').length,
-    closed: phases.filter(p => p.TrangThai === 'Đóng').length,
-  }), [phases]);
+    active: phases.filter(p => p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) <= now).length,
+    cho: phases.filter(p => p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) > now).length,
+    closed: phases.filter(p => p.TrangThai === 'Dong').length,
+  }), [phases, now]);
 
   const filteredPhases = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    return phases.filter(p => {
-      if (filterStatus !== 'all' && p.TrangThai !== filterStatus) return false;
-      if (!term) return true;
-      return [p.TenDot, p.HocKy, p.NamHoc, p.NienKhoa].filter(Boolean).some(f => f.toLowerCase().includes(term));
+    return phases.filter(phase => {
+      if (filterStatus !== 'all') {
+        const isUpcoming = phase.TrangThai === 'Mo' && phase.NgayTao && new Date(phase.NgayTao) > now;
+        if (filterStatus === 'Cho' && !isUpcoming) return false;
+        if (filterStatus === 'Mo' && (phase.TrangThai !== 'Mo' || isUpcoming)) return false;
+        if (filterStatus === 'Dong' && phase.TrangThai !== 'Dong') return false;
+      }
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        return phase.TenDot?.toLowerCase().includes(term) || phase.HocKy?.toLowerCase().includes(term) || phase.NienKhoa?.toLowerCase().includes(term);
+      }
+      return true;
     });
-  }, [phases, filterStatus, searchTerm]);
+  }, [phases, filterStatus, searchTerm, now]);
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 pb-8">
       {/* Toast */}
       {createPortal(
-        <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+        <div className="fixed top-4 right-4 z-[999999] flex flex-col gap-2 pointer-events-none">
           <AnimatePresence>
             {toast && <div className="pointer-events-auto"><Toast toast={toast} onClose={() => setToast(null)} /></div>}
           </AnimatePresence>
@@ -498,7 +579,7 @@ function EnrollmentPhaseManagement() {
       <AnimatePresence>
         {formOpen && (
           <PhaseFormModal open={formOpen} onClose={closeForm} editingPhase={editingPhase}
-            form={form} setForm={setForm} onSubmit={handleSubmit} tenDotError={tenDotError} hocKyError={hocKyError} nienKhoaError={nienKhoaError} dateErrors={dateErrors}
+            form={form} setForm={setForm} onSubmit={handleSubmit}
             hocKyOptions={hocKyOptions} nienKhoaOptions={nienKhoaOptions} />
         )}
       </AnimatePresence>
@@ -524,11 +605,12 @@ function EnrollmentPhaseManagement() {
       </div>
 
       {/* ── Stats row ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Tổng số đợt', value: phaseSummary.total, color: 'text-[#152238]', bg: 'bg-white', border: 'border-slate-200', icon: <TrendingUp className="w-5 h-5 text-[#152238]/40" /> },
-          { label: 'Đang mở', value: phaseSummary.open, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: <ToggleRight className="w-5 h-5 text-emerald-500" /> },
-          { label: 'Đã đóng', value: phaseSummary.closed, color: 'text-slate-600', bg: 'bg-white', border: 'border-slate-200', icon: <ToggleLeft className="w-5 h-5 text-slate-400" /> },
+          { label: 'Tổng số đợt', value: stats.total, color: 'text-[#152238]', bg: 'bg-white', border: 'border-slate-200', icon: <TrendingUp className="w-5 h-5 text-[#152238]/40" /> },
+          { label: 'Đang mở', value: stats.active, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: <ToggleRight className="w-5 h-5 text-emerald-500" /> },
+          { label: 'Chờ', value: stats.cho, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: <Clock className="w-5 h-5 text-amber-500" /> },
+          { label: 'Đã đóng', value: stats.closed, color: 'text-slate-600', bg: 'bg-white', border: 'border-slate-200', icon: <ToggleLeft className="w-5 h-5 text-slate-400" /> },
         ].map(s => (
           <div key={s.label} className={`rounded-2xl border ${s.border} ${s.bg} p-5 flex items-center justify-between`}>
             <div>
@@ -559,7 +641,7 @@ function EnrollmentPhaseManagement() {
             </div>
             {/* filter */}
             <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1">
-              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Đóng', 'Đã đóng']].map(([val, label]) => (
+              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Cho', 'Chờ'], ['Dong', 'Đã đóng']].map(([val, label]) => (
                 <button key={val} onClick={() => setFilterStatus(val)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterStatus === val ? 'bg-[#152238] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
                   {label}
@@ -584,7 +666,7 @@ function EnrollmentPhaseManagement() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Đợt đăng ký</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">HK / Năm / Niên khóa</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Học kỳ / Niên khóa</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Thời gian</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Thao tác</th>
@@ -593,51 +675,68 @@ function EnrollmentPhaseManagement() {
               <tbody className="divide-y divide-slate-100">
                 <AnimatePresence>
                   {filteredPhases.map((phase, i) => {
-                    const isExpired = phase.TrangThai === 'Mo' && phase.NgayDong && new Date(phase.NgayDong) < now;
+                    const start = phase.NgayTao ? new Date(phase.NgayTao) : null;
+                    const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
+                    const isExpired = phase.TrangThai === 'Mo' && end && end < now;
+                    const isActive = phase.TrangThai === 'Mo' && (!start || start <= now) && (!end || end >= now);
                     return (
                     <motion.tr key={phase.MaDot} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      className="hover:bg-slate-50/80 transition-colors group">
+                      onClick={() => setViewingPhase(phase)}
+                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer">
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{phase.TenDot}</p>
-                        {phase.TrangThai === 'Mo' && !isExpired && phase.NgayDong && (
-                          <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-[#F4C542] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-fit">
-                            <Hourglass className="w-3 h-3" /> Còn {diffText(new Date(phase.NgayDong) - now)}
-                          </div>
-                        )}
+                        {(() => {
+                          if (phase.TrangThai !== 'Mo' || isExpired) return null;
+                          const isWaiting = start && start > now;
+                          const targetDate = isWaiting ? start : end;
+                          if (!targetDate) return null;
+                          const prefix = isWaiting ? 'Mở sau' : 'Còn';
+                          const colorClass = isWaiting ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200';
+                          return (
+                            <div className={`flex items-center gap-1.5 mt-1 text-[11px] font-semibold px-2 py-0.5 rounded border w-fit ${colorClass}`}>
+                              <Hourglass className="w-3 h-3" /> {prefix} {diffText(targetDate - now)}
+                            </div>
+                          );
+                        })()}
                         {phase.MoTa && <p className="text-xs text-slate-400 mt-1 line-clamp-1">{phase.MoTa}</p>}
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap hidden md:table-cell">
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium text-slate-700">{phase.HocKy || '—'}</span>
-                          <span className="text-xs text-slate-400">{phase.NamHoc || '—'} · {phase.NienKhoa || '—'}</span>
+                          <span className="text-xs text-slate-400">{phase.NienKhoa || '—'}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap hidden sm:table-cell">
                         <div className="flex flex-col gap-0.5 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(phase.NgayMo)}</span>
-                          <span className="flex items-center gap-1 text-slate-400"><ChevronRight className="w-3 h-3" />{fmtDate(phase.NgayDong)}</span>
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDateTime(phase.NgayTao)}</span>
+                          <span className="flex items-center gap-1 text-slate-400"><ChevronRight className="w-3 h-3" />{fmtDateTime(phase.NgayDong)}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4"><StatusBadge phase={phase} now={now} /></td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openEditForm(phase)} title="Chỉnh sửa"
-                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          {phase.TrangThai === 'Mo' ? (
+                          {phase.TrangThai !== 'Dong' && (
+                            <button onClick={() => openEditForm(phase)} title={isActive ? "Không thể sửa đợt đang mở" : "Chỉnh sửa"} disabled={isActive}
+                              className={`p-2 rounded-xl border transition-colors ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300'}`}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {phase.TrangThai === 'Mo' && (
                             <button onClick={() => requestClose(phase)}
                               className="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold transition-colors">
                               Đóng
                             </button>
-                          ) : (
+                          )}
+                          {phase.TrangThai === 'Dong' && (
                             <button onClick={() => requestOpen(phase)}
-                              className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors">
+                              title={end && end <= now ? "Không thể mở lại đợt đã kết thúc" : "Mở lại đợt"}
+                              disabled={end && end <= now}
+                              className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${end && end <= now ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
                               Mở lại
                             </button>
                           )}
-                          <button onClick={() => requestDelete(phase)} title="Xóa"
-                            className="p-2 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                          <button onClick={() => requestDelete(phase)} title={isActive ? "Không thể xóa đợt đang mở" : "Xóa"} disabled={isActive}
+                            className={`p-2 rounded-xl border transition-colors ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'}`}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -650,6 +749,7 @@ function EnrollmentPhaseManagement() {
           </div>
         )}
       </div>
+      <PhaseViewModal phase={viewingPhase} onClose={() => setViewingPhase(null)} />
     </div>
   );
 }

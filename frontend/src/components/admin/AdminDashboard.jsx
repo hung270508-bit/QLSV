@@ -34,7 +34,7 @@ const menuItems = [
   { id: 'diem', label: 'Quản lý điểm', icon: FileText },
   { id: 'lichhoc', label: 'Quản lý lịch học', icon: Calendar },
   { id: 'phasedangky', label: 'Quản lý đợt đăng ký', icon: CalendarDays },
-  { id: 'phancong', label: 'Phân công giảng dạy', icon: ClipboardCheck },
+  { id: 'lophocphan', label: 'Quản lý lớp học phần', icon: ClipboardCheck },
   { id: 'thongbao', label: 'Quản lý thông báo', icon: Bell },
   { id: 'yeucau', label: 'Quản lý yêu cầu', icon: MessageSquare },
   { id: 'diemrenluyen', label: 'Quản lý điểm rèn luyện', icon: Award },
@@ -60,7 +60,7 @@ const pageComponents = {
   diem: GradeManagement,
   lichhoc: ScheduleManagement,
   phasedangky: EnrollmentPhaseManagement,
-  phancong: TeachingAssignment,
+  lophocphan: TeachingAssignment,
   thongbao: AnnouncementManagement,
   yeucau: AdminRequests,
   diemrenluyen: AdminTrainingPoints,
@@ -155,39 +155,39 @@ function AdminDashboard({ user, onLogout }) {
                   <rect x="50" y="0" width="50" height="120" />
                 </clipPath>
               </defs>
-              
+
               {/* Outer Shield */}
-              <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#152238" stroke="#D4AF37" strokeWidth="4" strokeLinejoin="round"/>
+              <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#152238" stroke="#D4AF37" strokeWidth="4" strokeLinejoin="round" />
 
               {/* Book Pages (Chuẩn xác 3 lớp cánh chim) */}
-              <path d="M 15 78 Q 32.5 68 50 91 Q 67.5 68 85 78 Q 67.5 75 50 95 Q 32.5 75 15 78 Z" fill="#D4AF37"/>
-              <path d="M 19 86 Q 32.5 79 50 96.5 Q 67.5 79 81 86 Q 67.5 81.5 50 98.5 Q 32.5 81.5 19 86 Z" fill="#D4AF37"/>
-              <path d="M 24 93 Q 32.5 87 50 101 Q 67.5 87 76 93 Q 67.5 88.5 50 102.5 Q 32.5 88.5 24 93 Z" fill="#D4AF37"/>
+              <path d="M 15 78 Q 32.5 68 50 91 Q 67.5 68 85 78 Q 67.5 75 50 95 Q 32.5 75 15 78 Z" fill="#D4AF37" />
+              <path d="M 19 86 Q 32.5 79 50 96.5 Q 67.5 79 81 86 Q 67.5 81.5 50 98.5 Q 32.5 81.5 19 86 Z" fill="#D4AF37" />
+              <path d="M 24 93 Q 32.5 87 50 101 Q 67.5 87 76 93 Q 67.5 88.5 50 102.5 Q 32.5 88.5 24 93 Z" fill="#D4AF37" />
 
               {/* Cap Skullcap Base Outline (Mặt thu nhỏ) */}
-              <path d="M 35 45 L 35 58 C 35 66 50 71 50 71 C 50 71 65 66 65 58 L 65 45" fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round"/>
-              
+              <path d="M 35 45 L 35 58 C 35 66 50 71 50 71 C 50 71 65 66 65 58 L 65 45" fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" />
+
               {/* Chevron (Inner Cap) - Rõ nét viền xanh 1.75px đều các cạnh */}
-              <path d="M 38 48.3 L 50 52.5 L 62 48.3 L 62 58 C 62 65 50 68 50 68 C 50 68 38 65 38 58 Z" fill="#D4AF37"/>
+              <path d="M 38 48.3 L 50 52.5 L 62 48.3 L 62 58 C 62 65 50 68 50 68 C 50 68 38 65 38 58 Z" fill="#D4AF37" />
 
               {/* Cap Diamond (Mũ thu lại xíu để không dính khiên) */}
-              <path d="M 50 23 L 87 36 L 50 49 L 13 36 Z" fill="none" stroke="#D4AF37" strokeWidth="3.5" strokeLinejoin="round"/>
-              
+              <path d="M 50 23 L 87 36 L 50 49 L 13 36 Z" fill="none" stroke="#D4AF37" strokeWidth="3.5" strokeLinejoin="round" />
+
               {/* Center Button */}
-              <ellipse cx="50" cy="36" rx="4" ry="2.5" fill="#D4AF37"/>
-              
+              <ellipse cx="50" cy="36" rx="4" ry="2.5" fill="#D4AF37" />
+
               {/* Tassel String */}
-              <path d="M 50 36 Q 68 37 76 44 Q 78 52 76 60" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round"/>
-              
+              <path d="M 50 36 Q 68 37 76 44 Q 78 52 76 60" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" />
+
               {/* Tassel Knot & Brush */}
-              <circle cx="76" cy="61" r="1.5" fill="#D4AF37"/>
-              <path d="M 74 62 L 78 62 L 77 70 L 75 70 Z" fill="#D4AF37"/>
+              <circle cx="76" cy="61" r="1.5" fill="#D4AF37" />
+              <path d="M 74 62 L 78 62 L 77 70 L 75 70 Z" fill="#D4AF37" />
 
               {/* 3D Right Half Shadow Overlay */}
-              <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#000000" stroke="#000000" strokeWidth="4" opacity="0.15" clipPath="url(#right-half-desktop)"/>
+              <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#000000" stroke="#000000" strokeWidth="4" opacity="0.15" clipPath="url(#right-half-desktop)" />
             </svg>
           </div>
-          
+
           {/* Text Stack */}
           <div className="flex flex-col items-center mt-2">
             <span className="text-[17px] font-black text-white uppercase tracking-wider leading-none drop-shadow-sm">
@@ -305,41 +305,41 @@ function AdminDashboard({ user, onLogout }) {
                       <rect x="50" y="0" width="50" height="120" />
                     </clipPath>
                   </defs>
-                  
+
                   {/* Outer Shield */}
-                  <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#152238" stroke="#D4AF37" strokeWidth="4" strokeLinejoin="round"/>
+                  <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#152238" stroke="#D4AF37" strokeWidth="4" strokeLinejoin="round" />
 
                   {/* Book Pages (Chuẩn xác 3 lớp cánh chim) */}
-                  <path d="M 15 78 Q 32.5 68 50 91 Q 67.5 68 85 78 Q 67.5 75 50 95 Q 32.5 75 15 78 Z" fill="#D4AF37"/>
-                  <path d="M 19 86 Q 32.5 79 50 96.5 Q 67.5 79 81 86 Q 67.5 81.5 50 98.5 Q 32.5 81.5 19 86 Z" fill="#D4AF37"/>
-                  <path d="M 24 93 Q 32.5 87 50 101 Q 67.5 87 76 93 Q 67.5 88.5 50 102.5 Q 32.5 88.5 24 93 Z" fill="#D4AF37"/>
+                  <path d="M 15 78 Q 32.5 68 50 91 Q 67.5 68 85 78 Q 67.5 75 50 95 Q 32.5 75 15 78 Z" fill="#D4AF37" />
+                  <path d="M 19 86 Q 32.5 79 50 96.5 Q 67.5 79 81 86 Q 67.5 81.5 50 98.5 Q 32.5 81.5 19 86 Z" fill="#D4AF37" />
+                  <path d="M 24 93 Q 32.5 87 50 101 Q 67.5 87 76 93 Q 67.5 88.5 50 102.5 Q 32.5 88.5 24 93 Z" fill="#D4AF37" />
 
                   {/* Cap Skullcap Base Outline (Mặt thu nhỏ) */}
-                  <path d="M 35 45 L 35 58 C 35 66 50 71 50 71 C 50 71 65 66 65 58 L 65 45" fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round"/>
-                  
+                  <path d="M 35 45 L 35 58 C 35 66 50 71 50 71 C 50 71 65 66 65 58 L 65 45" fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" />
+
                   {/* Chevron (Inner Cap) - Rõ nét viền xanh 1.75px đều các cạnh */}
-                  <path d="M 38 48.3 L 50 52.5 L 62 48.3 L 62 58 C 62 65 50 68 50 68 C 50 68 38 65 38 58 Z" fill="#D4AF37"/>
+                  <path d="M 38 48.3 L 50 52.5 L 62 48.3 L 62 58 C 62 65 50 68 50 68 C 50 68 38 65 38 58 Z" fill="#D4AF37" />
 
                   {/* Cap Diamond (Mũ thu lại xíu để không dính khiên) */}
-                  <path d="M 50 23 L 87 36 L 50 49 L 13 36 Z" fill="none" stroke="#D4AF37" strokeWidth="3.5" strokeLinejoin="round"/>
-                  
+                  <path d="M 50 23 L 87 36 L 50 49 L 13 36 Z" fill="none" stroke="#D4AF37" strokeWidth="3.5" strokeLinejoin="round" />
+
                   {/* Center Button */}
-                  <ellipse cx="50" cy="36" rx="4" ry="2.5" fill="#D4AF37"/>
-                  
+                  <ellipse cx="50" cy="36" rx="4" ry="2.5" fill="#D4AF37" />
+
                   {/* Tassel String */}
-                  <path d="M 50 36 Q 68 37 76 44 Q 78 52 76 60" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round"/>
-                  
+                  <path d="M 50 36 Q 68 37 76 44 Q 78 52 76 60" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" />
+
                   {/* Tassel Knot & Brush */}
-                  <circle cx="76" cy="61" r="1.5" fill="#D4AF37"/>
-                  <path d="M 74 62 L 78 62 L 77 70 L 75 70 Z" fill="#D4AF37"/>
+                  <circle cx="76" cy="61" r="1.5" fill="#D4AF37" />
+                  <path d="M 74 62 L 78 62 L 77 70 L 75 70 Z" fill="#D4AF37" />
 
                   {/* 3D Right Half Shadow Overlay */}
-                  <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#000000" stroke="#000000" strokeWidth="4" opacity="0.15" clipPath="url(#right-half-mobile)"/>
+                  <path d="M 5 15 Q 25 20 50 5 Q 75 20 95 15 L 95 60 C 95 95 50 115 50 115 C 50 115 5 95 5 60 Z" fill="#000000" stroke="#000000" strokeWidth="4" opacity="0.15" clipPath="url(#right-half-mobile)" />
                 </svg>
               </div>
               <div className="flex flex-col">
-                 <span className="text-[12px] font-black text-white uppercase tracking-wide leading-none mt-1">NhatTin Univ</span>
-                 <span className="text-[6px] text-[#D4AF37] font-bold uppercase tracking-widest mt-0.5 leading-none">Trường Đại Học Nhất Tín</span>
+                <span className="text-[12px] font-black text-white uppercase tracking-wide leading-none mt-1">NhatTin Univ</span>
+                <span className="text-[6px] text-[#D4AF37] font-bold uppercase tracking-widest mt-0.5 leading-none">Trường Đại Học Nhất Tín</span>
               </div>
             </div>
 
