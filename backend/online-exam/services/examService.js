@@ -219,7 +219,7 @@ class ExamService {
 
     async recordViolation(attemptId, violationType, note) {
         const [result] = await this.db.query(`
-            INSERT INTO online_exam_violation_events (attempt_id, violation_type, note)
+            INSERT INTO exam_attempt_violations (attempt_id, violation_type, note)
             VALUES (?, ?, ?)
         `, [attemptId, violationType, note]);
         return result;

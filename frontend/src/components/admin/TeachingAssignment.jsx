@@ -171,6 +171,22 @@ function TeachingAssignment() {
     }
   }, [formData.MaMonHoc, formData.HocKy, hocKySo, assignments]);
 
+  const checkPhiTaiLieuError = (rawInput) => {
+    const s = String(rawInput ?? '').trim();
+    if (s === '' || s === '0') return null;
+    if (!/^\d+$/.test(s)) {
+      return 'Phí tài liệu chỉ được nhập số hợp lệ (không chứa chữ cái hay ký tự đặc biệt).';
+    }
+    if (/^0\d+/.test(s)) {
+      return 'Số tiền không hợp lệ (không được bắt đầu bằng số 0 vô nghĩa).';
+    }
+    const num = Number(s);
+    if (num < 20000 || num > 100000) {
+      return 'Mức phí tài liệu nếu có phải từ 20.000 VNĐ đến 100.000 VNĐ.';
+    }
+    return null;
+  };
+
   const validateForm = () => {
     const errors = {};
     if (!formData.MaKhoa) errors.MaKhoa = 'Vui lòng chọn Khoa phụ trách.';
@@ -216,7 +232,10 @@ function TeachingAssignment() {
       }
     }
 
-    if (!hocKySo || hocKySo < 1 || hocKySo > 3) errors.HocKy = 'Vui lòng chọn Học kỳ hợp lệ.';
+    const errPhi = checkPhiTaiLieuError(formData.phi_tai_lieu);
+    if (errPhi) {
+      errors.phi_tai_lieu = errPhi;
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -716,17 +735,28 @@ function TeachingAssignment() {
                   </div>
 
                   {/* Cấu hình phí học phần */}
-                  <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50/60 space-y-2">
-                    <p className="text-sm font-black text-gray-700 uppercase">Phí tài liệu / Giáo trình</p>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">Mức phí tài liệu bắt buộc SV đóng kèm học phí (VNĐ) — để trống hoặc nhập 0 nếu không có</label>
-                    <input
-                      type="number" min="0" step="1000"
-                      value={formData.phi_tai_lieu || 0}
-                      onChange={e => setFormData(f => ({ ...f, phi_tai_lieu: Number(e.target.value) }))}
-                      placeholder="VD: 60000"
-                      className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#F4BE2C]"
-                    />
-                  </div>
+                  {(() => {
+                    const phiTaiLieuError = checkPhiTaiLieuError(formData.phi_tai_lieu);
+                    return (
+                      <div className={`border rounded-2xl p-4 transition-colors space-y-2 ${phiTaiLieuError ? 'border-red-400 bg-red-50/40' : 'border-gray-200 bg-gray-50/60'}`}>
+                        <p className="text-sm font-black text-gray-700 uppercase">Phí tài liệu / Giáo trình</p>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Mức phí tài liệu bắt buộc SV đóng kèm học phí (VNĐ) — để trống hoặc nhập 0 nếu không có</label>
+                        <input
+                          type="text"
+                          value={formData.phi_tai_lieu ?? ''}
+                          onChange={e => setFormData(f => ({ ...f, phi_tai_lieu: e.target.value }))}
+                          placeholder="VD: 60000 (tối thiểu 20.000, tối đa 100.000)"
+                          className={`w-full p-3 border rounded-xl bg-white focus:outline-none focus:ring-2 ${phiTaiLieuError ? 'border-red-500 focus:ring-red-400 text-red-600 font-bold' : 'border-gray-200 focus:ring-[#F4BE2C]'}`}
+                        />
+                        {phiTaiLieuError && (
+                          <p className="text-red-600 text-xs font-bold mt-1.5 flex items-center gap-1.5">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            {phiTaiLieuError}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                 </form>
               </div>
@@ -735,7 +765,7 @@ function TeachingAssignment() {
                 <button type="button" onClick={handleCloseModal} className="flex-1 py-3 bg-[#FFFFFF] border border-[#E5E7EB] text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-sm">
                   Hủy
                 </button>
-                <button form="assignment-form" type="submit" disabled={!!hocKyError || isSubmitting} className="flex-1 py-3 bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <button form="assignment-form" type="submit" disabled={!!hocKyError || !!checkPhiTaiLieuError(formData.phi_tai_lieu) || isSubmitting} className="flex-1 py-3 bg-[#F4C542] hover:from-amber-600 hover:to-amber-700 text-[#152238] font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                   {isSubmitting ? 'Đang xử lý...' : 'Xác nhận phân công'}
                 </button>
               </div>

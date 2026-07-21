@@ -65,7 +65,7 @@ const QUESTION_TYPES = [
 
 const QUESTION_GEN_MAX_TOKENS = 3000;
 const CONTEXT_MAX_CHARS = 4000;
-const CONTEXT_TOP_K = 2;
+const CONTEXT_TOP_K = 6;
 const MAX_RECENT_QS_IN_PROMPT = 12;
 const SEMANTIC_DUP_THRESHOLD = 0.55;
 
@@ -339,6 +339,13 @@ function buildQuestionTypePlan(count, recentTypesHistory = []) {
 function retrieveRelevantContext(chunks, chapterTitle, topic, keywords = [], { maxChars = CONTEXT_MAX_CHARS, topK = CONTEXT_TOP_K } = {}) {
     if (!chunks || chunks.length === 0) return '';
 
+    // Nếu tổng dung lượng toàn bộ tài liệu nhỏ hơn hoặc bằng maxChars (24.000 ký tự ~ 4.000 - 5.000 từ),
+    // gửi TOÀN BỘ tài liệu để AI có đầy đủ 100% ngữ cảnh, không bị bỏ sót bất kỳ chi tiết nào.
+    const totalLength = chunks.reduce((acc, c) => acc + (c.text?.length || 0), 0);
+    if (totalLength <= maxChars) {
+        return chunks.map(c => c.text || '').filter(Boolean).join('\n\n---\n\n');
+    }
+
     // Chuẩn bị query tokens: tên chủ đề + chương + keywords
     const queryText = `${chapterTitle} ${topic} ${keywords.join(' ')}`.toLowerCase();
     const queryTokens = tokenize(queryText);
@@ -348,10 +355,7 @@ function retrieveRelevantContext(chunks, chapterTitle, topic, keywords = [], { m
         const chunkText = `${chunk.chapterTitle} ${chunk.text}`.toLowerCase();
         const chunkTokens = new Set(tokenize(chunkText));
 
-        // Bonus nếu tên chương khớp
         const chapterBonus = chunk.chapterTitle.toLowerCase().includes(chapterTitle.toLowerCase()) ? 3 : 0;
-
-        // Đếm số query token xuất hiện trong chunk
         const matchCount = queryTokens.filter(t => chunkTokens.has(t)).length;
         return { chunk, score: matchCount + chapterBonus };
     });
@@ -362,7 +366,11 @@ function retrieveRelevantContext(chunks, chapterTitle, topic, keywords = [], { m
         .slice(0, topK)
         .map(s => s.chunk);
 
-    // Ghép nội dung, giới hạn maxChars
+    // Luôn đảm bảo chunk đầu tiên (chứa định nghĩa/tổng quan) có mặt nếu chưa có trong topK
+    if (chunks[0] && !topChunks.includes(chunks[0])) {
+        topChunks.unshift(chunks[0]);
+    }
+
     let combined = '';
     for (const chunk of topChunks) {
         const separator = combined ? '\n\n---\n\n' : '';
@@ -498,7 +506,7 @@ QUY TẮC BẮT BUỘC:
 4. difficulty PHẢI khớp với Bloom trong kế hoạch: Remember/Understand→Easy, Apply→Medium, Analyze/Evaluate→Hard
 5. Đáp án nhiễu phải hợp lý (phản ánh lỗi hiểu sai phổ biến), không vô nghĩa, không quá ngắn/quá dài
 6. explanation TỐI ĐA 2 CÂU — viết súc tích, đúng trọng tâm
-7. Bám sát nội dung tài liệu được cung cấp
+7. TUYỆT ĐỐI BÁM SÁT 100% NỘI DUNG TÀI LIỆU được cung cấp bên dưới. KHÔNG sinh câu hỏi nằm ngoài tài liệu hay tự bịa kiến thức ngoại lai. Nếu tài liệu không nói đến chi tiết đó thì tuyệt đối không được hỏi.
 8. TUYỆT ĐỐI không lặp ý các câu đã có
 
 CHECKLIST TỰ KIỂM TRA (trước khi trả kết quả):
@@ -506,12 +514,13 @@ CHECKLIST TỰ KIỂM TRA (trước khi trả kết quả):
 □ Mỗi câu đúng 4 đáp án, 1 đáp án đúng
 □ difficulty khớp bloom_level
 □ explanation ≤ 2 câu
+□ Chỉ hỏi kiến thức có thực trong tài liệu được cung cấp
 □ Không trùng câu đã có`;
 
-    const userContent = `NỘI DUNG TÀI LIỆU LIÊN QUAN:
-${context || '(không có ngữ cảnh cụ thể, hãy suy luận từ kiến thức chung về chủ đề)'}
+    const userContent = `NỘI DUNG TÀI LIỆU LIÊN QUAN (CHỈ ĐƯỢC PHÉP SINH CÂU HỎI TRONG PHẠM VI NỘI DUNG NÀY):
+${context || 'Toàn bộ tài liệu gốc của giảng viên.'}
 
-${recentSummary ? `CÁC CÂU ĐÃ SINH (TUYỆT ĐỐI KHÔNG LẶP Ý):\n${recentSummary}\n\n` : ''}HÃY SINH ${bufferCount} CÂU HỎI TRẮC NGHIỆM MỚI THEO KẾ HOẠCH TRÊN.`;
+${recentSummary ? `CÁC CÂU ĐÃ SINH (TUYỆT ĐỐI KHÔNG LẶP Ý):\n${recentSummary}\n\n` : ''}HÃY SINH ${bufferCount} CÂU HỎI TRẮC NGHIỆM MỚI THEO KẾ HOẠCH VÀ CHỈ DỰA TRÊN NỘI DUNG TÀI LIỆU TRÊN.`;
 
     return { systemPrompt, userContent };
 }

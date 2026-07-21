@@ -8,6 +8,7 @@ import {
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import ModalPortal, { ConfirmDialog } from '../common/ModalPortal';
 
 import TeacherProfileManagement from './TeacherProfileManagement';
 import OverviewSection from './OverviewSection';
@@ -38,7 +39,7 @@ const menuItems = [
   { id: 'lichgiangday', label: 'Lịch giảng dạy', icon: Calendar },
   { id: 'hoso', label: 'Hồ sơ cá nhân', icon: UserCircle },
   { id: 'thongbao', label: 'Thông báo', icon: Bell },
-  { id: 'nganhang', label: 'Ngân hàng câu hỏi (AI)', icon: BookOpen },
+  { id: 'nganhang', label: 'Ngân hàng đề thi', icon: BookOpen },
   { id: 'thionline', label: 'Tổ chức Thi Online', icon: Award },
   { id: 'hotro', label: 'Yêu cầu - Hỗ trợ', icon: HelpCircle },
 ];
@@ -68,33 +69,11 @@ function TeacherDashboard({ user, onLogout }) {
 
   // State theo dõi thông báo AI toàn cục trên tất cả màn hình GV
   const [globalTargetSession, setGlobalTargetSession] = useState(null);
-  const [globalAIAlert, setGlobalAIAlert] = useState(null);
-  const aiSessionsRef = React.useRef([]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    const pollGlobalAI = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/ai-exams/sessions/teacher/${user.id}`);
-        const newList = res.data?.data || [];
-        newList.forEach(newS => {
-          const oldS = aiSessionsRef.current.find(s => s.id === newS.id);
-          if (oldS && ((newS.so_cau_da_sinh || 0) > (oldS.so_cau_da_sinh || 0) || (oldS.trang_thai === 'RUNNING' && newS.trang_thai !== 'RUNNING'))) {
-            const isFull = (newS.so_cau_da_sinh || 0) >= (newS.so_cau_yeu_cau || 10);
-            setGlobalAIAlert({
-              title: isFull ? `Ting! Hoàn tất tạo bộ đề AI #${newS.id}` : `Ting! Cập nhật tiến độ đề AI #${newS.id}`,
-              message: `Bộ đề "${newS.doc_tieu_de || newS.tieu_de}" môn ${newS.TenMonHoc || newS.ma_mon_hoc} đã có ${newS.so_cau_da_sinh}/${newS.so_cau_yeu_cau} câu hỏi. Nhấn để duyệt ngay!`,
-              session: newS
-            });
-          }
-        });
-        aiSessionsRef.current = newList;
-      } catch (e) {}
-    };
-    pollGlobalAI();
-    const interval = setInterval(pollGlobalAI, 4000);
-    return () => clearInterval(interval);
-  }, [user]);
+  // State theo dõi tiến trình soạn thảo câu hỏi AI chưa lưu để cảnh báo khi chuyển trang
+  const [aiGeneratorDirty, setAiGeneratorDirty] = useState({ isDirty: false, title: '', count: 0 });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
+
 
   useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
   useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
@@ -149,9 +128,40 @@ function TeacherDashboard({ user, onLogout }) {
   };
 
   const handleNavigate = (id) => {
+    if (activeMenu === id) return;
+    if (activeMenu === 'nganhang' && aiGeneratorDirty.isDirty) {
+      setConfirmDialog({
+        show: true,
+        title: '⚠️ Cảnh Báo Đang Soạn Bộ Đề',
+        message: `Bạn đang trong quá trình soạn bộ đề "${aiGeneratorDirty.title || 'Mới'}" (${aiGeneratorDirty.count} câu hỏi chưa lưu) tại Kênh Soạn Đề AI.\n\nNếu chuyển sang mục khác lúc này, dữ liệu đang soạn thảo chưa lưu sẽ bị xóa hoàn toàn.\n\nBạn có chắc chắn muốn rời đi không?`,
+        action: () => {
+          setAiGeneratorDirty({ isDirty: false, title: '', count: 0 });
+          setActiveMenu(id);
+          setMobileDrawerOpen(false);
+          setMobileMoreOpen(false);
+        }
+      });
+      return;
+    }
     setActiveMenu(id);
     setMobileDrawerOpen(false);
     setMobileMoreOpen(false);
+  };
+
+  const handleLogoutWithCheck = () => {
+    if (activeMenu === 'nganhang' && aiGeneratorDirty.isDirty) {
+      setConfirmDialog({
+        show: true,
+        title: '⚠️ Cảnh Báo Đang Soạn Bộ Đề',
+        message: `Bạn đang trong quá trình soạn bộ đề "${aiGeneratorDirty.title || 'Mới'}" (${aiGeneratorDirty.count} câu hỏi chưa lưu) tại Kênh Soạn Đề AI.\n\nNếu đăng xuất lúc này, phiên soạn thảo chưa lưu sẽ bị xóa hoàn toàn.\n\nBạn có chắc chắn muốn đăng xuất không?`,
+        action: () => {
+          setAiGeneratorDirty({ isDirty: false, title: '', count: 0 });
+          onLogout();
+        }
+      });
+      return;
+    }
+    onLogout();
   };
 
   const renderContent = () => {
@@ -169,17 +179,17 @@ function TeacherDashboard({ user, onLogout }) {
       }
     }
     switch (activeMenu) {
-      case 'tongquan': return <OverviewSection teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} setActiveMenu={setActiveMenu} />;
+      case 'tongquan': return <OverviewSection teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} setActiveMenu={handleNavigate} />;
       case 'sinhvien': return <StudentsSection students={students} teachingAssignments={teachingAssignments} grades={grades} />;
       case 'quanlydiem': return <GradesSection grades={grades} teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} onRefresh={fetchTeacherData} />;
       case 'diemdanh': return <AttendanceSection teachingSchedule={teachingSchedule} students={students} />;
       case 'lichgiangday': return <ScheduleSection teachingSchedule={teachingSchedule} teachingAssignments={teachingAssignments} user={user} />;
-      case 'hoso': return <TeacherProfileManagement user={user} onLogout={onLogout} profile={profile} loading={loadingProfile} />;
+      case 'hoso': return <TeacherProfileManagement user={user} onLogout={handleLogoutWithCheck} profile={profile} loading={loadingProfile} />;
       case 'thongbao': return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} classes={teachingAssignments} />;
       case 'hotro': return <TeacherSupport user={user} profile={profile} />;
-      case 'nganhang': return <QuestionBankManagement targetSession={globalTargetSession} onClearTargetSession={() => setGlobalTargetSession(null)} />;
+      case 'nganhang': return <QuestionBankManagement targetSession={globalTargetSession} onClearTargetSession={() => setGlobalTargetSession(null)} onAiGeneratorDirtyChange={(isDirty, title, count) => setAiGeneratorDirty({ isDirty, title, count })} />;
       case 'thionline': return <ExamManagement />;
-      default: return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={setActiveMenu} />;
+      default: return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={handleNavigate} />;
     }
   };
 
@@ -247,7 +257,7 @@ function TeacherDashboard({ user, onLogout }) {
               <p className="text-xs text-gray-300 truncate">Giảng viên - Khoa CNTT</p>
             </div>
           </div>
-          <button onClick={onLogout} className="p-2.5 rounded-xl text-[#6B7280] hover:bg-[#EF4444]/10 hover:text-[#EF4444] transition-all duration-200 ease-out flex-shrink-0" title="Đăng xuất">
+          <button onClick={handleLogoutWithCheck} className="p-2.5 rounded-xl text-[#6B7280] hover:bg-[#EF4444]/10 hover:text-[#EF4444] transition-all duration-200 ease-out flex-shrink-0" title="Đăng xuất">
             <LogOut className="w-5 h-5" />
           </button>
         </div>
@@ -387,7 +397,7 @@ function TeacherDashboard({ user, onLogout }) {
                         );
                       })}
                     </div>
-                    <button onClick={onLogout}
+                    <button onClick={handleLogoutWithCheck}
                       className="mt-3 w-full py-3 bg-[#EF4444]/10 text-[#EF4444] font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[#EF4444]/20 transition-colors">
                       <LogOut className="w-4 h-4" /> Đăng xuất
                     </button>
@@ -399,41 +409,11 @@ function TeacherDashboard({ user, onLogout }) {
           </AnimatePresence>
         )}
 
-        {/* Global Floating Notification Toast ra toàn bộ các màn hình Giảng viên */}
-        <AnimatePresence>
-          {globalAIAlert && (
-            <motion.div
-              initial={{ opacity: 0, y: -50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.9 }}
-              onClick={() => {
-                const s = globalAIAlert.session;
-                setGlobalAIAlert(null);
-                setGlobalTargetSession(s);
-                setActiveMenu('nganhang');
-              }}
-              className="fixed top-5 right-5 z-[9999] max-w-md bg-gradient-to-r from-[#152238] via-indigo-950 to-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-[#F4C542] flex items-center gap-3.5 cursor-pointer hover:scale-105 transition-all"
-            >
-              <div className="p-3 bg-[#F4C542] text-[#152238] rounded-xl font-black shrink-0 animate-bounce flex items-center justify-center">
-                <Bell className="w-6 h-6 fill-current" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-extrabold text-sm text-[#F4C542] truncate">{globalAIAlert.title}</p>
-                <p className="text-xs text-gray-200 mt-0.5 line-clamp-2 leading-relaxed">{globalAIAlert.message}</p>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setGlobalAIAlert(null);
-                }}
-                className="text-gray-400 hover:text-white p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
+
+      <ModalPortal>
+        <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
+      </ModalPortal>
     </div>
   );
 }

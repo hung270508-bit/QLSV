@@ -70,7 +70,7 @@ db.on('connection', function (connection) {
     connection.query("SET NAMES utf8mb4");
 });
 
-// Kiểm tra kết nối DB
+// Kiểm tra kết nối DB và tự động khởi tạo/cập nhật toàn bộ bảng & cột (Auto Migration cho Vercel & Production)
 db.getConnection((err, connection) => {
     if (err) {
         console.error('Lỗi kết nối MySQL: ' + err.stack);
@@ -78,21 +78,117 @@ db.getConnection((err, connection) => {
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
 
-    // Đã gỡ bỏ các đoạn code tự động CREATE/ALTER TABLE ở đây (Migration)
-    // để tối ưu hóa triệt để tốc độ khởi động (Cold Start) trên Vercel Serverless.
+    const queries = [
+        'SET FOREIGN_KEY_CHECKS = 0;',
+        
+        // 1. Tạo các bảng cốt lõi nếu chưa tồn tại
+        `CREATE TABLE IF NOT EXISTS dot_dangky (
+            MaDot INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            TenDot VARCHAR(255) NOT NULL,
+            MoTa TEXT,
+            HocKy VARCHAR(50) NOT NULL,
+            NamHoc VARCHAR(50),
+            NienKhoa VARCHAR(50) NOT NULL,
+            NgayTao DATETIME NOT NULL,
+            NgayDong DATETIME NOT NULL,
+            TrangThai VARCHAR(50) DEFAULT 'Mo'
+        );`,
+        `CREATE TABLE IF NOT EXISTS dot_dong_hoc_phi (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            ma_dot_dangky INT NOT NULL DEFAULT 0,
+            hoc_ky VARCHAR(50) NOT NULL DEFAULT '',
+            ten_dot VARCHAR(255) NOT NULL DEFAULT '',
+            ngay_mo DATETIME NOT NULL,
+            ngay_dong DATETIME NOT NULL,
+            trang_thai VARCHAR(50) DEFAULT 'chua_mo',
+            don_gia_tin_chi DECIMAL(15,0) NOT NULL DEFAULT 1150000,
+            tao_boi VARCHAR(50) NOT NULL DEFAULT 'admin',
+            ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP
+        );`,
+        `CREATE TABLE IF NOT EXISTS hoc_phi_v2 (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            mssv VARCHAR(50) NOT NULL,
+            dot_id INT NOT NULL,
+            so_tien DECIMAL(15,0) NOT NULL DEFAULT 0,
+            trang_thai VARCHAR(50) DEFAULT 'Chưa đóng',
+            ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_mssv_dot (mssv, dot_id)
+        );`,
+        `CREATE TABLE IF NOT EXISTS hoc_phi_chi_tiet (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            hoc_phi_id INT NOT NULL,
+            ma_lop_hoc_phan VARCHAR(50) NOT NULL DEFAULT '',
+            ten_mon_hoc VARCHAR(255) NOT NULL DEFAULT '',
+            so_tin_chi INT NOT NULL DEFAULT 0,
+            don_gia DECIMAL(15,0) NOT NULL DEFAULT 0,
+            thanh_tien DECIMAL(15,0) NOT NULL DEFAULT 0,
+            phi_tai_lieu DECIMAL(15,2) DEFAULT 0,
+            hoc_phi DECIMAL(15,2) DEFAULT 0,
+            mien_giam DECIMAL(15,2) DEFAULT 0
+        );`,
+        `CREATE TABLE IF NOT EXISTS giao_dich_hoc_phi (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            hoc_phi_id INT NOT NULL,
+            ma_giao_dich VARCHAR(100) NULL,
+            so_tien DECIMAL(15,0) NOT NULL DEFAULT 0,
+            noi_dung VARCHAR(255) NOT NULL DEFAULT '',
+            qr_url TEXT NULL,
+            trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan',
+            nguon_xac_nhan VARCHAR(50) NULL,
+            admin_username VARCHAR(50) NULL,
+            minh_chung_url VARCHAR(255) NULL,
+            ghi_chu TEXT NULL,
+            thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            thoi_gian_xac_nhan DATETIME NULL
+        );`,
 
-    connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
-        connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => { });
-        connection.query("ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;", () => { });
-        connection.query("ALTER TABLE lophocphan ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE lophocphan ADD COLUMN mien_hoc_phi BOOLEAN DEFAULT FALSE;", () => { });
-        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.release();
-        if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
-    });
+        // 2. Thêm cột mới nếu bảng đã tồn tại từ trước trên production (Auto Add Column)
+        `ALTER TABLE dot_dangky ADD COLUMN MoTa TEXT DEFAULT NULL;`,
+        `ALTER TABLE dot_dangky ADD COLUMN NamHoc VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE dot_dangky ADD COLUMN NienKhoa VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ma_dot_dangky INT NOT NULL DEFAULT 0;`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN hoc_ky VARCHAR(50) DEFAULT '';`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ten_dot VARCHAR(255) DEFAULT '';`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN don_gia_tin_chi DECIMAL(15,0) DEFAULT 1150000;`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN tao_boi VARCHAR(50) DEFAULT 'admin';`,
+        `ALTER TABLE hoc_phi_v2 ADD COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+        `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE lophocphan ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE lophocphan ADD COLUMN mien_hoc_phi BOOLEAN DEFAULT FALSE;`,
+        `ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;`,
+        `ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;`,
+        `ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN nguon_xac_nhan VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN admin_username VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN minh_chung_url VARCHAR(255) DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN ghi_chu TEXT DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN thoi_gian_xac_nhan DATETIME DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN qr_url TEXT DEFAULT NULL;`,
+
+        // 3. Chuẩn hóa kiểu dữ liệu / MODIFY COLUMN để đảm bảo tương thích
+        `ALTER TABLE dot_dangky MODIFY COLUMN TrangThai VARCHAR(50) DEFAULT 'Mo';`,
+        `ALTER TABLE dot_dong_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'chua_mo';`,
+        `ALTER TABLE hoc_phi_v2 MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+        `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan';`,
+        `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN ma_giao_dich VARCHAR(100) NULL;`,
+
+        'SET FOREIGN_KEY_CHECKS = 1;'
+    ];
+
+    let idx = 0;
+    const runNext = () => {
+        if (idx >= queries.length) {
+            connection.release();
+            return;
+        }
+        connection.query(queries[idx++], (e) => {
+            // Bỏ qua lỗi cột đã tồn tại (ER_DUP_FIELDNAME) hoặc bảng đã tồn tại (ER_TABLE_EXISTS_ERROR)
+            runNext();
+        });
+    };
+    runNext();
 });
 
 // Email transporter configuration
@@ -440,6 +536,7 @@ app.post('/api/forgot-password', (req, res) => {
 // Mount AI Exam routes
 const aiExamRoutes = require('./ai-exam/routes')(db);
 app.use('/api/ai-exams', aiExamRoutes);
+app.use('/api/ai-exam', aiExamRoutes);
 
 // Global middleware to check if account is locked out across all API requests
 app.use((req, res, next) => {
@@ -2027,7 +2124,8 @@ app.post('/api/enrollment', async (req, res) => {
             }
         }
 
-        await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW())`, [MSSV, MaLopHocPhan, lhp.HocKy]);
+        const phaseIdSingle = await getOpenPhaseId(conn, lhp.NamHoc, lhp.NienKhoa);
+        await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy, MaDot) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW(), ?)`, [MSSV, MaLopHocPhan, lhp.HocKy, phaseIdSingle]);
         // Lưu ý: KHÔNG insert vào bảng `diem` ở bước này nữa.
         // Lịch học/kết quả chỉ được commit chính thức sau khi sinh viên đóng tiền
         // (xem API POST /api/enrollment/:mssv/:maLhp/xac-nhan-thanh-toan).
@@ -2135,7 +2233,8 @@ app.post('/api/enrollment/batch', async (req, res) => {
                 }
             }
 
-            await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW()) ON DUPLICATE KEY UPDATE TrangThai = 'Chờ đóng tiền', NgayDangKy = NOW(), HocKy = VALUES(HocKy)`, [MSSV, MaLopHocPhan, lhp.HocKy]);
+            const phaseIdBatch = await getOpenPhaseId(conn, lhp.NamHoc, lhp.NienKhoa);
+            await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy, MaDot) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW(), ?) ON DUPLICATE KEY UPDATE TrangThai = 'Chờ đóng tiền', NgayDangKy = NOW(), HocKy = VALUES(HocKy), MaDot = VALUES(MaDot)`, [MSSV, MaLopHocPhan, lhp.HocKy, phaseIdBatch]);
         }
 
         // [BƯỚC 3]: CẬP NHẬT HOẶC TẠO MỚI HỌC PHÍ DỰA TRÊN TỔNG TÍN CHỈ
@@ -2178,18 +2277,43 @@ app.post('/api/enrollment/batch', async (req, res) => {
 // 5. API Hủy môn
 // Đặt đoạn này ngay phía trước API Hủy môn để tránh lỗi trùng route
 app.delete('/api/enrollment/phases/:id', async (req, res) => {
+    const maDot = req.params.id;
+    const dbConn = await db.promise().getConnection();
     try {
-        // Chỉ xóa duy nhất trong bảng dot_dangky, không can thiệp bất cứ bảng nào khác
-        await db.promise().query(
-            'DELETE FROM dot_dangky WHERE MaDot = ?',
-            [req.params.id]
+        await dbConn.beginTransaction();
+
+        // 1. Tìm và xóa các đợt đóng học phí (dot_dong_hoc_phi) liên quan đến đợt đăng ký này
+        const [tuitionPeriods] = await dbConn.execute(
+            'SELECT id FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?',
+            [maDot]
         );
 
+        for (const tp of tuitionPeriods) {
+            const dotId = tp.id;
+            const [hpRows] = await dbConn.execute('SELECT id FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+            for (const hp of hpRows) {
+                await dbConn.execute('DELETE FROM giao_dich_hoc_phi WHERE hoc_phi_id = ?', [hp.id]);
+                await dbConn.execute('DELETE FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hp.id]);
+            }
+            await dbConn.execute('DELETE FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+        }
+        await dbConn.execute('DELETE FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?', [maDot]);
+
+        // 2. Xóa các đăng ký học phần thuộc đợt này
+        await dbConn.execute('DELETE FROM dangky_hocphan WHERE MaDot = ?', [maDot]);
+
+        // 3. Xóa đợt đăng ký trong dot_dangky
+        await dbConn.execute('DELETE FROM dot_dangky WHERE MaDot = ?', [maDot]);
+
+        await dbConn.commit();
         notifyPhaseChange();
-        res.json({ success: true, message: 'Đã xóa đợt đăng ký thành công!' });
+        res.json({ success: true, message: 'Đã xóa đợt đăng ký và các dữ liệu học phí liên quan thành công!' });
     } catch (err) {
+        await dbConn.rollback();
         console.error("Lỗi khi xóa đợt đăng ký:", err);
         res.status(500).json({ message: 'Lỗi xóa đợt đăng ký', error: err.message });
+    } finally {
+        dbConn.release();
     }
 });
 // XÓA ĐĂNG KÝ - CHO PHÉP XÓA KHI CHƯA ĐÓNG TIỀN HOẶC ĐỢT VẪN MỞ
@@ -2460,9 +2584,20 @@ app.get('/api/enrollment/phases', async (req, res) => {
     }
 });
 
+// Helper tự động suy luận hoặc lấy NamHoc cho đợt đăng ký
+const deriveNamHoc = (hocKy, tenDot, nienKhoa, namHocReq) => {
+    if (namHocReq && typeof namHocReq === 'string' && namHocReq.trim()) return namHocReq.trim();
+    const str = `${hocKy || ''} ${tenDot || ''}`;
+    const match = str.match(/(\d{4}[-_]\d{4})/);
+    if (match) return match[1].replace('_', '-');
+    if (nienKhoa && typeof nienKhoa === 'string' && nienKhoa.match(/^\d{4}[-_]\d{4}$/)) return nienKhoa.replace('_', '-');
+    return null;
+};
+
 // 7. Tạo mới một đợt đăng ký (CHÈN DỮ LIỆU vào dot_dangky)
 app.post('/api/enrollment/phases', async (req, res) => {
     const { TenDot, HocKy, NienKhoa, NgayTao, NgayDong } = req.body;
+    const namHocVal = deriveNamHoc(HocKy, TenDot, NienKhoa, req.body.NamHoc);
 
     if (!TenDot || !NgayTao || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
@@ -2535,9 +2670,9 @@ app.post('/api/enrollment/phases', async (req, res) => {
         const formattedNgayDong = formatMySQLDateTime(endDate);
 
         const [result] = await db.promise().query(
-            `INSERT INTO dot_dangky (TenDot, MoTa, HocKy, NienKhoa, NgayTao, NgayDong, TrangThai)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [TenDot, req.body.MoTa || null, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi]
+            `INSERT INTO dot_dangky (TenDot, MoTa, HocKy, NamHoc, NienKhoa, NgayTao, NgayDong, TrangThai)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [TenDot, req.body.MoTa || null, HocKy || null, namHocVal, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi]
         );
 
         const [[newPhase]] = await db.promise().query(
@@ -2554,6 +2689,7 @@ app.post('/api/enrollment/phases', async (req, res) => {
 // 8. Cập nhật một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.put('/api/enrollment/phases/:id', async (req, res) => {
     const { TenDot, HocKy, NienKhoa, NgayTao, NgayDong } = req.body;
+    const namHocVal = deriveNamHoc(HocKy, TenDot, NienKhoa, req.body.NamHoc);
     const { id } = req.params;
 
     if (!TenDot || !NgayTao || !NgayDong) {
@@ -2646,9 +2782,9 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
 
         const [result] = await db.promise().query(
             `UPDATE dot_dangky
-       SET TenDot = ?, MoTa = ?, HocKy = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
+       SET TenDot = ?, MoTa = ?, HocKy = ?, NamHoc = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
        WHERE MaDot = ?`,
-            [TenDot, req.body.MoTa || null, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi, id]
+            [TenDot, req.body.MoTa || null, HocKy || null, namHocVal, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi, id]
         );
 
         if (result.affectedRows === 0) {
@@ -2692,29 +2828,27 @@ app.post('/api/enrollment/phases/:id/reopen', async (req, res) => {
         if (existingPhase.TrangThai !== 'Dong') return res.status(400).json({ message: 'Đợt này chưa đóng.' });
 
         const now = new Date();
-        let newEndDate = existingPhase.NgayDong;
-        let isExtended = false;
+        const endDate = new Date(existingPhase.NgayDong);
         
-        if (new Date(existingPhase.NgayDong).getTime() <= now.getTime()) {
-            newEndDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-            isExtended = true;
+        if (endDate.getTime() <= now.getTime()) {
+            return res.status(400).json({ message: 'Không thể mở lại đợt đăng ký đã kết thúc trong quá khứ.' });
         }
 
-        const conflictPhase = await findConflictingOpenPhase(existingPhase.NgayTao, newEndDate, id);
+        const conflictPhase = await findConflictingOpenPhase(existingPhase.NgayTao, endDate, id);
         if (conflictPhase) {
             return res.status(409).json({
                 message: `Thời gian bị chồng chéo với đợt "${conflictPhase.TenDot}". Không thể mở nhiều đợt cùng lúc.`
             });
         }
 
-        const formattedNgayDong = formatMySQLDateTime(newEndDate);
+        const formattedNgayDong = formatMySQLDateTime(endDate);
         await db.promise().query(
             `UPDATE dot_dangky SET TrangThai = 'Mo', NgayDong = ? WHERE MaDot = ?`,
             [formattedNgayDong, id]
         );
 
         notifyPhaseChange();
-        res.json({ success: true, message: 'Mở lại đợt đăng ký thành công!', extended: isExtended });
+        res.json({ success: true, message: 'Mở lại đợt đăng ký thành công!' });
     } catch (err) {
         console.error('POST /api/enrollment/phases/:id/reopen error:', err);
         res.status(500).json({ message: 'Lỗi mở lại đợt đăng ký!', error: err.message });
@@ -2780,36 +2914,9 @@ app.post('/api/admin/confirm-tuition', async (req, res) => {
 // ==================== QUẢN LÝ HỌC PHÍ - SINH VIÊN ====================
 
 // Sinh viên xem danh sách học phí của mình
-app.get('/student/tuitions/:maSinhVien', (req, res) => {
-    const { maSinhVien } = req.params;
-
-    const query = `
-        SELECT 
-            t.id,
-            t.ma_sinh_vien,
-            t.hoc_ky,
-            t.so_tien,
-            t.han_nop,
-            t.trang_thai,
-            t.ngay_thanh_toan,
-            t.ghi_chu
-        FROM hoc_phi t
-        WHERE t.ma_sinh_vien = ?
-        ORDER BY t.han_nop DESC, t.hoc_ky DESC
-    `;
-
-    db.query(query, [maSinhVien], (err, results) => {
-        if (err) {
-            console.error("Lỗi lấy học phí:", err);
-            return res.status(500).json({
-                success: false,
-                message: "Lỗi lấy học phí của sinh viên!",
-                error: err.message
-            });
-        }
-        res.json(results);
-    });
-});
+/* [LEGACY TUITION ROUTE REMOVED] 
+app.get('/student/tuitions/:maSinhVien', ...); 
+*/
 // Sinh viên lưu đăng ký tạm
 app.post('/api/dang-ky', (req, res) => {
     const { mssv, maLopHocPhan } = req.body;
@@ -3046,45 +3153,10 @@ app.put('/api/schedules/lophocphan/:maLHP/reschedule', async (req, res) => {
     });
 });
 
-// ==================== [ADMIN] QUẢN LÝ HỌC PHÍ ====================
-// Route mới để lấy danh sách học phí cho Admin
-app.get('/api/admin/tuitions', (req, res) => {
-    const query = `
-        SELECT 
-            t.id,
-            t.ma_sinh_vien,
-            s.HoTen as ten_sinh_vien,
-            t.hoc_ky,
-            t.so_tien,
-            t.han_nop,
-            t.trang_thai,
-            t.ngay_thanh_toan,
-            t.ghi_chu
-        FROM hoc_phi t
-        LEFT JOIN sinhvien s ON t.ma_sinh_vien = s.MSSV
-        ORDER BY t.han_nop DESC
-    `;
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error("Lỗi lấy học phí:", err);
-            return res.status(500).json({ success: false, message: "Lỗi hệ thống!" });
-        }
-        res.json(results);
-    });
-});
-
-// Route mới để cập nhật trạng thái học phí
-app.put('/api/admin/tuitions/:id/status', (req, res) => {
-    const { trang_thai } = req.body;
-    const query = "UPDATE hoc_phi SET trang_thai = ? WHERE id = ?";
-    db.query(query, [trang_thai, req.params.id], (err, result) => {
-        if (err) {
-            console.error("Lỗi cập nhật học phí:", err);
-            return res.status(500).json({ success: false, message: "Lỗi cập nhật!" });
-        }
-        res.json({ success: true, message: "Cập nhật thành công!" });
-    });
-});
+/* [LEGACY ADMIN TUITION ROUTES REMOVED]
+app.get('/api/admin/tuitions', ...);
+app.put('/api/admin/tuitions/:id/status', ...);
+*/
 // ==================== GRADES & ACADEMIC ====================
 app.get('/api/grades', (req, res) => executeQuery('SELECT d.*, s.HoTen as TenSinhVien, IFNULL(lhp.MaMonHoc, d.MaLopHocPhan) as MaMonHoc, mh.TenMonHoc FROM diem d LEFT JOIN sinhvien s ON d.MSSV = s.MSSV LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN monhoc mh ON mh.MaMonHoc = IFNULL(lhp.MaMonHoc, d.MaLopHocPhan)', [], res, 'Lỗi!'));
 
@@ -3696,6 +3768,35 @@ app.delete('/api/admin/support-requests/:id', (req, res) => {
     executeUpdate('UPDATE yeucau_hotro SET IsDeletedByAdmin = 1 WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
 });
 
+app.get('/api/admin/support-requests/deleted', (req, res) => {
+    const query = `
+        SELECT y.*, 
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN y.MSSV
+            ELSE y.MaGiangVien
+        END as NguoiGui,
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN 'SinhVien'
+            ELSE 'GiangVien'
+        END as VaiTro,
+        y.ChuDe as TieuDe,
+        CASE 
+            WHEN y.MSSV IS NOT NULL THEN (SELECT HoTen FROM sinhvien WHERE MSSV = y.MSSV)
+            ELSE (SELECT HoTen FROM giangvien WHERE MaGiangVien = y.MaGiangVien)
+        END as TenNguoiGui
+        FROM yeucau_hotro y WHERE y.IsDeletedByAdmin = 1 ORDER BY y.NgayGui DESC
+    `;
+    executeQuery(query, [], res, 'Lỗi lấy yêu cầu!');
+});
+
+app.put('/api/admin/support-requests/:id/restore', (req, res) => {
+    executeUpdate('UPDATE yeucau_hotro SET IsDeletedByAdmin = 0 WHERE MaYeuCau = ?', [req.params.id], res, 'Khôi phục yêu cầu thành công!', 'Lỗi khôi phục yêu cầu!');
+});
+
+app.delete('/api/admin/support-requests/:id/hard', (req, res) => {
+    executeUpdate('UPDATE yeucau_hotro SET IsDeletedByAdmin = 2 WHERE MaYeuCau = ?', [req.params.id], res, 'Xóa vĩnh viễn yêu cầu thành công!', 'Lỗi xóa yêu cầu!');
+});
+
 // Lấy chi tiết tiêu chí đã tích của 1 phiếu đánh giá (dùng chung cho SV xem lại / Admin xem breakdown)
 app.get('/api/training-points/:id/details', (req, res) => {
     console.log('GET /api/training-points/:id/details - MaDanhGia:', req.params.id);
@@ -3871,64 +3972,72 @@ app.use('/api/exam', onlineExamRoutes);
 
 // ==================== [MODULE: HỌC PHÍ + VIETQR] ====================
 
-// --- Tự động tạo bảng khi khởi động ---
-db.getConnection((err, conn) => {
-    if (err) return;
-    const createTables = [
-        `CREATE TABLE IF NOT EXISTS dot_dong_hoc_phi (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            ma_dot_dangky INT NOT NULL,
-            hoc_ky VARCHAR(20) NOT NULL,
-            ten_dot VARCHAR(200) NOT NULL,
-            ngay_mo DATETIME NOT NULL,
-            ngay_dong DATETIME NOT NULL,
-            trang_thai ENUM('chua_mo','dang_mo','da_dong') DEFAULT 'chua_mo',
-            don_gia_tin_chi DECIMAL(15,0) NOT NULL,
-            tao_boi VARCHAR(50) NOT NULL,
-            ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`,
-        `CREATE TABLE IF NOT EXISTS hoc_phi_v2 (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            mssv VARCHAR(20) NOT NULL,
-            dot_id INT NOT NULL,
-            so_tien DECIMAL(15,0) NOT NULL,
-            trang_thai ENUM('Chưa đóng','Đã đóng') DEFAULT 'Chưa đóng',
-            ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uq_mssv_dot (mssv, dot_id)
-        )`,
-        `CREATE TABLE IF NOT EXISTS hoc_phi_chi_tiet (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            hoc_phi_id INT NOT NULL,
-            ma_lop_hoc_phan VARCHAR(50) NOT NULL,
-            ten_mon_hoc VARCHAR(100) NOT NULL,
-            so_tin_chi INT NOT NULL,
-            don_gia DECIMAL(15,0) NOT NULL,
-            thanh_tien DECIMAL(15,0) NOT NULL,
-            FOREIGN KEY (hoc_phi_id) REFERENCES hoc_phi_v2(id) ON DELETE CASCADE
-        )`,
-        `CREATE TABLE IF NOT EXISTS giao_dich_hoc_phi (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            hoc_phi_id INT NOT NULL,
-            ma_giao_dich VARCHAR(80) UNIQUE NOT NULL,
-            so_tien DECIMAL(15,0) NOT NULL,
-            noi_dung VARCHAR(100) NOT NULL,
-            qr_url TEXT NULL,
-            trang_thai ENUM('cho_thanh_toan','thanh_cong','that_bai','het_han') DEFAULT 'cho_thanh_toan',
-            nguon_xac_nhan ENUM('auto','manual') NULL,
-            admin_username VARCHAR(50) NULL,
-            minh_chung_url VARCHAR(255) NULL,
-            ghi_chu TEXT NULL,
-            thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP,
-            thoi_gian_xac_nhan DATETIME NULL,
-            FOREIGN KEY (hoc_phi_id) REFERENCES hoc_phi_v2(id)
-        )`
-    ];
-    let idx = 0;
-    const runNext = () => {
-        if (idx >= createTables.length) { conn.release(); return; }
-        conn.query(createTables[idx++], (e) => { if (e && e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[HocPhi] Tạo bảng lỗi:', e.message); runNext(); });
-    };
-    runNext();
+// --- Tự động kiểm tra & migration DB khi khởi động/thực thi API học phí trên Vercel ---
+let isTuitionDbMigrated = false;
+let isMigratingTuitionDb = false;
+
+const ensureTuitionDbMigrated = async () => {
+    if (isTuitionDbMigrated) return;
+    if (isMigratingTuitionDb) {
+        for (let i = 0; i < 30 && isMigratingTuitionDb; i++) await new Promise(r => setTimeout(r, 100));
+        return;
+    }
+    isMigratingTuitionDb = true;
+    try {
+        const dbConn = await db.promise().getConnection();
+        const queries = [
+            'SET FOREIGN_KEY_CHECKS = 0;',
+            `CREATE TABLE IF NOT EXISTS dot_dangky (MaDot INT NOT NULL AUTO_INCREMENT PRIMARY KEY, TenDot VARCHAR(255) NOT NULL, MoTa TEXT, HocKy VARCHAR(50) NOT NULL, NamHoc VARCHAR(50), NienKhoa VARCHAR(50) NOT NULL, NgayTao DATETIME NOT NULL, NgayDong DATETIME NOT NULL, TrangThai VARCHAR(50) DEFAULT 'Mo');`,
+            `CREATE TABLE IF NOT EXISTS dot_dong_hoc_phi (id INT PRIMARY KEY AUTO_INCREMENT, ma_dot_dangky INT NOT NULL DEFAULT 0, hoc_ky VARCHAR(50) NOT NULL DEFAULT '', ten_dot VARCHAR(255) NOT NULL DEFAULT '', ngay_mo DATETIME NOT NULL, ngay_dong DATETIME NOT NULL, trang_thai VARCHAR(50) DEFAULT 'chua_mo', don_gia_tin_chi DECIMAL(15,0) NOT NULL DEFAULT 1150000, tao_boi VARCHAR(50) NOT NULL DEFAULT 'admin', ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP);`,
+            `CREATE TABLE IF NOT EXISTS hoc_phi_v2 (id INT PRIMARY KEY AUTO_INCREMENT, mssv VARCHAR(50) NOT NULL, dot_id INT NOT NULL, so_tien DECIMAL(15,0) NOT NULL DEFAULT 0, trang_thai VARCHAR(50) DEFAULT 'Chưa đóng', ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_mssv_dot (mssv, dot_id));`,
+            `CREATE TABLE IF NOT EXISTS hoc_phi_chi_tiet (id INT PRIMARY KEY AUTO_INCREMENT, hoc_phi_id INT NOT NULL, ma_lop_hoc_phan VARCHAR(50) NOT NULL DEFAULT '', ten_mon_hoc VARCHAR(255) NOT NULL DEFAULT '', so_tin_chi INT NOT NULL DEFAULT 0, don_gia DECIMAL(15,0) NOT NULL DEFAULT 0, thanh_tien DECIMAL(15,0) NOT NULL DEFAULT 0, phi_tai_lieu DECIMAL(15,2) DEFAULT 0, hoc_phi DECIMAL(15,2) DEFAULT 0, mien_giam DECIMAL(15,2) DEFAULT 0);`,
+            `CREATE TABLE IF NOT EXISTS giao_dich_hoc_phi (id INT PRIMARY KEY AUTO_INCREMENT, hoc_phi_id INT NOT NULL, ma_giao_dich VARCHAR(100) NULL, so_tien DECIMAL(15,0) NOT NULL DEFAULT 0, noi_dung VARCHAR(255) NOT NULL DEFAULT '', qr_url TEXT NULL, trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan', nguon_xac_nhan VARCHAR(50) NULL, admin_username VARCHAR(50) NULL, minh_chung_url VARCHAR(255) NULL, ghi_chu TEXT NULL, thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP, thoi_gian_xac_nhan DATETIME NULL);`,
+            `ALTER TABLE dot_dangky ADD COLUMN MoTa TEXT DEFAULT NULL;`,
+            `ALTER TABLE dot_dangky ADD COLUMN NamHoc VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE dot_dangky ADD COLUMN NienKhoa VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ma_dot_dangky INT NOT NULL DEFAULT 0;`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN hoc_ky VARCHAR(50) DEFAULT '';`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ten_dot VARCHAR(255) DEFAULT '';`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN don_gia_tin_chi DECIMAL(15,0) DEFAULT 1150000;`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN tao_boi VARCHAR(50) DEFAULT 'admin';`,
+            `ALTER TABLE hoc_phi_v2 ADD COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+            `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE lophocphan ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE lophocphan ADD COLUMN mien_hoc_phi BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;`,
+            `ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;`,
+            `ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN nguon_xac_nhan VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN admin_username VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN minh_chung_url VARCHAR(255) DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN ghi_chu TEXT DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN thoi_gian_xac_nhan DATETIME DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN qr_url TEXT DEFAULT NULL;`,
+            `ALTER TABLE dot_dangky MODIFY COLUMN TrangThai VARCHAR(50) DEFAULT 'Mo';`,
+            `ALTER TABLE dot_dong_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'chua_mo';`,
+            `ALTER TABLE hoc_phi_v2 MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+            `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan';`,
+            `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN ma_giao_dich VARCHAR(100) NULL;`,
+            'SET FOREIGN_KEY_CHECKS = 1;'
+        ];
+        for (const q of queries) {
+            try { await dbConn.query(q); } catch (e) { /* Bỏ qua lỗi cột/bảng đã tồn tại */ }
+        }
+        dbConn.release();
+        isTuitionDbMigrated = true;
+    } catch (e) {
+        console.error('[HocPhi] Lỗi auto-migrate DB:', e.message);
+    } finally {
+        isMigratingTuitionDb = false;
+    }
+};
+
+// Middleware tự động kiểm tra DB trước khi thực thi các API học phí
+app.use(['/api/admin/tuition-periods', '/api/admin/tuitions', '/api/student/tuitions'], async (req, res, next) => {
+    await ensureTuitionDbMigrated();
+    next();
 });
 
 // Helper: slug nội dung không dấu
@@ -3972,22 +4081,29 @@ app.get('/api/admin/tuition-periods', verifyToken, (req, res) => {
 app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền truy cập!' });
     const { ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong } = req.body;
-    const don_gia_tin_chi = 1150000; // Cố định 1 tín chỉ = 1,150,000 VNĐ theo yêu cầu
-    if (!ma_dot_dangky || !hoc_ky || !ten_dot || !ngay_mo || !ngay_dong) {
+    const don_gia_tin_chi = Number(req.body.don_gia_tin_chi) || 10000; // Cố định 1 tín chỉ = 10,000 VNĐ hoặc theo config
+    if (!hoc_ky || !ten_dot || !ngay_mo || !ngay_dong) {
         return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc!' });
     }
     const dbConn = await db.promise().getConnection();
     try {
         await dbConn.beginTransaction();
 
+        // Tìm hoặc lấy ma_dot_dangky đại diện nếu không được truyền rõ ràng
+        let maDotDangKyVal = ma_dot_dangky;
+        if (!maDotDangKyVal) {
+            const [[repDot]] = await dbConn.execute('SELECT MaDot FROM dot_dangky WHERE HocKy = ? LIMIT 1', [hoc_ky]);
+            maDotDangKyVal = repDot ? repDot.MaDot : 0;
+        }
+
         // Insert đợt đóng học phí
         const [dotResult] = await dbConn.execute(
             'INSERT INTO dot_dong_hoc_phi (ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, tao_boi, trang_thai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, req.user.username || req.user.id, 'chua_mo']
+            [maDotDangKyVal, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, req.user.username || req.user.id, 'chua_mo']
         );
         const dotId = dotResult.insertId;
 
-        // Lấy toàn bộ SV + môn học trong đợt đăng ký, join lophocphan để lấy số tín chỉ + cấu hình phí tài liệu
+        // Lấy toàn bộ SV + môn học trong học kỳ này không bị hủy/từ chối (bao trùm tất cả các đợt mở cho khóa/lớp)
         const [svRows] = await dbConn.execute(
             `SELECT dk.MSSV, dk.MaLopHocPhan, dk.HocKy,
                     m.TenMonHoc, m.SoTinChi,
@@ -3996,7 +4112,7 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
              FROM dangky_hocphan dk
              JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan
              JOIN monhoc m ON lhp.MaMonHoc = m.MaMonHoc
-             WHERE dk.HocKy = ? AND dk.TrangThai IN ('Đã duyệt','da_duyet','Chấp nhận','approved')`,
+             WHERE dk.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối')`,
             [hoc_ky]
         );
 
@@ -4061,34 +4177,74 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
 });
 
 // PUT /api/admin/tuition-periods/:id/status — Mở/đóng đợt
-app.put('/api/admin/tuition-periods/:id/status', verifyToken, (req, res) => {
+app.put('/api/admin/tuition-periods/:id/status', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
     const { trang_thai } = req.body;
     const allowed = ['chua_mo', 'dang_mo', 'da_dong'];
     if (!allowed.includes(trang_thai)) return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
-    db.query('UPDATE dot_dong_hoc_phi SET trang_thai = ? WHERE id = ?', [trang_thai, req.params.id], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+    try {
+        if (trang_thai === 'dang_mo') {
+            const [[active]] = await db.promise().execute("SELECT id, ten_dot FROM dot_dong_hoc_phi WHERE trang_thai = 'dang_mo' AND id != ? LIMIT 1", [req.params.id]);
+            if (active) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Hiện đang có đợt thu học phí "${active.ten_dot}" đang mở! Hệ thống chỉ cho phép mở 1 đợt tại một thời điểm. Vui lòng đóng đợt đó trước khi mở đợt mới.`
+                });
+            }
+        }
+        await db.promise().execute('UPDATE dot_dong_hoc_phi SET trang_thai = ? WHERE id = ?', [trang_thai, req.params.id]);
         res.json({ success: true, message: 'Cập nhật trạng thái thành công!' });
-    });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+    }
+});
+
+// DELETE /api/admin/tuition-periods/:id — Xóa đợt đóng học phí
+app.delete('/api/admin/tuition-periods/:id', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const dotId = req.params.id;
+    const dbConn = await db.promise().getConnection();
+    try {
+        await dbConn.beginTransaction();
+        const [hpRows] = await dbConn.execute('SELECT id FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+        for (const hp of hpRows) {
+            await dbConn.execute('DELETE FROM giao_dich_hoc_phi WHERE hoc_phi_id = ?', [hp.id]);
+            await dbConn.execute('DELETE FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hp.id]);
+        }
+        await dbConn.execute('DELETE FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+        await dbConn.execute('DELETE FROM dot_dong_hoc_phi WHERE id = ?', [dotId]);
+        await dbConn.commit();
+        res.json({ success: true, message: 'Đã xóa đợt học phí thành công!' });
+    } catch (err) {
+        await dbConn.rollback();
+        res.status(500).json({ success: false, message: 'Lỗi xóa đợt học phí!', error: err.message });
+    } finally {
+        dbConn.release();
+    }
 });
 
 // GET /api/admin/tuitions?dot_id=&status=&search= — Danh sách học phí theo đợt
 app.get('/api/admin/tuitions', verifyToken, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
-    const { dot_id, status, search } = req.query;
-    let sql = `SELECT hp.*, sv.HoTen as ten_sinh_vien, sv.MaLop,
+    const { dot_id, status, search, khoa, nien_khoa, lop } = req.query;
+    let sql = `SELECT hp.*, sv.HoTen as ten_sinh_vien, sv.MaLop, l.NienKhoa as nien_khoa, l.MaKhoa as ma_khoa, k.TenKhoa as ten_khoa,
                 (SELECT gd.trang_thai FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_trang_thai,
                 (SELECT gd.nguon_xac_nhan FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_nguon,
                 (SELECT gd.admin_username FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_admin,
                 (SELECT gd.ghi_chu FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_ghi_chu,
                 (SELECT gd.thoi_gian_xac_nhan FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_thoi_gian
                FROM hoc_phi_v2 hp
-               LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV`;
+               LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
+               LEFT JOIN lophoc l ON sv.MaLop = l.MaLop
+               LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa`;
     const params = [];
     const conditions = [];
     if (dot_id) { conditions.push('hp.dot_id = ?'); params.push(dot_id); }
     if (status && status !== 'all') { conditions.push('hp.trang_thai = ?'); params.push(status); }
     if (search) { conditions.push('(hp.mssv LIKE ? OR sv.HoTen LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+    if (khoa && khoa !== 'all') { conditions.push('l.MaKhoa = ?'); params.push(khoa); }
+    if (nien_khoa && nien_khoa !== 'all') { conditions.push('l.NienKhoa = ?'); params.push(nien_khoa); }
+    if (lop && lop !== 'all') { conditions.push('sv.MaLop = ?'); params.push(lop); }
     if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
     sql += ' ORDER BY hp.trang_thai ASC, sv.HoTen ASC';
     db.query(sql, params, (err, rows) => {
@@ -4177,7 +4333,7 @@ async function autoSyncStudentTuition(dbConn, hocPhiId, mssv, hocKy, donGiaTinCh
     );
 
     if (dkRows.length > 0) {
-        const donGia = Number(donGiaTinChi || 1150000);
+        const donGia = Number(donGiaTinChi || 10000);
         let tongTienMoi = 0;
         const chiTietMoi = dkRows.map(m => {
             const isMien = !!Number(m.MienHocPhi);
@@ -4294,18 +4450,37 @@ app.post('/api/student/tuitions/:hocPhiId/generate-qr', verifyToken, async (req,
             return res.status(409).json({ success: false, message: 'Học phí này đã được đóng rồi!' });
         }
 
-        // Sinh mã giao dịch unique
-        const maGD = `HP${hp.dot_id}${mssv}${Date.now()}`;
+        // Kiểm tra nếu đã có giao dịch đang chờ thanh toán cho học phí này thì tái sử dụng
+        const [[existingGD]] = await db.promise().execute(
+            'SELECT * FROM giao_dich_hoc_phi WHERE hoc_phi_id = ? AND trang_thai = ? ORDER BY id DESC LIMIT 1',
+            [hocPhiId, 'cho_thanh_toan']
+        );
+
+        // Hạn nộp mã QR: 15 phút kể từ lúc tạo
+        const now = new Date();
+        const hetHanQR = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+
+        if (existingGD && existingGD.qr_url) {
+            return res.json({
+                success: true,
+                data: {
+                    qr_url: existingGD.qr_url,
+                    so_tien: existingGD.so_tien,
+                    noi_dung: existingGD.noi_dung,
+                    ma_giao_dich: existingGD.ma_giao_dich,
+                    het_han: hetHanQR
+                }
+            });
+        }
+
+        // Sinh mã giao dịch unique ngắn nhọn (tránh vượt độ dài cột VARCHAR trong DB)
+        const maGD = `HP${hocPhiId}_${Date.now()}_${Math.floor(Math.random() * 899 + 100)}`;
         const soTien = Math.round(hp.so_tien);
 
         // Nội dung chuyển khoản: hoten-mssv-HK mấy năm nào (không dấu)
         const hoTenClean = removeVietnameseTones(hp.HoTen || 'SV').replace(/[^a-zA-Z0-9 ]/g, '').trim().toUpperCase();
         const hocKyClean = (hp.hoc_ky || '').replace(/_/g, ' ').trim().toUpperCase();
         const noiDung = `${hoTenClean} ${mssv} ${hocKyClean}`.replace(/\s+/g, ' ').substring(0, 50);
-
-        // Hạn nộp mã QR: 15 phút kể từ lúc tạo
-        const now = new Date();
-        const hetHanQR = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
         // Build VietQR URL (public API không cần key)
         const qrUrl = `https://img.vietqr.io/image/${VIETQR_BANK_ID}-${VIETQR_ACCOUNT}-${VIETQR_TEMPLATE}.png?amount=${soTien}&addInfo=${encodeURIComponent(noiDung)}&accountName=${encodeURIComponent(VIETQR_HOLDER)}`;
@@ -4319,6 +4494,114 @@ app.post('/api/student/tuitions/:hocPhiId/generate-qr', verifyToken, async (req,
     } catch (error) {
         console.error('[HocPhi] generate-qr lỗi:', error);
         res.status(500).json({ success: false, message: 'Lỗi sinh QR!', error: error.message });
+    }
+});
+
+// POST /api/student/tuitions/:hocPhiId/confirm-paid — API bắn xác nhận đã thanh toán chuyển khoản thành công
+app.post('/api/student/tuitions/:hocPhiId/confirm-paid', async (req, res) => {
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', hocPhiId]);
+        await db.promise().execute('UPDATE giao_dich_hoc_phi SET trang_thai = ?, ngay_giao_dich = NOW() WHERE hoc_phi_id = ?', ['thanh_cong', hocPhiId]);
+        res.json({ success: true, message: 'Đã xác nhận thanh toán thành công!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái', error: error.message });
+    }
+});
+
+// POST /api/student/tuitions/:hocPhiId/report-transfer — Sinh viên báo cáo đã chuyển khoản (Chờ duyệt)
+app.post('/api/student/tuitions/:hocPhiId/report-transfer', verifyToken, async (req, res) => {
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        const [[hp]] = await db.promise().execute('SELECT * FROM hoc_phi_v2 WHERE id = ?', [hocPhiId]);
+        if (!hp) return res.status(404).json({ success: false, message: 'Không tìm thấy học phí!' });
+
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Chờ duyệt', hocPhiId]);
+        
+        const [[latestGD]] = await db.promise().execute('SELECT id FROM giao_dich_hoc_phi WHERE hoc_phi_id = ? ORDER BY id DESC LIMIT 1', [hocPhiId]);
+        if (latestGD) {
+            await db.promise().execute(
+                'UPDATE giao_dich_hoc_phi SET trang_thai = ?, nguon_xac_nhan = ? WHERE id = ?',
+                ['cho_duyet', 'student_report', latestGD.id]
+            );
+        } else {
+            const maGD = `REP${hocPhiId}_${Date.now()}_${Math.floor(Math.random() * 899 + 100)}`;
+            await db.promise().execute(
+                'INSERT INTO giao_dich_hoc_phi (hoc_phi_id, ma_giao_dich, so_tien, noi_dung, trang_thai, nguon_xac_nhan, ghi_chu) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [hocPhiId, maGD, hp.so_tien, `Sinh vien bao cao CK ${hocPhiId}`, 'cho_duyet', 'student_report', 'SV đã bấm xác nhận thanh toán, chờ Admin kiểm tra STK']
+            );
+        }
+
+        res.json({ success: true, message: 'Đã gửi báo cáo thanh toán! Vui lòng chờ Admin kiểm tra STK.' });
+    } catch (error) {
+        console.error('[HocPhi] report-transfer error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi gửi báo cáo', error: error.message });
+    }
+});
+
+// PUT /api/admin/tuitions/:hocPhiId/approve-payment — Admin duyệt thanh toán sau khi kiểm tra STK
+app.put('/api/admin/tuitions/:hocPhiId/approve-payment', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Chỉ admin!' });
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        const [[hp]] = await db.promise().execute('SELECT * FROM hoc_phi_v2 WHERE id = ?', [hocPhiId]);
+        if (!hp) return res.status(404).json({ success: false, message: 'Không tìm thấy học phí!' });
+
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', hocPhiId]);
+
+        const [resGD] = await db.promise().execute(
+            'UPDATE giao_dich_hoc_phi SET trang_thai = ?, admin_username = ?, thoi_gian_xac_nhan = NOW(), ghi_chu = ? WHERE hoc_phi_id = ? AND trang_thai = ?',
+            ['thanh_cong', req.user.username || req.user.id, 'Admin kiểm tra STK đã có tiền', hocPhiId, 'cho_duyet']
+        );
+
+        if (resGD.affectedRows === 0) {
+            const maGD = `CHK${hocPhiId}_${Date.now()}_${Math.floor(Math.random() * 899 + 100)}`;
+            await db.promise().execute(
+                'INSERT INTO giao_dich_hoc_phi (hoc_phi_id, ma_giao_dich, so_tien, noi_dung, trang_thai, nguon_xac_nhan, admin_username, ghi_chu, thoi_gian_xac_nhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+                [hocPhiId, maGD, hp.so_tien, `Admin kiem tra STK duyet ${hocPhiId}`, 'thanh_cong', 'admin_check', req.user.username || req.user.id, 'Admin kiểm tra STK đã nhận tiền']
+            );
+        }
+
+        res.json({ success: true, message: 'Đã duyệt học phí thành công!' });
+    } catch (error) {
+        console.error('[HocPhi] approve-payment error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi duyệt học phí', error: error.message });
+    }
+});
+
+// PUT /api/admin/tuitions/:hocPhiId/reject-payment — Admin từ chối thanh toán (nếu kiểm tra chưa vào tiền)
+app.put('/api/admin/tuitions/:hocPhiId/reject-payment', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Chỉ admin!' });
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Chưa đóng', hocPhiId]);
+        await db.promise().execute(
+            'UPDATE giao_dich_hoc_phi SET trang_thai = ?, admin_username = ?, ghi_chu = ? WHERE hoc_phi_id = ? AND trang_thai = ?',
+            ['that_bai', req.user.username || req.user.id, 'Admin kiểm tra STK chưa thấy thông tin chuyển khoản', hocPhiId, 'cho_duyet']
+        );
+        res.json({ success: true, message: 'Đã đẩy lại trạng thái Chưa thanh toán!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi từ chối', error: error.message });
+    }
+});
+
+// POST /api/webhook/payment — API Webhook nhận tín hiệu chuyển khoản từ ngân hàng / Casso / SePay
+app.post('/api/webhook/payment', async (req, res) => {
+    const { ma_giao_dich, hoc_phi_id, so_tien } = req.body;
+    try {
+        if (hoc_phi_id) {
+            await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', hoc_phi_id]);
+            await db.promise().execute('UPDATE giao_dich_hoc_phi SET trang_thai = ?, ngay_giao_dich = NOW() WHERE hoc_phi_id = ?', ['thanh_cong', hoc_phi_id]);
+        } else if (ma_giao_dich) {
+            const [[gd]] = await db.promise().execute('SELECT hoc_phi_id FROM giao_dich_hoc_phi WHERE ma_giao_dich = ?', [ma_giao_dich]);
+            if (gd) {
+                await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', gd.hoc_phi_id]);
+                await db.promise().execute('UPDATE giao_dich_hoc_phi SET trang_thai = ?, ngay_giao_dich = NOW() WHERE ma_giao_dich = ?', ['thanh_cong', ma_giao_dich]);
+            }
+        }
+        res.json({ success: true, message: 'Webhook processed successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Webhook error', error: error.message });
     }
 });
 

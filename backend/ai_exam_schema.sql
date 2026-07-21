@@ -121,47 +121,35 @@ CREATE TABLE IF NOT EXISTS documents (
     FOREIGN KEY (ma_giang_vien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Bảng Quản lý Phiên sinh câu hỏi AI (Sessions)
-CREATE TABLE IF NOT EXISTS ai_generation_sessions (
+-- 2. Bảng Quản lý Phiên gợi ý AI (Advisor Sessions - TTL 30 phút)
+CREATE TABLE IF NOT EXISTS ai_suggestion_sessions (
+    id VARCHAR(64) PRIMARY KEY,
+    giangvien_id VARCHAR(20) NOT NULL,
+    tieu_chi JSON NOT NULL,
+    goi_y JSON NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    INDEX idx_expires_at (expires_at),
+    FOREIGN KEY (giangvien_id) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Bảng Nhật ký gợi ý AI (Audit Log)
+CREATE TABLE IF NOT EXISTS ai_suggestion_audit_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    document_id INT NOT NULL,
-    ma_mon_hoc VARCHAR(20) NOT NULL,
-    ma_giang_vien VARCHAR(20) NOT NULL,
-    so_cau_yeu_cau INT DEFAULT 10,
-    so_cau_da_sinh INT DEFAULT 0,
-    do_kho ENUM('Easy', 'Medium', 'Hard', 'Mixed') DEFAULT 'Mixed',
-    chu_de VARCHAR(255) DEFAULT 'Toàn bộ',
-    trang_thai ENUM('READY', 'RUNNING', 'FAILED', 'COMPLETED') DEFAULT 'READY',
-    error_message TEXT NULL,
+    giangvien_id VARCHAR(20) NOT NULL,
+    mon_hoc_id VARCHAR(20) NULL,
+    so_cau_goi_y INT DEFAULT 0,
+    thoi_gian DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (giangvien_id) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Bảng Bộ đệm Knowledge Graph của tài liệu (KG Cache)
+CREATE TABLE IF NOT EXISTS document_knowledge_graph (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    document_id INT NOT NULL UNIQUE,
+    kg_json MEDIUMTEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
-    FOREIGN KEY (ma_mon_hoc) REFERENCES monhoc(MaMonHoc) ON DELETE CASCADE,
-    FOREIGN KEY (ma_giang_vien) REFERENCES giangvien(MaGiangVien) ON DELETE CASCADE
+    FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Bảng Câu hỏi tạm thời do AI sinh ra (Staging Questions)
-CREATE TABLE IF NOT EXISTS ai_generated_questions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    session_id INT NOT NULL,
-    document_id INT NOT NULL,
-    bank_question_id INT NULL,
-    chu_de VARCHAR(150),
-    noi_dung TEXT NOT NULL,
-    giai_thich TEXT,
-    do_kho ENUM('Easy', 'Medium', 'Hard') DEFAULT 'Medium',
-    trang_thai ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES ai_generation_sessions(id) ON DELETE CASCADE,
-    FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
-    FOREIGN KEY (bank_question_id) REFERENCES questions(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 4. Bảng Đáp án cho Câu hỏi tạm thời do AI sinh ra
-CREATE TABLE IF NOT EXISTS ai_generated_options (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    question_id INT NOT NULL,
-    noi_dung TEXT NOT NULL,
-    la_dap_an_dung BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (question_id) REFERENCES ai_generated_questions(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -4,13 +4,14 @@ import {
     Plus, Edit, Edit2, Trash2, Search, X, FileText, CheckCircle2, AlertCircle,
     Eye, Save, Sparkles, RefreshCw, CheckCheck, Filter, BookOpen, Layers,
     Clock, ArrowRight, UploadCloud, Check, HelpCircle, FolderCheck, Play,
-    BarChart2, CheckSquare, AlertTriangle, ChevronRight, Bookmark, Bell
+    BarChart2, CheckSquare, AlertTriangle, ChevronRight, Bookmark, Bell, Wand2
 } from 'lucide-react';
 import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
+import AiQuestionGenerator from './AiQuestionGenerator';
 
-function QuestionBankManagement({ targetSession, onClearTargetSession }) {
+function QuestionBankManagement({ targetSession, onClearTargetSession, onAiGeneratorDirtyChange }) {
     const [activeTab, setActiveTab] = useState('studio');
     const [loading, setLoading] = useState(false);
     const [subjects, setSubjects] = useState([]);
@@ -38,6 +39,35 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
     const [currentSession, setCurrentSession] = useState(null);
     const [stagingQuestions, setStagingQuestions] = useState([]);
     const [officialBanks, setOfficialBanks] = useState([]);
+    const [aiGeneratorDirty, setAiGeneratorDirty] = useState({ isDirty: false, title: '', count: 0 });
+
+    const handleTabSwitch = (newTab) => {
+        if (activeTab === newTab) return;
+        if (activeTab === 'studio' && aiGeneratorDirty.isDirty) {
+            setConfirmDialog({
+                show: true,
+                title: '⚠️ Cảnh Báo Đang Soạn Bộ Đề',
+                message: `Bạn đang trong quá trình soạn bộ đề "${aiGeneratorDirty.title || 'Mới'}" (${aiGeneratorDirty.count} câu hỏi chưa lưu) tại Kênh Soạn Đề AI.\n\nNếu chuyển sang tab khác lúc này, phiên soạn thảo chưa lưu sẽ bị xóa hoàn toàn.\n\nBạn có chắc chắn muốn rời đi không?`,
+                action: () => {
+                    setAiGeneratorDirty({ isDirty: false, title: '', count: 0 });
+                    if (onAiGeneratorDirtyChange) onAiGeneratorDirtyChange(false, '', 0);
+                    setActiveTab(newTab);
+                }
+            });
+            return;
+        }
+        setActiveTab(newTab);
+    };
+
+    const handleAiGeneratorDirtyChange = React.useCallback((isDirty, title, count) => {
+        setAiGeneratorDirty(prev => {
+            if (prev.isDirty === isDirty && prev.title === title && prev.count === count) return prev;
+            return { isDirty, title, count };
+        });
+        if (onAiGeneratorDirtyChange) {
+            onAiGeneratorDirtyChange(isDirty, title, count);
+        }
+    }, [onAiGeneratorDirtyChange]);
 
     // Cập nhật State để bắt được Lớp học phần
     const [uploadForm, setUploadForm] = useState({
@@ -52,6 +82,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
     });
     const [formErrors, setFormErrors] = useState({});
     const [isUploading, setIsUploading] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
     const [isResuming, setIsResuming] = useState(false);
     const [isApprovingAll, setIsApprovingAll] = useState(false);
 
@@ -82,55 +113,6 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
         currentSessionRef.current = currentSession;
     }, [currentSession]);
 
-    // Polling ngầm để kiểm tra tiến trình sinh câu hỏi AI và chỉ phát thông báo khi hoàn tất hoặc lỗi/dừng đột ngột
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            const prevList = sessionsRef.current || [];
-            const currSession = currentSessionRef.current;
-            try {
-                const res = await axios.get(`${API_URL}/api/ai-exams/sessions/teacher/${teacherId}`);
-                const newList = res.data?.data || [];
-                newList.forEach(newS => {
-                    const oldS = prevList.find(s => s.id === newS.id);
-                    if (oldS) {
-                        // Tự động cập nhật ngầm danh sách câu hỏi nếu số lượng câu hỏi thay đổi khi đang mở đề
-                        if ((newS.so_cau_da_sinh || 0) !== (oldS.so_cau_da_sinh || 0) && currSession && currSession.id === newS.id) {
-                            fetchStagingQuestions(newS.id);
-                        }
-
-                        // Đồng bộ trạng thái session hiện tại trên UI (ví dụ từ RUNNING sang COMPLETED/FAILED)
-                        if (currSession && currSession.id === newS.id) {
-                            if (newS.so_cau_da_sinh !== currSession.so_cau_da_sinh || newS.trang_thai !== currSession.trang_thai) {
-                                setCurrentSession(newS);
-                            }
-                        }
-
-                        // CHỈ thông báo khi luồng tạo đề AI kết thúc (từ trạng thái RUNNING chuyển sang trạng thái khác)
-                        const wasRunning = oldS.trang_thai === 'RUNNING';
-                        const isNowRunning = newS.trang_thai === 'RUNNING';
-
-                        if (wasRunning && !isNowRunning) {
-                            const isDone = (newS.so_cau_da_sinh || 0) >= (newS.so_cau_yeu_cau || 10) || newS.trang_thai === 'COMPLETED';
-                            const newNotif = {
-                                id: Date.now() + Math.random(),
-                                title: isDone ? 'Ting! Hoàn tất tạo bộ đề AI' : 'Cảnh báo: Tạo đề AI dừng đột ngột',
-                                message: isDone
-                                    ? `Ting! Bộ đề "${newS.doc_tieu_de || newS.tieu_de}" môn ${newS.TenMonHoc || newS.ma_mon_hoc} đã hoàn tất tạo đủ ${newS.so_cau_da_sinh}/${newS.so_cau_yeu_cau} câu hỏi. Nhấn để kiểm tra & duyệt đề.`
-                                    : `Bộ đề "${newS.doc_tieu_de || newS.tieu_de}" dừng đột ngột (đã tạo ${newS.so_cau_da_sinh || 0}/${newS.so_cau_yeu_cau} câu). Nhấn nút "Sinh Tiếp Câu Hỏi" để tạo tiếp.`,
-                                session: newS,
-                                time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-                            };
-                            setNotifications(prev => [newNotif, ...prev]);
-                            setUnreadCount(prev => prev + 1);
-                            showToast(newNotif.message, isDone ? 'success' : 'warning');
-                        }
-                    }
-                });
-                setSessions(newList);
-            } catch (err) {}
-        }, 4000);
-        return () => clearInterval(interval);
-    }, [teacherId]);
 
     useEffect(() => {
         if (targetSession) {
@@ -192,21 +174,8 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
     };
 
     const fetchSessions = async () => {
-        try {
-            const res = await axios.get(`${API_URL}/api/ai-exams/sessions/teacher/${teacherId}`);
-            const list = res.data?.data || [];
-            setSessions(list);
-
-            // Chỉ tự động chọn những session chưa hoàn thành
-            if (!currentSession) {
-                const activeSessions = list.filter(s => s.trang_thai !== 'COMPLETED');
-                if (activeSessions.length > 0) {
-                    setCurrentSession(activeSessions[0]);
-                }
-            }
-        } catch (error) {
-            console.error('Lỗi lấy danh sách đề AI:', error);
-        }
+        // Deprecated staging sessions API removed in refactor
+        setSessions([]);
     };
 
     const fetchOfficialBanks = async () => {
@@ -219,16 +188,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
     };
 
     const fetchStagingQuestions = async (sessionId) => {
-        try {
-            const params = {};
-            if (filterStatus !== 'All') params.trang_thai = filterStatus;
-            if (filterDifficulty !== 'All') params.do_kho = filterDifficulty;
-
-            const res = await axios.get(`${API_URL}/api/ai-exams/sessions/${sessionId}/questions`, { params });
-            setStagingQuestions(res.data?.data || []);
-        } catch (error) {
-            console.error('Lỗi lấy câu hỏi đề AI:', error);
-        }
+        setStagingQuestions([]);
     };
 
     const handleFileSelect = (e) => {
@@ -248,7 +208,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
             ...prev,
             file: file,
             file_name: file.name,
-            tieu_de: prev.tieu_de || file.name.replace(/\.[^/.]+$/, "")
+            tieu_de: prev.tieu_de
         }));
     };
 
@@ -287,58 +247,59 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
         }
 
         const errors = {};
-        const tieuDe = (uploadForm.tieu_de || '').trim();
-        const chuDe = (uploadForm.chu_de || '').trim();
+        const tieuDeInput = (uploadForm.tieu_de || '').trim();
+        const autoTieuDe = uploadForm.file ? uploadForm.file.name.replace(/\.[^/.]+$/, "") : '';
+        const effectiveTieuDe = tieuDeInput || autoTieuDe;
         const forbiddenChars = /[@#$%^&*!~`+=|<>?]/;
         const soCau = Number(uploadForm.so_cau_yeu_cau);
 
-        if (!uploadForm.ma_mon_hoc && !tieuDe && !uploadForm.file) {
+        if (!uploadForm.ma_mon_hoc && !effectiveTieuDe && !uploadForm.file && !soCau) {
             errors.ma_mon_hoc = 'Vui lòng chọn Môn học / Lớp học phần được phân công!';
-            errors.tieu_de = 'Vui lòng nhập tiêu đề bộ đề / tài liệu!';
-            errors.file = 'Bắt buộc định dạng Word (.doc, .docx). Không hỗ trợ ảnh hay PDF.';
+            errors.file = 'Vui lòng tải lên file tài liệu Word (.doc, .docx) để AI phân tích!';
+            errors.so_cau_yeu_cau = 'Vui lòng chọn số lượng câu hỏi muốn tạo!';
             setFormErrors(errors);
-            return showCustomAlert('Vui lòng nhập đầy đủ thông tin: Chọn môn học, nhập tiêu đề bộ đề và tải lên file Word (.doc, .docx)!', 'Thiếu thông tin bắt buộc');
+            return showCustomAlert('Vui lòng chọn Môn học phân công, tải lên file tài liệu Word (.docx) và cấu hình số câu hỏi trước khi nhấn "Bắt đầu tạo câu hỏi AI"!', 'Vui lòng hoàn thiện cấu hình tạo đề');
         }
 
         if (!uploadForm.ma_mon_hoc) {
             errors.ma_mon_hoc = 'Vui lòng chọn Môn học / Lớp học phần được phân công!';
         }
 
-        if (!tieuDe || tieuDe.length < 10 || tieuDe.length > 50) {
-            errors.tieu_de = 'Tiêu đề bộ đề / tài liệu phải từ 10 đến 50 ký tự!';
-        } else if (forbiddenChars.test(tieuDe)) {
-            errors.tieu_de = 'Tiêu đề bộ đề không được chứa ký tự đặc biệt (@, #, $, %, ...)!';
+        if (tieuDeInput !== '') {
+            if (tieuDeInput.length < 10 || tieuDeInput.length > 50) {
+                errors.tieu_de = 'Tiêu đề bộ đề tự nhập phải từ 10 đến 50 ký tự!';
+            } else if (forbiddenChars.test(tieuDeInput)) {
+                errors.tieu_de = 'Tiêu đề bộ đề không được chứa ký tự đặc biệt (@, #, $, %, ...)!';
+            }
+        } else if (!uploadForm.file) {
+            errors.tieu_de = 'Vui lòng nhập tiêu đề bộ đề hoặc chọn file tài liệu Word để tự động lấy tên!';
         }
 
         if (!uploadForm.file) {
-            errors.file = 'Bắt buộc định dạng Word (.doc, .docx). Không hỗ trợ ảnh hay PDF.';
+            errors.file = 'Vui lòng kéo thả hoặc tải lên file tài liệu Word (.doc, .docx) để AI phân tích!';
         } else {
             const ext = uploadForm.file.name.toLowerCase();
             if (!ext.endsWith('.doc') && !ext.endsWith('.docx')) {
-                errors.file = 'Bắt buộc định dạng Word (.doc, .docx). Không hỗ trợ ảnh hay PDF.';
+                errors.file = 'Hệ thống chỉ hỗ trợ định dạng Word (.doc, .docx). Không hỗ trợ ảnh hay PDF!';
             }
         }
 
-        if (chuDe && chuDe !== 'Toàn bộ') {
-            if (chuDe.length < 10 || chuDe.length > 50) {
-                errors.chu_de = 'Chủ đề / Chương phải từ 10 đến 50 ký tự!';
-            } else if (forbiddenChars.test(chuDe)) {
-                errors.chu_de = 'Chủ đề / Chương không được chứa ký tự đặc biệt!';
-            }
-        }
-
-        if (!soCau || isNaN(soCau) || soCau < 5 || soCau > 100) {
-            errors.so_cau_yeu_cau = 'Tổng số câu hỏi muốn tạo phải là số nguyên từ tối thiểu 5 đến tối đa 100 câu!';
+        if (!soCau || isNaN(soCau) || soCau < 10 || soCau > 100) {
+            errors.so_cau_yeu_cau = 'Tổng số câu hỏi muốn tạo phải là số nguyên từ tối thiểu 10 đến tối đa 100 câu!';
         }
 
         if (Object.keys(errors).length > 0) {
             setFormErrors(errors);
-            if (errors.file && !uploadForm.file) {
-                return showCustomAlert('Bắt buộc định dạng Word (.doc, .docx). Không hỗ trợ ảnh hay PDF.', 'Chưa chọn file tài liệu');
-            } else if (errors.file) {
+            if (errors.file && !uploadForm.file && Object.keys(errors).length === 1) {
+                return showCustomAlert('Vui lòng kéo thả hoặc nhấn chọn file tài liệu Word (.doc, .docx) để AI có nguồn tài liệu phân tích!', 'Vui lòng tải lên file tài liệu Word');
+            } else if (errors.file && uploadForm.file && Object.keys(errors).length === 1) {
                 return showCustomAlert(errors.file, 'Định dạng file không hợp lệ');
+            } else if (errors.ma_mon_hoc && Object.keys(errors).length === 1) {
+                return showCustomAlert('Vui lòng chọn Môn học / Lớp học phần được phân công ở thẻ "Nguồn tài liệu" trước khi tạo đề!', 'Vui lòng chọn môn học');
+            } else if (errors.so_cau_yeu_cau && Object.keys(errors).length === 1) {
+                return showCustomAlert('Vui lòng chọn số lượng câu hỏi muốn tạo (10, 20, 50 hoặc tùy chỉnh tối thiểu 10 đến tối đa 100 câu)!', 'Vui lòng chọn số câu hỏi');
             }
-            return showCustomAlert('Vui lòng kiểm tra lại và điền đầy đủ các mục bị báo lỗi đỏ bên dưới biểu mẫu!', 'Thiếu hoặc sai thông tin bắt buộc');
+            return showCustomAlert('Vui lòng kiểm tra và hoàn thiện các mục đang báo lỗi đỏ bên dưới (Môn học, File Word hoặc Số câu hỏi) trước khi tạo câu hỏi AI!', 'Vui lòng hoàn thiện thông tin');
         }
 
         setFormErrors({});
@@ -346,9 +307,10 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
         setIsUploading(true);
         try {
             // Nối thêm LHP vào tiêu đề nếu có chọn LHP để phân biệt rạch ròi
+            const baseTieuDe = effectiveTieuDe || 'Tài liệu môn học';
             const finalTieuDe = uploadForm.ma_lop_hoc_phan && uploadForm.ma_lop_hoc_phan.length > 0
-                ? `${tieuDe} [${uploadForm.ma_lop_hoc_phan.map(code => code.split('.').pop()).join(', ')}]`
-                : tieuDe;
+                ? `${baseTieuDe} [${uploadForm.ma_lop_hoc_phan.map(code => code.split('.').pop()).join(', ')}]`
+                : baseTieuDe;
 
             const formData = new FormData();
             formData.append('file', uploadForm.file);
@@ -380,13 +342,13 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                     const startRes = await axios.post(`${API_URL}/api/ai-exams/sessions/start`, {
                         document_id: docId,
                         ma_mon_hoc: uploadForm.ma_mon_hoc,
-                        ma_lop_hoc_phan: Array.isArray(uploadForm.ma_lop_hoc_phan) && uploadForm.ma_lop_hoc_phan.length > 0
-                            ? uploadForm.ma_lop_hoc_phan.join(',')
+                        ma_lop_hoc_phan: Array.isArray(uploadForm.ma_lop_hoc_phan)
+                            ? (uploadForm.ma_lop_hoc_phan.length > 0 ? uploadForm.ma_lop_hoc_phan.join(',') : null)
                             : (uploadForm.ma_lop_hoc_phan || null),
                         ma_giang_vien: teacherId || 'GVCNTT001',
                         so_cau_yeu_cau: soCau,
                         do_kho: uploadForm.do_kho,
-                        chu_de: chuDe || 'Toàn bộ',
+                        chu_de: uploadForm.chu_de || 'Toàn bộ',
                         auto_generate: autoGen
                     });
 
@@ -415,7 +377,23 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                     }
                 } catch (error) {
                     console.error('Lỗi khởi tạo AI Session:', error);
-                    showToast(error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo câu hỏi AI!', 'error');
+                    const resData = error.response?.data;
+                    const is422 = error.response?.status === 422 || resData?.validationCode;
+
+                    if (is422) {
+                        // Lỗi validation tài liệu: hiện dialog rõ ràng, không dùng toast biến mất nhanh
+                        const extra = resData?.suggestedMax
+                            ? `\n\nGợi ý: Tài liệu này chỉ đủ nội dung để tạo tối đa ${resData.suggestedMax} câu hỏi.`
+                            : '';
+                        showCustomAlert(
+                            (resData?.message || error.message || 'Tài liệu không đủ chất lượng để sinh câu hỏi.') + extra,
+                            'Tài liệu không đạt yêu cầu'
+                        );
+                    } else {
+                        const errMsg = resData?.message || error.message || 'Có lỗi xảy ra khi tạo câu hỏi AI!';
+                        showToast(errMsg, 'error');
+                        showCustomAlert(errMsg, '❌ Lỗi hệ thống');
+                    }
                 } finally {
                     setIsUploading(false);
                 }
@@ -448,7 +426,22 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
             }
         } catch (error) {
             console.error('Lỗi khởi tạo AI Session:', error);
-            showToast(error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo câu hỏi AI!', 'error');
+            const resData = error.response?.data;
+            const is422 = error.response?.status === 422 || resData?.validationCode;
+
+            if (is422) {
+                const extra = resData?.suggestedMax
+                    ? `\n\n Gợi ý: Tài liệu này chỉ đủ nội dung để tạo tối đa ${resData.suggestedMax} câu hỏi.`
+                    : '';
+                showCustomAlert(
+                    (resData?.message || error.message || 'Tài liệu không đủ chất lượng để sinh câu hỏi.') + extra,
+                    ' Tài liệu không đạt yêu cầu'
+                );
+            } else {
+                const errMsg = resData?.message || error.message || 'Có lỗi xảy ra khi tạo câu hỏi AI!';
+                showToast(errMsg, 'error');
+                showCustomAlert(errMsg, 'Lỗi hệ thống');
+            }
         } finally {
             setIsUploading(false);
         }
@@ -475,7 +468,22 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
             }
         } catch (error) {
             console.error('Lỗi resume AI session:', error);
-            showToast(error.response?.data?.message || error.message || 'Lỗi khi yêu cầu AI sinh tiếp câu hỏi!', 'error');
+            const resData = error.response?.data;
+            const is422 = error.response?.status === 422 || resData?.validationCode;
+
+            if (is422) {
+                const extra = resData?.suggestedMax
+                    ? `\n\n Gợi ý: Tài liệu này chỉ đủ nội dung để tạo tối đa ${resData.suggestedMax} câu hỏi.`
+                    : '';
+                showCustomAlert(
+                    (resData?.message || error.message || 'Lỗi khi yêu cầu AI sinh tiếp câu hỏi!') + extra,
+                    'Không thể sinh tiếp câu hỏi'
+                );
+            } else {
+                const errMsg = resData?.message || error.message || 'Lỗi khi yêu cầu AI sinh tiếp câu hỏi!';
+                showToast(errMsg, 'error');
+                showCustomAlert(errMsg, 'Lỗi hệ thống');
+            }
         } finally {
             setIsResuming(false);
         }
@@ -584,18 +592,25 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
 
     const handleCompleteSession = async () => {
         if (!currentSession) return;
-        try {
-            const res = await axios.put(`${API_URL}/api/ai-exams/sessions/${currentSession.id}/complete`);
-            if (res.data?.success) {
-                showToast('Đã kết thúc sớm và đóng bộ đề!', 'success');
-                await fetchSessions();
-                setCurrentSession(null);
-                setStagingQuestions([]);
+        setConfirmDialog({
+            show: true,
+            title: 'Hoàn tất & Đóng Phiên AI',
+            message: `Bạn có chắc chắn muốn đóng phiên AI gợi ý "${currentSession.doc_tieu_de || currentSession.tieu_de}" không?\n\nCác câu hỏi đã duyệt sẽ nằm trong Ngân hàng chính thức. Các câu chưa duyệt sẽ bị loại bỏ.`,
+            action: async () => {
+                try {
+                    const res = await axios.put(`${API_URL}/api/ai-exams/sessions/${currentSession.id}/complete`);
+                    if (res.data?.success) {
+                        showToast('Đã kết thúc sớm và đóng bộ đề!', 'success');
+                        await fetchSessions();
+                        setCurrentSession(null);
+                        setStagingQuestions([]);
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi đóng bộ đề:', error);
+                    showToast('Lỗi khi hoàn tất bộ đề', 'error');
+                }
             }
-        } catch (error) {
-            console.error('Lỗi khi đóng bộ đề:', error);
-            showToast('Lỗi khi hoàn tất bộ đề', 'error');
-        }
+        });
     };
 
     const handleApproveAll = () => {
@@ -897,7 +912,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-5 border border-amber-200"
+                                className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5 border border-amber-200"
                             >
                                 <div className="flex items-center gap-3 border-b pb-4">
                                     <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl">
@@ -908,7 +923,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                                         <p className="text-xs text-gray-500">Thông báo từ Quản lý Sinh viên</p>
                                     </div>
                                 </div>
-                                <p className="text-sm text-gray-700 font-medium leading-relaxed">{popupAlert.message}</p>
+                                <p className="text-sm text-gray-700 font-medium leading-relaxed whitespace-pre-wrap">{popupAlert.message}</p>
                                 <div className="pt-2">
                                     <button
                                         type="button"
@@ -989,8 +1004,8 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                 <div className="space-y-1">
                     <div className="flex items-center gap-3">
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-[#152238]">AI Assisted Question Bank Studio</h1>
-                            <p className="text-sm font-medium text-[#152238]/80">Trợ lý AI phân tích tài liệu Word và hỗ trợ Giảng viên xây dựng bộ đề thi trắc nghiệm</p>
+                            <h1 className="text-2xl font-bold tracking-tight text-[#152238]">Ngân hàng đề thi</h1>
+                            <p className="text-sm font-medium text-[#152238]/80">Giảng viên có thể tự tạo câu hỏi hoặc nhờ AI gợi ý câu hỏi</p>
                         </div>
                     </div>
                 </div>
@@ -1073,22 +1088,22 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
 
                     <div className="flex bg-[#152238]/10 p-1.5 rounded-2xl">
                     <button
-                        onClick={() => setActiveTab('studio')}
+                        onClick={() => handleTabSwitch('studio')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'studio'
                                 ? 'bg-[#152238] text-white shadow-lg font-bold'
                                 : 'text-[#152238]/70 hover:text-[#152238] hover:bg-white/50'
                             }`}
                     >
-                        <span>Studio Tạo Đề AI (Nháp)</span>
+                        <span>Soạn Đề Thi</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('history')}
+                        onClick={() => handleTabSwitch('history')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'history'
                                 ? 'bg-[#152238] text-white shadow-lg font-bold'
                                 : 'text-[#152238]/70 hover:text-[#152238] hover:bg-white/50'
                             }`}
                     >
-                        <span>Ngân Hàng Chính Thức ({officialBanks.length})</span>
+                        <span>Ngân Hàng Đề Thi ({officialBanks.length})</span>
                     </button>
                 </div>
             </div>
@@ -1096,118 +1111,142 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
 
             {/* CONTENT TABS */}
             {activeTab === 'studio' ? (
+                <AiQuestionGenerator
+                    officialBanks={officialBanks}
+                    refreshBanks={fetchOfficialBanks}
+                    subjects={subjects}
+                    assignments={assignments}
+                    teacherId={teacherId}
+                    onDirtyChange={handleAiGeneratorDirtyChange}
+                />
+            ) : activeTab === 'legacy_staging_disabled' ? (
                 <div className="space-y-8">
-                    {/* KHUNG 1 & 2: FORM UPLOAD & CẤU HÌNH AI */}
-                    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 space-y-6">
-                        <div className="flex items-center gap-3 border-b pb-4">
-
+                    {/* KHUNG 1 & 2: FORM UPLOAD & CẤU HÌNH AI (NHATTIN UNIVERSITY DESIGN SYSTEM) */}
+                    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 space-y-6 font-sans">
+                        {/* HEADER */}
+                        <div className="flex items-center gap-4 border-b border-gray-200 pb-5">
+                            <div className="w-11 h-11 rounded-2xl bg-[#F4C542] flex items-center justify-center flex-shrink-0 shadow-sm">
+                                <Sparkles className="w-6 h-6 text-[#152238]" />
+                            </div>
                             <div>
-                                <h2 className="text-lg font-bold text-gray-900">Khung Tải Lên Tài Liệu & Cấu Hình Trợ Lý AI</h2>
-                                <p className="text-sm text-gray-500">Tải file Word tài liệu môn học và thiết lập thông số để AI tạo câu hỏi từng đợt (10 câu/lần)</p>
+                                <h2 className="text-xl md:text-2xl font-bold text-[#152238] leading-snug tracking-tight">Tạo câu hỏi bằng AI</h2>
+                                <p className="text-sm md:text-base font-medium text-gray-600 mt-1">Tải tài liệu môn học, AI sẽ đọc và sinh câu hỏi theo lô 10 câu/lần.</p>
                             </div>
                         </div>
 
-                        <form onSubmit={handleStartAISession} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div className="space-y-2 lg:col-span-1">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Môn học phân công <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={uploadForm.ma_mon_hoc}
-                                    onChange={e => {
-                                        setUploadForm({ ...uploadForm, ma_mon_hoc: e.target.value, ma_lop_hoc_phan: [] });
-                                        setFormErrors(prev => ({ ...prev, ma_mon_hoc: '' }));
-                                    }}
-                                    className={`w-full p-3.5 bg-gray-50 border rounded-2xl focus:ring-2 focus:bg-white transition-all text-sm font-medium ${formErrors.ma_mon_hoc ? 'border-red-500 focus:ring-red-500 bg-red-50/30' : 'border-gray-200 focus:ring-indigo-500'
-                                        }`}
-                                >
-                                    <option value="">-- Chọn môn học --</option>
-                                    {assignments.length > 0 ? (
-                                        Array.from(new Set(assignments.map(a => a.MaMonHoc))).map(ma => {
-                                            const a = assignments.find(item => item.MaMonHoc === ma);
-                                            return (
-                                                <option key={ma} value={ma}>
-                                                    {a.TenMonHoc} ({ma})
-                                                </option>
-                                            );
-                                        })
-                                    ) : (
-                                        subjects.map(s => (
-                                            <option key={s.MaMonHoc} value={s.MaMonHoc}>
-                                                {s.TenMonHoc} ({s.MaMonHoc})
-                                            </option>
-                                        ))
-                                    )}
-                                </select>
-                                {formErrors.ma_mon_hoc ? (
-                                    <p className="text-xs text-red-600 font-bold">{formErrors.ma_mon_hoc}</p>
-                                ) : (
-                                    <p className="text-xs text-[#152238] font-medium">Lấy tự động từ phân công giảng dạy của Admin</p>
-                                )}
+                        <form onSubmit={handleStartAISession} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* CARD 1: NGUỒN TÀI LIỆU */}
+                            <div className="border border-gray-200 rounded-2xl p-6 bg-white transition-all space-y-5 shadow-sm">
+                                <span className="text-sm font-extrabold uppercase tracking-wider text-gray-700 block border-b border-gray-100 pb-2.5">NGUỒN TÀI LIỆU</span>
 
-                                {uploadForm.ma_mon_hoc && assignments.some(a => a.MaMonHoc === uploadForm.ma_mon_hoc && a.MaLopHocPhan) && (
-                                    <div className="mt-4 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                                        <label className="block text-xs font-bold text-indigo-900 mb-2">
-                                            Chọn Lớp học phần áp dụng (Tùy chọn)
-                                        </label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {assignments.filter(a => a.MaMonHoc === uploadForm.ma_mon_hoc && a.MaLopHocPhan).map(a => {
-                                                const hpCode = a.MaLopHocPhan.split('.').pop();
-                                                const className = a.TenLop ? `Lớp ${a.TenLop}` : 'Lớp tự do';
-                                                const isSelected = uploadForm.ma_lop_hoc_phan.includes(a.MaLopHocPhan);
+                                {/* Môn học phân công */}
+                                <div>
+                                    <label className="block text-base font-bold text-[#152238] mb-2">
+                                        Môn học phân công <span className="text-red-500 font-bold ml-1">*</span>
+                                    </label>
+                                    <select
+                                        value={uploadForm.ma_mon_hoc}
+                                        onChange={e => {
+                                            setUploadForm({ ...uploadForm, ma_mon_hoc: e.target.value, ma_lop_hoc_phan: [] });
+                                            setFormErrors(prev => ({ ...prev, ma_mon_hoc: '' }));
+                                        }}
+                                        className={`w-full p-3.5 bg-white border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#F4C542] focus:border-[#F4C542] transition-all text-base font-medium text-[#152238] ${
+                                            formErrors.ma_mon_hoc ? 'border-red-500 bg-red-50/30' : 'border-gray-200'
+                                        }`}
+                                    >
+                                        <option value="">-- Chọn môn học --</option>
+                                        {assignments.length > 0 ? (
+                                            Array.from(new Set(assignments.map(a => a.MaMonHoc))).map(ma => {
+                                                const a = assignments.find(item => item.MaMonHoc === ma);
                                                 return (
-                                                    <label
-                                                        key={a.MaLopHocPhan}
-                                                        className={`cursor-pointer px-3 py-1.5 border rounded-lg text-xs font-bold transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/30'
+                                                    <option key={ma} value={ma}>
+                                                        {a.TenMonHoc} ({ma})
+                                                    </option>
+                                                );
+                                            })
+                                        ) : (
+                                            subjects.map(s => (
+                                                <option key={s.MaMonHoc} value={s.MaMonHoc}>
+                                                    {s.TenMonHoc} ({s.MaMonHoc})
+                                                </option>
+                                            ))
+                                        )}
+                                    </select>
+                                    {formErrors.ma_mon_hoc ? (
+                                        <p className="text-xs text-red-600 font-medium mt-1.5">{formErrors.ma_mon_hoc}</p>
+                                    ) : (
+                                        <p className="text-xs md:text-sm text-gray-500 font-medium mt-2">Lấy tự động từ phân công giảng dạy của admin.</p>
+                                    )}
+
+                                    {uploadForm.ma_mon_hoc && assignments.some(a => a.MaMonHoc === uploadForm.ma_mon_hoc && a.MaLopHocPhan) && (
+                                        <div className="mt-3.5 p-3.5 bg-gray-50 rounded-2xl border border-gray-200">
+                                            <label className="block text-sm font-bold text-[#152238] mb-2.5">
+                                                Chọn Lớp học phần áp dụng (Tùy chọn)
+                                            </label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {assignments.filter(a => a.MaMonHoc === uploadForm.ma_mon_hoc && a.MaLopHocPhan).map(a => {
+                                                    const hpCode = a.MaLopHocPhan.split('.').pop();
+                                                    const className = a.TenLop ? `Lớp ${a.TenLop}` : 'Lớp tự do';
+                                                    const isSelected = uploadForm.ma_lop_hoc_phan.includes(a.MaLopHocPhan);
+                                                    return (
+                                                        <label
+                                                            key={a.MaLopHocPhan}
+                                                            className={`cursor-pointer px-3.5 py-1.5 border rounded-xl text-xs md:text-sm font-bold transition-all ${
+                                                                isSelected ? 'bg-[#152238] border-[#152238] text-white shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
                                                             }`}
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            className="hidden"
-                                                            checked={isSelected}
-                                                            onChange={(e) => {
-                                                                const newLhp = e.target.checked
-                                                                    ? [...uploadForm.ma_lop_hoc_phan, a.MaLopHocPhan]
-                                                                    : uploadForm.ma_lop_hoc_phan.filter(id => id !== a.MaLopHocPhan);
-                                                                setUploadForm({ ...uploadForm, ma_lop_hoc_phan: newLhp });
-                                                            }}
-                                                        />
-                                                        {hpCode} - {className}
-                                                    </label>
-                                                )
-                                            })}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                className="hidden"
+                                                                checked={isSelected}
+                                                                onChange={(e) => {
+                                                                    const newLhp = e.target.checked
+                                                                        ? [...uploadForm.ma_lop_hoc_phan, a.MaLopHocPhan]
+                                                                        : uploadForm.ma_lop_hoc_phan.filter(id => id !== a.MaLopHocPhan);
+                                                                    setUploadForm({ ...uploadForm, ma_lop_hoc_phan: newLhp });
+                                                                }}
+                                                            />
+                                                            {hpCode} - {className}
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
 
-                            <div className="space-y-2 lg:col-span-1">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Tiêu đề bộ đề / tài liệu <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="VD: Ngân hàng đề thi Giữa kỳ Lập trình Web..."
-                                    value={uploadForm.tieu_de}
-                                    onChange={e => {
-                                        setUploadForm({ ...uploadForm, tieu_de: e.target.value });
-                                        setFormErrors(prev => ({ ...prev, tieu_de: '' }));
-                                    }}
-                                    className={`w-full p-3.5 bg-gray-50 border rounded-2xl focus:ring-2 focus:bg-white transition-all text-sm ${formErrors.tieu_de ? 'border-red-500 focus:ring-red-500 bg-red-50/30 font-semibold text-red-900' : 'border-gray-200 focus:ring-indigo-500'
+                                {/* Tiêu đề bộ đề / tài liệu */}
+                                <div>
+                                    <label className="block text-base font-bold text-[#152238] mb-2">
+                                        Tiêu đề bộ đề / tài liệu
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Để trống để lấy tên theo file Word..."
+                                        value={uploadForm.tieu_de}
+                                        onChange={e => {
+                                            setUploadForm({ ...uploadForm, tieu_de: e.target.value });
+                                            setFormErrors(prev => ({ ...prev, tieu_de: '' }));
+                                        }}
+                                        className={`w-full p-3.5 bg-white border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#F4C542] focus:border-[#F4C542] transition-all text-base font-medium text-[#152238] ${
+                                            formErrors.tieu_de ? 'border-red-500 bg-red-50/30 font-medium text-red-900' : 'border-gray-200'
                                         }`}
-                                />
-                                {formErrors.tieu_de ? (
-                                    <p className="text-xs text-red-600 font-bold">{formErrors.tieu_de}</p>
-                                ) : (
-                                    <p className="text-xs text-emerald-600 font-bold">Tên LHP sẽ được tự động nối vào tiêu đề nếu có chọn.</p>
-                                )}
-                            </div>
+                                    />
+                                    {formErrors.tieu_de ? (
+                                        <p className="text-xs text-red-600 font-medium mt-1.5">{formErrors.tieu_de}</p>
+                                    ) : (
+                                        <div className="space-y-1 mt-2">
+                                            <p className="text-xs md:text-sm text-gray-600 font-medium">Nếu để trống: Tên tài liệu/bộ đề sẽ tự động lấy theo tên file Word (.docx).</p>
+                                            <p className="text-xs md:text-sm text-gray-500">10–50 ký tự, không chứa ký tự đặc biệt (@ # $ ...).</p>
+                                        </div>
+                                    )}
+                                </div>
 
-                            <div className="space-y-2 lg:col-span-1">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    File tài liệu Word (.doc, .docx) <span className="text-red-500">*</span>
-                                </label>
-                                <div className="relative">
+                                {/* File tài liệu Word (.docx) */}
+                                <div>
+                                    <label className="block text-base font-bold text-[#152238] mb-2">
+                                        File tài liệu Word (.docx) <span className="text-red-500 font-bold ml-1">*</span>
+                                    </label>
                                     <input
                                         type="file"
                                         accept=".doc,.docx"
@@ -1217,205 +1256,249 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                                     />
                                     <label
                                         htmlFor="word-upload-input"
-                                        className={`flex items-center justify-between p-3.5 border border-dashed rounded-2xl cursor-pointer transition-all ${formErrors.file
-                                                ? 'bg-red-50 border-red-500 text-red-900 font-bold'
-                                                : uploadForm.file
-                                                    ? 'bg-[#F4C542]/10 border-[#152238]/50 text-indigo-900 font-medium'
-                                                    : 'bg-gray-50 border-gray-300 hover:bg-gray-100 text-gray-600'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-2 truncate">
-
-                                            <span className="text-sm truncate">
-                                                {uploadForm.file_name || 'Chọn hoặc kéo thả file Word (.docx)'}
-                                            </span>
-                                        </div>
-                                        <span className={`text-xs px-2.5 py-1 rounded-lg border shadow-sm font-semibold flex-shrink-0 ${formErrors.file ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600'}`}>
-                                            Duyệt file
-                                        </span>
-                                    </label>
-                                </div>
-                                <p className={`text-xs font-bold transition-all ${formErrors.file ? 'text-red-600 text-sm' : 'text-rose-600 font-medium'}`}>
-                                    {formErrors.file ? `${formErrors.file}` : 'Bắt buộc định dạng Word. Không hỗ trợ ảnh hay PDF.'}
-                                </p>
-                            </div>
-
-                            <div className="space-y-3">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Tổng số câu hỏi muốn AI hỗ trợ tạo <span className="text-red-500">*</span>
-                                </label>
-
-                                {/* Nút chọn nhanh (Quick-select Chips) */}
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {[10, 20, 50].map((num) => (
-                                        <button
-                                            key={num}
-                                            type="button"
-                                            onClick={() => {
-                                                setUploadForm(prev => ({ ...prev, so_cau_yeu_cau: num }));
-                                                setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
-                                            }}
-                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm flex items-center gap-1.5 ${
-                                                Number(uploadForm.so_cau_yeu_cau) === num
-                                                    ? 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-200 shadow-indigo-100'
-                                                    : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
-                                            }`}
-                                        >
-                                            <span>{num} câu</span>
-                                        </button>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if ([10, 20, 50].includes(Number(uploadForm.so_cau_yeu_cau))) {
-                                                setUploadForm(prev => ({ ...prev, so_cau_yeu_cau: '' }));
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            setIsDragOver(true);
+                                        }}
+                                        onDragLeave={(e) => {
+                                            e.preventDefault();
+                                            setIsDragOver(false);
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsDragOver(false);
+                                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                                handleFileSelect({ target: { files: e.dataTransfer.files, value: '' } });
                                             }
                                         }}
-                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
-                                            !uploadForm.so_cau_yeu_cau || ![10, 20, 50].includes(Number(uploadForm.so_cau_yeu_cau))
-                                                ? 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-200 shadow-indigo-100'
-                                                : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                                        className={`flex flex-col items-center justify-center p-6 md:p-8 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all ${
+                                            formErrors.file
+                                                ? 'border-red-500 bg-red-50/60'
+                                                : isDragOver
+                                                    ? 'border-[#D85A30] bg-[#F4C542]/25'
+                                                    : uploadForm.file
+                                                        ? 'border-[#F4C542] bg-[#F4C542]/15'
+                                                        : 'border-[#F4C542]/80 bg-[#F4C542]/5 hover:border-[#F4C542] hover:bg-[#F4C542]/15'
                                         }`}
                                     >
-                                        Tùy chỉnh
-                                    </button>
+                                        {uploadForm.file ? (
+                                            <div className="flex flex-col items-center gap-2.5 w-full">
+                                                <div className="flex items-center justify-between gap-3 max-w-full px-4 py-3 bg-white rounded-2xl border border-[#F4C542] shadow-sm w-full">
+                                                    <div className="flex items-center gap-2.5 truncate">
+                                                        <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                                                        <span className="text-base font-bold text-[#152238] truncate">{uploadForm.file_name}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            setUploadForm(prev => ({ ...prev, file: null, file_name: '' }));
+                                                            setFormErrors(prev => ({ ...prev, file: '' }));
+                                                            const inputEl = document.getElementById('word-upload-input');
+                                                            if (inputEl) inputEl.value = '';
+                                                        }}
+                                                        title="Xóa file đã chọn"
+                                                        className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-xl transition-colors flex-shrink-0"
+                                                    >
+                                                        <X className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                                <span className="text-sm text-emerald-700 font-bold">Đã tải lên sẵn sàng tạo câu hỏi</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <UploadCloud className="w-8 h-8 text-[#152238] mb-2" />
+                                                <p className="text-base font-bold text-[#152238]">Kéo thả file .docx vào đây</p>
+                                                <span className="text-sm text-gray-500 my-2 font-medium">hoặc</span>
+                                                <span className="px-5 py-2.5 bg-[#152238] hover:bg-[#152238]/90 text-white text-sm font-bold rounded-xl shadow-sm transition-all inline-block">
+                                                    Chọn file
+                                                </span>
+                                            </>
+                                        )}
+                                    </label>
+                                    {formErrors.file ? (
+                                        <p className="text-xs text-red-600 font-medium mt-2 flex items-center gap-1.5 justify-center">
+                                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                            <span>{formErrors.file}</span>
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs md:text-sm font-bold text-amber-900 mt-2.5 text-center">
+                                            Chỉ hỗ trợ .doc, .docx – không hỗ trợ ảnh hay PDF.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* CARD 2: CẤU HÌNH AI */}
+                            <div className="border border-gray-200 rounded-2xl p-6 bg-white transition-all space-y-5 shadow-sm">
+                                <span className="text-sm font-extrabold uppercase tracking-wider text-gray-700 block border-b border-gray-100 pb-2.5">CẤU HÌNH AI</span>
+
+                                {/* Tổng số câu hỏi */}
+                                <div>
+                                    <label className="block text-base font-bold text-[#152238] mb-2">
+                                        Tổng số câu hỏi <span className="text-red-500 font-bold ml-1">*</span>
+                                    </label>
+
+                                    {/* 4 nút chọn nhanh dạng grid 4 cột */}
+                                    <div className="grid grid-cols-4 gap-2.5 mb-3.5">
+                                        {[10, 20, 50].map((num) => {
+                                            const isSelected = Number(uploadForm.so_cau_yeu_cau) === num;
+                                            return (
+                                                <button
+                                                    key={num}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setUploadForm(prev => ({ ...prev, so_cau_yeu_cau: num }));
+                                                        setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
+                                                    }}
+                                                    className={`py-3 px-2 rounded-2xl text-sm md:text-base font-bold transition-all border flex items-center justify-center shadow-sm ${
+                                                        isSelected
+                                                            ? 'bg-[#F4C542] border border-[#d8aa26] text-[#152238] font-extrabold ring-2 ring-[#F4C542]/40 shadow-md'
+                                                            : 'bg-white border-gray-200 text-gray-700 hover:border-[#F4C542] hover:bg-[#F4C542]/10'
+                                                    }`}
+                                                >
+                                                    <span>{num} câu</span>
+                                                </button>
+                                            );
+                                        })}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if ([10, 20, 50].includes(Number(uploadForm.so_cau_yeu_cau))) {
+                                                    setUploadForm(prev => ({ ...prev, so_cau_yeu_cau: '' }));
+                                                }
+                                            }}
+                                            className={`py-3 px-2 rounded-2xl text-sm md:text-base font-bold transition-all border flex items-center justify-center shadow-sm ${
+                                                !uploadForm.so_cau_yeu_cau || ![10, 20, 50].includes(Number(uploadForm.so_cau_yeu_cau))
+                                                    ? 'bg-[#F4C542] border border-[#d8aa26] text-[#152238] font-extrabold ring-2 ring-[#F4C542]/40 shadow-md'
+                                                    : 'bg-white border-gray-200 text-gray-700 hover:border-[#F4C542] hover:bg-[#F4C542]/10'
+                                            }`}
+                                        >
+                                            <span>Tùy chỉnh</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Gợi ý thông minh theo độ dài tài liệu Word */}
+                                    {uploadForm.file && (() => {
+                                        const sizeKB = Math.round(uploadForm.file.size / 1024);
+                                        const estPages = Math.max(1, Math.round((sizeKB - 6) / 2));
+                                        let recMin = 10, recMax = 20;
+                                        if (estPages >= 4 && estPages <= 8) { recMin = 20; recMax = 30; }
+                                        else if (estPages > 8) { recMin = 30; recMax = 50; }
+                                        return (
+                                            <div className="p-3.5 mb-3.5 bg-[#F4C542]/20 border border-[#F4C542] rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+                                                <div className="flex items-center gap-2.5 text-xs md:text-sm font-semibold text-[#152238]">
+                                                    <Sparkles className="w-5 h-5 text-[#D85A30] flex-shrink-0" />
+                                                    <span>
+                                                        Dung lượng file: <strong>{sizeKB} KB (~{estPages} trang Word)</strong>. AI gợi ý tối ưu <strong>{recMin} - {recMax} câu hỏi</strong>.
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setUploadForm(prev => ({ ...prev, so_cau_yeu_cau: recMax }));
+                                                        setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
+                                                    }}
+                                                    className="px-3.5 py-1.5 bg-[#152238] hover:bg-[#152238]/90 text-[#F4C542] text-xs md:text-sm font-bold rounded-xl transition-all flex-shrink-0 shadow-sm"
+                                                >
+                                                    Chọn {recMax} câu
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Input số tùy chỉnh */}
+                                    <input
+                                        type="number"
+                                        min="10"
+                                        max="100"
+                                        step="1"
+                                        placeholder="Nhập số câu (tối thiểu 10, tối đa 100)..."
+                                        value={uploadForm.so_cau_yeu_cau}
+                                        onKeyDown={(e) => {
+                                            if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        onPaste={(e) => {
+                                            const pasteText = (e.clipboardData || window.clipboardData).getData('text');
+                                            const parsed = Number(pasteText);
+                                            if (!/^\d+$/.test(pasteText) || isNaN(parsed) || parsed < 10 || parsed > 100) {
+                                                e.preventDefault();
+                                                setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: 'Chỉ được dán số nguyên từ tối thiểu 10 đến tối đa 100 câu!' }));
+                                                showCustomAlert('Chỉ được nhập số nguyên từ tối thiểu 10 đến tối đa 100 câu!', 'Dữ liệu không hợp lệ');
+                                            }
+                                        }}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === '') {
+                                                setUploadForm({ ...uploadForm, so_cau_yeu_cau: '' });
+                                                setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
+                                                return;
+                                            }
+                                            const num = Number(val);
+                                            if (num > 100) {
+                                                setUploadForm({ ...uploadForm, so_cau_yeu_cau: 100 });
+                                                setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: 'Tối đa là 100 câu! Không được nhập câu 101 trở lên.' }));
+                                                showCustomAlert('Số lượng câu hỏi tối đa cho một lần tạo là 100 câu! Không được nhập quá 100 câu.', 'Giới hạn tối đa 100 câu');
+                                            } else if (num < 10 || isNaN(num) || !Number.isInteger(num)) {
+                                                setUploadForm({ ...uploadForm, so_cau_yeu_cau: val });
+                                                setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: 'Số câu hỏi tối thiểu là 10 câu và tối đa 100 câu!' }));
+                                            } else {
+                                                setUploadForm({ ...uploadForm, so_cau_yeu_cau: num });
+                                                setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
+                                            }
+                                        }}
+                                        className={`w-full p-3.5 bg-white border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#F4C542] focus:border-[#F4C542] transition-all text-base font-medium text-[#152238] ${
+                                            formErrors.so_cau_yeu_cau ? 'border-red-500 bg-red-50/30 text-red-900' : 'border-gray-200'
+                                        }`}
+                                    />
+                                    {formErrors.so_cau_yeu_cau && (
+                                        <p className="text-xs text-red-600 font-medium mt-1.5">{formErrors.so_cau_yeu_cau}</p>
+                                    )}
                                 </div>
 
-                                {/* Gợi ý thông minh theo độ dài tài liệu Word */}
-                                {uploadForm.file && (() => {
-                                    const sizeKB = Math.round(uploadForm.file.size / 1024);
-                                    // Định dạng .docx là file nén ZIP XML (header chuẩn ~6KB + ~2KB/trang text nén)
-                                    const estPages = Math.max(1, Math.round((sizeKB - 6) / 2));
-                                    let recMin = 10, recMax = 20;
-                                    if (estPages >= 4 && estPages <= 8) { recMin = 20; recMax = 30; }
-                                    else if (estPages > 8) { recMin = 30; recMax = 50; }
-                                    return (
-                                        <div className="p-3 bg-gradient-to-r from-indigo-50/90 to-blue-50/90 border border-indigo-200 rounded-2xl flex items-center justify-between gap-2 shadow-sm">
-                                            <div className="flex items-center gap-2.5 text-xs font-semibold text-indigo-950">
-                                                <Sparkles className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                                                <span>
-                                                    Dung lượng file: <strong>{sizeKB} KB (~{estPages} trang Word)</strong>. AI gợi ý tạo tối ưu nhất là <strong>{recMin} - {recMax} câu hỏi</strong>.
-                                                </span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setUploadForm(prev => ({ ...prev, so_cau_yeu_cau: recMax }));
-                                                    setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
-                                                }}
-                                                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all flex-shrink-0 shadow-sm"
-                                            >
-                                                Chọn {recMax} câu
-                                            </button>
-                                        </div>
-                                    );
-                                })()}
-
-                                <input
-                                    type="number"
-                                    min="5"
-                                    max="100"
-                                    step="1"
-                                    placeholder="Nhập số câu (Tối thiểu 5, tối đa 100)..."
-                                    value={uploadForm.so_cau_yeu_cau}
-                                    onKeyDown={(e) => {
-                                        if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
-                                            e.preventDefault();
-                                        }
-                                    }}
-                                    onPaste={(e) => {
-                                        const pasteText = (e.clipboardData || window.clipboardData).getData('text');
-                                        const parsed = Number(pasteText);
-                                        if (!/^\d+$/.test(pasteText) || isNaN(parsed) || parsed < 5 || parsed > 100) {
-                                            e.preventDefault();
-                                            setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: 'Chỉ được dán số nguyên từ tối thiểu 5 đến tối đa 100 câu!' }));
-                                            showCustomAlert('Chỉ được nhập số nguyên từ tối thiểu 5 đến tối đa 100 câu!', 'Dữ liệu không hợp lệ');
-                                        }
-                                    }}
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        if (val === '') {
-                                            setUploadForm({ ...uploadForm, so_cau_yeu_cau: '' });
-                                            setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
-                                            return;
-                                        }
-                                        const num = Number(val);
-                                        if (num > 100) {
-                                            setUploadForm({ ...uploadForm, so_cau_yeu_cau: 100 });
-                                            setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: 'Tối đa là 100 câu! Không được nhập câu 101 trở lên.' }));
-                                            showCustomAlert('Số lượng câu hỏi tối đa cho một lần tạo là 100 câu! Không được nhập quá 100 câu.', 'Giới hạn tối đa 100 câu');
-                                        } else if (num < 5 || isNaN(num) || !Number.isInteger(num)) {
-                                            setUploadForm({ ...uploadForm, so_cau_yeu_cau: val });
-                                            setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: 'Số câu hỏi tối thiểu là 5 câu và tối đa 100 câu!' }));
-                                        } else {
-                                            setUploadForm({ ...uploadForm, so_cau_yeu_cau: num });
-                                            setFormErrors(prev => ({ ...prev, so_cau_yeu_cau: '' }));
-                                        }
-                                    }}
-                                    className={`w-full p-3.5 bg-gray-50 border rounded-2xl focus:ring-2 focus:bg-white transition-all text-sm font-bold ${formErrors.so_cau_yeu_cau ? 'border-red-500 focus:ring-red-500 bg-red-50/30 text-red-900' : 'border-gray-200 focus:ring-indigo-500 text-indigo-900'
-                                        }`}
-                                />
-                                {formErrors.so_cau_yeu_cau ? (
-                                    <p className="text-xs text-red-600 font-bold">{formErrors.so_cau_yeu_cau}</p>
-                                ) : (
-                                    <p className="text-xs text-gray-500">AI sẽ tự động đọc tài liệu và sinh ra một lần đủ số lượng câu hỏi theo yêu cầu.</p>
-                                )}
+                                {/* Cấu trúc mức độ độ khó */}
+                                <div>
+                                    <label className="block text-base font-bold text-[#152238] mb-2">
+                                        Cấu trúc mức độ độ khó
+                                    </label>
+                                    <select
+                                        value={uploadForm.do_kho}
+                                        onChange={e => setUploadForm({ ...uploadForm, do_kho: e.target.value })}
+                                        className="w-full p-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#F4C542] focus:border-[#F4C542] transition-all text-base font-medium text-[#152238]"
+                                    >
+                                        <option value="Mixed">Tự phân chia hợp lý (Dễ, Trung bình, Khó)</option>
+                                        <option value="Easy">🟢 Toàn bộ mức Dễ (Easy)</option>
+                                        <option value="Medium">🟡 Toàn bộ mức Trung bình (Medium)</option>
+                                        <option value="Hard">🔴 Toàn bộ mức Khó (Hard)</option>
+                                    </select>
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Cấu trúc mức độ độ khó
-                                </label>
-                                <select
-                                    value={uploadForm.do_kho}
-                                    onChange={e => setUploadForm({ ...uploadForm, do_kho: e.target.value })}
-                                    className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm font-medium"
-                                >
-                                    <option value="Mixed">Tự phân chia hợp lý (Dễ, Trung bình, Khó)</option>
-                                    <option value="Easy">🟢 Toàn bộ mức Dễ (Easy)</option>
-                                    <option value="Medium">🟡 Toàn bộ mức Trung bình (Medium)</option>
-                                    <option value="Hard">🔴 Toàn bộ mức Khó (Hard)</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Chủ đề / Chương (Mặc định Toàn bộ)
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="VD: Chương 1 - Tổng quan về NodeJS..."
-                                    value={uploadForm.chu_de}
-                                    onChange={e => {
-                                        setUploadForm({ ...uploadForm, chu_de: e.target.value });
-                                        setFormErrors(prev => ({ ...prev, chu_de: '' }));
-                                    }}
-                                    className={`w-full p-3.5 bg-gray-50 border rounded-2xl focus:ring-2 focus:bg-white transition-all text-sm ${
-                                        formErrors.chu_de ? 'border-red-500 focus:ring-red-500 bg-red-50/30 font-semibold text-red-900' : 'border-gray-200 focus:ring-indigo-500'
-                                    }`}
-                                />
-                                {formErrors.chu_de && (
-                                    <p className="text-xs text-red-600 font-bold animate-pulse">{formErrors.chu_de}</p>
-                                )}
-                            </div>
-
-                            <div className="md:col-span-2 lg:col-span-3 pt-2 flex justify-end">
-                                <button
-                                    type="button"
-                                    onClick={handleStartAISession}
-                                    disabled={isUploading}
-                                    className="flex items-center justify-center gap-3 w-full md:w-auto px-8 py-4 bg-[#152238] hover:bg-[#152238]/90 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                                >
-                                    {isUploading ? (
-                                        <>
-                                            <span>AI Đang Phân Tích & Tạo Câu Hỏi...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>Bắt Đầu Tạo Câu Hỏi AI</span>
-                                        </>
-                                    )}
-                                </button>
+                            {/* NÚT HÀNH ĐỘNG CHÍNH */}
+                            <div className="col-span-1 md:col-span-2 flex justify-end pt-3">
+                                <div className="w-full md:w-auto inline-block">
+                                    <button
+                                        type="button"
+                                        onClick={handleStartAISession}
+                                        disabled={isUploading}
+                                        className="flex items-center justify-center gap-3 w-full md:w-auto py-4 px-8 bg-[#152238] hover:bg-[#152238]/90 text-white font-extrabold text-base rounded-2xl shadow-lg hover:shadow-xl transition-all disabled:bg-[#152238] disabled:opacity-75 disabled:cursor-not-allowed"
+                                    >
+                                        {isUploading ? (
+                                            <>
+                                                <Sparkles className="w-5 h-5 text-[#F4C542] animate-spin" />
+                                                <span>AI Đang Phân Tích & Tạo Câu Hỏi...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Wand2 className="w-5 h-5 text-[#F4C542]" />
+                                                <span>Bắt đầu tạo câu hỏi AI</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -1448,7 +1531,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                                             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md transform hover:-translate-y-0.5 transition-all disabled:opacity-50 text-sm"
                                         >
                                             <Play className={`w-4 h-4 fill-current ${isResuming ? 'animate-spin' : ''}`} />
-                                            <span>{isResuming ? 'Đang tạo tiếp...' : `Sinh Tiếp Câu Hỏi (${currentSession.so_cau_da_sinh}/${currentSession.so_cau_yeu_cau})`}</span>
+                                                <span>{isResuming ? 'Đang tạo tiếp...' : `Sinh Tiếp Câu Hỏi (${currentSession.so_cau_da_sinh}/${currentSession.so_cau_yeu_cau})`}</span>
                                         </button>
                                     )}
 
@@ -1636,7 +1719,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
 
                                                         {q.giai_thich && (
                                                             <div className="mt-3 p-3.5 bg-[#F4C542]/10/60 rounded-xl border border-indigo-100 text-xs text-indigo-900">
-                                                                <span className="font-bold">💡 Giải thích từ AI: </span>
+                                                                <span className="font-bold">Giải thích từ AI: </span>
                                                                 <span>{q.giai_thich}</span>
                                                             </div>
                                                         )}
@@ -2064,9 +2147,16 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                                         <div className="space-y-4">
                                             {bankQuestions.map((q, qIdx) => (
                                                 <div key={q.id || qIdx} className="p-5 rounded-2xl border border-gray-200/80 bg-white shadow-sm space-y-3 hover:border-gray-300 transition-all">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
+                                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="font-extrabold text-[#152238] text-sm">Câu #{qIdx + 1} ({q.do_kho || 'Medium'})</span>
+                                                            <span className={`px-2 py-0.5 rounded-md text-[11px] font-black ${
+                                                                q.ai_generated || String(q.nguon || '').includes('AI')
+                                                                    ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+                                                                    : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                                                            }`}>
+                                                                {q.ai_generated || String(q.nguon || '').includes('AI') ? 'AI Gợi ý' : 'Giảng viên'}
+                                                            </span>
                                                             {q.chu_de && <span className="text-xs bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-md font-semibold text-gray-600">{q.chu_de}</span>}
                                                         </div>
                                                         <div className="flex items-center gap-2">
