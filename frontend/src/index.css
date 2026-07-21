@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @theme {
+  --color-navy: #152238;
+  --color-gold: #F4C542;
+
   --text-xs: 0.8125rem;
   --text-sm: 0.9375rem;
   --text-base: 1.0625rem;

@@ -53,8 +53,18 @@ function StudentOnlineExam({ user, onExamModeChange }) {
             setIsOffline(false);
             showToast('Đã khôi phục kết nối mạng! Dữ liệu của bạn đang được đồng bộ.', 'success');
             
-            // Đồng bộ vi phạm (socket đã bị xóa)
+            // Đồng bộ vi phạm khi khôi phục mạng
             if (attemptId) {
+                const offlineViolations = JSON.parse(localStorage.getItem(`exam_${attemptId}_violations`) || '[]');
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                offlineViolations.forEach(viol => {
+                    axios.post(`${API_URL}/api/exam/student/attempt/${attemptId}/violation`, {
+                        violationType: viol.type,
+                        note: viol.description
+                    }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }).catch(err => console.error('Error syncing violation:', err));
+                });
                 localStorage.removeItem(`exam_${attemptId}_violations`);
             }
 
@@ -140,7 +150,10 @@ function StudentOnlineExam({ user, onExamModeChange }) {
 
         // Tab visibility change (cheating detection)
         let count = 0;
+        let lastViolTime = 0;
         const triggerViolation = (violationType, descriptionSuffix) => {
+            if (Date.now() - lastViolTime < 3000) return;
+            lastViolTime = Date.now();
             count += 1;
             
             const offlineText = !navigator.onLine ? " (Ngoại tuyến)" : "";
@@ -157,6 +170,14 @@ function StudentOnlineExam({ user, onExamModeChange }) {
                 const offlineViolations = JSON.parse(localStorage.getItem(`exam_${attemptId}_violations`) || '[]');
                 offlineViolations.push(violationData);
                 localStorage.setItem(`exam_${attemptId}_violations`, JSON.stringify(offlineViolations));
+            } else if (attemptId) {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                axios.post(`${API_URL}/api/exam/student/attempt/${attemptId}/violation`, {
+                    violationType: violationType,
+                    note: violationData.description
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(err => console.error('Error recording violation:', err));
             }
 
             if (count >= 3) {
@@ -358,6 +379,10 @@ function StudentOnlineExam({ user, onExamModeChange }) {
                 const now = new Date();
                 if (now >= new Date(exam.thoi_gian_bat_dau)) {
                     handleStartExamAPI(exam);
+                } else {
+                    setCurrentExam(exam);
+                    setAttemptId(null);
+                    setIsTakingExam(true);
                 }
             }
         });

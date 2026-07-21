@@ -10,6 +10,78 @@ import axios from 'axios';
 import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
 
+const VNDateTimePicker = ({ value, onChange, disabled = false, defaultTime = '08:00', hasError = false }) => {
+    const dateRef = useRef(null);
+
+    const parseValue = (val) => {
+        if (!val) return { dateStr: '', timeStr: defaultTime, displayDate: '' };
+        const [d, t] = val.split('T');
+        let displayDate = '';
+        if (d && d.includes('-')) {
+            const [y, m, day] = d.split('-');
+            displayDate = `${day}/${m}/${y}`;
+        }
+        return { dateStr: d || '', timeStr: (t || defaultTime).slice(0, 5), displayDate };
+    };
+
+    const { dateStr, timeStr, displayDate } = parseValue(value);
+
+    const handleDateChange = (newYMD) => {
+        if (!newYMD) {
+            onChange('');
+            return;
+        }
+        onChange(`${newYMD}T${timeStr || defaultTime}`);
+    };
+
+    const handleTimeChange = (newTime) => {
+        const t = newTime || defaultTime;
+        if (!dateStr) {
+            const today = new Date().toISOString().slice(0, 10);
+            onChange(`${today}T${t}`);
+            return;
+        }
+        onChange(`${dateStr}T${t}`);
+    };
+
+    return (
+        <div className={`flex items-center gap-2 w-full p-3.5 bg-gray-50 border ${hasError ? 'border-red-500 bg-red-50/30' : 'border-gray-200'} rounded-xl focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white transition-all ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
+            {/* Lịch chọn ngày (DD/MM/YYYY) */}
+            <div 
+                className={`relative flex-1 flex items-center gap-2.5 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                onClick={() => !disabled && dateRef.current && dateRef.current.showPicker && dateRef.current.showPicker()}
+            >
+                <Calendar className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                <span className={`text-sm font-medium ${displayDate ? 'text-gray-800 font-bold' : 'text-gray-400 font-medium'}`}>
+                    {displayDate || 'dd/mm/yyyy'}
+                </span>
+                <input
+                    ref={dateRef}
+                    type="date"
+                    disabled={disabled}
+                    value={dateStr}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+            </div>
+
+            <div className="h-5 w-px bg-gray-200 flex-shrink-0" />
+
+            {/* Chọn giờ (HH:mm) */}
+            <div className="flex items-center gap-1.5 px-1">
+                <Clock className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <input
+                    type="time"
+                    disabled={disabled}
+                    value={timeStr}
+                    onChange={(e) => handleTimeChange(e.target.value)}
+                    className="bg-transparent border-0 text-sm font-bold text-gray-800 focus:outline-none cursor-pointer p-0"
+                />
+            </div>
+        </div>
+    );
+};
+
 function ExamManagement() {
     const navigate = useNavigate();
     // State Tab & Exams
@@ -121,77 +193,7 @@ function ExamManagement() {
         return false;
     };
 
-    const VNDateTimePicker = ({ value, onChange, disabled = false, defaultTime = '08:00', hasError = false }) => {
-        const dateRef = useRef(null);
 
-        const parseValue = (val) => {
-            if (!val) return { dateStr: '', timeStr: defaultTime, displayDate: '' };
-            const [d, t] = val.split('T');
-            let displayDate = '';
-            if (d && d.includes('-')) {
-                const [y, m, day] = d.split('-');
-                displayDate = `${day}/${m}/${y}`;
-            }
-            return { dateStr: d || '', timeStr: (t || defaultTime).slice(0, 5), displayDate };
-        };
-
-        const { dateStr, timeStr, displayDate } = parseValue(value);
-
-        const handleDateChange = (newYMD) => {
-            if (!newYMD) {
-                onChange('');
-                return;
-            }
-            onChange(`${newYMD}T${timeStr || defaultTime}`);
-        };
-
-        const handleTimeChange = (newTime) => {
-            const t = newTime || defaultTime;
-            if (!dateStr) {
-                const today = new Date().toISOString().slice(0, 10);
-                onChange(`${today}T${t}`);
-                return;
-            }
-            onChange(`${dateStr}T${t}`);
-        };
-
-        return (
-            <div className={`flex items-center gap-2 w-full p-3.5 bg-gray-50 border ${hasError ? 'border-red-500 bg-red-50/30' : 'border-gray-200'} rounded-xl focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white transition-all ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                {/* Lịch chọn ngày (DD/MM/YYYY) */}
-                <div 
-                    className={`relative flex-1 flex items-center gap-2.5 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                    onClick={() => !disabled && dateRef.current && dateRef.current.showPicker && dateRef.current.showPicker()}
-                >
-                    <Calendar className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                    <span className={`text-sm font-medium ${displayDate ? 'text-gray-800 font-bold' : 'text-gray-400 font-medium'}`}>
-                        {displayDate || 'dd/mm/yyyy'}
-                    </span>
-                    <input
-                        ref={dateRef}
-                        type="date"
-                        disabled={disabled}
-                        value={dateStr}
-                        onChange={(e) => handleDateChange(e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    />
-                </div>
-
-                <div className="h-5 w-px bg-gray-200 flex-shrink-0" />
-
-                {/* Chọn giờ (HH:mm) */}
-                <div className="flex items-center gap-1.5 px-1">
-                    <Clock className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <input
-                        type="time"
-                        disabled={disabled}
-                        value={timeStr}
-                        onChange={(e) => handleTimeChange(e.target.value)}
-                        className="bg-transparent border-0 text-sm font-bold text-gray-800 focus:outline-none cursor-pointer p-0"
-                    />
-                </div>
-            </div>
-        );
-    };
 
     const handleDeleteExam = async (exam) => {
         if (Number(exam.attempt_count) > 0) {

@@ -880,7 +880,7 @@ function ScheduleManagement() {
       setWarningPopup({
         show: true,
         title: 'Chưa đủ điều kiện chốt lịch!',
-        message: `Lớp học phần "${maLHP}" có quy định là ${tietQuyDinh} tiết học (theo số tín chỉ), nhưng hiện tại mới chỉ xếp được ${tongTiet} tiết.\n\n⚠️ Bạn còn thiếu ${thieu} tiết học nữa.\n\n💡 Cách khắc phục: Hãy bấm nút "+ Xếp thêm buổi" màu vàng ngay trên thanh công cụ của môn học để tạo thêm buổi học mới cho ${thieu} tiết còn thiếu, sau đó mới bấm "Chốt lịch học"!`
+        message: `Lớp học phần "${maLHP}" có quy định là ${tietQuyDinh} tiết học (theo số tín chỉ), nhưng hiện tại mới chỉ xếp được ${tongTiet} tiết.\n\nBạn còn thiếu ${thieu} tiết học nữa.\n\nCách khắc phục: Hãy bấm nút "+ Xếp thêm buổi" màu vàng ngay trên thanh công cụ của môn học để tạo thêm buổi học mới cho ${thieu} tiết còn thiếu, sau đó mới bấm "Chốt lịch học"!`
       });
       return;
     }

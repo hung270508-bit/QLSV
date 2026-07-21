@@ -1,6 +1,8 @@
 const express = require('express');
 const multer = require('multer');
-const { extractTextFromDocx, generateQuestionsFromText } = require('./services/aiService');
+const { extractTextFromDocx } = require('./services/aiService');
+const { authenticate } = require('../middlewares/authenticate');
+const requireRole = require('../middlewares/requireRole');
 
 const router = express.Router();
 const upload = multer({ dest: require('os').tmpdir() });
@@ -14,32 +16,40 @@ module.exports = (db) => {
         return rows;
     };
 
-    // 1. Khởi tạo Repository, Service & Controller cho AI Assisted Question Bank
+    // 1. Khởi tạo Repository, Service & Controller cho AI Advisor
     const aiAssistedRepo = require('./repositories/aiAssistedRepo')(dbPromise);
     const aiAssistedService = require('./services/aiAssistedService')(aiAssistedRepo);
     const aiAssistedController = require('./controllers/aiAssistedController')(aiAssistedService, dbPromise);
 
-    // 2. Các routes mới của AI Assisted Question Bank
+    // Cron job dọn dẹp TTL cho ai_suggestion_sessions (chạy mỗi 10 phút)
+    setInterval(async () => {
+        try {
+            await aiAssistedRepo.cleanExpiredSuggestions();
+        } catch (err) {
+            console.error('[Cron] Lỗi dọn dẹp ai_suggestion_sessions:', err.message);
+        }
+    }, 10 * 60 * 1000);
+
+    const teacherAuth = [authenticate, requireRole('teacher', 'giangvien', 'admin')];
+
+    // 2. Các routes mới của AI Advisor & Document upload
     router.post('/documents/upload', upload.single('file'), aiAssistedController.uploadDocument);
     router.get('/documents/teacher/:ma_giang_vien', aiAssistedController.getDocumentsByTeacher);
 
-    router.post('/sessions/start', aiAssistedController.startSession);
-    router.post('/sessions/:id/resume', aiAssistedController.resumeSession);
-    router.get('/sessions/teacher/:ma_giang_vien', aiAssistedController.getSessionsByTeacher);
+    // AI Advisor API Contract endpoints
+    router.post('/suggest-questions', teacherAuth, aiAssistedController.suggestQuestions);
+    router.get('/suggestions/:session_id', teacherAuth, aiAssistedController.getSuggestions);
 
-    router.get('/sessions/:id/questions', aiAssistedController.getQuestionsBySession);
-    router.put('/questions/:id/status', aiAssistedController.updateQuestionStatus);
-    router.put('/questions/:id', aiAssistedController.updateQuestion);
-    router.post('/sessions/:id/approve-all', aiAssistedController.approveAllInSession);
-    router.delete('/questions/:id', aiAssistedController.deleteQuestion);
-    router.delete('/sessions/:id', aiAssistedController.deleteSession);
-    router.put('/sessions/:id/complete', aiAssistedController.completeSession);
-
-    // Route giữ lại để tương thích với ExamManagement.jsx khi chọn Ngân hàng câu hỏi
+    // Routes quản lý Ngân hàng câu hỏi chính thức (tương thích ExamManagement & chỉnh sửa câu hỏi chính thức)
     router.get('/banks/teacher/:ma_giang_vien', aiAssistedController.getTeacherQuestionBanks);
     router.get('/banks/:id/questions', aiAssistedController.getBankQuestions);
     router.delete('/banks/:id', aiAssistedController.deleteOfficialBank);
     router.put('/banks/:id', aiAssistedController.updateOfficialBank);
+    router.post('/banks', teacherAuth, aiAssistedController.createOfficialBank);
+    router.post('/banks/:id/questions', teacherAuth, aiAssistedController.addQuestionToBank);
+    router.post('/banks/:id/questions/batch', teacherAuth, aiAssistedController.addQuestionsBatchToBank);
+    router.put('/questions/:id', aiAssistedController.updateQuestion);
+    router.delete('/questions/:id', aiAssistedController.deleteQuestion);
 
   // 7. Tạo kỳ thi (Giảng viên)
     router.post('/exams', async (req, res) => {

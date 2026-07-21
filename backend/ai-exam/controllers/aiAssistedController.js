@@ -1,6 +1,6 @@
 module.exports = (service, dbPromise) => {
     return {
-        // 1. Quản lý tài liệu
+        // 1. Quản lý tài liệu Word
         uploadDocument: async (req, res) => {
             try {
                 const file = req.file;
@@ -21,161 +21,83 @@ module.exports = (service, dbPromise) => {
         getDocumentsByTeacher: async (req, res) => {
             try {
                 const { ma_giang_vien } = req.params;
-                const [rows] = await dbPromise.query(
-                    `SELECT d.*, m.TenMonHoc 
-                     FROM documents d 
-                     JOIN monhoc m ON d.ma_mon_hoc = m.MaMonHoc 
-                     WHERE d.ma_giang_vien = ? 
-                     ORDER BY d.created_at DESC`,
-                    [ma_giang_vien]
-                );
+                const rows = await service.getDocumentsByTeacher(ma_giang_vien);
                 res.json({ success: true, data: rows, message: 'Lấy danh sách tài liệu thành công' });
             } catch (error) {
                 res.status(500).json({ success: false, message: error.message });
             }
         },
 
-        // 2. Quản lý phiên sinh AI
-        startSession: async (req, res) => {
+        // 2. AI Advisor: Tạo gợi ý & xem gợi ý theo phiên
+        suggestQuestions: async (req, res) => {
             try {
-                const { document_id, ma_mon_hoc, ma_lop_hoc_phan, ma_giang_vien, so_cau_yeu_cau, do_kho, chu_de, auto_generate } = req.body;
-                if (!document_id || !ma_mon_hoc || !ma_giang_vien) {
-                    return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc để khởi tạo đề sinh câu hỏi.' });
+                const giangvien_id = req.user?.id || req.user?.username || req.user?.TaiKhoan;
+                if (!giangvien_id) {
+                    return res.status(401).json({ success: false, message: 'Không xác định được thông tin giảng viên từ token' });
                 }
 
-                const session = await service.startSession({
+                const { mon_hoc_id, chuong_id, do_kho, so_luong, document_id } = req.body;
+                if (!mon_hoc_id && !document_id) {
+                    return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã môn học hoặc tài liệu.' });
+                }
+
+                const result = await service.suggestQuestions({
+                    mon_hoc_id,
+                    chuong_id,
+                    do_kho,
+                    so_luong,
                     document_id,
-                    ma_mon_hoc,
-                    ma_lop_hoc_phan: ma_lop_hoc_phan || null,
-                    ma_giang_vien,
-                    so_cau_yeu_cau: so_cau_yeu_cau || 10,
-                    do_kho: do_kho || 'Mixed',
-                    chu_de: chu_de || 'Toàn bộ',
-                    auto_generate
+                    giangvien_id
                 });
 
-                res.json({ success: true, data: session, message: 'Bắt đầu sinh câu hỏi bằng AI thành công!' });
+                res.json({
+                    success: true,
+                    session_id: result.session_id,
+                    goi_y: result.goi_y,
+                    expires_at: result.expires_at,
+                    message: `AI đã gợi ý ${result.goi_y.length} câu hỏi thành công!`
+                });
             } catch (error) {
-                console.error('Start AI session error:', error);
-                res.status(500).json({ success: false, message: error.message });
+                console.error('Suggest questions error:', error);
+                const statusCode = error.statusCode || 500;
+                res.status(statusCode).json({
+                    success: false,
+                    message: error.message,
+                    ...(error.validationCode ? { validationCode: error.validationCode } : {}),
+                    ...(error.suggestedMax !== undefined ? { suggestedMax: error.suggestedMax } : {})
+                });
             }
         },
 
-        resumeSession: async (req, res) => {
+        getSuggestions: async (req, res) => {
             try {
-                const { id } = req.params;
-                const session = await service.resumeSession(id);
-                res.json({ success: true, data: session, message: 'Đã sinh thêm 10 câu hỏi thành công!' });
-            } catch (error) {
-                console.error('Resume AI session error:', error);
-                res.status(500).json({ success: false, message: error.message });
-            }
-        },
-
-        getSessionsByTeacher: async (req, res) => {
-            try {
-                const { ma_giang_vien } = req.params;
-                const sessions = await service.getSessionsByTeacher(ma_giang_vien);
-                res.json({ success: true, data: sessions, message: 'Lấy danh sách đề sinh câu hỏi thành công' });
-            } catch (error) {
-                res.status(500).json({ success: false, message: error.message });
-            }
-        },
-
-        // 3. Quản lý câu hỏi chờ duyệt / đã duyệt
-        getQuestionsBySession: async (req, res) => {
-            try {
-                const { id } = req.params;
-                const { trang_thai, do_kho } = req.query;
-                const questions = await service.getQuestionsBySession(id, { trang_thai, do_kho });
-                res.json({ success: true, data: questions, message: 'Lấy danh sách câu hỏi thành công' });
-            } catch (error) {
-                res.status(500).json({ success: false, message: error.message });
-            }
-        },
-
-        updateQuestionStatus: async (req, res) => {
-            try {
-                const { id } = req.params;
-                const { trang_thai } = req.body; // PENDING, APPROVED, REJECTED
-                if (!['PENDING', 'APPROVED', 'REJECTED'].includes(trang_thai)) {
-                    return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+                const giangvien_id = req.user?.id || req.user?.username || req.user?.TaiKhoan;
+                if (!giangvien_id) {
+                    return res.status(401).json({ success: false, message: 'Không xác định được thông tin giảng viên' });
                 }
 
-                await service.updateQuestionStatus(id, trang_thai);
-                res.json({ success: true, message: trang_thai === 'APPROVED' ? 'Đã duyệt câu hỏi vào Ngân hàng chính thức!' : 'Đã cập nhật trạng thái câu hỏi!' });
+                const { session_id } = req.params;
+                const result = await service.getSuggestions(session_id, giangvien_id);
+
+                res.json({
+                    success: true,
+                    session_id: result.session_id,
+                    tieu_chi: result.tieu_chi,
+                    goi_y: result.goi_y,
+                    expires_at: result.expires_at
+                });
             } catch (error) {
-                console.error('Update question status error:', error);
-                res.status(500).json({ success: false, message: error.message });
+                console.error('Get suggestions error:', error);
+                const statusCode = error.statusCode || 500;
+                res.status(statusCode).json({ success: false, message: error.message });
             }
         },
 
-        approveAllInSession: async (req, res) => {
-            try {
-                const { id } = req.params;
-                const count = await service.approveAllInSession(id);
-                res.json({ success: true, data: { approved_count: count }, message: `Đã duyệt thành công ${count} câu hỏi vào Ngân hàng chính thức!` });
-            } catch (error) {
-                console.error('Approve all error:', error);
-                res.status(500).json({ success: false, message: error.message });
-            }
-        },
-
-        updateQuestion: async (req, res) => {
-            try {
-                const { id } = req.params;
-                const { noi_dung, giai_thich, do_kho, chu_de, options } = req.body;
-
-                if (!noi_dung || !options || !Array.isArray(options) || options.length !== 4) {
-                    return res.status(400).json({ success: false, message: 'Câu hỏi bắt buộc phải có nội dung và chính xác 4 đáp án.' });
-                }
-                if (!options.some(opt => opt.is_correct)) {
-                    return res.status(400).json({ success: false, message: 'Bắt buộc phải chọn ít nhất 1 đáp án đúng.' });
-                }
-
-                await service.updateQuestion(id, { noi_dung, giai_thich, do_kho, chu_de, options });
-                res.json({ success: true, message: 'Cập nhật câu hỏi thành công!' });
-            } catch (error) {
-                console.error('Update question error:', error);
-                res.status(500).json({ success: false, message: error.message });
-            }
-        },
-
-        deleteQuestion: async (req, res) => {
-            try {
-                const { id } = req.params;
-                await service.deleteQuestion(id);
-                res.json({ success: true, message: 'Đã xóa câu hỏi!' });
-            } catch (error) {
-                console.error('Delete question error:', error);
-                res.status(500).json({ success: false, message: error.message });
-            }
-        },
-
-        // 4. Quản lý Ngân hàng câu hỏi chính thức (dùng cho kỳ thi Online)
+        // 3. Quản lý Ngân hàng câu hỏi chính thức (tương thích ExamManagement)
         getTeacherQuestionBanks: async (req, res) => {
             try {
                 const { ma_giang_vien } = req.params;
-                await dbPromise.query(`UPDATE question_banks SET tieu_de = REGEXP_REPLACE(tieu_de, ' \\\\((Phiên|Đề) #[0-9]+\\\\)$', '') WHERE tieu_de REGEXP ' \\\\((Phiên|Đề) #[0-9]+\\\\)$'`).catch(()=>{});
-
-                await dbPromise.query(`
-                    SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'question_banks' AND COLUMN_NAME = 'ma_lop_hoc_phan'
-                `).then(async ([cols]) => {
-                    if (cols.length === 0) {
-                        await dbPromise.query(`ALTER TABLE question_banks ADD COLUMN ma_lop_hoc_phan VARCHAR(255) NULL`);
-                    }
-                }).catch(()=>{});
-
-                const [rows] = await dbPromise.query(
-                    `SELECT b.*, m.TenMonHoc, s.do_kho, COALESCE(b.ma_lop_hoc_phan, s.ma_lop_hoc_phan) AS ma_lop_hoc_phan
-                     FROM question_banks b
-                     JOIN monhoc m ON b.ma_mon_hoc = m.MaMonHoc
-                     LEFT JOIN ai_generation_sessions s ON b.session_id = s.id
-                     WHERE b.ma_giang_vien = ? 
-                     ORDER BY b.created_at DESC`,
-                    [ma_giang_vien]
-                );
+                const rows = await service.getTeacherQuestionBanks(ma_giang_vien);
                 res.json({ success: true, data: rows, message: 'Lấy danh sách Ngân hàng câu hỏi chính thức thành công' });
             } catch (error) {
                 res.status(500).json({ success: false, message: error.message });
@@ -216,24 +138,94 @@ module.exports = (service, dbPromise) => {
             }
         },
 
-        deleteSession: async (req, res) => {
+        createOfficialBank: async (req, res) => {
             try {
-                const { id } = req.params;
-                await service.deleteSession(id);
-                res.json({ success: true, message: 'Đã xóa bộ đề AI đang làm việc!' });
+                const { ma_mon_hoc, ma_giang_vien, tieu_de, ma_lop_hoc_phan, questions } = req.body;
+                if (!ma_mon_hoc || !ma_giang_vien || !tieu_de) {
+                    return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã môn học, giảng viên và tiêu đề Ngân hàng câu hỏi.' });
+                }
+                const bank = await service.createOfficialBank({ ma_mon_hoc, ma_giang_vien, tieu_de, ma_lop_hoc_phan, questions: Array.isArray(questions) ? questions : [] });
+                res.json({ success: true, data: bank, message: 'Tạo Ngân hàng câu hỏi mới thành công!' });
             } catch (error) {
-                console.error('Delete session error:', error);
+                console.error('Create official bank error:', error);
                 res.status(500).json({ success: false, message: error.message });
             }
         },
 
-        completeSession: async (req, res) => {
+        addQuestionToBank: async (req, res) => {
+            try {
+                const { id } = req.params; // bankId
+                const { chu_de, noi_dung, giai_thich, do_kho, options, nguon, ai_generated } = req.body;
+                const creator_id = req.user?.id || req.user?.username || req.user?.TaiKhoan || null;
+
+                if (!noi_dung || !options || !Array.isArray(options) || options.length !== 4) {
+                    return res.status(400).json({ success: false, message: 'Câu hỏi thủ công bắt buộc phải có nội dung và chính xác 4 đáp án.' });
+                }
+                if (!options.some(opt => opt.is_correct || opt.la_dap_an_dung)) {
+                    return res.status(400).json({ success: false, message: 'Bắt buộc phải chọn ít nhất 1 đáp án đúng cho câu hỏi.' });
+                }
+
+                const questionId = await service.addQuestionToBank(id, { chu_de, noi_dung, giai_thich, do_kho, options, nguon: nguon || (ai_generated ? 'AI Gợi ý' : 'GV'), ai_generated, creator_id });
+                res.json({ success: true, questionId, message: 'Đã lưu câu hỏi vào Ngân hàng chính thức thành công!' });
+            } catch (error) {
+                console.error('Add question to bank error:', error);
+                const statusCode = error.statusCode || 500;
+                res.status(statusCode).json({ success: false, message: error.message });
+            }
+        },
+
+        addQuestionsBatchToBank: async (req, res) => {
+            try {
+                const { id } = req.params; // bankId
+                const questions = Array.isArray(req.body.questions) ? req.body.questions : (Array.isArray(req.body) ? req.body : []);
+                const creator_id = req.user?.id || req.user?.username || req.user?.TaiKhoan || null;
+
+                if (!questions || questions.length === 0) {
+                    return res.status(400).json({ success: false, message: 'Danh sách câu hỏi cần lưu trống.' });
+                }
+
+                for (const q of questions) {
+                    if (!q.noi_dung && !q.cauhoi) {
+                        return res.status(400).json({ success: false, message: 'Tất cả câu hỏi trong danh sách bắt buộc phải có nội dung.' });
+                    }
+                }
+
+                const addedIds = await service.addQuestionsBatchToBank(id, questions, creator_id);
+                res.json({ success: true, addedCount: addedIds.length, addedIds, message: `Đã lưu thành công ${addedIds.length} câu hỏi vào Ngân hàng chính thức!` });
+            } catch (error) {
+                console.error('Add questions batch error:', error);
+                const statusCode = error.statusCode || 500;
+                res.status(statusCode).json({ success: false, message: error.message });
+            }
+        },
+
+        updateQuestion: async (req, res) => {
             try {
                 const { id } = req.params;
-                await service.completeSession(id);
-                res.json({ success: true, message: 'Đã hoàn tất bộ đề AI!' });
+                const { noi_dung, giai_thich, do_kho, chu_de, options } = req.body;
+
+                if (!noi_dung || !options || !Array.isArray(options) || options.length !== 4) {
+                    return res.status(400).json({ success: false, message: 'Câu hỏi bắt buộc phải có nội dung và chính xác 4 đáp án.' });
+                }
+                if (!options.some(opt => opt.is_correct)) {
+                    return res.status(400).json({ success: false, message: 'Bắt buộc phải chọn ít nhất 1 đáp án đúng.' });
+                }
+
+                await service.updateQuestion(id, { noi_dung, giai_thich, do_kho, chu_de, options });
+                res.json({ success: true, message: 'Cập nhật câu hỏi thành công!' });
             } catch (error) {
-                console.error('Complete session error:', error);
+                console.error('Update question error:', error);
+                res.status(500).json({ success: false, message: error.message });
+            }
+        },
+
+        deleteQuestion: async (req, res) => {
+            try {
+                const { id } = req.params;
+                await service.deleteQuestion(id);
+                res.json({ success: true, message: 'Đã xóa câu hỏi!' });
+            } catch (error) {
+                console.error('Delete question error:', error);
                 res.status(500).json({ success: false, message: error.message });
             }
         }

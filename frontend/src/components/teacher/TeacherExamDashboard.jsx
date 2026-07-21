@@ -61,16 +61,26 @@ export default function TeacherExamDashboard({ id: propId }) {
                     
                     setSchedule(fetchedSchedule);
                     const studentsData = res.data.data.students.map(s => {
+                        const violCount = s.violationCount || 0;
+                        const hasViol = violCount > 0;
                         let currentStatus = 'WAITING';
-                        if (s.db_status === 'InProgress' || s.db_status === 'In Progress') currentStatus = 'IN_PROGRESS';
-                        else if (s.db_status === 'Submitted' || s.db_status === 'SUBMITTED') currentStatus = 'SUBMITTED';
+                        
+                        if (s.db_status === 'Disconnected' || s.db_status === 'DISCONNECTED') {
+                            currentStatus = 'DISCONNECTED';
+                        } else if (s.db_status === 'Locked' || s.db_status === 'AutoLocked' || s.db_status === 'AUTO_LOCKED' || violCount >= 3 || (hasViol && (s.db_status === 'Submitted' || s.db_status === 'SUBMITTED'))) {
+                            currentStatus = 'AUTO_LOCKED';
+                        } else if (s.db_status === 'InProgress' || s.db_status === 'In Progress') {
+                            currentStatus = 'IN_PROGRESS';
+                        } else if (s.db_status === 'Submitted' || s.db_status === 'SUBMITTED') {
+                            currentStatus = 'SUBMITTED';
+                        }
                         
                         return {
                             ...s,
                             status: currentStatus,
                             attemptId: s.attemptId || null,
-                            violationCount: s.violationCount || 0,
-                            hasViolation: (s.violationCount || 0) > 0
+                            violationCount: violCount,
+                            hasViolation: hasViol
                         };
                     });
                     setStudents(studentsData);
@@ -97,6 +107,17 @@ export default function TeacherExamDashboard({ id: propId }) {
             if (newStats[s.status] !== undefined) newStats[s.status]++;
         });
         setStats(newStats);
+    }, [students]);
+
+    const attemptMap = useMemo(() => {
+        const map = new Map();
+        const activeStudents = students
+            .filter((s) => s.attemptId != null)
+            .sort((a, b) => a.attemptId - b.attemptId);
+        activeStudents.forEach((s, idx) => {
+            map.set(s.attemptId, idx + 1);
+        });
+        return map;
     }, [students]);
 
     const filteredStudents = useMemo(() => {
@@ -139,105 +160,295 @@ export default function TeacherExamDashboard({ id: propId }) {
     if (error) return <div className="p-8 text-center text-red-500 font-medium text-lg">{error}</div>;
     if (!schedule) return null;
 
-    const STATUS_UI = {
-        'WAITING': { color: 'bg-gray-100 text-gray-600 border-gray-300', icon: <Clock className="w-4 h-4" />, label: 'Chưa vào thi' },
-        'IN_PROGRESS': { color: 'bg-green-100 text-green-700 border-green-500 shadow-green-200 shadow-lg', icon: <MonitorPlay className="w-4 h-4 animate-pulse" />, label: 'Đang thi' },
-        'DISCONNECTED': { color: 'bg-yellow-100 text-yellow-700 border-yellow-500 animate-pulse', icon: <WifiOff className="w-4 h-4" />, label: 'Mất kết nối' },
-        'AUTO_LOCKED': { color: 'bg-red-100 text-red-700 border-red-600 shadow-red-200 shadow-md', icon: <Lock className="w-4 h-4" />, label: 'Bị khóa' },
-        'SUBMITTED': { color: 'bg-blue-100 text-blue-700 border-blue-500', icon: <CheckCircle2 className="w-4 h-4" />, label: 'Đã nộp bài' }
-    };
+    const STATS_CONFIG = [
+        {
+            key: 'TOTAL',
+            label: 'Tổng số sinh viên',
+            bg: 'bg-white',
+            border: 'border-gray-200',
+            labelClass: 'text-xs uppercase font-extrabold tracking-wider text-[#152238]',
+            badgeBg: 'bg-[#F4C542]/20',
+            numberClass: 'text-3xl sm:text-4xl font-extrabold text-[#152238] tracking-tight mt-3 leading-none',
+            icon: <Users className="w-5 h-5 text-[#152238]" />,
+            isTotal: true
+        },
+        {
+            key: 'WAITING',
+            label: 'Chưa vào thi',
+            bg: 'bg-white',
+            border: 'border-gray-200',
+            labelClass: 'text-xs uppercase font-extrabold tracking-wider text-gray-500',
+            badgeBg: 'bg-gray-100',
+            numberClass: 'text-3xl sm:text-4xl font-extrabold text-gray-800 tracking-tight mt-3 leading-none',
+            pillClass: 'bg-gray-100 text-gray-700 border border-gray-200',
+            icon: <Clock className="w-5 h-5 text-gray-600" />,
+            cardHoverClass: 'hover:border-gray-400 hover:ring-2 hover:ring-gray-300/40 hover:shadow-lg hover:-translate-y-1'
+        },
+        {
+            key: 'IN_PROGRESS',
+            label: 'Đang thi',
+            bg: 'bg-white',
+            border: 'border-gray-200',
+            labelClass: 'text-xs uppercase font-extrabold tracking-wider text-emerald-700',
+            badgeBg: 'bg-emerald-100',
+            numberClass: 'text-3xl sm:text-4xl font-extrabold text-emerald-700 tracking-tight mt-3 leading-none',
+            pillClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+            icon: <MonitorPlay className="w-5 h-5 text-emerald-700" />,
+            cardHoverClass: 'hover:border-emerald-500 hover:ring-2 hover:ring-emerald-500/30 hover:shadow-lg hover:-translate-y-1'
+        },
+        {
+            key: 'DISCONNECTED',
+            label: 'Mất kết nối',
+            bg: 'bg-white',
+            border: 'border-gray-200',
+            labelClass: 'text-xs uppercase font-extrabold tracking-wider text-purple-700',
+            badgeBg: 'bg-purple-100',
+            numberClass: 'text-3xl sm:text-4xl font-extrabold text-purple-700 tracking-tight mt-3 leading-none',
+            pillClass: 'bg-purple-100 text-purple-800 border border-purple-200',
+            icon: <WifiOff className="w-5 h-5 text-purple-700" />,
+            cardHoverClass: 'hover:border-purple-500 hover:ring-2 hover:ring-purple-500/30 hover:shadow-lg hover:-translate-y-1'
+        },
+        {
+            key: 'AUTO_LOCKED',
+            label: 'Bị khóa',
+            bg: 'bg-white',
+            border: 'border-gray-200',
+            labelClass: 'text-xs uppercase font-extrabold tracking-wider text-red-700',
+            badgeBg: 'bg-red-100',
+            numberClass: 'text-3xl sm:text-4xl font-extrabold text-red-700 tracking-tight mt-3 leading-none',
+            pillClass: 'bg-red-100 text-red-800 border border-red-200',
+            icon: <Lock className="w-5 h-5 text-red-700" />,
+            cardHoverClass: 'hover:border-red-600 hover:ring-2 hover:ring-red-500/40 hover:shadow-xl hover:-translate-y-1'
+        },
+        {
+            key: 'SUBMITTED',
+            label: 'Đã nộp bài',
+            bg: 'bg-white',
+            border: 'border-gray-200',
+            labelClass: 'text-xs uppercase font-extrabold tracking-wider text-[#927117]',
+            badgeBg: 'bg-[#F4C542]/25',
+            numberClass: 'text-3xl sm:text-4xl font-extrabold text-[#927117] tracking-tight mt-3 leading-none',
+            pillClass: 'bg-[#FFF7D6] text-[#927117] border border-[#F4C542]/40',
+            icon: <CheckCircle2 className="w-5 h-5 text-[#927117]" />,
+            cardHoverClass: 'hover:border-[#F4C542] hover:ring-2 hover:ring-[#F4C542]/40 hover:shadow-lg hover:-translate-y-1'
+        }
+    ];
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900 pb-12">
-            {/* Header */}
-            <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                <ArrowLeft className="w-5 h-5 text-gray-600" />
-                            </button>
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900 leading-tight">Giám sát: {schedule.ma_lop_hoc_phan}</h1>
-                                <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                                    <Activity className="w-4 h-4 text-green-500" /> Real-time Monitoring Active
-                                </p>
+        <div className="min-h-screen bg-[#F8F9FA] text-[#152238] pb-16 font-sans antialiased">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+                {/* HERO BANNER BOX */}
+                <div className="bg-[#F4C542] rounded-3xl p-6 md:p-8 shadow-xl text-[#152238] flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="w-12 h-12 rounded-2xl bg-[#152238] text-white flex items-center justify-center hover:bg-[#1e2f4c] transition-all shadow-md shrink-0"
+                            title="Quay lại"
+                        >
+                            <ArrowLeft className="w-6 h-6" />
+                        </button>
+                        <div>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#152238] tracking-tight">
+                                    Giám sát: {schedule.ma_lop_hoc_phan}
+                                </h2>
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#152238] text-[#F4C542] shadow-xs">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    Đang giám sát
+                                </span>
                             </div>
+                            <p className="text-sm sm:text-base text-[#152238]/80 font-semibold mt-1">
+                                Môn học: {schedule.TenMonHoc || schedule.ma_mon_hoc} • Thời gian thực (Live Proctoring)
+                            </p>
                         </div>
-                        <div className="flex gap-4">
-                            <div className="text-right">
-                                <div className="text-sm font-medium text-gray-500">Bắt đầu</div>
-                                <div className="text-sm font-semibold">{new Date(schedule.thoi_gian_mo).toLocaleString()}</div>
-                            </div>
-                            <div className="w-px bg-gray-300"></div>
-                            <div className="text-right">
-                                <div className="text-sm font-medium text-gray-500">Kết thúc</div>
-                                <div className="text-sm font-semibold text-red-600">{new Date(schedule.thoi_gian_dong).toLocaleString()}</div>
-                            </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 shrink-0 ml-auto w-full xl:w-auto text-xs sm:text-sm">
+                        <div className="bg-white/95 px-4 py-2.5 rounded-2xl border border-white flex items-center justify-between sm:justify-start gap-2 shadow-xs">
+                            <span className="text-gray-600 font-semibold">Bắt đầu:</span>
+                            <span className="font-extrabold text-[#152238]">
+                                {new Date(schedule.thoi_gian_mo).toLocaleString('vi-VN')}
+                            </span>
+                        </div>
+                        <div className="bg-white/95 px-4 py-2.5 rounded-2xl border border-white flex items-center justify-between sm:justify-start gap-2 shadow-xs">
+                            <span className="text-gray-600 font-semibold">Kết thúc:</span>
+                            <span className="font-extrabold text-[#152238]">
+                                {new Date(schedule.thoi_gian_dong).toLocaleString('vi-VN')}
+                            </span>
                         </div>
                     </div>
                 </div>
-            </header>
+                {/* 6 Stats Cards Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+                    {STATS_CONFIG.map((conf) => {
+                        const isSelected = conf.key === 'TOTAL' ? statusFilter === 'ALL' : statusFilter === conf.key;
+                        const countValue =
+                            stats[conf.key] !== undefined
+                                ? stats[conf.key]
+                                : conf.key === 'TOTAL'
+                                ? students.length
+                                : 0;
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-                {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                    {Object.entries(STATUS_UI).map(([statusKey, ui]) => (
-                        <div key={statusKey} className={`bg-white rounded-xl border p-4 flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 ${statusFilter === statusKey ? 'ring-2 ring-blue-500' : ''}`} onClick={() => setStatusFilter(statusFilter === statusKey ? 'ALL' : statusKey)}>
-                            <div className={`p-3 rounded-full mb-2 ${ui.color.split(' ')[0]} bg-opacity-50`}>
-                                {React.cloneElement(ui.icon, { className: 'w-6 h-6 ' + ui.color.split(' ')[1] })}
-                            </div>
-                            <span className="text-2xl font-bold">{stats[statusKey]}</span>
-                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">{ui.label}</span>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Filters */}
-                <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
-                    <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input type="text" placeholder="Tìm kiếm MSSV, Họ tên..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" />
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-                        <Users className="w-5 h-5" /> Tổng số sinh viên: {students.length}
-                    </div>
-                </div>
-
-                {/* Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
-                    {filteredStudents.length > 0 ? filteredStudents.map(student => {
-                        const ui = STATUS_UI[student.status];
-                        return (
-                            <div key={student.MSSV} className={`bg-white rounded-2xl border-2 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${student.hasViolation ? 'border-red-500' : ui.color.split(' ').find(c => c.startsWith('border-'))}`}>
-                                <div className={`px-4 py-3 border-b flex justify-between items-center ${student.hasViolation ? 'bg-red-50' : ui.color.split(' ').find(c => c.startsWith('bg-'))}`}>
-                                    <div className={`flex items-center gap-2 font-bold ${student.hasViolation ? 'text-red-700' : ui.color.split(' ').find(c => c.startsWith('text-'))}`}>
-                                        {ui.icon}
-                                        {ui.label}
-                                        {student.hasViolation && <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-red-200 text-red-800">Lần {student.violationCount}</span>}
+                        if (conf.isTotal) {
+                            return (
+                                <div
+                                    key={conf.key}
+                                    onClick={() => setStatusFilter('ALL')}
+                                    className={`bg-white rounded-2xl border p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 order-first ${
+                                        conf.border
+                                    } hover:shadow-md hover:-translate-y-0.5 ${
+                                        statusFilter === 'ALL' ? 'ring-2 ring-[#152238] border-[#152238] shadow-sm bg-gray-50/40' : 'shadow-xs'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className={conf.labelClass}>
+                                            {conf.label}
+                                        </span>
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${conf.badgeBg}`}>
+                                            {conf.icon}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {student.hasViolation && student.status !== 'AUTO_LOCKED' && <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" title={`Vi phạm ${student.violationCount} lần`} />}
-                                        {student.status === 'DISCONNECTED' && <WifiOff className="w-5 h-5 text-yellow-600 animate-pulse" title="Mất kết nối" />}
-                                        {student.status === 'AUTO_LOCKED' && <Lock className="w-5 h-5 text-red-600" title="Đã bị khóa" />}
+                                    <div className={conf.numberClass}>
+                                        {students.length}
                                     </div>
                                 </div>
-                                <div className="p-5">
-                                    <h3 className="font-bold text-gray-900 text-lg truncate" title={student.HoTen}>{student.HoTen}</h3>
-                                    <p className="text-gray-500 font-mono text-sm mt-1">{student.MSSV}</p>
-                                    
-                                    <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center w-full">
-                                        <span className="text-xs text-gray-400 font-mono">ID: {student.attemptId || '---'}</span>
-                                        <button className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors" onClick={() => handleViewViolations(student.attemptId)}>
-                                            Xem chi tiết
-                                        </button>
+                            );
+                        }
+
+                        return (
+                            <div
+                                key={conf.key}
+                                onClick={() => setStatusFilter(statusFilter === conf.key ? 'ALL' : conf.key)}
+                                className={`rounded-2xl border p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 bg-white ${
+                                    conf.border || 'border-gray-200'
+                                } hover:shadow-md hover:-translate-y-0.5 ${
+                                    isSelected
+                                        ? 'ring-2 ring-[#152238] border-[#152238] shadow-sm bg-gray-50/40'
+                                        : 'shadow-xs'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className={conf.labelClass}>
+                                        {conf.label}
+                                    </span>
+                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${conf.badgeBg}`}>
+                                        {conf.icon}
                                     </div>
+                                </div>
+                                <div className={conf.numberClass}>
+                                    {countValue}
                                 </div>
                             </div>
                         );
-                    }) : (
-                        <div className="col-span-full py-12 text-center text-gray-500">
-                            Không tìm thấy sinh viên nào khớp với bộ lọc.
+                    })}
+                </div>
+
+                {/* Toolbar */}
+                <div className="mb-6 bg-white p-4 rounded-2xl border border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-2xs">
+                    <div className="relative w-full sm:w-96">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Tìm kiếm theo MSSV hoặc Họ tên..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-[#FAFAF8] text-[13px] text-[#152238] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#152238] focus:ring-1 focus:ring-[#152238] transition-all"
+                        />
+                    </div>
+                    <div className="flex items-center gap-3 text-xs sm:text-sm font-medium text-gray-600 self-end sm:self-auto">
+                        <span>Hiển thị: <strong className="text-[#152238]">{filteredStudents.length}</strong> / {students.length} sinh viên</span>
+                    </div>
+                </div>
+
+                {/* Student Cards Grid (4 columns desktop, 2 columns tablet, 1 column mobile) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
+                    {filteredStudents.length > 0 ? (
+                        filteredStudents.map((student) => {
+                            const statusConf = STATS_CONFIG.find((c) => c.key === student.status) || STATS_CONFIG[1];
+                            const isWaiting = student.status === 'WAITING';
+                            const hasRedBorder = student.hasViolation || student.status === 'AUTO_LOCKED';
+                            const localNumber = student.attemptId ? attemptMap.get(student.attemptId) : null;
+
+                            const borderAndHoverClass = hasRedBorder
+                                ? 'border-[1.5px] border-red-500 ring-1 ring-red-500/20 bg-red-50/15 hover:border-red-600 hover:ring-2 hover:ring-red-500/40 hover:shadow-xl hover:-translate-y-1'
+                                : `border-gray-200 bg-white ${statusConf.cardHoverClass || 'hover:border-[#152238]/30 hover:shadow-lg hover:-translate-y-1'}`;
+
+                            return (
+                                <div
+                                    key={student.MSSV}
+                                    className={`rounded-2xl border transition-all duration-200 ease-in-out overflow-hidden flex flex-col justify-between p-5 ${borderAndHoverClass} ${isWaiting ? 'opacity-70 hover:opacity-100 bg-[#FAFAF8]' : ''}`}
+                                >
+                                    <div>
+                                        {/* Status Badge & Violation Badge */}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${statusConf.pillClass}`}
+                                            >
+                                                {statusConf.icon}
+                                                <span>{statusConf.label}</span>
+                                            </span>
+                                            {student.hasViolation && (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-600 text-white font-bold text-xs shadow-xs animate-pulse">
+                                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                                    Lần {student.violationCount}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Student Info */}
+                                        <div className="mt-4">
+                                            <h3
+                                                className="font-extrabold text-[#152238] text-lg leading-snug truncate hover:text-[#152238]/80 transition-colors"
+                                                title={student.HoTen}
+                                            >
+                                                {student.HoTen}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="text-xs text-gray-800 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-lg font-extrabold">
+                                                    {student.MSSV}
+                                                </span>
+                                                {student.Email && student.Email.split('@')[0] !== student.MSSV && (
+                                                    <span className="text-xs font-medium text-gray-500 truncate max-w-[140px]" title={student.Email}>
+                                                        {student.Email.split('@')[0]}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Card Footer */}
+                                    <div className="mt-5 pt-3.5 border-t border-gray-100 flex justify-between items-center">
+                                        <span className="text-xs font-semibold text-gray-600">
+                                            {localNumber ? (
+                                                <span title={`ID làm bài trên cơ sở dữ liệu hệ thống (SysID): #${student.attemptId}`}>
+                                                    Bài thi số: <strong className="text-[#152238] font-extrabold text-sm">#{String(localNumber).padStart(2, '0')}</strong>
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 font-medium">Chưa vào thi</span>
+                                            )}
+                                        </span>
+                                        <button
+                                            onClick={() => handleViewViolations(student.attemptId)}
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#152238] hover:text-[#152238] bg-gray-50 hover:bg-[#F4C542] px-3.5 py-1.5 rounded-xl transition-all border border-gray-200 shadow-2xs"
+                                        >
+                                            Chi tiết →
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-gray-200 p-8">
+                            <p className="text-gray-500 text-base font-medium">
+                                Không tìm thấy sinh viên nào khớp với điều kiện lọc hiện tại.
+                            </p>
+                            {statusFilter !== 'ALL' && (
+                                <button
+                                    onClick={() => setStatusFilter('ALL')}
+                                    className="mt-3 px-4 py-2 bg-[#152238] text-[#F4C542] rounded-xl text-xs font-semibold hover:bg-[#1e2f4c] transition-colors"
+                                >
+                                    Xem tất cả sinh viên
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -245,49 +456,63 @@ export default function TeacherExamDashboard({ id: propId }) {
 
             {/* Violation Modal */}
             {showViolationModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/10 backdrop-blur-[2px]">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                            <h3 className="text-lg font-bold text-gray-900">Lịch sử vi phạm (Attempt ID: {selectedAttemptId})</h3>
-                            <button onClick={() => setShowViolationModal(false)} className="text-gray-400 hover:text-gray-600">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-[#E5E4DD]">
+                        <div className="px-6 py-4 border-b border-[#E5E4DD] flex justify-between items-center bg-[#F1EFE8]/50">
+                            <h3 className="text-base font-bold text-[#17181A]">
+                                Lịch sử vi phạm (Attempt ID: #{selectedAttemptId})
+                            </h3>
+                            <button
+                                onClick={() => setShowViolationModal(false)}
+                                className="text-gray-400 hover:text-gray-600 text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100"
+                            >
                                 &times;
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1">
                             {loadingViolations ? (
-                                <div className="flex justify-center p-4"><div className="animate-spin w-6 h-6 border-b-2 border-blue-600 rounded-full"></div></div>
+                                <div className="flex justify-center p-8">
+                                    <div className="animate-spin w-7 h-7 border-b-2 border-[#17181A] rounded-full"></div>
+                                </div>
                             ) : violations.length === 0 ? (
-                                <p className="text-gray-500 text-center">Không có ghi nhận vi phạm nào.</p>
+                                <div className="text-center py-6">
+                                    <p className="text-[#8C8B82] text-sm">Không có ghi nhận vi phạm nào.</p>
+                                </div>
                             ) : (
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {violations.map((v, i) => (
-                                        <div key={i} className="flex gap-4 p-3 border rounded-lg bg-red-50 border-red-100">
-                                            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                        <div key={i} className="flex gap-3.5 p-4 rounded-xl bg-[#FCEBEB] border border-[#A32D2D]/20">
+                                            <AlertTriangle className="w-5 h-5 text-[#A32D2D] flex-shrink-0 mt-0.5" />
                                             <div>
-                                                <p className="font-semibold text-red-800">{v.violation_type}</p>
-                                                {v.note && <p className="text-sm text-red-600 mt-1">{v.note}</p>}
-                                                <p className="text-xs text-red-400 mt-2">{new Date(v.occurred_at).toLocaleString()}</p>
+                                                <p className="font-bold text-[#A32D2D] text-sm">{v.violation_type}</p>
+                                                {v.note && <p className="text-xs text-[#A32D2D]/90 mt-1 font-medium">{v.note}</p>}
+                                                <p className="text-[11px] text-[#A32D2D]/70 mt-2 font-mono">
+                                                    Thời gian: {new Date(v.occurred_at).toLocaleString('vi-VN')}
+                                                </p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             )}
                         </div>
-                        <div className="px-6 py-4 bg-gray-50 border-t text-right">
-                            <button onClick={() => setShowViolationModal(false)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition-colors">
-                                Đóng
+                        <div className="px-6 py-4 bg-[#FAFAF8] border-t border-[#E5E4DD] text-right">
+                            <button
+                                onClick={() => setShowViolationModal(false)}
+                                className="px-5 py-2.5 bg-[#17181A] hover:bg-black text-[#FFEC00] rounded-xl text-xs font-bold transition-colors shadow-sm"
+                            >
+                                Đóng cửa sổ
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-            
+
             {/* Info Dialog */}
-            <InfoDialog 
-                show={infoDialog.show} 
-                title={infoDialog.title} 
-                message={infoDialog.message} 
-                onClose={() => setInfoDialog({ show: false, message: '', title: '' })} 
+            <InfoDialog
+                show={infoDialog.show}
+                title={infoDialog.title}
+                message={infoDialog.message}
+                onClose={() => setInfoDialog({ show: false, message: '', title: '' })}
             />
 
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

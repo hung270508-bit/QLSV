@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import API_URL from '../../api';
 import {
@@ -124,7 +125,7 @@ const QRModal = ({ open, hocPhi, onClose, onPaid }) => {
           onPaid?.();
         }
       } catch { /* silent */ }
-    }, 5000);
+    }, 2000);
   }, [onPaid]);
 
   const generateQR = async () => {
@@ -143,15 +144,17 @@ const QRModal = ({ open, hocPhi, onClose, onPaid }) => {
   useEffect(() => {
     if (!open) { stopPoll(); setStep('idle'); setQrData(null); setErrMsg(''); return; }
     if (hocPhi?.trang_thai === 'Đã đóng') { setStep('paid'); return; }
+    if (hocPhi?.trang_thai === 'Chờ duyệt' || step === 'reported') { setStep('reported'); return; }
+    if (step === 'paid') return;
     generateQR();
-  }, [open, hocPhi?.id]);
+  }, [open, hocPhi?.id, hocPhi?.trang_thai]);
 
   useEffect(() => () => stopPoll(), []);
 
   if (!open || !hocPhi) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="bg-[#1a1a1a] p-5 text-white flex items-center justify-between">
           <div>
@@ -189,6 +192,21 @@ const QRModal = ({ open, hocPhi, onClose, onPaid }) => {
                 <p className="text-gray-500 text-sm mt-1">Hệ thống đã ghi nhận học phí của bạn.</p>
               </div>
               <button onClick={onClose} className="px-6 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-colors">Hoàn tất</button>
+            </div>
+          )}
+
+          {step === 'reported' && (
+            <div className="flex flex-col items-center py-8 gap-4 animate-in fade-in zoom-in-95">
+              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+              </div>
+              <div className="text-center space-y-1.5 px-2">
+                <p className="text-xl font-black text-emerald-700">Ghi nhận thông báo thanh toán!</p>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  Trạng thái học phí của bạn đã được chuyển sang <strong>Chờ kiểm tra</strong>. Admin sẽ kiểm tra số tài khoản (STK) và duyệt thông tin giao dịch cho bạn.
+                </p>
+              </div>
+              <button onClick={onClose} className="px-6 py-2.5 bg-[#1a1a1a] hover:bg-gray-800 text-white font-bold rounded-xl transition-colors text-sm">Hoàn tất</button>
             </div>
           )}
 
@@ -235,15 +253,31 @@ const QRModal = ({ open, hocPhi, onClose, onPaid }) => {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-xs text-gray-500 justify-center font-medium">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                Đang chờ xác nhận thanh toán tự động...
+              <div className="flex flex-col items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await api.post(`/api/student/tuitions/${hocPhi.id}/report-transfer`);
+                    } catch { /* ignore error */ }
+                    stopPoll();
+                    setStep('reported');
+                    onPaid?.();
+                  }}
+                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2 text-sm"
+                >
+                  <CheckCircle2 className="w-5 h-5" /> Tôi đã thanh toán (Gửi thông báo cho Admin)
+                </button>
+                <p className="text-[11px] text-gray-500 text-center leading-tight">
+                  Bấm nút này sau khi đã chuyển khoản thành công để Admin kiểm tra STK và duyệt
+                </p>
               </div>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -256,22 +290,30 @@ const StudentTuition = () => {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [showBankAccounts, setShowBankAccounts] = useState(false);
 
-  const fetchTuitions = useCallback(async () => {
+  const fetchTuitions = useCallback(async (silent = false) => {
     try {
-      setLoading(true); setError(null);
+      if (!silent) setLoading(true);
+      setError(null);
       const r = await api.get('/api/student/tuitions/me');
       const list = r.data?.data || [];
       setTuitions(list);
-      if (list.length > 0 && !selectedTuition) {
-        setSelectedTuition(list[0]);
+      if (list.length > 0) {
+        if (!selectedTuition) {
+          setSelectedTuition(list[0]);
+        } else {
+          // Cập nhật lại selectedTuition hiện tại từ dữ liệu mới
+          const updated = list.find(t => t.id === selectedTuition.id);
+          if (updated) setSelectedTuition(updated);
+        }
       }
     } catch (e) {
       if (e.response?.status === 403) setError('Bạn không có quyền xem thông tin này.');
       else if (e.response?.status === 401) setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
       else setError('Không thể tải thông tin học phí. Vui lòng thử lại.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [selectedTuition]);
 
@@ -299,12 +341,15 @@ const StudentTuition = () => {
   }, [selectedTuition, fetchDetail]);
 
   const handlePaid = useCallback(() => {
-    fetchTuitions();
+    fetchTuitions(true);
   }, [fetchTuitions]);
 
   const scrollToBankInfo = () => {
-    const el = document.getElementById('bank-transfer-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    setShowBankAccounts(true);
+    setTimeout(() => {
+      const el = document.getElementById('bank-transfer-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   // Lấy chính xác Họ tên + MSSV + Học kỳ từ tài khoản đăng nhập hoặc selectedTuition
@@ -416,29 +461,19 @@ const StudentTuition = () => {
                 </p>
               </div>
 
-              {/* Nút hành động với màu vàng ấm chuẩn Ảnh 3 */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {isPaid ? (
+              {isPaid ? (
+                <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-100 text-emerald-800 rounded-xl font-extrabold text-sm border border-emerald-300">
                     <CheckCircle2 className="w-4 h-4" /> Đã hoàn tất học phí
                   </span>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setQrModalOpen(true)}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#F4BE2C] hover:bg-[#E0AB1D] text-[#1a1a1a] font-extrabold rounded-xl shadow-md hover:shadow-lg transition-all text-sm"
-                    >
-                      <QrCode className="w-4 h-4" /> Quét mã QR tự động (Cách 1)
-                    </button>
-                    <button
-                      onClick={scrollToBankInfo}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl transition-colors text-sm border border-gray-200"
-                    >
-                      <Landmark className="w-4 h-4" /> Chuyển khoản STK (Cách 2)
-                    </button>
-                  </>
-                )}
-              </div>
+                </div>
+              ) : selectedTuition?.trang_thai === 'Chờ duyệt' ? (
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-100 text-amber-800 rounded-xl font-extrabold text-sm border border-amber-300 animate-pulse">
+                    <Clock className="w-4 h-4" /> Đang chờ Admin kiểm tra STK
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             {/* Bảng Học Phần */}
@@ -473,13 +508,13 @@ const StudentTuition = () => {
                     chiTietList.map((ct, idx) => (
                       <tr key={ct.id || idx} className="hover:bg-yellow-50/60 transition-colors">
                         <td className="py-4 px-4 text-center font-bold text-gray-500">{idx + 1}</td>
-                        <td className="py-4 px-6 font-mono font-bold text-gray-900">{ct.ma_lop_hoc_phan}</td>
+                        <td className="py-4 px-6 font-mono font-extrabold text-[#D97706]">{ct.ma_lop_hoc_phan}</td>
                         <td className="py-4 px-6 font-semibold text-gray-900">{ct.ten_mon_hoc}</td>
                         <td className="py-4 px-4 text-center font-extrabold text-gray-900">{ct.so_tin_chi}</td>
-                        <td className="py-4 px-6 text-right font-mono">{fmtMoney(ct.phi_tai_lieu)}</td>
+                        <td className="py-4 px-6 text-right font-mono font-semibold text-gray-800">{fmtMoney(ct.phi_tai_lieu)}</td>
                         <td className="py-4 px-6 text-right font-mono font-semibold text-gray-800">{fmtMoney(ct.hoc_phi ?? ct.thanh_tien)}</td>
-                        <td className="py-4 px-6 text-right font-mono">{fmtMoney(ct.mien_giam)}</td>
-                        <td className="py-4 px-6 text-right font-mono font-black text-gray-900">{fmtMoney(ct.thanh_tien)}</td>
+                        <td className="py-4 px-6 text-right font-mono font-semibold text-gray-800">{fmtMoney(ct.mien_giam)}</td>
+                        <td className="py-4 px-6 text-right font-mono font-black text-[#D97706] text-base">{fmtMoney(ct.thanh_tien)}</td>
                       </tr>
                     ))
                   )}
@@ -492,10 +527,10 @@ const StudentTuition = () => {
                       Tổng cộng ({tenDotHoacHocKy})
                     </td>
                     <td className="py-4 px-4 text-center font-black text-base">{totalSTC}</td>
-                    <td className="py-4 px-6 text-right font-mono">{fmtMoney(totalPhiTaiLieu)}</td>
-                    <td className="py-4 px-6 text-right font-mono font-bold">{fmtMoney(selectedTuition.so_tien)}</td>
-                    <td className="py-4 px-6 text-right font-mono">{fmtMoney(totalMienGiam)}</td>
-                    <td className="py-4 px-6 text-right font-mono font-black text-blue-700 text-lg">
+                    <td className="py-4 px-6 text-right font-mono font-bold text-gray-800">{fmtMoney(totalPhiTaiLieu)}</td>
+                    <td className="py-4 px-6 text-right font-mono font-bold text-gray-800">{fmtMoney(selectedTuition.so_tien)}</td>
+                    <td className="py-4 px-6 text-right font-mono font-bold text-gray-800">{fmtMoney(totalMienGiam)}</td>
+                    <td className="py-4 px-6 text-right font-mono font-black text-[#D97706] text-xl">
                       {fmtMoney(selectedTuition.so_tien)}
                     </td>
                   </tr>
@@ -515,10 +550,10 @@ const StudentTuition = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-gray-200">
-                <span className="font-black text-rose-600 text-lg">
+                <span className="font-black text-[#D97706] text-lg">
                   Tổng số tiền còn phải đóng (tính đến {tenDotHoacHocKy}):
                 </span>
-                <span className="font-black font-mono text-rose-600 text-2xl">
+                <span className="font-black font-mono text-[#D97706] text-2xl">
                   {isPaid ? '0đ' : fmtMoney(selectedTuition.so_tien)}
                 </span>
               </div>
@@ -528,128 +563,165 @@ const StudentTuition = () => {
                   * Lưu ý: Đối với các học phần đăng ký online hoặc hủy học phần, học phí sẽ được hệ thống tính toán lại và cập nhật sau. Sinh viên vui lòng theo dõi thường xuyên bảng kê này.
                 </p>
               </div>
+
+              {selectedTuition?.trang_thai === 'Chờ duyệt' && (
+                <div className="flex items-center gap-3 p-4 bg-amber-100 border border-amber-300 text-amber-900 rounded-2xl font-bold text-sm">
+                  <Clock className="w-5 h-5 text-amber-700 shrink-0 animate-pulse" />
+                  <span>Bạn đã bấm xác nhận thanh toán. Vui lòng chờ Admin kiểm tra thông tin số tài khoản và duyệt giao dịch cho bạn!</span>
+                </div>
+              )}
+
+              {!isPaid && selectedTuition?.trang_thai !== 'Chờ duyệt' && (
+                <div className="flex items-center gap-3 pt-3 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setQrModalOpen(true);
+                      setShowBankAccounts(false);
+                    }}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#F4BE2C] hover:bg-[#E0AB1D] text-[#1a1a1a] font-extrabold rounded-xl shadow-md hover:shadow-lg transition-all text-sm cursor-pointer"
+                  >
+                    <QrCode className="w-5 h-5" /> Quét mã QR tự động (Cách 1)
+                  </button>
+                  <button
+                    onClick={scrollToBankInfo}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl transition-colors text-sm border border-gray-200 cursor-pointer"
+                  >
+                    <Landmark className="w-5 h-5" /> Chuyển khoản STK (Cách 2)
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* PHẦN 2: DANH SÁCH TÀI KHOẢN & HƯỚNG DẪN CHUYỂN KHOẢN (ĐỒNG BỘ 4 THẺ TRẮNG, CHUẨN ẢNH) */}
-          <div id="bank-transfer-section" className="space-y-6 pt-6">
-            <div className="text-center space-y-1">
-              <h3 className="text-xl md:text-2xl font-black text-[#1a1a1a] uppercase tracking-wide">
-                Danh Sách Tài Khoản Thu Học Phí Trường Đại Học Nhất Tín
-              </h3>
-              <p className="text-gray-500 text-sm font-medium">
-                Quý sinh viên có thể chuyển khoản đến số tài khoản chính hoặc quét mã VietQR tự động phía trên
-              </p>
-            </div>
+          {/* PHẦN 2: DANH SÁCH TÀI KHOẢN & HƯỚNG DẪN CHUYỂN KHOẢN (CHỈ HIỆN KHI ẤN PHƯƠNG ÁN 2) */}
+          {showBankAccounts && (
+            <div id="bank-transfer-section" className="space-y-6 pt-6 animate-fadeIn">
+              <div className="text-center space-y-1">
+                <h3 className="text-xl md:text-2xl font-black text-[#1a1a1a] uppercase tracking-wide">
+                  Danh Sách Tài Khoản Thu Học Phí Trường Đại Học Nhất Tín
+                </h3>
+                <p className="text-gray-500 text-sm font-medium">
+                  Quý sinh viên có thể chuyển khoản đến số tài khoản chính hoặc quét mã VietQR tự động phía trên
+                </p>
+              </div>
 
-            {/* Grid Thẻ Ngân Hàng - Đồng bộ 4 thẻ đều nền trắng sạch sẽ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {BANK_ACCOUNTS.map((bank, index) => (
-                <div
-                  key={index}
-                  className={`bg-white rounded-3xl border-2 p-5 flex flex-col justify-between transition-all ${
-                    bank.isPrimary
-                      ? 'border-[#F4BE2C] shadow-md ring-4 ring-[#F4BE2C]/15'
-                      : 'border-gray-200 hover:border-gray-300 shadow-xs'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-black text-base text-gray-900">
-                        {bank.bankName}
-                      </span>
-                      {bank.isPrimary && (
-                        <span className="px-2.5 py-0.5 bg-[#F4BE2C] text-[#1a1a1a] text-[11px] font-black rounded-full uppercase">
-                          CHÍNH
+              {/* Grid Thẻ Ngân Hàng - Đồng bộ 4 thẻ đều nền trắng sạch sẽ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {BANK_ACCOUNTS.map((bank, index) => (
+                  <div
+                    key={index}
+                    className={`bg-white rounded-3xl border-2 p-5 flex flex-col justify-between transition-all ${
+                      bank.isPrimary
+                        ? 'border-[#F4BE2C] shadow-md ring-4 ring-[#F4BE2C]/15'
+                        : 'border-gray-200 hover:border-gray-300 shadow-xs'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-black text-base text-gray-900">
+                          {bank.bankName}
                         </span>
-                      )}
+                        {bank.isPrimary && (
+                          <span className="px-2.5 py-0.5 bg-[#F4BE2C] text-[#1a1a1a] text-[11px] font-black rounded-full uppercase">
+                            CHÍNH
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-gray-500 mb-4">
+                        {bank.branch}
+                      </p>
                     </div>
-                    <p className="text-xs font-semibold text-gray-500 mb-4">
-                      {bank.branch}
-                    </p>
-                  </div>
 
-                  <div className="p-3 rounded-2xl bg-gray-50 border border-gray-100">
-                    <p className="text-[11px] font-bold uppercase text-gray-400">
-                      Số tài khoản
-                    </p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="font-mono font-black text-base tracking-wide text-gray-900">
-                        {bank.displayNumber}
+                    <div className="p-3 rounded-2xl bg-gray-50 border border-gray-100">
+                      <p className="text-[11px] font-bold uppercase text-gray-400">
+                        Số tài khoản
+                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="font-mono font-black text-base tracking-wide text-gray-900">
+                          {bank.displayNumber}
+                        </span>
+                        <CopyButton text={bank.accountNumber} label="Copy" />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-gray-400">
+                        CHỦ TÀI KHOẢN
                       </span>
-                      <CopyButton text={bank.accountNumber} label="Copy" />
+                      <span className="text-xs font-extrabold text-gray-800 text-right">
+                        {bank.holder}
+                      </span>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* 2 Cột Hướng Dẫn & Lưu Ý */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-              {/* Cột Trái: Hướng dẫn đóng học phí */}
-              <div className="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 shadow-sm space-y-5">
-                <h4 className="text-lg font-black text-[#1a1a1a] uppercase border-b border-gray-100 pb-3 flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-blue-600" /> Hướng Dẫn Đóng Học Phí Chuyển Khoản
-                </h4>
-
-                <ol className="space-y-4 text-sm text-gray-700 list-decimal list-inside font-medium">
-                  <li>Chọn 1 trong các tài khoản ngân hàng của trường phía trên.</li>
-                  <li>
-                    Nhập chính xác số tiền cần đóng: <strong className="font-mono font-black text-gray-900 text-base">{fmtMoney(selectedTuition.so_tien)}</strong>.
-                  </li>
-                  <li>
-                    Đơn vị thụ hưởng: <strong className="text-rose-600 font-bold uppercase">TRƯỜNG ĐẠI HỌC NHẤT TÍN</strong>.
-                  </li>
-                  {/* Cùng 1 hàng, không bị ngắt xuống dòng */}
-                  <li>
-                    <span className="font-bold text-gray-900">Nội dung đóng học phí bắt buộc ghi đúng:</span>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/80 border border-rose-200 p-3.5 rounded-2xl mt-2">
-                      <code className="font-mono font-black text-rose-600 text-sm md:text-base break-all">
-                        {getTransferContent()}
-                      </code>
-                      <CopyButton text={getTransferContent()} label="Sao chép nội dung" />
-                    </div>
-                  </li>
-                  <li>Xác nhận giao dịch & chụp lại chứng từ thành công để đối chiếu khi cần thiết.</li>
-                </ol>
+                ))}
               </div>
 
-              {/* Cột Phải: Lưu ý quan trọng */}
-              <div className="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 shadow-sm space-y-4">
-                <h4 className="text-lg font-black text-[#1a1a1a] uppercase border-b border-gray-100 pb-3 flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-rose-600" /> Lưu Ý Quan Trọng
-                </h4>
+              {/* 2 Cột Hướng Dẫn & Lưu Ý */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                {/* Cột Trái: Hướng dẫn đóng học phí */}
+                <div className="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 shadow-sm space-y-5">
+                  <h4 className="text-lg font-black text-[#1a1a1a] uppercase border-b border-gray-100 pb-3 flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-blue-600" /> Hướng Dẫn Đóng Học Phí Chuyển Khoản
+                  </h4>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                  <p className="text-xs sm:text-sm text-blue-950 font-bold">
-                    ĐƠN VỊ THỤ HƯỞNG: TRƯỜNG ĐẠI HỌC NHẤT TÍN.
-                  </p>
+                  <ol className="space-y-4 text-sm text-gray-700 list-decimal list-inside font-medium">
+                    <li>Chọn 1 trong các tài khoản ngân hàng của trường phía trên.</li>
+                    <li>
+                      Nhập chính xác số tiền cần đóng: <strong className="font-mono font-black text-gray-900 text-base">{fmtMoney(selectedTuition.so_tien)}</strong>.
+                    </li>
+                    <li>
+                      Đơn vị thụ hưởng: <strong className="text-rose-600 font-bold uppercase">TRƯỜNG ĐẠI HỌC NHẤT TÍN</strong>.
+                    </li>
+                    <li>
+                      <span className="font-bold text-gray-900">Nội dung đóng học phí bắt buộc ghi đúng:</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/80 border border-rose-200 p-3.5 rounded-2xl mt-2">
+                        <code className="font-mono font-black text-rose-600 text-sm md:text-base break-all">
+                          {getTransferContent()}
+                        </code>
+                        <CopyButton text={getTransferContent()} label="Sao chép nội dung" />
+                      </div>
+                    </li>
+                    <li>Xác nhận giao dịch & chụp lại chứng từ thành công để đối chiếu khi cần thiết.</li>
+                  </ol>
                 </div>
 
-                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                  <p className="text-xs sm:text-sm text-rose-900 font-semibold leading-relaxed">
-                    Trường hợp sinh viên ghi sai hoặc thiếu <strong className="font-extrabold text-rose-700">MÃ SỐ SINH VIÊN</strong> → hệ thống sẽ không thể tự động gán học phí, sinh viên vẫn bị hiển thị nợ học phí.
-                  </p>
-                </div>
+                {/* Cột Phải: Lưu ý quan trọng */}
+                <div className="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 shadow-sm space-y-4">
+                  <h4 className="text-lg font-black text-[#1a1a1a] uppercase border-b border-gray-100 pb-3 flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-rose-600" /> Lưu Ý Quan Trọng
+                  </h4>
 
-                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
-                  <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                  <p className="text-xs sm:text-sm text-rose-900 font-semibold leading-relaxed">
-                    Không nộp học phí tại máy ATM vì giao dịch ATM không có dòng nội dung ghi thông tin sinh viên, học phí sẽ không thể cập nhật.
-                  </p>
-                </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3">
+                    <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <p className="text-xs sm:text-sm text-blue-950 font-bold">
+                      ĐƠN VỊ THỤ HƯỞNG: TRƯỜNG ĐẠI HỌC NHẤT TÍN.
+                    </p>
+                  </div>
 
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-                  <p className="text-xs sm:text-sm text-amber-950 font-semibold leading-relaxed">
-                    Giấy nộp tiền / Ủy nhiệm chi / Màn hình giao dịch thành công từ ngân hàng có giá trị pháp lý tương đương <strong className="font-bold">PHIẾU THU HỌC PHÍ</strong>. Vui lòng lưu giữ cẩn thận.
-                  </p>
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    <p className="text-xs sm:text-sm text-rose-900 font-semibold leading-relaxed">
+                      Trường hợp sinh viên ghi sai hoặc thiếu <strong className="font-extrabold text-rose-700">MÃ SỐ SINH VIÊN</strong> → hệ thống sẽ không thể tự động gán học phí, sinh viên vẫn bị hiển thị nợ học phí.
+                    </p>
+                  </div>
+
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
+                    <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    <p className="text-xs sm:text-sm text-rose-900 font-semibold leading-relaxed">
+                      Không nộp học phí tại máy ATM vì giao dịch ATM không có dòng nội dung ghi thông tin sinh viên, học phí sẽ không thể cập nhật.
+                    </p>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                    <p className="text-xs sm:text-sm text-amber-950 font-semibold leading-relaxed">
+                      Giấy nộp tiền / Ủy nhiệm chi / Màn hình giao dịch thành công từ ngân hàng có giá trị pháp lý tương đương <strong className="font-bold">PHIẾU THU HỌC PHÍ</strong>. Vui lòng lưu giữ cẩn thận.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

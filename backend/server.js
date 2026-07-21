@@ -88,6 +88,14 @@ db.getConnection((err, connection) => {
         connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;", () => { });
         connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;", () => { });
         connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;", () => { });
+        connection.query("CREATE TABLE IF NOT EXISTS dot_dangky (MaDot INT NOT NULL AUTO_INCREMENT PRIMARY KEY, TenDot VARCHAR(255) NOT NULL, MoTa TEXT, HocKy VARCHAR(50) NOT NULL, NamHoc VARCHAR(50), NienKhoa VARCHAR(50) NOT NULL, NgayTao DATETIME NOT NULL, NgayDong DATETIME NOT NULL, TrangThai VARCHAR(50) DEFAULT 'Mo');", () => { });
+        connection.query("ALTER TABLE dot_dangky ADD COLUMN MoTa TEXT DEFAULT NULL;", () => { });
+        connection.query("ALTER TABLE dot_dangky ADD COLUMN NamHoc VARCHAR(50) DEFAULT NULL;", () => { });
+        connection.query("ALTER TABLE dot_dangky ADD COLUMN NienKhoa VARCHAR(50) DEFAULT NULL;", () => { });
+        connection.query("ALTER TABLE dot_dangky MODIFY COLUMN TrangThai VARCHAR(50) DEFAULT 'Mo';", () => { });
+        connection.query("ALTER TABLE hoc_phi_v2 MODIFY COLUMN trang_thai ENUM('Chưa đóng', 'Chờ duyệt', 'Đã đóng', 'Quá hạn') DEFAULT 'Chưa đóng';", () => { });
+        connection.query("ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN trang_thai ENUM('cho_thanh_toan', 'cho_duyet', 'thanh_cong', 'that_bai', 'het_han') DEFAULT 'cho_thanh_toan';", () => { });
+        connection.query("ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN nguon_xac_nhan ENUM('auto', 'manual', 'student_report', 'admin_check') DEFAULT NULL;", () => { });
         connection.release();
         if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
     });
@@ -435,6 +443,7 @@ app.post('/api/forgot-password', (req, res) => {
 // Mount AI Exam routes
 const aiExamRoutes = require('./ai-exam/routes')(db);
 app.use('/api/ai-exams', aiExamRoutes);
+app.use('/api/ai-exam', aiExamRoutes);
 
 // Global middleware to check if account is locked out across all API requests
 app.use((req, res, next) => {
@@ -2587,36 +2596,9 @@ app.post('/api/admin/confirm-tuition', async (req, res) => {
 // ==================== QUẢN LÝ HỌC PHÍ - SINH VIÊN ====================
 
 // Sinh viên xem danh sách học phí của mình
-app.get('/student/tuitions/:maSinhVien', (req, res) => {
-    const { maSinhVien } = req.params;
-
-    const query = `
-        SELECT 
-            t.id,
-            t.ma_sinh_vien,
-            t.hoc_ky,
-            t.so_tien,
-            t.han_nop,
-            t.trang_thai,
-            t.ngay_thanh_toan,
-            t.ghi_chu
-        FROM hoc_phi t
-        WHERE t.ma_sinh_vien = ?
-        ORDER BY t.han_nop DESC, t.hoc_ky DESC
-    `;
-
-    db.query(query, [maSinhVien], (err, results) => {
-        if (err) {
-            console.error("Lỗi lấy học phí:", err);
-            return res.status(500).json({
-                success: false,
-                message: "Lỗi lấy học phí của sinh viên!",
-                error: err.message
-            });
-        }
-        res.json(results);
-    });
-});
+/* [LEGACY TUITION ROUTE REMOVED] 
+app.get('/student/tuitions/:maSinhVien', ...); 
+*/
 // Sinh viên lưu đăng ký tạm
 app.post('/api/dang-ky', (req, res) => {
     const { mssv, maLopHocPhan } = req.body;
@@ -2853,45 +2835,10 @@ app.put('/api/schedules/lophocphan/:maLHP/reschedule', async (req, res) => {
     });
 });
 
-// ==================== [ADMIN] QUẢN LÝ HỌC PHÍ ====================
-// Route mới để lấy danh sách học phí cho Admin
-app.get('/api/admin/tuitions', (req, res) => {
-    const query = `
-        SELECT 
-            t.id,
-            t.ma_sinh_vien,
-            s.HoTen as ten_sinh_vien,
-            t.hoc_ky,
-            t.so_tien,
-            t.han_nop,
-            t.trang_thai,
-            t.ngay_thanh_toan,
-            t.ghi_chu
-        FROM hoc_phi t
-        LEFT JOIN sinhvien s ON t.ma_sinh_vien = s.MSSV
-        ORDER BY t.han_nop DESC
-    `;
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error("Lỗi lấy học phí:", err);
-            return res.status(500).json({ success: false, message: "Lỗi hệ thống!" });
-        }
-        res.json(results);
-    });
-});
-
-// Route mới để cập nhật trạng thái học phí
-app.put('/api/admin/tuitions/:id/status', (req, res) => {
-    const { trang_thai } = req.body;
-    const query = "UPDATE hoc_phi SET trang_thai = ? WHERE id = ?";
-    db.query(query, [trang_thai, req.params.id], (err, result) => {
-        if (err) {
-            console.error("Lỗi cập nhật học phí:", err);
-            return res.status(500).json({ success: false, message: "Lỗi cập nhật!" });
-        }
-        res.json({ success: true, message: "Cập nhật thành công!" });
-    });
-});
+/* [LEGACY ADMIN TUITION ROUTES REMOVED]
+app.get('/api/admin/tuitions', ...);
+app.put('/api/admin/tuitions/:id/status', ...);
+*/
 // ==================== GRADES & ACADEMIC ====================
 app.get('/api/grades', (req, res) => executeQuery('SELECT d.*, s.HoTen as TenSinhVien, IFNULL(lhp.MaMonHoc, d.MaLopHocPhan) as MaMonHoc, mh.TenMonHoc FROM diem d LEFT JOIN sinhvien s ON d.MSSV = s.MSSV LEFT JOIN lophocphan lhp ON d.MaLopHocPhan = lhp.MaLopHocPhan LEFT JOIN monhoc mh ON mh.MaMonHoc = IFNULL(lhp.MaMonHoc, d.MaLopHocPhan)', [], res, 'Lỗi!'));
 
@@ -3706,7 +3653,7 @@ app.get('/api/admin/tuition-periods', verifyToken, (req, res) => {
 app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền truy cập!' });
     const { ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong } = req.body;
-    const don_gia_tin_chi = 1150000; // Cố định 1 tín chỉ = 1,150,000 VNĐ theo yêu cầu
+    const don_gia_tin_chi = 10000; // Cố định 1 tín chỉ = 10,000 VNĐ để dễ test QR
     if (!ma_dot_dangky || !hoc_ky || !ten_dot || !ngay_mo || !ngay_dong) {
         return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc!' });
     }
@@ -3911,7 +3858,7 @@ async function autoSyncStudentTuition(dbConn, hocPhiId, mssv, hocKy, donGiaTinCh
     );
 
     if (dkRows.length > 0) {
-        const donGia = Number(donGiaTinChi || 1150000);
+        const donGia = Number(donGiaTinChi || 10000);
         let tongTienMoi = 0;
         const chiTietMoi = dkRows.map(m => {
             const isMien = !!Number(m.MienHocPhi);
@@ -4028,18 +3975,37 @@ app.post('/api/student/tuitions/:hocPhiId/generate-qr', verifyToken, async (req,
             return res.status(409).json({ success: false, message: 'Học phí này đã được đóng rồi!' });
         }
 
-        // Sinh mã giao dịch unique
-        const maGD = `HP${hp.dot_id}${mssv}${Date.now()}`;
+        // Kiểm tra nếu đã có giao dịch đang chờ thanh toán cho học phí này thì tái sử dụng
+        const [[existingGD]] = await db.promise().execute(
+            'SELECT * FROM giao_dich_hoc_phi WHERE hoc_phi_id = ? AND trang_thai = ? ORDER BY id DESC LIMIT 1',
+            [hocPhiId, 'cho_thanh_toan']
+        );
+
+        // Hạn nộp mã QR: 15 phút kể từ lúc tạo
+        const now = new Date();
+        const hetHanQR = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+
+        if (existingGD && existingGD.qr_url) {
+            return res.json({
+                success: true,
+                data: {
+                    qr_url: existingGD.qr_url,
+                    so_tien: existingGD.so_tien,
+                    noi_dung: existingGD.noi_dung,
+                    ma_giao_dich: existingGD.ma_giao_dich,
+                    het_han: hetHanQR
+                }
+            });
+        }
+
+        // Sinh mã giao dịch unique ngắn nhọn (tránh vượt độ dài cột VARCHAR trong DB)
+        const maGD = `HP${hocPhiId}_${Date.now()}_${Math.floor(Math.random() * 899 + 100)}`;
         const soTien = Math.round(hp.so_tien);
 
         // Nội dung chuyển khoản: hoten-mssv-HK mấy năm nào (không dấu)
         const hoTenClean = removeVietnameseTones(hp.HoTen || 'SV').replace(/[^a-zA-Z0-9 ]/g, '').trim().toUpperCase();
         const hocKyClean = (hp.hoc_ky || '').replace(/_/g, ' ').trim().toUpperCase();
         const noiDung = `${hoTenClean} ${mssv} ${hocKyClean}`.replace(/\s+/g, ' ').substring(0, 50);
-
-        // Hạn nộp mã QR: 15 phút kể từ lúc tạo
-        const now = new Date();
-        const hetHanQR = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
         // Build VietQR URL (public API không cần key)
         const qrUrl = `https://img.vietqr.io/image/${VIETQR_BANK_ID}-${VIETQR_ACCOUNT}-${VIETQR_TEMPLATE}.png?amount=${soTien}&addInfo=${encodeURIComponent(noiDung)}&accountName=${encodeURIComponent(VIETQR_HOLDER)}`;
@@ -4053,6 +4019,114 @@ app.post('/api/student/tuitions/:hocPhiId/generate-qr', verifyToken, async (req,
     } catch (error) {
         console.error('[HocPhi] generate-qr lỗi:', error);
         res.status(500).json({ success: false, message: 'Lỗi sinh QR!', error: error.message });
+    }
+});
+
+// POST /api/student/tuitions/:hocPhiId/confirm-paid — API bắn xác nhận đã thanh toán chuyển khoản thành công
+app.post('/api/student/tuitions/:hocPhiId/confirm-paid', async (req, res) => {
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', hocPhiId]);
+        await db.promise().execute('UPDATE giao_dich_hoc_phi SET trang_thai = ?, ngay_giao_dich = NOW() WHERE hoc_phi_id = ?', ['thanh_cong', hocPhiId]);
+        res.json({ success: true, message: 'Đã xác nhận thanh toán thành công!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái', error: error.message });
+    }
+});
+
+// POST /api/student/tuitions/:hocPhiId/report-transfer — Sinh viên báo cáo đã chuyển khoản (Chờ duyệt)
+app.post('/api/student/tuitions/:hocPhiId/report-transfer', verifyToken, async (req, res) => {
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        const [[hp]] = await db.promise().execute('SELECT * FROM hoc_phi_v2 WHERE id = ?', [hocPhiId]);
+        if (!hp) return res.status(404).json({ success: false, message: 'Không tìm thấy học phí!' });
+
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Chờ duyệt', hocPhiId]);
+        
+        const [[latestGD]] = await db.promise().execute('SELECT id FROM giao_dich_hoc_phi WHERE hoc_phi_id = ? ORDER BY id DESC LIMIT 1', [hocPhiId]);
+        if (latestGD) {
+            await db.promise().execute(
+                'UPDATE giao_dich_hoc_phi SET trang_thai = ?, nguon_xac_nhan = ? WHERE id = ?',
+                ['cho_duyet', 'student_report', latestGD.id]
+            );
+        } else {
+            const maGD = `REP${hocPhiId}_${Date.now()}_${Math.floor(Math.random() * 899 + 100)}`;
+            await db.promise().execute(
+                'INSERT INTO giao_dich_hoc_phi (hoc_phi_id, ma_giao_dich, so_tien, noi_dung, trang_thai, nguon_xac_nhan, ghi_chu) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [hocPhiId, maGD, hp.so_tien, `Sinh vien bao cao CK ${hocPhiId}`, 'cho_duyet', 'student_report', 'SV đã bấm xác nhận thanh toán, chờ Admin kiểm tra STK']
+            );
+        }
+
+        res.json({ success: true, message: 'Đã gửi báo cáo thanh toán! Vui lòng chờ Admin kiểm tra STK.' });
+    } catch (error) {
+        console.error('[HocPhi] report-transfer error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi gửi báo cáo', error: error.message });
+    }
+});
+
+// PUT /api/admin/tuitions/:hocPhiId/approve-payment — Admin duyệt thanh toán sau khi kiểm tra STK
+app.put('/api/admin/tuitions/:hocPhiId/approve-payment', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Chỉ admin!' });
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        const [[hp]] = await db.promise().execute('SELECT * FROM hoc_phi_v2 WHERE id = ?', [hocPhiId]);
+        if (!hp) return res.status(404).json({ success: false, message: 'Không tìm thấy học phí!' });
+
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', hocPhiId]);
+
+        const [resGD] = await db.promise().execute(
+            'UPDATE giao_dich_hoc_phi SET trang_thai = ?, admin_username = ?, thoi_gian_xac_nhan = NOW(), ghi_chu = ? WHERE hoc_phi_id = ? AND trang_thai = ?',
+            ['thanh_cong', req.user.username || req.user.id, 'Admin kiểm tra STK đã có tiền (pass qua)', hocPhiId, 'cho_duyet']
+        );
+
+        if (resGD.affectedRows === 0) {
+            const maGD = `CHK${hocPhiId}_${Date.now()}_${Math.floor(Math.random() * 899 + 100)}`;
+            await db.promise().execute(
+                'INSERT INTO giao_dich_hoc_phi (hoc_phi_id, ma_giao_dich, so_tien, noi_dung, trang_thai, nguon_xac_nhan, admin_username, ghi_chu, thoi_gian_xac_nhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+                [hocPhiId, maGD, hp.so_tien, `Admin kiem tra STK duyet ${hocPhiId}`, 'thanh_cong', 'admin_check', req.user.username || req.user.id, 'Admin kiểm tra STK đã nhận tiền']
+            );
+        }
+
+        res.json({ success: true, message: 'Đã duyệt học phí thành công!' });
+    } catch (error) {
+        console.error('[HocPhi] approve-payment error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi duyệt học phí', error: error.message });
+    }
+});
+
+// PUT /api/admin/tuitions/:hocPhiId/reject-payment — Admin từ chối thanh toán (nếu kiểm tra chưa vào tiền)
+app.put('/api/admin/tuitions/:hocPhiId/reject-payment', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Chỉ admin!' });
+    const hocPhiId = req.params.hocPhiId;
+    try {
+        await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Chưa đóng', hocPhiId]);
+        await db.promise().execute(
+            'UPDATE giao_dich_hoc_phi SET trang_thai = ?, admin_username = ?, ghi_chu = ? WHERE hoc_phi_id = ? AND trang_thai = ?',
+            ['that_bai', req.user.username || req.user.id, 'Admin kiểm tra STK chưa thấy thông tin chuyển khoản', hocPhiId, 'cho_duyet']
+        );
+        res.json({ success: true, message: 'Đã đẩy lại trạng thái Chưa thanh toán!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi từ chối', error: error.message });
+    }
+});
+
+// POST /api/webhook/payment — API Webhook nhận tín hiệu chuyển khoản từ ngân hàng / Casso / SePay
+app.post('/api/webhook/payment', async (req, res) => {
+    const { ma_giao_dich, hoc_phi_id, so_tien } = req.body;
+    try {
+        if (hoc_phi_id) {
+            await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', hoc_phi_id]);
+            await db.promise().execute('UPDATE giao_dich_hoc_phi SET trang_thai = ?, ngay_giao_dich = NOW() WHERE hoc_phi_id = ?', ['thanh_cong', hoc_phi_id]);
+        } else if (ma_giao_dich) {
+            const [[gd]] = await db.promise().execute('SELECT hoc_phi_id FROM giao_dich_hoc_phi WHERE ma_giao_dich = ?', [ma_giao_dich]);
+            if (gd) {
+                await db.promise().execute('UPDATE hoc_phi_v2 SET trang_thai = ? WHERE id = ?', ['Đã đóng', gd.hoc_phi_id]);
+                await db.promise().execute('UPDATE giao_dich_hoc_phi SET trang_thai = ?, ngay_giao_dich = NOW() WHERE ma_giao_dich = ?', ['thanh_cong', ma_giao_dich]);
+            }
+        }
+        res.json({ success: true, message: 'Webhook processed successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Webhook error', error: error.message });
     }
 });
 
