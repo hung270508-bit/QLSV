@@ -78,14 +78,35 @@ const CreatePeriodModal = ({ open, onClose, onSuccess }) => {
     api.get('/api/admin/dot-dangky').then(r => setDotDangKyList(r.data?.data || [])).catch(() => {});
   }, [open]);
 
-  const handleDotChange = (e) => {
-    const dot = dotDangKyList.find(d => String(d.MaDot) === e.target.value);
-    setForm(f => ({ ...f, ma_dot_dangky: e.target.value, hoc_ky: dot?.HocKy || '', ten_dot: dot?.TenDot || '' }));
+  const uniqueHocKyList = useMemo(() => {
+    const map = {};
+    dotDangKyList.forEach(d => {
+      if (!d.HocKy) return;
+      if (!map[d.HocKy]) {
+        map[d.HocKy] = {
+          hoc_ky: d.HocKy,
+          ma_dot_dangky: d.MaDot,
+          ten_dot: `Đợt thu học phí ${d.HocKy}`
+        };
+      }
+    });
+    return Object.values(map);
+  }, [dotDangKyList]);
+
+  const handleHocKyChange = (e) => {
+    const val = e.target.value;
+    const found = uniqueHocKyList.find(d => d.hoc_ky === val);
+    setForm(f => ({
+      ...f,
+      hoc_ky: val,
+      ma_dot_dangky: found ? found.ma_dot_dangky : '',
+      ten_dot: found ? found.ten_dot : ''
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.ma_dot_dangky || !form.ngay_mo || !form.ngay_dong) { setErr('Vui lòng điền đầy đủ thông tin!'); return; }
+    if (!form.hoc_ky || !form.ten_dot || !form.ngay_mo || !form.ngay_dong) { setErr('Vui lòng điền đầy đủ thông tin!'); return; }
     setLoading(true); setErr('');
     try {
       const res = await api.post('/api/admin/tuition-periods', { ...form, don_gia_tin_chi: 1150000 });
@@ -99,36 +120,42 @@ const CreatePeriodModal = ({ open, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="bg-[#F4BE2C] p-6 flex items-center gap-3">
-          <div className="p-2.5 bg-[#1a1a1a] text-[#F4BE2C] rounded-xl font-black">
+        <div className="bg-[#F4C542] p-6 flex items-center gap-3">
+          <div className="p-2.5 bg-[#152238] text-[#F4C542] rounded-xl font-black">
             <Calendar className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-[#1a1a1a]">Mở Đợt Đóng Học Phí</h3>
-            <p className="text-sm text-[#1a1a1a]/80 mt-0.5 font-medium">Hệ thống tự tính học phí cho toàn bộ sinh viên đã đăng ký</p>
+            <h3 className="text-xl font-black text-[#152238]">Mở Đợt Đóng Học Phí</h3>
+            <p className="text-sm text-[#152238]/80 mt-0.5 font-medium">Hệ thống tự thu thập toàn bộ sinh viên đã đăng ký của học kỳ</p>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {err && <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-sm font-medium flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" /> {err}</div>}
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Chọn đợt đăng ký học phần <span className="text-rose-500">*</span></label>
-            <select value={form.ma_dot_dangky} onChange={handleDotChange} required className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4BE2C] font-semibold text-gray-800">
-              <option value="">-- Chọn đợt --</option>
-              {dotDangKyList.map(d => (
-                <option key={d.MaDot} value={d.MaDot}>{d.TenDot} ({d.HocKy})</option>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Chọn Học kỳ cần thu học phí <span className="text-rose-500">*</span></label>
+            <select value={form.hoc_ky} onChange={handleHocKyChange} required className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4C542] font-semibold text-gray-800">
+              <option value="">-- Chọn Học kỳ --</option>
+              {uniqueHocKyList.map(item => (
+                <option key={item.hoc_ky} value={item.hoc_ky}>{item.hoc_ky}</option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 mt-1 font-medium">Hệ thống sẽ tự động tổng hợp toàn bộ sinh viên đã đăng ký của tất cả các khóa trong học kỳ này.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Tên đợt thu học phí <span className="text-rose-500">*</span></label>
+            <input type="text" value={form.ten_dot} onChange={e => setForm(f => ({ ...f, ten_dot: e.target.value }))} required placeholder="VD: Đợt thu học phí HK1_2026_2027" className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4C542] font-semibold text-gray-800" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Ngày mở <span className="text-rose-500">*</span></label>
-              <input type="datetime-local" value={form.ngay_mo} onChange={e => setForm(f => ({ ...f, ngay_mo: e.target.value }))} required className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4BE2C] font-semibold text-gray-800" />
+              <input type="datetime-local" value={form.ngay_mo} onChange={e => setForm(f => ({ ...f, ngay_mo: e.target.value }))} required className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4C542] font-semibold text-gray-800" />
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Ngày đóng <span className="text-rose-500">*</span></label>
-              <input type="datetime-local" value={form.ngay_dong} onChange={e => setForm(f => ({ ...f, ngay_dong: e.target.value }))} required className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4BE2C] font-semibold text-gray-800" />
+              <input type="datetime-local" value={form.ngay_dong} onChange={e => setForm(f => ({ ...f, ngay_dong: e.target.value }))} required className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4C542] font-semibold text-gray-800" />
             </div>
           </div>
 
@@ -139,7 +166,7 @@ const CreatePeriodModal = ({ open, onClose, onSuccess }) => {
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">Hủy</button>
-            <button type="submit" disabled={loading} className="flex-1 py-3 bg-[#1a1a1a] text-white font-extrabold rounded-xl hover:bg-gray-800 transition-all shadow-md disabled:opacity-60 flex items-center justify-center gap-2">
+            <button type="submit" disabled={loading} className="flex-1 py-3 bg-[#152238] text-white font-extrabold rounded-xl hover:bg-[#0f1a2b] transition-all shadow-md disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -184,28 +211,28 @@ const ConfirmManualModal = ({ open, hocPhi, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="bg-[#1a1a1a] p-6 flex items-center gap-3">
-          <div className="p-2.5 bg-[#F4BE2C] text-[#1a1a1a] rounded-xl font-black">
+        <div className="bg-[#152238] p-6 flex items-center gap-3">
+          <div className="p-2.5 bg-[#F4C542] text-[#152238] rounded-xl font-black">
             <User className="w-6 h-6" />
           </div>
           <div>
             <h3 className="text-xl font-black text-white">Xác Nhận Thu Thủ Công</h3>
-            <p className="text-gray-400 text-sm mt-0.5">MSSV: <strong className="text-white font-mono">{hocPhi.mssv}</strong> — <span className="text-emerald-400 font-mono font-black">{Number(hocPhi.so_tien).toLocaleString('vi-VN')}đ</span></p>
+            <p className="text-gray-300 text-sm mt-0.5">MSSV: <strong className="text-white font-mono">{hocPhi.mssv}</strong> — <span className="text-emerald-400 font-mono font-black">{Number(hocPhi.so_tien).toLocaleString('vi-VN')}đ</span></p>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {err && <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-sm font-medium flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" /> {err}</div>}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1.5">Ghi chú <span className="text-rose-500">*</span> <span className="text-gray-400 font-normal">(tối thiểu 5 ký tự)</span></label>
-            <textarea value={ghi_chu} onChange={e => setGhiChu(e.target.value)} rows={3} placeholder="VD: SV nộp tiền mặt tại phòng kế toán ngày 15/7/2026..." className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none font-medium text-gray-800" />
+            <textarea value={ghi_chu} onChange={e => setGhiChu(e.target.value)} rows={3} placeholder="VD: SV nộp tiền mặt tại phòng kế toán ngày 15/7/2026..." className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4C542] resize-none font-medium text-gray-800" />
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1.5">Link minh chứng <span className="text-gray-400 font-normal">(tùy chọn)</span></label>
-            <input type="url" value={minh_chung_url} onChange={e => setMinhChung(e.target.value)} placeholder="https://..." className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 font-medium text-gray-800" />
+            <input type="url" value={minh_chung_url} onChange={e => setMinhChung(e.target.value)} placeholder="https://..." className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4C542] font-medium text-gray-800" />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">Hủy</button>
-            <button type="submit" disabled={loading} className="flex-1 py-3 bg-[#1a1a1a] text-white font-extrabold rounded-xl hover:bg-gray-800 transition-all shadow-md disabled:opacity-60 flex items-center justify-center gap-2">
+            <button type="submit" disabled={loading} className="flex-1 py-3 bg-[#152238] text-white font-extrabold rounded-xl hover:bg-[#0f1a2b] transition-all shadow-md disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -269,6 +296,111 @@ const ActionConfirmModal = ({ open, type, hocPhi, onClose, onConfirm }) => {
   , document.body);
 };
 
+// ─── Modals cho Đợt Học Phí (Xác nhận trạng thái, Xóa 2 bước, Cảnh báo 1 đợt mở) ────
+const ConfirmStatusModal = ({ open, period, newStatus, onClose, onConfirm }) => {
+  if (!open || !period) return null;
+  const isOpening = newStatus === 'dang_mo';
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-2xl ${isOpening ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-gray-900">{isOpening ? 'Xác Nhận Mở Đợt Học Phí' : 'Xác Nhận Đóng Đợt Học Phí'}</h3>
+            <p className="text-sm font-semibold text-gray-500 mt-0.5">{period.ten_dot}</p>
+          </div>
+        </div>
+        <div className={`p-4 rounded-2xl text-sm leading-relaxed font-medium ${isOpening ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-amber-50 text-amber-900 border border-amber-200'}`}>
+          {isOpening
+            ? `Bạn có chắc chắn muốn chuyển đợt "${period.ten_dot}" sang trạng thái ĐANG MỞ? Sinh viên thuộc học kỳ này sẽ có thể đóng tiền ngay lập tức.`
+            : `Bạn có chắc chắn muốn đóng đợt "${period.ten_dot}"? Sau khi đóng, hệ thống sẽ tạm ngừng nhận giao dịch thanh toán của sinh viên cho đợt này.`}
+        </div>
+        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+          <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors text-sm">Hủy bỏ</button>
+          <button onClick={() => onConfirm(period.id, newStatus)} className={`px-6 py-2.5 text-white font-extrabold rounded-xl shadow-md transition-all text-sm flex items-center gap-2 ${isOpening ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-amber-600 hover:bg-amber-700 shadow-amber-200'}`}>
+            <CheckCircle2 className="w-4 h-4" />
+            {isOpening ? 'Xác nhận mở đợt' : 'Xác nhận đóng đợt'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+const DeletePeriodModal = ({ open, step, period, onClose, onNextStep, onConfirmDelete }) => {
+  if (!open || !period) return null;
+  const isStep2 = step === 2;
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className={`bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-200 border-2 ${isStep2 ? 'border-rose-500' : 'border-rose-200'}`}>
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-2xl ${isStep2 ? 'bg-rose-600 text-white animate-pulse' : 'bg-rose-100 text-rose-600'}`}>
+            <Trash2 className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-rose-600">{isStep2 ? 'XÁC NHẬN CUỐI CÙNG (BƯỚC 2/2)' : 'CẢNH BÁO XÓA ĐỢT (BƯỚC 1/2)'}</h3>
+            <p className="text-sm font-semibold text-gray-500 mt-0.5">{period.ten_dot}</p>
+          </div>
+        </div>
+        <div className={`p-4 rounded-2xl text-sm leading-relaxed font-bold ${isStep2 ? 'bg-rose-100 text-rose-950 border border-rose-300' : 'bg-rose-50 text-rose-900 border border-rose-200'}`}>
+          {isStep2
+            ? `CẢNH BÁO NGUY HIỂM: Toàn bộ lịch sử thu tiền, các giao dịch VietQR và danh sách công nợ của sinh viên trong đợt "${period.ten_dot}" sẽ bị XÓA VĨNH VIỄN khỏi hệ thống và KHÔNG THỂ KHÔI PHỤC! Bạn có chắc chắn 100% muốn xóa?`
+            : `Bạn có chắc chắn muốn xóa đợt thu học phí "${period.ten_dot}"? Hệ thống yêu cầu xác nhận 2 lần trước khi thực hiện xóa dữ liệu này.`}
+        </div>
+        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+          {isStep2 ? (
+            <>
+              <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors text-sm">Hủy bỏ</button>
+              <button onClick={() => onConfirmDelete(period.id)} className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-xl shadow-md shadow-rose-200 transition-all text-sm flex items-center gap-2">
+                <Trash2 className="w-4 h-4" /> Xác nhận xóa vĩnh viễn
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors text-sm">Hủy bỏ</button>
+              <button onClick={onNextStep} className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold rounded-xl shadow-md shadow-rose-200 transition-all text-sm flex items-center gap-2">
+                Tiếp tục xóa (Bước 2) →
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+const AlertPopupModal = ({ open, title, message, onClose }) => {
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-200 border border-amber-300">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-gray-900">{title || 'Thông báo hệ thống'}</h3>
+            <p className="text-sm font-semibold text-gray-500 mt-0.5">Quy định và kiểm tra trạng thái</p>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl bg-amber-50 text-amber-950 border border-amber-200 text-sm leading-relaxed font-semibold">
+          {message}
+        </div>
+        <div className="flex justify-end pt-2 border-t border-gray-100">
+          <button onClick={onClose} className="px-6 py-2.5 bg-[#152238] hover:bg-[#0f1a2b] text-white font-extrabold rounded-xl shadow-md transition-all text-sm">
+            Đã hiểu & Đóng
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ─── Row chi tiết expanded ────────────────────────────────────────────────────
 // ─── Modal chi tiết & xử lý giao dịch bằng popup (chuẩn form chữ lớn) ──────────
 const DetailModal = ({ open, hocPhi, onClose, onApprove, onReject }) => {
@@ -290,7 +422,7 @@ const DetailModal = ({ open, hocPhi, onClose, onApprove, onReject }) => {
     <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header Modal */}
-        <div className="bg-[#1a1a1a] p-6 text-white flex items-center justify-between border-b border-gray-800 shrink-0">
+        <div className="bg-[#152238] p-6 text-white flex items-center justify-between border-b border-[#152238]/80 shrink-0">
           <div>
             <div className="flex items-center gap-3">
               <h3 className="font-black text-xl tracking-tight">Chi Tiết Học Phí & Xử Lý Giao Dịch</h3>
@@ -331,23 +463,57 @@ const DetailModal = ({ open, hocPhi, onClose, onApprove, onReject }) => {
                   <BookOpen className="w-4 h-4 text-[#F4BE2C] shrink-0" /> Chi Tiết Học Phần ({data.chi_tiet?.length || 0} môn)
                 </h4>
                 <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-xs sm:text-sm">
                     <thead className="bg-gray-100/80 text-gray-700">
                       <tr>
-                        <th className="px-4 py-3 text-left font-bold">Môn học</th>
-                        <th className="px-3 py-3 text-center font-bold">TC</th>
-                        <th className="px-4 py-3 text-right font-bold">Phải đóng</th>
+                        <th className="px-3 py-3 text-left font-bold">Môn học</th>
+                        <th className="px-2 py-3 text-center font-bold">TC</th>
+                        <th className="px-3 py-3 text-right font-bold">Học phí</th>
+                        <th className="px-3 py-3 text-right font-bold">Phí tài liệu</th>
+                        <th className="px-3 py-3 text-right font-bold">Phải đóng</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {(data.chi_tiet || []).map((ct, i) => (
-                        <tr key={i} className="hover:bg-gray-50/60 transition-colors">
-                          <td className="px-4 py-2.5 font-bold text-gray-800">{ct.ten_mon_hoc}</td>
-                          <td className="px-3 py-2.5 text-center font-semibold text-gray-600">{ct.so_tin_chi}</td>
-                          <td className="px-4 py-2.5 text-right font-mono font-black text-emerald-700">{Number(ct.thanh_tien || 0).toLocaleString('vi-VN')}đ</td>
-                        </tr>
-                      ))}
+                      {(data.chi_tiet || []).map((ct, i) => {
+                        const hocPhiNum = Number(ct.hoc_phi || (ct.so_tin_chi * (ct.don_gia || Number(data.don_gia_tin_chi || 1150000))));
+                        const phiTaiLieuNum = Number(ct.phi_tai_lieu || 0);
+                        const thanhTienNum = Number(ct.thanh_tien || (hocPhiNum + phiTaiLieuNum - Number(ct.mien_giam || 0)));
+                        return (
+                          <tr key={i} className="hover:bg-gray-50/60 transition-colors">
+                            <td className="px-3 py-2.5 font-bold text-gray-800">
+                              <div>{ct.ten_mon_hoc}</div>
+                              {ct.ma_lop_hoc_phan && <div className="text-[11px] font-mono text-gray-400 font-semibold">{ct.ma_lop_hoc_phan}</div>}
+                            </td>
+                            <td className="px-2 py-2.5 text-center font-semibold text-gray-600">{ct.so_tin_chi}</td>
+                            <td className="px-3 py-2.5 text-right font-mono font-semibold text-gray-700">{hocPhiNum.toLocaleString('vi-VN')}đ</td>
+                            <td className="px-3 py-2.5 text-right font-mono font-semibold text-amber-600">
+                              {phiTaiLieuNum > 0 ? `${phiTaiLieuNum.toLocaleString('vi-VN')}đ` : '-'}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono font-black text-emerald-700">{thanhTienNum.toLocaleString('vi-VN')}đ</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
+                    <tfoot className="bg-gray-50 font-black border-t-2 border-gray-200 text-gray-800">
+                      <tr>
+                        <td className="px-3 py-3 text-left">Tổng cộng</td>
+                        <td className="px-2 py-3 text-center">
+                          {(data.chi_tiet || []).reduce((sum, ct) => sum + Number(ct.so_tin_chi || 0), 0)}
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono">
+                          {(data.chi_tiet || []).reduce((sum, ct) => sum + Number(ct.hoc_phi || (ct.so_tin_chi * (ct.don_gia || Number(data.don_gia_tin_chi || 1150000)))), 0).toLocaleString('vi-VN')}đ
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono text-amber-600">
+                          {(data.chi_tiet || []).reduce((sum, ct) => sum + Number(ct.phi_tai_lieu || 0), 0).toLocaleString('vi-VN')}đ
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono text-emerald-700 text-sm">
+                          {(data.chi_tiet || []).reduce((sum, ct) => {
+                            const hp = Number(ct.hoc_phi || (ct.so_tin_chi * (ct.don_gia || Number(data.don_gia_tin_chi || 1150000))));
+                            return sum + Number(ct.thanh_tien || (hp + Number(ct.phi_tai_lieu || 0) - Number(ct.mien_giam || 0)));
+                          }, 0).toLocaleString('vi-VN')}đ
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>
@@ -468,20 +634,38 @@ const TuitionManagement = () => {
   const [actionModal, setActionModal] = useState({ open: false, type: '', hp: null });
   const [createOpen, setCreateOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ open: false, hp: null });
+  const [confirmStatusModal, setConfirmStatusModal] = useState({ open: false, period: null, newStatus: '' });
+  const [deletePeriodModal, setDeletePeriodModal] = useState({ open: false, step: 1, period: null });
+  const [alertPopupModal, setAlertPopupModal] = useState({ open: false, title: '', message: '' });
   const [toast, setToast] = useState({ msg: '', type: 'success' });
   const pollRef = useRef(null);
 
   const showToast = (msg, type = 'success') => setToast({ msg, type });
+
+  const selectedPeriodRef = useRef(selectedPeriod);
+  useEffect(() => { selectedPeriodRef.current = selectedPeriod; }, [selectedPeriod]);
 
   const fetchPeriods = useCallback(async () => {
     try {
       const r = await api.get('/api/admin/tuition-periods');
       const list = r.data?.data || [];
       setPeriods(list);
-      if (list.length > 0 && !selectedPeriod) setSelectedPeriod(list[0]);
+      const current = selectedPeriodRef.current;
+      if (!current && list.length > 0) {
+        setSelectedPeriod(list[0]);
+      } else if (current) {
+        const updated = list.find(p => p.id === current.id);
+        if (updated) {
+          setSelectedPeriod(updated);
+        } else if (list.length > 0) {
+          setSelectedPeriod(list[0]);
+        } else {
+          setSelectedPeriod(null);
+        }
+      }
     } catch { showToast('Lỗi tải danh sách đợt!', 'error'); }
     finally { setLoading(false); }
-  }, [selectedPeriod]);
+  }, []);
 
   const fetchTuitions = useCallback(async (dotId, silent = false, filters = appliedFilters) => {
     if (!dotId) return;
@@ -612,12 +796,48 @@ const TuitionManagement = () => {
     });
   }, [enrichedTuitions, appliedFilters]);
 
-  const handleChangePeriodStatus = async (periodId, newStatus) => {
+  const requestChangePeriodStatus = (period, newStatus) => {
+    if (newStatus === 'dang_mo') {
+      const activePeriod = periods.find(p => p.trang_thai === 'dang_mo' && p.id !== period.id);
+      if (activePeriod) {
+        setAlertPopupModal({
+          open: true,
+          title: 'Không thể mở đợt học phí mới!',
+          message: `Hiện tại đợt "${activePeriod.ten_dot}" đang trong trạng thái MỞ. Hệ thống quy định chỉ cho phép duy nhất 1 đợt học phí được mở tại một thời điểm. Vui lòng đóng đợt "${activePeriod.ten_dot}" trước khi tiến hành mở đợt này!`
+        });
+        return;
+      }
+    }
+    setConfirmStatusModal({ open: true, period, newStatus });
+  };
+
+  const handleConfirmChangePeriodStatus = async (periodId, newStatus) => {
+    setConfirmStatusModal({ open: false, period: null, newStatus: '' });
     try {
       await api.put(`/api/admin/tuition-periods/${periodId}/status`, { trang_thai: newStatus });
-      showToast('Cập nhật trạng thái thành công!');
+      showToast('Cập nhật trạng thái đợt học phí thành công!');
       fetchPeriods();
-    } catch (e) { showToast(e.response?.data?.message || 'Lỗi cập nhật!', 'error'); }
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Lỗi cập nhật!', 'error');
+    }
+  };
+
+  const handleRequestDeletePeriod = (period) => {
+    setDeletePeriodModal({ open: true, step: 1, period });
+  };
+
+  const executeDeletePeriod = async (periodId) => {
+    try {
+      await api.delete(`/api/admin/tuition-periods/${periodId}`);
+      showToast('Đã xóa đợt đóng học phí thành công!');
+      setDeletePeriodModal({ open: false, step: 1, period: null });
+      if (selectedPeriod && selectedPeriod.id === periodId) {
+        setSelectedPeriod(null);
+      }
+      fetchPeriods();
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Lỗi khi xóa đợt học phí!', 'error');
+    }
   };
 
   const handleApprovePayment = (hpId) => {
@@ -674,17 +894,28 @@ const TuitionManagement = () => {
       <ConfirmManualModal open={confirmModal.open} hocPhi={confirmModal.hp} onClose={() => setConfirmModal({ open: false, hp: null })} onSuccess={(msg) => { showToast(msg); if (selectedPeriod) fetchTuitions(selectedPeriod.id); }} />
       <DetailModal open={detailModal.open} hocPhi={detailModal.hp} onClose={() => setDetailModal({ open: false, hp: null })} onApprove={handleApprovePayment} onReject={handleRejectPayment} />
       <ActionConfirmModal open={actionModal.open} type={actionModal.type} hocPhi={actionModal.hp} onClose={() => setActionModal({ open: false, type: '', hp: null })} onConfirm={(hpId) => actionModal.type === 'approve' ? executeApprovePayment(hpId) : executeRejectPayment(hpId)} />
+      <ConfirmStatusModal open={confirmStatusModal.open} period={confirmStatusModal.period} newStatus={confirmStatusModal.newStatus} onClose={() => setConfirmStatusModal({ open: false, period: null, newStatus: '' })} onConfirm={handleConfirmChangePeriodStatus} />
+      <DeletePeriodModal open={deletePeriodModal.open} step={deletePeriodModal.step} period={deletePeriodModal.period} onClose={() => setDeletePeriodModal({ open: false, step: 1, period: null })} onNextStep={() => setDeletePeriodModal(prev => ({ ...prev, step: 2 }))} onConfirmDelete={executeDeletePeriod} />
+      <AlertPopupModal open={alertPopupModal.open} title={alertPopupModal.title} message={alertPopupModal.message} onClose={() => setAlertPopupModal({ open: false, title: '', message: '' })} />
 
       {/* Header */}
-      <div className="bg-[#1a1a1a] rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-black flex items-center gap-3">Quản lý Học Phí</h2>
-          <p className="text-gray-400 mt-1">Mở đợt, theo dõi và xác nhận thanh toán học phí sinh viên</p>
+      <div className="bg-[#F4C542] rounded-3xl p-8 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-5 relative z-10">
+          <div className="p-4 bg-white/40 rounded-2xl backdrop-blur-sm">
+            <CreditCard className="w-10 h-10 text-[#152238]" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-[#152238] mb-1">Quản lý Học Phí</h2>
+            <p className="text-[#152238]/70 text-lg">Mở đợt, theo dõi và xác nhận thanh toán học phí sinh viên</p>
+          </div>
         </div>
-        <button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-[#F4BE2C] hover:bg-[#E0AB1D] text-[#1a1a1a] font-extrabold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 text-sm">
-          <Plus className="w-4 h-4 shrink-0" />
-          <span>Mở đợt đóng tiền</span>
-        </button>
+        <div className="flex gap-3 relative z-10">
+          <button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-[#FFFFFF] text-[#F4C542] hover:bg-gray-50 font-semibold rounded-xl shadow-lg transition-all text-sm">
+            <Plus className="w-5 h-5 shrink-0" />
+            <span>Mở đợt đóng tiền</span>
+          </button>
+        </div>
+        <CreditCard className="absolute -right-6 -bottom-6 w-48 h-48 text-white opacity-10 transform rotate-12" />
       </div>
 
       {/* Period Tabs */}
@@ -701,11 +932,11 @@ const TuitionManagement = () => {
               const isActive = selectedPeriod?.id === p.id;
               return (
                 <button key={p.id} onClick={() => setSelectedPeriod(p)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-sm font-bold transition-all ${isActive ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-lg' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'}`}>
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-sm font-bold transition-all ${isActive ? 'bg-[#F4C542] text-[#152238] border-[#F4C542] shadow-lg ring-2 ring-[#F4C542]/40 font-black' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-50'}`}>
                   {p.ten_dot}
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${isActive ? 'bg-white/20 text-white border-white/30' : st.cls}`}>{st.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${isActive ? 'bg-[#152238] text-white border-[#152238]' : st.cls}`}>{st.label}</span>
                   {p.trang_thai === 'dang_mo' && <Countdown ngay_dong={p.ngay_dong} />}
-                  <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-lg text-xs">{p.so_sv} SV</span>
+                  <span className={`px-1.5 py-0.5 rounded-lg text-xs ${isActive ? 'bg-[#152238]/15 text-[#152238] font-bold' : 'bg-gray-200 text-gray-600'}`}>{p.so_sv} SV</span>
                 </button>
               );
             })}
@@ -724,20 +955,23 @@ const TuitionManagement = () => {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {selectedPeriod.trang_thai === 'chua_mo' && (
-                    <button onClick={() => handleChangePeriodStatus(selectedPeriod.id, 'dang_mo')} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm flex items-center gap-1.5">
-                      <Play className="w-4 h-4 fill-current" /> Mở đợt
+                    <button onClick={() => requestChangePeriodStatus(selectedPeriod, 'dang_mo')} className="px-4 py-2 bg-[#152238] hover:bg-[#0f1a2b] text-white font-extrabold rounded-xl text-sm transition-all shadow-md flex items-center gap-1.5">
+                      <Play className="w-4 h-4 fill-current text-[#F4C542]" /> Mở đợt
                     </button>
                   )}
                   {selectedPeriod.trang_thai === 'dang_mo' && (
-                    <button onClick={() => handleChangePeriodStatus(selectedPeriod.id, 'da_dong')} className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl text-sm transition-all shadow-sm flex items-center gap-1.5">
+                    <button onClick={() => requestChangePeriodStatus(selectedPeriod, 'da_dong')} className="px-4 py-2 bg-[#F4C542] hover:bg-[#e5a910] text-[#152238] font-extrabold rounded-xl text-sm transition-all shadow-md flex items-center gap-1.5">
                       <Square className="w-4 h-4 fill-current" /> Đóng đợt
                     </button>
                   )}
                   {selectedPeriod.trang_thai === 'da_dong' && (
-                    <button onClick={() => handleChangePeriodStatus(selectedPeriod.id, 'dang_mo')} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm flex items-center gap-1.5">
-                      <Play className="w-4 h-4 fill-current" /> Mở lại đợt
+                    <button onClick={() => requestChangePeriodStatus(selectedPeriod, 'dang_mo')} className="px-4 py-2 bg-[#152238] hover:bg-[#0f1a2b] text-white font-extrabold rounded-xl text-sm transition-all shadow-md flex items-center gap-1.5">
+                      <Play className="w-4 h-4 fill-current text-[#F4C542]" /> Mở lại đợt
                     </button>
                   )}
+                  <button onClick={() => handleRequestDeletePeriod(selectedPeriod)} className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-extrabold rounded-xl text-sm transition-all flex items-center gap-1.5">
+                    <Trash2 className="w-4 h-4" /> Xóa đợt
+                  </button>
                 </div>
               </div>
 
@@ -805,8 +1039,8 @@ const TuitionManagement = () => {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button type="submit" className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors flex items-center gap-1.5 shadow-sm">
-                      <Search className="w-4 h-4 text-[#F4BE2C]" /> Tìm kiếm
+                    <button type="submit" className="px-6 py-2.5 bg-[#152238] text-white rounded-xl text-sm font-bold hover:bg-[#0f1a2b] transition-colors flex items-center gap-1.5 shadow-sm">
+                      <Search className="w-4 h-4 text-[#F4C542]" /> Tìm kiếm
                     </button>
 
                     {(khoaFilter !== 'all' || nienKhoaFilter !== 'all' || classFilter !== 'all' || statusFilter !== 'all' || search ||
@@ -885,14 +1119,14 @@ const TuitionManagement = () => {
                                 {(t.trang_thai === 'Chờ duyệt' || t.trang_thai === 'Chưa đóng') && (
                                   <>
                                     <button onClick={() => handleApprovePayment(t.id)}
-                                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all shadow-sm flex items-center gap-1.5">
-                                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                      Đã duyệt
+                                      className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black transition-all shadow-2xs flex items-center gap-1.5">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                      Duyệt
                                     </button>
                                     <button onClick={() => handleRejectPayment(t.id)}
-                                      className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-extrabold transition-all shadow-sm flex items-center gap-1.5">
-                                      <XCircle className="w-4 h-4 shrink-0" />
-                                      Chưa duyệt
+                                      className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-extrabold transition-all shadow-2xs flex items-center gap-1.5">
+                                      <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                      Hủy duyệt
                                     </button>
                                   </>
                                 )}
@@ -959,7 +1193,7 @@ const TuitionManagement = () => {
                               onClick={() => setCurrentPage(page)}
                               className={`w-8 h-8 rounded-xl font-black text-xs transition-all flex items-center justify-center ${
                                 currentPage === page
-                                  ? 'bg-[#1a1a1a] text-white shadow-md'
+                                  ? 'bg-[#152238] text-white shadow-md'
                                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
                               }`}
                             >

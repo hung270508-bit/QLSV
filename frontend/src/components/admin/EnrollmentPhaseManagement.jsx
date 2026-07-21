@@ -91,6 +91,30 @@ function ConfirmModal({ dialog, onClose }) {
   );
 }
 
+function AlertDialog({ dialog, onClose }) {
+  if (!dialog) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-amber-300">
+        <div className="px-6 py-4 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
+          <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
+          <h3 className="font-bold text-base text-amber-900">{dialog.title || 'Thông báo hệ thống'}</h3>
+        </div>
+        <div className="px-6 py-4">
+          <p className="text-sm text-slate-700 leading-relaxed font-medium">{dialog.message}</p>
+        </div>
+        <div className="px-6 pb-5 flex justify-end">
+          <button onClick={onClose} className="rounded-xl bg-[#152238] hover:bg-[#0f1a2b] px-5 py-2 text-sm font-semibold text-white transition-colors">
+            Đóng thông báo
+          </button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+}
+
 // ── PhaseFormModal ────────────────────────────────────────────────────────────
 function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, hocKyOptions, nienKhoaOptions }) {
   if (!open) return null;
@@ -318,6 +342,7 @@ function EnrollmentPhaseManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [alertDialog, setAlertDialog] = useState(null);
   const [viewingPhase, setViewingPhase] = useState(null);
   const [now, setNow] = useState(() => new Date());
   const [form, setForm] = useState({ TenDot: '', MoTa: '', HocKy: '', NienKhoa: '', NgayTao: '', NgayDong: '' });
@@ -459,13 +484,14 @@ function EnrollmentPhaseManagement() {
     }
 
     if (errors.length > 0) {
-      showToast(errors[0], 'error'); // Hiển thị lỗi đầu tiên
+      showToast(errors[0], 'error');
+      setAlertDialog({ title: 'Không thể lưu đợt đăng ký', message: errors[0] });
       return;
     }
     setConfirmDialog({
       title: editingPhase ? 'Xác nhận cập nhật' : 'Xác nhận tạo đợt',
-      message: editingPhase ? `Lưu thay đổi cho đợt "${form.TenDot}"?` : `Tạo đợt đăng ký "${form.TenDot}"?`,
-      confirmLabel: 'Lưu', variant: 'primary', onConfirm: performSave
+      message: editingPhase ? `Bạn có muốn lưu thay đổi cấu hình cho đợt "${form.TenDot}"?` : `Bạn có chắc chắn muốn tạo đợt đăng ký mới "${form.TenDot}"?`,
+      confirmLabel: 'Lưu & Kích hoạt', variant: 'primary', onConfirm: performSave
     });
   };
 
@@ -481,18 +507,27 @@ function EnrollmentPhaseManagement() {
       showToast('Lưu đợt đăng ký thành công!', 'success');
       closeForm(); fetchPhases();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Không thể lưu đợt đăng ký', 'error');
+      const errMsg = err.response?.data?.message || 'Không thể lưu đợt đăng ký';
+      showToast(errMsg, 'error');
+      setAlertDialog({ title: 'Lỗi Lưu Dữ Liệu', message: errMsg });
     } finally { setConfirmDialog(null); }
   };
 
   const requestClose = (phase) => setConfirmDialog({
-    title: 'Đóng đợt đăng ký', message: `Xác nhận đóng đợt "${phase.TenDot}"?`,
-    confirmLabel: 'Đóng đợt', variant: 'warning', onConfirm: () => closePhase(phase.MaDot)
+    title: 'Xác Nhận Đóng Đợt Đăng Ký',
+    message: `Bạn có chắc chắn muốn đóng đợt "${phase.TenDot}"? Sau khi đóng, sinh viên sẽ tạm dừng không thể đăng ký hay hủy môn học trong đợt này nữa.`,
+    confirmLabel: 'Đóng đợt ngay', variant: 'warning', onConfirm: () => closePhase(phase.MaDot)
   });
   const closePhase = async (id) => {
-    try { await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`); showToast('Đóng đợt đăng ký thành công!', 'success'); fetchPhases(); }
-    catch { showToast('Không thể đóng đợt đăng ký', 'error'); }
-    finally { setConfirmDialog(null); }
+    try {
+      await axios.post(`${API_URL}/api/enrollment/phases/${id}/close`);
+      showToast('Đóng đợt đăng ký thành công!', 'success');
+      fetchPhases();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || 'Không thể đóng đợt đăng ký';
+      showToast(errMsg, 'error');
+      setAlertDialog({ title: 'Lỗi Đóng Đợt', message: errMsg });
+    } finally { setConfirmDialog(null); }
   };
 
   const requestOpen = (phase) => {
@@ -501,15 +536,27 @@ function EnrollmentPhaseManagement() {
     
     if (end <= now) {
       showToast('Không thể mở lại đợt đăng ký đã kết thúc trong quá khứ.', 'error');
+      setAlertDialog({
+        title: 'Không thể mở lại đợt đã kết thúc',
+        message: `Đợt "${phase.TenDot}" có ngày kết thúc (${end.toLocaleString('vi-VN')}) nằm trong quá khứ. Vui lòng bấm vào nút Chỉnh sửa (hình cây bút) để gia hạn ngày đóng trước khi mở lại!`
+      });
       return;
     }
     
     const conflict = findConflictingOpenPhase(phase.NgayTao, end, phase.MaDot);
-    if (conflict) { showToast(`Thời gian bị chồng chéo với đợt "${conflict.TenDot}". Không thể mở nhiều đợt cùng lúc.`, 'warning'); return; }
+    if (conflict) {
+      showToast(`Thời gian bị chồng chéo với đợt "${conflict.TenDot}". Không thể mở nhiều đợt cùng lúc.`, 'warning');
+      setAlertDialog({
+        title: 'Trùng lặp thời gian mở đợt!',
+        message: `Khung thời gian của đợt này bị chồng chéo với đợt "${conflict.TenDot}". Hệ thống không cho phép mở nhiều đợt có thời gian trùng nhau cho cùng học kỳ/niên khóa để tránh xung đột dữ liệu!`
+      });
+      return;
+    }
     
     setConfirmDialog({
-      title: 'Mở lại đợt đăng ký', message: `Xác nhận mở lại đợt "${phase.TenDot}"?`,
-      confirmLabel: 'Mở lại', variant: 'primary', onConfirm: () => openPhase(phase.MaDot)
+      title: 'Xác Nhận Mở Lại Đợt Đăng Ký',
+      message: `Bạn có chắc chắn muốn mở lại đợt "${phase.TenDot}"? Sinh viên có thể tiếp tục đăng ký các môn học trong khung thời gian quy định.`,
+      confirmLabel: 'Mở lại ngay', variant: 'primary', onConfirm: () => openPhase(phase.MaDot)
     });
   };
   const openPhase = async (id) => {
@@ -518,19 +565,28 @@ function EnrollmentPhaseManagement() {
       showToast('Mở đợt đăng ký thành công!', 'success');
       fetchPhases();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Không thể mở lại đợt đăng ký', 'error');
+      const errMsg = err.response?.data?.message || 'Không thể mở lại đợt đăng ký';
+      showToast(errMsg, 'error');
+      setAlertDialog({ title: 'Lỗi Mở Đợt', message: errMsg });
     } finally { setConfirmDialog(null); }
   };
 
   const requestDelete = (phase) => setConfirmDialog({
-    title: 'Xóa đợt đăng ký', message: `Xóa đợt "${phase.TenDot}"? Không thể hoàn tác.`,
-    confirmLabel: 'Xóa', variant: 'danger', onConfirm: () => performDelete(phase.MaDot)
+    title: 'Xác Nhận Xóa Đợt Đăng Ký',
+    message: `CẢNH BÁO: Bạn có chắc chắn muốn xóa đợt "${phase.TenDot}"? Toàn bộ cấu hình và dữ liệu của đợt này sẽ bị xóa bỏ hoàn toàn khỏi hệ thống và không thể khôi phục.`,
+    confirmLabel: 'Xác nhận Xóa', variant: 'danger', onConfirm: () => performDelete(phase.MaDot)
   });
 
   const performDelete = async (id) => {
-    try { await axios.delete(`${API_URL}/api/enrollment/phases/${id}`); showToast('Xóa đợt đăng ký thành công!', 'success'); fetchPhases(); }
-    catch (err) { showToast(`Không thể xóa: ${err.response?.data?.message || 'Lỗi không xác định'}`, 'error'); }
-    finally { setConfirmDialog(null); }
+    try {
+      await axios.delete(`${API_URL}/api/enrollment/phases/${id}`);
+      showToast('Xóa đợt đăng ký thành công!', 'success');
+      fetchPhases();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || 'Lỗi không xác định';
+      showToast(`Không thể xóa: ${errMsg}`, 'error');
+      setAlertDialog({ title: 'Không thể xóa đợt đăng ký', message: errMsg });
+    } finally { setConfirmDialog(null); }
   };
 
   // derived data
@@ -570,9 +626,10 @@ function EnrollmentPhaseManagement() {
         document.body
       )}
 
-      {/* Confirm dialog */}
+      {/* Confirm & Alert dialogs */}
       <AnimatePresence>
         {confirmDialog && <ConfirmModal dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />}
+        {alertDialog && <AlertDialog dialog={alertDialog} onClose={() => setAlertDialog(null)} />}
       </AnimatePresence>
 
       {/* Form slide-over */}

@@ -2036,7 +2036,8 @@ app.post('/api/enrollment', async (req, res) => {
             }
         }
 
-        await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW())`, [MSSV, MaLopHocPhan, lhp.HocKy]);
+        const phaseIdSingle = await getOpenPhaseId(conn, lhp.NamHoc, lhp.NienKhoa);
+        await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy, MaDot) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW(), ?)`, [MSSV, MaLopHocPhan, lhp.HocKy, phaseIdSingle]);
         // Lưu ý: KHÔNG insert vào bảng `diem` ở bước này nữa.
         // Lịch học/kết quả chỉ được commit chính thức sau khi sinh viên đóng tiền
         // (xem API POST /api/enrollment/:mssv/:maLhp/xac-nhan-thanh-toan).
@@ -2144,7 +2145,8 @@ app.post('/api/enrollment/batch', async (req, res) => {
                 }
             }
 
-            await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW()) ON DUPLICATE KEY UPDATE TrangThai = 'Chờ đóng tiền', NgayDangKy = NOW(), HocKy = VALUES(HocKy)`, [MSSV, MaLopHocPhan, lhp.HocKy]);
+            const phaseIdBatch = await getOpenPhaseId(conn, lhp.NamHoc, lhp.NienKhoa);
+            await conn.query(`INSERT INTO dangky_hocphan (MSSV, MaLopHocPhan, HocKy, TrangThai, NgayDangKy, MaDot) VALUES (?, ?, ?, 'Chờ đóng tiền', NOW(), ?) ON DUPLICATE KEY UPDATE TrangThai = 'Chờ đóng tiền', NgayDangKy = NOW(), HocKy = VALUES(HocKy), MaDot = VALUES(MaDot)`, [MSSV, MaLopHocPhan, lhp.HocKy, phaseIdBatch]);
         }
 
         // [BƯỚC 3]: CẬP NHẬT HOẶC TẠO MỚI HỌC PHÍ DỰA TRÊN TỔNG TÍN CHỈ
@@ -2187,18 +2189,43 @@ app.post('/api/enrollment/batch', async (req, res) => {
 // 5. API Hủy môn
 // Đặt đoạn này ngay phía trước API Hủy môn để tránh lỗi trùng route
 app.delete('/api/enrollment/phases/:id', async (req, res) => {
+    const maDot = req.params.id;
+    const dbConn = await db.promise().getConnection();
     try {
-        // Chỉ xóa duy nhất trong bảng dot_dangky, không can thiệp bất cứ bảng nào khác
-        await db.promise().query(
-            'DELETE FROM dot_dangky WHERE MaDot = ?',
-            [req.params.id]
+        await dbConn.beginTransaction();
+
+        // 1. Tìm và xóa các đợt đóng học phí (dot_dong_hoc_phi) liên quan đến đợt đăng ký này
+        const [tuitionPeriods] = await dbConn.execute(
+            'SELECT id FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?',
+            [maDot]
         );
 
+        for (const tp of tuitionPeriods) {
+            const dotId = tp.id;
+            const [hpRows] = await dbConn.execute('SELECT id FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+            for (const hp of hpRows) {
+                await dbConn.execute('DELETE FROM giao_dich_hoc_phi WHERE hoc_phi_id = ?', [hp.id]);
+                await dbConn.execute('DELETE FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hp.id]);
+            }
+            await dbConn.execute('DELETE FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+        }
+        await dbConn.execute('DELETE FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?', [maDot]);
+
+        // 2. Xóa các đăng ký học phần thuộc đợt này
+        await dbConn.execute('DELETE FROM dangky_hocphan WHERE MaDot = ?', [maDot]);
+
+        // 3. Xóa đợt đăng ký trong dot_dangky
+        await dbConn.execute('DELETE FROM dot_dangky WHERE MaDot = ?', [maDot]);
+
+        await dbConn.commit();
         notifyPhaseChange();
-        res.json({ success: true, message: 'Đã xóa đợt đăng ký thành công!' });
+        res.json({ success: true, message: 'Đã xóa đợt đăng ký và các dữ liệu học phí liên quan thành công!' });
     } catch (err) {
+        await dbConn.rollback();
         console.error("Lỗi khi xóa đợt đăng ký:", err);
         res.status(500).json({ message: 'Lỗi xóa đợt đăng ký', error: err.message });
+    } finally {
+        dbConn.release();
     }
 });
 // XÓA ĐĂNG KÝ - CHO PHÉP XÓA KHI CHƯA ĐÓNG TIỀN HOẶC ĐỢT VẪN MỞ
@@ -2469,9 +2496,20 @@ app.get('/api/enrollment/phases', async (req, res) => {
     }
 });
 
+// Helper tự động suy luận hoặc lấy NamHoc cho đợt đăng ký
+const deriveNamHoc = (hocKy, tenDot, nienKhoa, namHocReq) => {
+    if (namHocReq && typeof namHocReq === 'string' && namHocReq.trim()) return namHocReq.trim();
+    const str = `${hocKy || ''} ${tenDot || ''}`;
+    const match = str.match(/(\d{4}[-_]\d{4})/);
+    if (match) return match[1].replace('_', '-');
+    if (nienKhoa && typeof nienKhoa === 'string' && nienKhoa.match(/^\d{4}[-_]\d{4}$/)) return nienKhoa.replace('_', '-');
+    return null;
+};
+
 // 7. Tạo mới một đợt đăng ký (CHÈN DỮ LIỆU vào dot_dangky)
 app.post('/api/enrollment/phases', async (req, res) => {
     const { TenDot, HocKy, NienKhoa, NgayTao, NgayDong } = req.body;
+    const namHocVal = deriveNamHoc(HocKy, TenDot, NienKhoa, req.body.NamHoc);
 
     if (!TenDot || !NgayTao || !NgayDong) {
         return res.status(400).json({ message: 'Vui lòng nhập đầy đủ Tên đợt, Ngày mở và Ngày đóng.' });
@@ -2544,9 +2582,9 @@ app.post('/api/enrollment/phases', async (req, res) => {
         const formattedNgayDong = formatMySQLDateTime(endDate);
 
         const [result] = await db.promise().query(
-            `INSERT INTO dot_dangky (TenDot, MoTa, HocKy, NienKhoa, NgayTao, NgayDong, TrangThai)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [TenDot, req.body.MoTa || null, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi]
+            `INSERT INTO dot_dangky (TenDot, MoTa, HocKy, NamHoc, NienKhoa, NgayTao, NgayDong, TrangThai)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [TenDot, req.body.MoTa || null, HocKy || null, namHocVal, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi]
         );
 
         const [[newPhase]] = await db.promise().query(
@@ -2563,6 +2601,7 @@ app.post('/api/enrollment/phases', async (req, res) => {
 // 8. Cập nhật một đợt đăng ký (Thay thế đoạn này trong file server.js)
 app.put('/api/enrollment/phases/:id', async (req, res) => {
     const { TenDot, HocKy, NienKhoa, NgayTao, NgayDong } = req.body;
+    const namHocVal = deriveNamHoc(HocKy, TenDot, NienKhoa, req.body.NamHoc);
     const { id } = req.params;
 
     if (!TenDot || !NgayTao || !NgayDong) {
@@ -2655,9 +2694,9 @@ app.put('/api/enrollment/phases/:id', async (req, res) => {
 
         const [result] = await db.promise().query(
             `UPDATE dot_dangky
-       SET TenDot = ?, MoTa = ?, HocKy = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
+       SET TenDot = ?, MoTa = ?, HocKy = ?, NamHoc = ?, NienKhoa = ?, NgayTao = ?, NgayDong = ?, TrangThai = ?
        WHERE MaDot = ?`,
-            [TenDot, req.body.MoTa || null, HocKy || null, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi, id]
+            [TenDot, req.body.MoTa || null, HocKy || null, namHocVal, NienKhoa || null, formattedNgayMo, formattedNgayDong, trangThaiMoi, id]
         );
 
         if (result.affectedRows === 0) {
@@ -3946,22 +3985,29 @@ app.get('/api/admin/tuition-periods', verifyToken, (req, res) => {
 app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền truy cập!' });
     const { ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong } = req.body;
-    const don_gia_tin_chi = 10000; // Cố định 1 tín chỉ = 10,000 VNĐ để dễ test QR
-    if (!ma_dot_dangky || !hoc_ky || !ten_dot || !ngay_mo || !ngay_dong) {
+    const don_gia_tin_chi = Number(req.body.don_gia_tin_chi) || 10000; // Cố định 1 tín chỉ = 10,000 VNĐ hoặc theo config
+    if (!hoc_ky || !ten_dot || !ngay_mo || !ngay_dong) {
         return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc!' });
     }
     const dbConn = await db.promise().getConnection();
     try {
         await dbConn.beginTransaction();
 
+        // Tìm hoặc lấy ma_dot_dangky đại diện nếu không được truyền rõ ràng
+        let maDotDangKyVal = ma_dot_dangky;
+        if (!maDotDangKyVal) {
+            const [[repDot]] = await dbConn.execute('SELECT MaDot FROM dot_dangky WHERE HocKy = ? LIMIT 1', [hoc_ky]);
+            maDotDangKyVal = repDot ? repDot.MaDot : 0;
+        }
+
         // Insert đợt đóng học phí
         const [dotResult] = await dbConn.execute(
             'INSERT INTO dot_dong_hoc_phi (ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, tao_boi, trang_thai) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [ma_dot_dangky, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, req.user.username || req.user.id, 'chua_mo']
+            [maDotDangKyVal, hoc_ky, ten_dot, ngay_mo, ngay_dong, don_gia_tin_chi, req.user.username || req.user.id, 'chua_mo']
         );
         const dotId = dotResult.insertId;
 
-        // Lấy toàn bộ SV + môn học trong đợt đăng ký, join lophocphan để lấy số tín chỉ + cấu hình phí tài liệu
+        // Lấy toàn bộ SV + môn học trong học kỳ này không bị hủy/từ chối (bao trùm tất cả các đợt mở cho khóa/lớp)
         const [svRows] = await dbConn.execute(
             `SELECT dk.MSSV, dk.MaLopHocPhan, dk.HocKy,
                     m.TenMonHoc, m.SoTinChi,
@@ -3970,7 +4016,7 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
              FROM dangky_hocphan dk
              JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan
              JOIN monhoc m ON lhp.MaMonHoc = m.MaMonHoc
-             WHERE dk.HocKy = ? AND dk.TrangThai IN ('Đã duyệt','da_duyet','Chấp nhận','approved')`,
+             WHERE dk.HocKy = ? AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối')`,
             [hoc_ky]
         );
 
@@ -4035,15 +4081,50 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
 });
 
 // PUT /api/admin/tuition-periods/:id/status — Mở/đóng đợt
-app.put('/api/admin/tuition-periods/:id/status', verifyToken, (req, res) => {
+app.put('/api/admin/tuition-periods/:id/status', verifyToken, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
     const { trang_thai } = req.body;
     const allowed = ['chua_mo', 'dang_mo', 'da_dong'];
     if (!allowed.includes(trang_thai)) return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
-    db.query('UPDATE dot_dong_hoc_phi SET trang_thai = ? WHERE id = ?', [trang_thai, req.params.id], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+    try {
+        if (trang_thai === 'dang_mo') {
+            const [[active]] = await db.promise().execute("SELECT id, ten_dot FROM dot_dong_hoc_phi WHERE trang_thai = 'dang_mo' AND id != ? LIMIT 1", [req.params.id]);
+            if (active) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Hiện đang có đợt thu học phí "${active.ten_dot}" đang mở! Hệ thống chỉ cho phép mở 1 đợt tại một thời điểm. Vui lòng đóng đợt đó trước khi mở đợt mới.`
+                });
+            }
+        }
+        await db.promise().execute('UPDATE dot_dong_hoc_phi SET trang_thai = ? WHERE id = ?', [trang_thai, req.params.id]);
         res.json({ success: true, message: 'Cập nhật trạng thái thành công!' });
-    });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Lỗi cập nhật!', error: err.message });
+    }
+});
+
+// DELETE /api/admin/tuition-periods/:id — Xóa đợt đóng học phí
+app.delete('/api/admin/tuition-periods/:id', verifyToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
+    const dotId = req.params.id;
+    const dbConn = await db.promise().getConnection();
+    try {
+        await dbConn.beginTransaction();
+        const [hpRows] = await dbConn.execute('SELECT id FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+        for (const hp of hpRows) {
+            await dbConn.execute('DELETE FROM giao_dich_hoc_phi WHERE hoc_phi_id = ?', [hp.id]);
+            await dbConn.execute('DELETE FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hp.id]);
+        }
+        await dbConn.execute('DELETE FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+        await dbConn.execute('DELETE FROM dot_dong_hoc_phi WHERE id = ?', [dotId]);
+        await dbConn.commit();
+        res.json({ success: true, message: 'Đã xóa đợt học phí thành công!' });
+    } catch (err) {
+        await dbConn.rollback();
+        res.status(500).json({ success: false, message: 'Lỗi xóa đợt học phí!', error: err.message });
+    } finally {
+        dbConn.release();
+    }
 });
 
 // GET /api/admin/tuitions?dot_id=&status=&search= — Danh sách học phí theo đợt
@@ -4374,7 +4455,7 @@ app.put('/api/admin/tuitions/:hocPhiId/approve-payment', verifyToken, async (req
 
         const [resGD] = await db.promise().execute(
             'UPDATE giao_dich_hoc_phi SET trang_thai = ?, admin_username = ?, thoi_gian_xac_nhan = NOW(), ghi_chu = ? WHERE hoc_phi_id = ? AND trang_thai = ?',
-            ['thanh_cong', req.user.username || req.user.id, 'Admin kiểm tra STK đã có tiền (pass qua)', hocPhiId, 'cho_duyet']
+            ['thanh_cong', req.user.username || req.user.id, 'Admin kiểm tra STK đã có tiền', hocPhiId, 'cho_duyet']
         );
 
         if (resGD.affectedRows === 0) {
