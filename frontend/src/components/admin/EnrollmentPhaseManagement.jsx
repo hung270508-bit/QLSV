@@ -349,10 +349,10 @@ function EnrollmentPhaseManagement() {
 
   const showToast = (message, type = 'warning') => setToast({ message, type });
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }, [toast]);
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 10000); return () => clearInterval(t); }, []);
 
   const fetchPhases = async () => {
-    try { setLoading(true); const r = await axios.get(`${API_URL}/api/enrollment/phases?_t=${Date.now()}`); setPhases(r.data || []); }
+    try { const r = await axios.get(`${API_URL}/api/enrollment/phases?_t=${Date.now()}`); setPhases(r.data || []); }
     catch (e) { console.error(e); } finally { setLoading(false); }
   };
   const fetchCourseSections = async () => {
@@ -368,17 +368,31 @@ function EnrollmentPhaseManagement() {
     fetchCourseSections(); 
     fetchStudents(); 
 
-    const eventSource = new EventSource(`${API_URL}/api/enrollment/phases/stream`);
-    eventSource.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === 'PHASE_CHANGED') {
-          axios.get(`${API_URL}/api/enrollment/phases`).then(r => setPhases(r.data || [])).catch(console.error);
+    let eventSource = null;
+    try {
+      eventSource = new EventSource(`${API_URL}/api/enrollment/phases/stream`);
+      eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === 'PHASE_CHANGED') {
+            fetchPhases();
+          }
+        } catch (e) {
+          console.error("SSE parse error", e);
         }
-      } catch (err) {}
-    };
+      };
+    } catch (e) {
+      console.error("SSE init error", e);
+    }
 
-    return () => eventSource.close();
+    const pollTimer = setInterval(() => {
+      fetchPhases();
+    }, 10000);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      clearInterval(pollTimer);
+    };
   }, []);
 
   // options

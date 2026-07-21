@@ -1864,12 +1864,24 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
 // Lấy thông tin đợt đăng ký đang mở cho sinh viên
 app.get('/api/enrollment/active-phase/:mssv', async (req, res) => {
     try {
-        const [[phase]] = await db.promise().query(
+        await autoUpdatePhases();
+        const mssv = req.params.mssv;
+        const [[studentInfo]] = await db.promise().query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
+            [mssv]
+        );
+        const nienKhoa = studentInfo ? studentInfo.NienKhoa : null;
+
+        const [phases] = await db.promise().query(
             `SELECT *, NgayTao AS NgayMo FROM dot_dangky 
              WHERE TrangThai = 'Mo' 
+             AND (NienKhoa = ? OR NienKhoa IS NULL OR NienKhoa = '')
              AND NOW() BETWEEN NgayTao AND NgayDong
-             ORDER BY NgayTao DESC LIMIT 1`
+             ORDER BY NgayTao DESC LIMIT 1`,
+            [nienKhoa]
         );
+
+        const phase = phases && phases.length > 0 ? phases[0] : null;
 
         if (phase) {
             res.json({ hasActivePhase: true, phase });

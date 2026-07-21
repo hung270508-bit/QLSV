@@ -54,18 +54,53 @@ function StudentCourseRegistration({ user }) {
   }, [user?.username]);
 
   useEffect(() => {
-    if (user?.username) fetchData();
+    if (!user?.username) return;
+
+    fetchData();
+
+    // 1. Lắng nghe sự kiện thời gian thực (SSE Stream) từ Admin khi Đợt đăng ký thay đổi
+    let eventSource = null;
+    try {
+      eventSource = new EventSource(`${API_URL}/api/enrollment/phases/stream`);
+      eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === 'PHASE_CHANGED') {
+            fetchData();
+          }
+        } catch {
+          // Ignore JSON parse error
+        }
+      };
+    } catch {
+      // Ignore EventSource creation error
+    }
+
+    // 2. Tự động đồng bộ định kỳ 10s dự phòng
+    const pollTimer = setInterval(() => {
+      fetchData();
+    }, 10000);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      clearInterval(pollTimer);
+    };
   }, [fetchData, user?.username]);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60000);
+    const t = setInterval(() => setNow(new Date()), 10000);
     return () => clearInterval(t);
   }, []);
 
   const activePhase = useMemo(() => {
     if (!fetchedPhase) return null;
     const p = fetchedPhase;
-    return (p.TrangThai === 'Mo' && p.NgayTao && new Date(p.NgayTao) <= now && (!p.NgayDong || new Date(p.NgayDong) > now)) ? p : null;
+    const startDate = p.NgayMo || p.NgayTao;
+    const endDate = p.NgayDong;
+    const isMo = p.TrangThai === 'Mo';
+    const isStarted = !startDate || new Date(startDate) <= now;
+    const isNotEnded = !endDate || new Date(endDate) > now;
+    return (isMo && isStarted && isNotEnded) ? p : null;
   }, [fetchedPhase, now]);
 
   const currentSemesterMyCourses = useMemo(() => {
