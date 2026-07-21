@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import API_URL from '../../api';
@@ -448,6 +448,18 @@ const TuitionManagement = () => {
   const [tuitions, setTuitions] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [khoaFilter, setKhoaFilter] = useState('all');
+  const [nienKhoaFilter, setNienKhoaFilter] = useState('all');
+  const [classFilter, setClassFilter] = useState('all');
+  const [appliedFilters, setAppliedFilters] = useState({
+    search: '',
+    status: 'all',
+    khoa: 'all',
+    nienKhoa: 'all',
+    lop: 'all'
+  });
+  const [faculties, setFaculties] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingTuitions, setLoadingTuitions] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -471,30 +483,134 @@ const TuitionManagement = () => {
     finally { setLoading(false); }
   }, [selectedPeriod]);
 
-  const fetchTuitions = useCallback(async (dotId, silent = false) => {
+  const fetchTuitions = useCallback(async (dotId, silent = false, filters = appliedFilters) => {
     if (!dotId) return;
     if (!silent) setLoadingTuitions(true);
     try {
-      const r = await api.get('/api/admin/tuitions', { params: { dot_id: dotId, status: statusFilter !== 'all' ? statusFilter : undefined, search: search || undefined } });
+      const r = await api.get('/api/admin/tuitions', {
+        params: {
+          dot_id: dotId,
+          status: filters.status !== 'all' ? filters.status : undefined,
+          search: filters.search || undefined,
+          khoa: filters.khoa !== 'all' ? filters.khoa : undefined,
+          nien_khoa: filters.nienKhoa !== 'all' ? filters.nienKhoa : undefined,
+          lop: filters.lop !== 'all' ? filters.lop : undefined
+        }
+      });
       setTuitions(r.data?.data || []);
       if (!silent) setCurrentPage(1);
     } catch { showToast('Lỗi tải học phí!', 'error'); }
     finally { if (!silent) setLoadingTuitions(false); }
-  }, [statusFilter, search]);
+  }, [appliedFilters]);
 
-  useEffect(() => { fetchPeriods(); }, []);
-  useEffect(() => { if (selectedPeriod) { setDetailModal({ open: false, hp: null }); fetchTuitions(selectedPeriod.id); } }, [selectedPeriod, statusFilter]);
+  useEffect(() => {
+    fetchPeriods();
+    api.get('/api/faculties').then(r => setFaculties(r.data || [])).catch(() => {});
+    api.get('/api/classes').then(r => setClasses(r.data || [])).catch(() => {});
+  }, [fetchPeriods]);
+
+  useEffect(() => {
+    if (selectedPeriod) {
+      setDetailModal({ open: false, hp: null });
+      fetchTuitions(selectedPeriod.id, false, appliedFilters);
+    }
+  }, [selectedPeriod]);
 
   // Polling silent auto-refresh mỗi 10s (silent=true để không kích hoạt loading spinner)
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
     if (selectedPeriod) {
-      pollRef.current = setInterval(() => fetchTuitions(selectedPeriod.id, true), 10000);
+      pollRef.current = setInterval(() => fetchTuitions(selectedPeriod.id, true, appliedFilters), 10000);
     }
     return () => clearInterval(pollRef.current);
-  }, [selectedPeriod, fetchTuitions]);
+  }, [selectedPeriod, appliedFilters, fetchTuitions]);
 
-  const handleSearch = (e) => { e.preventDefault(); if (selectedPeriod) fetchTuitions(selectedPeriod.id); };
+  const uniqueCohorts = useMemo(() => {
+    const list = classes
+      .filter(c => khoaFilter === 'all' || c.MaKhoa === khoaFilter)
+      .map(c => c.NienKhoa)
+      .filter(Boolean);
+    tuitions.forEach(t => { if (t.nien_khoa) list.push(t.nien_khoa); });
+    return Array.from(new Set(list)).sort();
+  }, [classes, tuitions, khoaFilter]);
+
+  const filteredClasses = useMemo(() => {
+    const list = classes.filter(c =>
+      (khoaFilter === 'all' || c.MaKhoa === khoaFilter) &&
+      (nienKhoaFilter === 'all' || c.NienKhoa === nienKhoaFilter)
+    );
+    const existingLopSet = new Set(list.map(c => c.MaLop));
+    tuitions.forEach(t => {
+      if (t.MaLop && !existingLopSet.has(t.MaLop)) {
+        if ((khoaFilter === 'all' || t.ma_khoa === khoaFilter) &&
+            (nienKhoaFilter === 'all' || t.nien_khoa === nienKhoaFilter)) {
+          list.push({ MaLop: t.MaLop, TenLop: t.MaLop });
+          existingLopSet.add(t.MaLop);
+        }
+      }
+    });
+    return list.sort((a, b) => a.MaLop.localeCompare(b.MaLop));
+  }, [classes, tuitions, khoaFilter, nienKhoaFilter]);
+
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    const newApplied = {
+      search: search.trim(),
+      status: statusFilter,
+      khoa: khoaFilter,
+      nienKhoa: nienKhoaFilter,
+      lop: classFilter
+    };
+    setAppliedFilters(newApplied);
+    setCurrentPage(1);
+    if (selectedPeriod) {
+      fetchTuitions(selectedPeriod.id, false, newApplied);
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setKhoaFilter('all');
+    setNienKhoaFilter('all');
+    setClassFilter('all');
+    const defaultApplied = { search: '', status: 'all', khoa: 'all', nienKhoa: 'all', lop: 'all' };
+    setAppliedFilters(defaultApplied);
+    setCurrentPage(1);
+    if (selectedPeriod) {
+      fetchTuitions(selectedPeriod.id, false, defaultApplied);
+    }
+  };
+
+  const enrichedTuitions = useMemo(() => {
+    const classMap = new Map();
+    classes.forEach(c => classMap.set(c.MaLop, c));
+    return tuitions.map(t => {
+      const cls = classMap.get(t.MaLop);
+      return {
+        ...t,
+        ma_khoa: t.ma_khoa || cls?.MaKhoa || '',
+        ten_khoa: t.ten_khoa || cls?.TenKhoa || '',
+        nien_khoa: t.nien_khoa || cls?.NienKhoa || ''
+      };
+    });
+  }, [tuitions, classes]);
+
+  const filteredTuitions = useMemo(() => {
+    return enrichedTuitions.filter(t => {
+      if (appliedFilters.khoa !== 'all' && t.ma_khoa !== appliedFilters.khoa) return false;
+      if (appliedFilters.nienKhoa !== 'all' && t.nien_khoa !== appliedFilters.nienKhoa) return false;
+      if (appliedFilters.lop !== 'all' && t.MaLop !== appliedFilters.lop) return false;
+      if (appliedFilters.status !== 'all' && t.trang_thai !== appliedFilters.status) return false;
+      if (appliedFilters.search) {
+        const q = appliedFilters.search.toLowerCase();
+        const matchMssv = (t.mssv || '').toLowerCase().includes(q);
+        const matchName = (t.ten_sinh_vien || '').toLowerCase().includes(q);
+        if (!matchMssv && !matchName) return false;
+      }
+      return true;
+    });
+  }, [enrichedTuitions, appliedFilters]);
 
   const handleChangePeriodStatus = async (periodId, newStatus) => {
     try {
@@ -540,8 +656,8 @@ const TuitionManagement = () => {
 
   if (loading) return <Spinner />;
 
-  const totalPages = Math.ceil(tuitions.length / itemsPerPage) || 1;
-  const paginatedTuitions = tuitions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredTuitions.length / itemsPerPage) || 1;
+  const paginatedTuitions = filteredTuitions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const getPageNumbers = (current, total) => {
     if (total <= 7) return Array.from({ length: total }, (_, idx) => idx + 1);
@@ -625,26 +741,87 @@ const TuitionManagement = () => {
                 </div>
               </div>
 
-              {/* Filters */}
-              <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row gap-3">
-                <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+              {/* Filters Form */}
+              <form onSubmit={handleSearchSubmit} className="p-5 border-b border-gray-100 space-y-4">
+                {/* Dòng trên: Lọc sinh viên theo Khoa, Niên Khóa, Lớp */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                    <Filter className="w-4 h-4 text-[#F4BE2C]" /> Lọc sinh viên:
+                  </span>
+                  
+                  {/* Khoa */}
+                  <select
+                    value={khoaFilter}
+                    onChange={e => { setKhoaFilter(e.target.value); setNienKhoaFilter('all'); setClassFilter('all'); }}
+                    className="px-3.5 py-2 border border-gray-200 rounded-xl text-xs bg-white font-bold text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F4BE2C] cursor-pointer"
+                  >
+                    <option value="all">Tất cả Khoa</option>
+                    {faculties.map(f => (
+                      <option key={f.MaKhoa} value={f.MaKhoa}>{f.TenKhoa}</option>
+                    ))}
+                  </select>
+
+                  {/* Niên Khóa */}
+                  <select
+                    value={nienKhoaFilter}
+                    onChange={e => { setNienKhoaFilter(e.target.value); setClassFilter('all'); }}
+                    className="px-3.5 py-2 border border-gray-200 rounded-xl text-xs bg-white font-bold text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F4BE2C] cursor-pointer"
+                  >
+                    <option value="all">Tất cả Niên khóa</option>
+                    {uniqueCohorts.map(nk => (
+                      <option key={nk} value={nk}>Niên khóa {nk}</option>
+                    ))}
+                  </select>
+
+                  {/* Lớp */}
+                  <select
+                    value={classFilter}
+                    onChange={e => setClassFilter(e.target.value)}
+                    className="px-3.5 py-2 border border-gray-200 rounded-xl text-xs bg-white font-bold text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F4BE2C] cursor-pointer"
+                  >
+                    <option value="all">Tất cả Lớp</option>
+                    {filteredClasses.map(cls => (
+                      <option key={cls.MaLop} value={cls.MaLop}>{cls.TenLop} ({cls.MaLop})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Dòng dưới: Khung tìm kiếm, Trạng thái & Nút Tìm / Xóa lọc */}
+                <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
                   <div className="relative flex-1">
                     <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
                     <input type="text" placeholder="Tìm MSSV, tên sinh viên..." value={search} onChange={e => setSearch(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4BE2C] font-medium text-gray-800" />
                   </div>
-                  <button type="submit" className="px-5 py-2.5 bg-[#1a1a1a] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors">Tìm</button>
-                </form>
-                <div className="relative">
-                  <Filter className="w-4 h-4 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none font-bold text-gray-800 cursor-pointer">
-                    <option value="all">Tất cả trạng thái</option>
-                    <option value="Chờ duyệt">Chờ kiểm tra STK</option>
-                    <option value="Chưa đóng">Chưa đóng</option>
-                    <option value="Đã đóng">Đã đóng</option>
-                  </select>
+                  
+                  <div className="relative shrink-0">
+                    <Filter className="w-4 h-4 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none font-bold text-gray-800 cursor-pointer w-full md:w-auto">
+                      <option value="all">Tất cả trạng thái</option>
+                      <option value="Chờ duyệt">Chờ kiểm tra STK</option>
+                      <option value="Chưa đóng">Chưa đóng</option>
+                      <option value="Đã đóng">Đã đóng</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="submit" className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors flex items-center gap-1.5 shadow-sm">
+                      <Search className="w-4 h-4 text-[#F4BE2C]" /> Tìm kiếm
+                    </button>
+
+                    {(khoaFilter !== 'all' || nienKhoaFilter !== 'all' || classFilter !== 'all' || statusFilter !== 'all' || search ||
+                      appliedFilters.khoa !== 'all' || appliedFilters.nienKhoa !== 'all' || appliedFilters.lop !== 'all' || appliedFilters.status !== 'all' || appliedFilters.search) && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-sm font-bold transition-colors flex items-center gap-1.5 border border-rose-100"
+                      >
+                        <X className="w-4 h-4" /> Xóa lọc
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </form>
 
               {/* Table */}
               {loadingTuitions ? <Spinner /> : (
@@ -666,7 +843,14 @@ const TuitionManagement = () => {
                         <React.Fragment key={t.id}>
                           <tr className={`hover:bg-yellow-50/70 transition-colors cursor-pointer ${detailModal.hp?.id === t.id ? 'bg-yellow-50/50' : ''}`} onClick={() => setDetailModal({ open: true, hp: t })}>
                             <td className="px-6 py-4 font-mono font-extrabold text-gray-900 text-base">{t.mssv}</td>
-                            <td className="px-6 py-4 text-gray-800 font-bold text-base">{t.ten_sinh_vien || '—'}</td>
+                            <td className="px-6 py-4">
+                              <div className="text-gray-800 font-bold text-base">{t.ten_sinh_vien || '—'}</div>
+                              <div className="text-xs font-semibold text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                                {t.MaLop && <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md font-mono border border-gray-200/80">{t.MaLop}</span>}
+                                {t.ten_khoa && <span className="text-gray-600">{t.ten_khoa}</span>}
+                                {t.nien_khoa && <span className="text-gray-500 font-mono">• NK {t.nien_khoa}</span>}
+                              </div>
+                            </td>
                             <td className="px-6 py-4 text-right font-black text-emerald-600 font-mono text-base">{Number(t.so_tien).toLocaleString('vi-VN')}đ</td>
                             <td className="px-6 py-4 text-center">
                               {t.trang_thai === 'Đã đóng' ? (
@@ -728,16 +912,16 @@ const TuitionManagement = () => {
               )}
 
               {/* Pagination controls & summary */}
-              {tuitions.length > 0 && (
+              {filteredTuitions.length > 0 && (
                 <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/80 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4 text-xs font-semibold text-gray-600 flex-wrap">
                     <span>
-                      Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tuitions.length)} trên tổng <strong className="text-gray-900 font-black">{tuitions.length}</strong> khoản
+                      Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTuitions.length)} trên tổng <strong className="text-gray-900 font-black">{filteredTuitions.length}</strong> khoản
                     </span>
                     <span className="hidden sm:inline text-gray-300">|</span>
-                    <span className="text-emerald-700 font-bold">{tuitions.filter(t => t.trang_thai === 'Đã đóng').length} đã đóng</span>
-                    <span className="text-blue-700 font-bold">{tuitions.filter(t => t.trang_thai === 'Chờ duyệt').length} chờ duyệt</span>
-                    <span className="text-amber-700 font-bold">{tuitions.filter(t => t.trang_thai === 'Chưa đóng').length} chưa đóng</span>
+                    <span className="text-emerald-700 font-bold">{filteredTuitions.filter(t => t.trang_thai === 'Đã đóng').length} đã đóng</span>
+                    <span className="text-blue-700 font-bold">{filteredTuitions.filter(t => t.trang_thai === 'Chờ duyệt').length} chờ duyệt</span>
+                    <span className="text-amber-700 font-bold">{filteredTuitions.filter(t => t.trang_thai === 'Chưa đóng').length} chưa đóng</span>
                     
                     <div className="flex items-center gap-1.5 sm:border-l border-gray-300 sm:pl-4">
                       <span>Số dòng:</span>

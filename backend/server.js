@@ -4049,20 +4049,25 @@ app.put('/api/admin/tuition-periods/:id/status', verifyToken, (req, res) => {
 // GET /api/admin/tuitions?dot_id=&status=&search= — Danh sách học phí theo đợt
 app.get('/api/admin/tuitions', verifyToken, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Không có quyền!' });
-    const { dot_id, status, search } = req.query;
-    let sql = `SELECT hp.*, sv.HoTen as ten_sinh_vien, sv.MaLop,
+    const { dot_id, status, search, khoa, nien_khoa, lop } = req.query;
+    let sql = `SELECT hp.*, sv.HoTen as ten_sinh_vien, sv.MaLop, l.NienKhoa as nien_khoa, l.MaKhoa as ma_khoa, k.TenKhoa as ten_khoa,
                 (SELECT gd.trang_thai FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_trang_thai,
                 (SELECT gd.nguon_xac_nhan FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_nguon,
                 (SELECT gd.admin_username FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_admin,
                 (SELECT gd.ghi_chu FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_ghi_chu,
                 (SELECT gd.thoi_gian_xac_nhan FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_thoi_gian
                FROM hoc_phi_v2 hp
-               LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV`;
+               LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
+               LEFT JOIN lophoc l ON sv.MaLop = l.MaLop
+               LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa`;
     const params = [];
     const conditions = [];
     if (dot_id) { conditions.push('hp.dot_id = ?'); params.push(dot_id); }
     if (status && status !== 'all') { conditions.push('hp.trang_thai = ?'); params.push(status); }
     if (search) { conditions.push('(hp.mssv LIKE ? OR sv.HoTen LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+    if (khoa && khoa !== 'all') { conditions.push('l.MaKhoa = ?'); params.push(khoa); }
+    if (nien_khoa && nien_khoa !== 'all') { conditions.push('l.NienKhoa = ?'); params.push(nien_khoa); }
+    if (lop && lop !== 'all') { conditions.push('sv.MaLop = ?'); params.push(lop); }
     if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
     sql += ' ORDER BY hp.trang_thai ASC, sv.HoTen ASC';
     db.query(sql, params, (err, rows) => {

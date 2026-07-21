@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Sparkles, UploadCloud, CheckCircle2, AlertCircle, RefreshCw,
     ArrowRight, Clock, Plus, Save, FolderPlus, Edit3,
-    Trash2, AlertTriangle, BookmarkCheck, Layers, Check
+    Trash2, AlertTriangle, BookmarkCheck, Layers, Check, XCircle
 } from 'lucide-react';
 import axios from 'axios';
 import API_URL from '../../api';
+import ModalPortal from '../common/ModalPortal';
 
 // ── Helpers ──
 const createBlankQuestion = () => ({
@@ -45,6 +46,42 @@ const createQuestionFromSuggestion = (suggestion, chuongDefault = 'Chung') => {
     };
 };
 
+const validateChuong = (val) => {
+    const str = String(val !== undefined && val !== null ? val : '').trim();
+    if (!str) {
+        return 'Vui lòng nhập thông tin chương hoặc chủ đề (ví dụ: Toàn bộ, Chương 1...)';
+    }
+    if (str.length > 50) {
+        return `Tên chương/chủ đề không được vượt quá 50 ký tự (hiện tại: ${str.length} ký tự).`;
+    }
+    const forbiddenChars = /[@#$%^&*<>{}|\\~`"']+/;
+    if (forbiddenChars.test(str)) {
+        return 'Chương/Chủ đề không được chứa ký tự đặc biệt lạ (@, #, $, %, ^, &, *, <, >...).';
+    }
+    return '';
+};
+
+const validateSoLuong = (val) => {
+    const str = String(val !== undefined && val !== null ? val : '').trim();
+    if (!str || str === 'NaN') {
+        return 'Vui lòng nhập số lượng câu hỏi muốn AI gợi ý!';
+    }
+    if (str.includes('-') || Number(str) < 0) {
+        return 'Số lượng không được là số âm! Vui lòng nhập số nguyên dương từ 1 đến 50.';
+    }
+    if (Number(str) === 0) {
+        return 'Số lượng câu hỏi phải từ 1 câu trở lên! Không được nhập số 0.';
+    }
+    if (!/^\d+$/.test(str)) {
+        return 'Số lượng chỉ được nhập chữ số nguyên dương (1 - 50). Không được nhập chữ cái, số âm hay ký tự đặc biệt!';
+    }
+    const num = Number(str);
+    if (num > 50) {
+        return 'Số lượng tối đa mỗi lần AI gợi ý là 50 câu! Vui lòng nhập từ 1 đến 50.';
+    }
+    return '';
+};
+
 function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], assignments = [], teacherId, onDirtyChange }) {
     // ── AI Advisor State ──
     const [uploadFile, setUploadFile] = useState(null);
@@ -55,6 +92,23 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
         do_kho: 'Mixed',
         so_luong: 10
     });
+    const [advisorErrors, setAdvisorErrors] = useState({
+        chuong_id: '',
+        so_luong: ''
+    });
+
+    const handleChuongChange = (val) => {
+        setAdvisorConfig(prev => ({ ...prev, chuong_id: val }));
+        const err = validateChuong(val);
+        setAdvisorErrors(prev => ({ ...prev, chuong_id: err }));
+    };
+
+    const handleSoLuongChange = (val) => {
+        setAdvisorConfig(prev => ({ ...prev, so_luong: val }));
+        const err = validateSoLuong(val);
+        setAdvisorErrors(prev => ({ ...prev, so_luong: err }));
+    };
+
     const [isSuggesting, setIsSuggesting] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [suggestions, setSuggestions] = useState([]);
@@ -124,7 +178,7 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
         formData.append('file', fileToUpload);
         formData.append('ma_mon_hoc', advisorConfig.mon_hoc_id);
         formData.append('ma_giang_vien', teacherId);
-        formData.append('tieu_de', fileToUpload.name.replace(/\.[^/.]+$/, ''));
+        formData.append('tieu_de', fileToUpload.name.replace(/\.[^/.]+$/, '').slice(0, 30));
         const subjectObj = subjects.find(s => s.MaMonHoc === advisorConfig.mon_hoc_id);
         formData.append('ten_mon_hoc', subjectObj?.TenMonHoc || advisorConfig.mon_hoc_id);
         try {
@@ -204,6 +258,22 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
     };
 
     const handleRequestSuggestions = async () => {
+        const chuongErr = validateChuong(advisorConfig.chuong_id);
+        const soLuongErr = validateSoLuong(advisorConfig.so_luong);
+        if (chuongErr || soLuongErr) {
+            setAdvisorErrors({
+                chuong_id: chuongErr || '',
+                so_luong: soLuongErr || ''
+            });
+            showPopup(
+                'Thông Tin Cấu Hình AI Chưa Hợp Lệ',
+                `Vui lòng kiểm tra và sửa các lỗi cấu hình AI dưới cột phải:\n\n` +
+                (chuongErr ? `• Chương / Chủ đề: ${chuongErr}\n` : '') +
+                (soLuongErr ? `• Số lượng câu hỏi: ${soLuongErr}` : ''),
+                'warning'
+            );
+            return;
+        }
         if (!advisorConfig.mon_hoc_id) {
             showPopup('Chưa Chọn Môn Học', 'Vui lòng chọn môn học trước khi nhờ AI gợi ý.', 'warning');
             setErrorMessage('Vui lòng chọn môn học trước khi nhờ AI gợi ý');
@@ -255,8 +325,26 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
             showPopup(' Ràng Buộc Môn Học', 'Vui lòng chọn Môn học giảng dạy trước khi tiếp tục!', 'warning');
             return;
         }
-        if (!newBankForm.tieu_de?.trim()) {
+        const tieuDeTrim = (newBankForm.tieu_de || '').trim();
+        if (!tieuDeTrim) {
             showPopup(' Ràng Buộc Tên Bộ Đề', 'Vui lòng nhập Tên Bộ đề / Ngân hàng mới cho môn học!', 'warning');
+            return;
+        }
+        if (tieuDeTrim.length < 5) {
+            showPopup(' Ràng Buộc Tên Bộ Đề', 'Tên bộ đề quá ngắn! Vui lòng nhập từ 5 đến 30 ký tự để rõ ràng và dễ quản lý.', 'warning');
+            return;
+        }
+        if (tieuDeTrim.length > 30) {
+            showPopup(' Ràng Buộc Tên Bộ Đề', `Tên bộ đề không được vượt quá 30 ký tự (hiện tại: ${tieuDeTrim.length} ký tự).`, 'warning');
+            return;
+        }
+        const invalidCharRegex = /[@#$%^&*<>{}|\\~`"']+/;
+        if (invalidCharRegex.test(tieuDeTrim)) {
+            showPopup(
+                ' Tên Bộ Đề Chứa Ký Tự Không Hợp Lệ',
+                'Tên bộ đề không được chứa các ký tự đặc biệt lạ hoặc nguy hiểm (như @, #, $, %, ^, &, *, <, >, {, }, |, \\, ~, `).\n\nChỉ cho phép: Chữ cái tiếng Việt, chữ số, khoảng trắng và các dấu thông dụng: - _ ( ) / + , . :',
+                'warning'
+            );
             return;
         }
 
@@ -274,13 +362,13 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
 
         showPopup(
             'Xác Nhận Tạo Bộ Đề Mới',
-            `Bạn có chắc chắn muốn tạo bộ đề mới với các thông tin sau không?\n\n• Môn học: ${subjectName}\n• Lớp áp dụng: ${finalLopHP}\n• Tên bộ đề: "${newBankForm.tieu_de.trim()}"\n\nSau khi xác nhận, bạn sẽ chuyển sang Bước 2 để nhập danh sách câu hỏi.`,
+            `Bạn có chắc chắn muốn tạo bộ đề mới với các thông tin sau không?\n\n• Môn học: ${subjectName}\n• Lớp áp dụng: ${finalLopHP}\n• Tên bộ đề: "${tieuDeTrim}"\n\nSau khi xác nhận, bạn sẽ chuyển sang Bước 2 để nhập danh sách câu hỏi.`,
             'warning',
             () => {
                 setBankDraft({
                     ma_mon_hoc: newBankForm.ma_mon_hoc,
                     ma_lop_hoc_phan: finalLopHP,
-                    tieu_de: newBankForm.tieu_de.trim()
+                    tieu_de: tieuDeTrim
                 });
                 setManualQuestions([]);
                 setSavedQuestionsList([]);
@@ -541,9 +629,17 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
 
                             {/* Tên bộ đề */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Tên Bộ đề <span className="text-red-500">*</span></label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-bold text-gray-700">Tên Bộ đề <span className="text-red-500">*</span> (tối đa 30 ký tự)</label>
+                                    <span className={`text-[11px] font-extrabold ${
+                                        newBankForm.tieu_de.length >= 30 ? 'text-red-600' : 'text-gray-400'
+                                    }`}>
+                                        {newBankForm.tieu_de.length}/30
+                                    </span>
+                                </div>
                                 <input
                                     type="text"
+                                    maxLength={30}
                                     placeholder="VD: Đề thi Giữa kỳ CNTT1..."
                                     value={newBankForm.tieu_de}
                                     onChange={(e) => setNewBankForm({ ...newBankForm, tieu_de: e.target.value })}
@@ -777,86 +873,70 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
                                     {isSavingAll ? (
                                         <><RefreshCw className="w-5 h-5 animate-spin text-[#152238]" /><span>Đang tạo bộ đề & lưu câu hỏi...</span></>
                                     ) : (
-                                        <><BookmarkCheck className="w-5 h-5 text-[#152238]" /><span>Lưu bộ đề ({manualQuestions.length} câu hỏi) vào Ngân hàng chính thức</span></>
+                                        <><BookmarkCheck className="w-5 h-5 text-[#152238]" /><span>Lưu {manualQuestions.length} câu hỏi vào kho đề</span></>
                                     )}
                                 </button>
                             </>
                         )}
-
-                        {/* Saved questions log */}
-                        {savedQuestionsList.length > 0 && (
-                            <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200 space-y-3">
-                                <h4 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                    <span>Đã lưu vào Ngân hàng ({savedQuestionsList.length} câu)</span>
-                                </h4>
-                                <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
-                                    {savedQuestionsList.map((sq, sIdx) => (
-                                        <div key={sq.id || sIdx} className="p-3 bg-gray-50 rounded-2xl border border-gray-200 text-xs">
-                                            <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                                <span className="font-black text-emerald-700">#{savedQuestionsList.length - sIdx}</span>
-                                                <span className={`px-2 py-0.5 rounded-md text-[11px] font-extrabold ${sq.ai_generated || String(sq.nguon).includes('AI') ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-200 text-gray-700'}`}>
-                                                    {sq.ai_generated || String(sq.nguon).includes('AI') ? ' AI Gợi ý' : ' Giảng viên'}
-                                                </span>
-                                                <span className="px-2 py-0.5 bg-white border border-gray-200 rounded-md text-[11px] font-bold text-gray-600">{sq.do_kho}</span>
-                                            </div>
-                                            <p className="font-semibold text-gray-800 leading-snug line-clamp-2">{sq.noi_dung}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
-                    {/* ─── CỘT PHẢI: AI Gợi Ý Sidebar (4/12) ─── */}
-                    <div className="lg:col-span-4">
-                        <div className="sticky top-4 bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-                            {/* Sidebar Header */}
-                            <div className="bg-gradient-to-br from-[#152238] to-indigo-900 p-4 text-white">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-9 h-9 rounded-xl bg-[#F4C542] text-[#152238] flex items-center justify-center shrink-0">
-                                            <Sparkles className="w-5 h-5 fill-current" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-sm text-[#F4C542]">AI Gợi Ý Sinh Đề</h4>
-                                            <p className="text-[11px] text-gray-300">Trợ lý tham khảo — hạn 30 phút</p>
-                                        </div>
+                {/* --- CỘT PHẢI: AI GỢI Ý (30%) --- */}
+                <div className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 bg-white flex flex-col">
+                    <div className="sticky top-0 z-10 bg-white">
+                        {/* Sidebar Header */}
+                        <div className="bg-gradient-to-br from-[#152238] to-indigo-900 p-4 text-white">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-[#F4C542] text-[#152238] flex items-center justify-center shrink-0">
+                                        <Sparkles className="w-5 h-5 fill-current" />
                                     </div>
-                                    {expiresAt && (
-                                        <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 border border-amber-400/30 text-amber-300 rounded-xl text-[11px] font-bold shrink-0">
-                                            <Clock className="w-3 h-3" />
-                                            <span>{timeLeftStr}</span>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <h4 className="font-black text-sm text-[#F4C542]">AI Gợi Ý Sinh Đề</h4>
+                                        <p className="text-[11px] text-gray-300">Trợ lý tham khảo — hạn 30 phút</p>
+                                    </div>
                                 </div>
+                                {expiresAt && (
+                                    <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 border border-amber-400/30 text-amber-300 rounded-xl text-[11px] font-bold shrink-0">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{timeLeftStr}</span>
+                                    </div>
+                                )}
                             </div>
+                        </div>
 
-                            {/* Sidebar Content */}
-                            <div className="max-h-[calc(100vh-180px)] overflow-y-auto">
-                                <div className="p-4 space-y-4">
-                                    {/* Cấu hình AI */}
-                                    <div className="bg-gray-50 rounded-2xl p-3 border border-gray-200 space-y-3">
-                                        <div>
-                                            <label className="block text-[11px] font-bold text-gray-600 mb-1">Môn học *</label>
-                                            <select
-                                                value={advisorConfig.mon_hoc_id}
-                                                onChange={(e) => setAdvisorConfig({ ...advisorConfig, mon_hoc_id: e.target.value })}
-                                                className="w-full px-2.5 py-2 text-xs font-semibold bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#152238] outline-none"
-                                            >
-                                                <option value="">-- Chọn Môn học --</option>
-                                                {subjects.map(s => <option key={s.MaMonHoc} value={s.MaMonHoc}>{s.TenMonHoc} ({s.MaMonHoc})</option>)}
+                        {/* Sidebar Content */}
+                        <div className="max-h-[calc(100vh-180px)] overflow-y-auto">
+                            <div className="p-4 space-y-4">
+                                {/* Cấu hình AI */}
+                                <div className="bg-gray-50 rounded-2xl p-3 border border-gray-200 space-y-3">
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-gray-600 mb-1">Môn học *</label>
+                                        <select
+                                            value={advisorConfig.mon_hoc_id}
+                                            onChange={(e) => setAdvisorConfig({ ...advisorConfig, mon_hoc_id: e.target.value })}
+                                            className="w-full px-2.5 py-2 text-xs font-semibold bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#152238] outline-none"
+                                        >
+                                            <option value="">-- Chọn Môn học --</option>
+                                            {subjects.map(s => <option key={s.MaMonHoc} value={s.MaMonHoc}>{s.TenMonHoc} ({s.MaMonHoc})</option>)}
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-[11px] font-bold text-gray-600 mb-1">Chương / Chủ đề</label>
+                                            <label className="block text-[11px] font-bold text-gray-600 mb-1">Chương / Chủ đề *</label>
                                             <input
                                                 type="text"
                                                 value={advisorConfig.chuong_id}
-                                                onChange={(e) => setAdvisorConfig({ ...advisorConfig, chuong_id: e.target.value })}
+                                                onChange={(e) => handleChuongChange(e.target.value)}
                                                 placeholder="VD: Chương 1 hoặc Toàn bộ"
-                                                className="w-full px-2.5 py-2 text-xs font-semibold bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#152238] outline-none"
+                                                className={`w-full px-2.5 py-2 text-xs font-semibold bg-white border rounded-xl focus:ring-2 focus:ring-[#152238] outline-none transition-all ${
+                                                    advisorErrors.chuong_id ? 'border-red-500 bg-red-50/40 text-red-900 ring-1 ring-red-500' : 'border-gray-300'
+                                                }`}
                                             />
+                                            {advisorErrors.chuong_id && (
+                                                <div className="mt-1.5 p-2 bg-red-50 border border-red-200 rounded-xl flex items-start gap-1.5 text-[11px] text-red-600 font-bold leading-snug shadow-sm">
+                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-600" />
+                                                    <span>{advisorErrors.chuong_id}</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -873,16 +953,24 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block text-[11px] font-bold text-gray-600 mb-1">Số lượng</label>
+                                                <label className="block text-[11px] font-bold text-gray-600 mb-1">Số lượng *</label>
                                                 <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="50"
+                                                    type="text"
+                                                    inputMode="numeric"
                                                     value={advisorConfig.so_luong}
-                                                    onChange={(e) => setAdvisorConfig({ ...advisorConfig, so_luong: e.target.value })}
-                                                    className="w-full px-2 py-2 text-xs font-semibold bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#152238] outline-none"
+                                                    onChange={(e) => handleSoLuongChange(e.target.value)}
+                                                    placeholder="VD: 10"
+                                                    className={`w-full px-2 py-2 text-xs font-semibold bg-white border rounded-xl focus:ring-2 focus:ring-[#152238] outline-none transition-all ${
+                                                        advisorErrors.so_luong ? 'border-red-500 bg-red-50/40 text-red-900 ring-1 ring-red-500' : 'border-gray-300'
+                                                    }`}
                                                 />
                                             </div>
+                                            {advisorErrors.so_luong && (
+                                                <div className="col-span-2 mt-0.5 p-2 bg-red-50 border border-red-200 rounded-xl flex items-start gap-1.5 text-[11px] text-red-600 font-bold leading-snug shadow-sm">
+                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-600" />
+                                                    <span>{advisorErrors.so_luong}</span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Upload Word */}
@@ -1005,62 +1093,84 @@ function AiQuestionGenerator({ officialBanks = [], refreshBanks, subjects = [], 
                 </div>
             )}
 
-            {/* ── Popup Thông Báo & Ràng Buộc ── */}
+            {/* ── Popup Thông Báo & Ràng Buộc (Chuẩn UI/UX Ảnh 2: Centered Modal + Dim Backdrop + Clean Header/Footer) ── */}
             <AnimatePresence>
                 {popupAlert.show && (
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-4"
-                        >
-                            <div className="flex items-center gap-3">
-                                {popupAlert.type === 'success' && <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="w-7 h-7" /></div>}
-                                {popupAlert.type === 'warning' && <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0"><AlertTriangle className="w-7 h-7" /></div>}
-                                {popupAlert.type === 'error' && <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0"><AlertCircle className="w-7 h-7" /></div>}
-                                <h3 className="text-lg font-black text-[#152238] leading-tight">{popupAlert.title}</h3>
-                            </div>
-                            <p className="text-xs sm:text-sm font-semibold text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50 p-4 rounded-2xl border border-gray-200/80">
-                                {popupAlert.message}
-                            </p>
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-                                {popupAlert.onConfirm ? (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPopupAlert({ ...popupAlert, show: false })}
-                                            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all"
-                                        >
-                                            Hủy bỏ
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (popupAlert.onConfirm) popupAlert.onConfirm();
-                                                setPopupAlert({ ...popupAlert, show: false });
-                                            }}
-                                            className="px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all bg-amber-600 hover:bg-amber-700 flex items-center gap-1.5"
-                                        >
-                                            <Check className="w-4 h-4" />
-                                            <span>Đồng ý / Xác Nhận</span>
-                                        </button>
-                                    </>
-                                ) : (
+                    <ModalPortal>
+                        <div className="fixed inset-0 z-[100000] flex items-start justify-center p-4 pt-16 md:pt-24 bg-slate-900/20 backdrop-blur-[2px] transition-all">
+                            <motion.div
+                                initial={{ y: -50, opacity: 0, scale: 0.95 }}
+                                animate={{ y: 0, opacity: 1, scale: 1 }}
+                                exit={{ y: -50, opacity: 0, scale: 0.95 }}
+                                transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
+                                className="bg-white rounded-3xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100"
+                            >
+                                {/* Header Chuẩn Ảnh 2 */}
+                                <div className="p-6 border-b bg-gray-50 flex justify-between items-center shrink-0">
+                                    <div className="flex items-center gap-3">
+                                        {popupAlert.type === 'success' && <div className="p-2 rounded-xl bg-emerald-100 text-emerald-600 shrink-0"><CheckCircle2 className="w-6 h-6" /></div>}
+                                        {popupAlert.type === 'warning' && <div className="p-2 rounded-xl bg-amber-100 text-[#D49A00] shrink-0"><AlertTriangle className="w-6 h-6" /></div>}
+                                        {popupAlert.type === 'error' && <div className="p-2 rounded-xl bg-red-100 text-red-600 shrink-0"><AlertCircle className="w-6 h-6" /></div>}
+                                        <div>
+                                            <h3 className={`text-xl font-extrabold ${
+                                                popupAlert.type === 'warning' ? 'text-[#D49A00]' :
+                                                popupAlert.type === 'success' ? 'text-emerald-600' :
+                                                popupAlert.type === 'error' ? 'text-red-600' : 'text-[#152238]'
+                                            }`}>{popupAlert.title}</h3>
+                                            <p className="text-xs text-gray-500 font-medium mt-0.5">Hệ thống ghi nhận thông báo chi tiết</p>
+                                        </div>
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={() => setPopupAlert({ ...popupAlert, show: false })}
-                                        className={`px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all ${
-                                            popupAlert.type === 'success' ? 'bg-emerald-600 hover:bg-emerald-700' :
-                                            popupAlert.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'
-                                        }`}
+                                        className="p-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-full transition-colors shrink-0"
                                     >
-                                        Đã Hiểu / Đóng
+                                        <XCircle className="w-5 h-5" />
                                     </button>
-                                )}
-                            </div>
-                        </motion.div>
-                    </div>
+                                </div>
+
+                                {/* Body Chuẩn Ảnh 2 */}
+                                <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                                    <p className="text-sm md:text-base font-semibold text-gray-800 leading-relaxed whitespace-pre-line">
+                                        {popupAlert.message}
+                                    </p>
+                                </div>
+
+                                {/* Footer Chuẩn Ảnh 2 */}
+                                <div className="p-5 border-t bg-gray-50 flex justify-end gap-3 shrink-0">
+                                    {popupAlert.onConfirm ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => setPopupAlert({ ...popupAlert, show: false })}
+                                                className="px-6 py-2.5 bg-white border border-gray-300 rounded-2xl text-gray-700 font-bold hover:bg-gray-100 transition-all shadow-sm text-sm"
+                                            >
+                                                Hủy bỏ
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (popupAlert.onConfirm) popupAlert.onConfirm();
+                                                    setPopupAlert({ ...popupAlert, show: false });
+                                                }}
+                                                className="px-7 py-2.5 bg-[#F4C542] hover:bg-[#e0b134] text-[#152238] font-extrabold rounded-2xl shadow-md transition-all text-sm flex items-center gap-1.5"
+                                            >
+                                                <span>Đồng ý / Xác Nhận</span>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => setPopupAlert({ ...popupAlert, show: false })}
+                                            className="px-7 py-2.5 bg-[#F4C542] hover:bg-[#e0b134] text-[#152238] font-extrabold rounded-2xl shadow-md transition-all text-sm"
+                                        >
+                                            Đã Hiểu / Đóng
+                                        </button>
+                                    )}
+                                </div>
+                            </motion.div>
+                        </div>
+                    </ModalPortal>
                 )}
             </AnimatePresence>
         </div>

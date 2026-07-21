@@ -15,12 +15,12 @@ export default function ConfirmDeleteModal({
     <AnimatePresence>
       {isOpen && (
         <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 flex items-start justify-center z-[110] p-4 pt-16 md:pt-24 bg-slate-900/20 backdrop-blur-[2px] transition-all">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
+              initial={{ y: -50, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -50, opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
               className="bg-[#FFFFFF] rounded-2xl p-6 w-full max-w-sm text-center shadow-xl border border-[#E5E7EB]"
             >
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
