@@ -225,29 +225,14 @@ async function calculateMaxQuestions(uniqueContent, client, kgModel, buildDocume
  * @returns {{ allowed: boolean, warning?: string, suggestedMax?: number, reason?: string, message?: string }}
  */
 function validateRequestedQuestionCount(requestedCount, maxQuestions) {
-    if (requestedCount <= maxQuestions) return { allowed: true };
-
-    if (requestedCount <= maxQuestions * CONFIG.WARN_MULTIPLIER) {
-        return {
-            allowed: true,
-            warning: 'Nội dung tài liệu có thể chưa đủ phong phú; một số câu hỏi có thể bị trùng lặp ý nghĩa.',
-            suggestedMax: maxQuestions
-        };
-    }
-
-    if (requestedCount <= maxQuestions * CONFIG.REJECT_MULTIPLIER) {
-        return {
-            allowed: true,
-            warning: 'Số câu hỏi yêu cầu (' + requestedCount + ') vượt quá 2 lần giới hạn tối ưu (' + maxQuestions + '). Chất lượng bộ đề có thể bị ảnh hưởng.',
-            suggestedMax: maxQuestions
-        };
-    }
+    const allowedLimit = Math.max(maxQuestions, Math.floor(maxQuestions * 1.2) + 2);
+    if (requestedCount <= allowedLimit) return { allowed: true };
 
     return {
         allowed: false,
         reason: 'CONTENT_INSUFFICIENT_FOR_REQUESTED_COUNT',
         suggestedMax: maxQuestions,
-        message: 'Tài liệu chỉ đủ nội dung để tạo tối đa ' + maxQuestions + ' câu hỏi chất lượng. Vui lòng bổ sung thêm nội dung vào tài liệu hoặc giảm số câu hỏi yêu cầu.'
+        message: `Bộ đề tải lên có dung lượng ngắn (chỉ đủ cấu trúc kiến thức để tạo tối đa khoảng ${maxQuestions} câu hỏi chất lượng cao). Bạn đang yêu cầu ${requestedCount} câu, vượt quá giới hạn tối ưu. Vui lòng giảm số lượng câu hỏi hoặc tải lên tài liệu đầy đủ nội dung hơn!`
     };
 }
 

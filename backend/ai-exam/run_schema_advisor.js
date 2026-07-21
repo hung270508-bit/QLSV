@@ -21,10 +21,11 @@ async function run() {
         // Check if `nguon` column exists in `questions`
         const [cols] = await pool.query('SHOW COLUMNS FROM questions LIKE "nguon"');
         if (cols.length === 0) {
-            await pool.query("ALTER TABLE questions ADD COLUMN nguon ENUM('AI', 'GV') NOT NULL DEFAULT 'GV'");
+            await pool.query("ALTER TABLE questions ADD COLUMN nguon VARCHAR(50) NOT NULL DEFAULT 'GV'");
             console.log('Successfully added `nguon` column to table `questions`');
         } else {
-            console.log('`nguon` column already exists in table `questions`');
+            await pool.query("ALTER TABLE questions MODIFY COLUMN nguon VARCHAR(50) NOT NULL DEFAULT 'GV'");
+            console.log('Successfully modified `nguon` column to VARCHAR(50) in table `questions`');
         }
 
         // Check if `creator_id` column exists in `questions`

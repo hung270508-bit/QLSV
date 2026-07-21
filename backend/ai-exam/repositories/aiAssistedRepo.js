@@ -277,7 +277,7 @@ module.exports = (dbPromise) => {
                 await connection.beginTransaction();
 
                 const isAi = (ai_generated || nguon === 'AI' || nguon === 'AI Gợi ý' || String(nguon).includes('AI')) ? 1 : 0;
-                const sourceText = isAi ? 'AI Gợi ý' : (nguon || 'GV');
+                const sourceText = String(isAi ? 'AI Gợi ý' : (nguon || 'GV')).slice(0, 50);
 
                 if (isAi) {
                     const [countRes] = await connection.query(
@@ -347,7 +347,7 @@ module.exports = (dbPromise) => {
                 if (questions && Array.isArray(questions)) {
                     for (const q of questions) {
                         const isAi = (q.ai_generated || q.nguon === 'AI' || q.nguon === 'AI Gợi ý' || String(q.nguon).includes('AI')) ? 1 : 0;
-                        const sourceText = isAi ? 'AI Gợi ý' : (q.nguon || 'GV');
+                        const sourceText = String(isAi ? 'AI Gợi ý' : (q.nguon || 'GV')).slice(0, 50);
 
                         const [res] = await connection.query(
                             `INSERT INTO questions (bank_id, chu_de, noi_dung, giai_thich, do_kho, ai_generated, trang_thai, created_at, nguon, creator_id)

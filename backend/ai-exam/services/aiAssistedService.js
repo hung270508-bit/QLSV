@@ -181,7 +181,7 @@ module.exports = (repo) => {
             const maxQuestionsByKg = Math.max(Math.floor(knowledgeNodeCount * CONFIG.QUESTIONS_PER_NODE), 1);
             const countCheck = validateRequestedQuestionCount(requestedCountNum, maxQuestionsByKg);
             if (!countCheck.allowed) {
-                const err = new Error(`Cấu trúc chủ đề tài liệu chỉ đủ để sinh tối đa ${maxQuestionsByKg} câu hỏi chất lượng cao. Vui lòng giảm số câu hoặc bổ sung nội dung.`);
+                const err = new Error(countCheck.message || `Cấu trúc chủ đề tài liệu chỉ đủ để sinh tối đa ${maxQuestionsByKg} câu hỏi chất lượng cao. Vui lòng giảm số câu hoặc bổ sung nội dung.`);
                 err.validationCode = 'CONTENT_INSUFFICIENT_FOR_REQUESTED_COUNT';
                 err.statusCode = 422;
                 err.suggestedMax = maxQuestionsByKg;

@@ -11,7 +11,7 @@ import ModalPortal, { Toast, ConfirmDialog } from '../common/ModalPortal';
 import API_URL from '../../api';
 import AiQuestionGenerator from './AiQuestionGenerator';
 
-function QuestionBankManagement({ targetSession, onClearTargetSession }) {
+function QuestionBankManagement({ targetSession, onClearTargetSession, onAiGeneratorDirtyChange }) {
     const [activeTab, setActiveTab] = useState('studio');
     const [loading, setLoading] = useState(false);
     const [subjects, setSubjects] = useState([]);
@@ -39,6 +39,35 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
     const [currentSession, setCurrentSession] = useState(null);
     const [stagingQuestions, setStagingQuestions] = useState([]);
     const [officialBanks, setOfficialBanks] = useState([]);
+    const [aiGeneratorDirty, setAiGeneratorDirty] = useState({ isDirty: false, title: '', count: 0 });
+
+    const handleTabSwitch = (newTab) => {
+        if (activeTab === newTab) return;
+        if (activeTab === 'studio' && aiGeneratorDirty.isDirty) {
+            setConfirmDialog({
+                show: true,
+                title: '⚠️ Cảnh Báo Đang Soạn Bộ Đề',
+                message: `Bạn đang trong quá trình soạn bộ đề "${aiGeneratorDirty.title || 'Mới'}" (${aiGeneratorDirty.count} câu hỏi chưa lưu) tại Kênh Soạn Đề AI.\n\nNếu chuyển sang tab khác lúc này, phiên soạn thảo chưa lưu sẽ bị xóa hoàn toàn.\n\nBạn có chắc chắn muốn rời đi không?`,
+                action: () => {
+                    setAiGeneratorDirty({ isDirty: false, title: '', count: 0 });
+                    if (onAiGeneratorDirtyChange) onAiGeneratorDirtyChange(false, '', 0);
+                    setActiveTab(newTab);
+                }
+            });
+            return;
+        }
+        setActiveTab(newTab);
+    };
+
+    const handleAiGeneratorDirtyChange = React.useCallback((isDirty, title, count) => {
+        setAiGeneratorDirty(prev => {
+            if (prev.isDirty === isDirty && prev.title === title && prev.count === count) return prev;
+            return { isDirty, title, count };
+        });
+        if (onAiGeneratorDirtyChange) {
+            onAiGeneratorDirtyChange(isDirty, title, count);
+        }
+    }, [onAiGeneratorDirtyChange]);
 
     // Cập nhật State để bắt được Lớp học phần
     const [uploadForm, setUploadForm] = useState({
@@ -563,18 +592,25 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
 
     const handleCompleteSession = async () => {
         if (!currentSession) return;
-        try {
-            const res = await axios.put(`${API_URL}/api/ai-exams/sessions/${currentSession.id}/complete`);
-            if (res.data?.success) {
-                showToast('Đã kết thúc sớm và đóng bộ đề!', 'success');
-                await fetchSessions();
-                setCurrentSession(null);
-                setStagingQuestions([]);
+        setConfirmDialog({
+            show: true,
+            title: 'Hoàn tất & Đóng Phiên AI',
+            message: `Bạn có chắc chắn muốn đóng phiên AI gợi ý "${currentSession.doc_tieu_de || currentSession.tieu_de}" không?\n\nCác câu hỏi đã duyệt sẽ nằm trong Ngân hàng chính thức. Các câu chưa duyệt sẽ bị loại bỏ.`,
+            action: async () => {
+                try {
+                    const res = await axios.put(`${API_URL}/api/ai-exams/sessions/${currentSession.id}/complete`);
+                    if (res.data?.success) {
+                        showToast('Đã kết thúc sớm và đóng bộ đề!', 'success');
+                        await fetchSessions();
+                        setCurrentSession(null);
+                        setStagingQuestions([]);
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi đóng bộ đề:', error);
+                    showToast('Lỗi khi hoàn tất bộ đề', 'error');
+                }
             }
-        } catch (error) {
-            console.error('Lỗi khi đóng bộ đề:', error);
-            showToast('Lỗi khi hoàn tất bộ đề', 'error');
-        }
+        });
     };
 
     const handleApproveAll = () => {
@@ -968,8 +1004,8 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                 <div className="space-y-1">
                     <div className="flex items-center gap-3">
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-[#152238]">AI Assisted Question Bank Studio</h1>
-                            <p className="text-sm font-medium text-[#152238]/80">Trợ lý AI phân tích tài liệu Word và hỗ trợ Giảng viên xây dựng bộ đề thi trắc nghiệm</p>
+                            <h1 className="text-2xl font-bold tracking-tight text-[#152238]">Ngân hàng đề thi</h1>
+                            <p className="text-sm font-medium text-[#152238]/80">Giảng viên có thể tự tạo câu hỏi hoặc nhờ AI gợi ý câu hỏi</p>
                         </div>
                     </div>
                 </div>
@@ -1052,22 +1088,22 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
 
                     <div className="flex bg-[#152238]/10 p-1.5 rounded-2xl">
                     <button
-                        onClick={() => setActiveTab('studio')}
+                        onClick={() => handleTabSwitch('studio')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'studio'
                                 ? 'bg-[#152238] text-white shadow-lg font-bold'
                                 : 'text-[#152238]/70 hover:text-[#152238] hover:bg-white/50'
                             }`}
                     >
-                        <span>Soạn Đề AI</span>
+                        <span>Soạn Đề Thi</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('history')}
+                        onClick={() => handleTabSwitch('history')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'history'
                                 ? 'bg-[#152238] text-white shadow-lg font-bold'
                                 : 'text-[#152238]/70 hover:text-[#152238] hover:bg-white/50'
                             }`}
                     >
-                        <span>Ngân Hàng Chính Thức ({officialBanks.length})</span>
+                        <span>Ngân Hàng Đề Thi ({officialBanks.length})</span>
                     </button>
                 </div>
             </div>
@@ -1081,6 +1117,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                     subjects={subjects}
                     assignments={assignments}
                     teacherId={teacherId}
+                    onDirtyChange={handleAiGeneratorDirtyChange}
                 />
             ) : activeTab === 'legacy_staging_disabled' ? (
                 <div className="space-y-8">
@@ -1494,7 +1531,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                                             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md transform hover:-translate-y-0.5 transition-all disabled:opacity-50 text-sm"
                                         >
                                             <Play className={`w-4 h-4 fill-current ${isResuming ? 'animate-spin' : ''}`} />
-                                            <span>{isResuming ? 'Đang tạo tiếp...' : `Sinh Tiếp Câu Hỏi (${currentSession.so_cau_da_sinh}/${currentSession.so_cau_yeu_cau})`}</span>
+                                                <span>{isResuming ? 'Đang tạo tiếp...' : `Sinh Tiếp Câu Hỏi (${currentSession.so_cau_da_sinh}/${currentSession.so_cau_yeu_cau})`}</span>
                                         </button>
                                     )}
 
@@ -2118,7 +2155,7 @@ function QuestionBankManagement({ targetSession, onClearTargetSession }) {
                                                                     ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
                                                                     : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
                                                             }`}>
-                                                                {q.ai_generated || String(q.nguon || '').includes('AI') ? '🤖 AI Gợi ý' : '👤 Giảng viên'}
+                                                                {q.ai_generated || String(q.nguon || '').includes('AI') ? 'AI Gợi ý' : 'Giảng viên'}
                                                             </span>
                                                             {q.chu_de && <span className="text-xs bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-md font-semibold text-gray-600">{q.chu_de}</span>}
                                                         </div>

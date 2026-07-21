@@ -8,6 +8,7 @@ import {
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import ModalPortal, { ConfirmDialog } from '../common/ModalPortal';
 
 import TeacherProfileManagement from './TeacherProfileManagement';
 import OverviewSection from './OverviewSection';
@@ -38,7 +39,7 @@ const menuItems = [
   { id: 'lichgiangday', label: 'Lịch giảng dạy', icon: Calendar },
   { id: 'hoso', label: 'Hồ sơ cá nhân', icon: UserCircle },
   { id: 'thongbao', label: 'Thông báo', icon: Bell },
-  { id: 'nganhang', label: 'Ngân hàng câu hỏi (AI)', icon: BookOpen },
+  { id: 'nganhang', label: 'Ngân hàng đề thi', icon: BookOpen },
   { id: 'thionline', label: 'Tổ chức Thi Online', icon: Award },
   { id: 'hotro', label: 'Yêu cầu - Hỗ trợ', icon: HelpCircle },
 ];
@@ -68,6 +69,10 @@ function TeacherDashboard({ user, onLogout }) {
 
   // State theo dõi thông báo AI toàn cục trên tất cả màn hình GV
   const [globalTargetSession, setGlobalTargetSession] = useState(null);
+
+  // State theo dõi tiến trình soạn thảo câu hỏi AI chưa lưu để cảnh báo khi chuyển trang
+  const [aiGeneratorDirty, setAiGeneratorDirty] = useState({ isDirty: false, title: '', count: 0 });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', action: null });
 
 
   useEffect(() => { localStorage.setItem('activeMenu', activeMenu); }, [activeMenu]);
@@ -123,9 +128,40 @@ function TeacherDashboard({ user, onLogout }) {
   };
 
   const handleNavigate = (id) => {
+    if (activeMenu === id) return;
+    if (activeMenu === 'nganhang' && aiGeneratorDirty.isDirty) {
+      setConfirmDialog({
+        show: true,
+        title: '⚠️ Cảnh Báo Đang Soạn Bộ Đề',
+        message: `Bạn đang trong quá trình soạn bộ đề "${aiGeneratorDirty.title || 'Mới'}" (${aiGeneratorDirty.count} câu hỏi chưa lưu) tại Kênh Soạn Đề AI.\n\nNếu chuyển sang mục khác lúc này, dữ liệu đang soạn thảo chưa lưu sẽ bị xóa hoàn toàn.\n\nBạn có chắc chắn muốn rời đi không?`,
+        action: () => {
+          setAiGeneratorDirty({ isDirty: false, title: '', count: 0 });
+          setActiveMenu(id);
+          setMobileDrawerOpen(false);
+          setMobileMoreOpen(false);
+        }
+      });
+      return;
+    }
     setActiveMenu(id);
     setMobileDrawerOpen(false);
     setMobileMoreOpen(false);
+  };
+
+  const handleLogoutWithCheck = () => {
+    if (activeMenu === 'nganhang' && aiGeneratorDirty.isDirty) {
+      setConfirmDialog({
+        show: true,
+        title: '⚠️ Cảnh Báo Đang Soạn Bộ Đề',
+        message: `Bạn đang trong quá trình soạn bộ đề "${aiGeneratorDirty.title || 'Mới'}" (${aiGeneratorDirty.count} câu hỏi chưa lưu) tại Kênh Soạn Đề AI.\n\nNếu đăng xuất lúc này, phiên soạn thảo chưa lưu sẽ bị xóa hoàn toàn.\n\nBạn có chắc chắn muốn đăng xuất không?`,
+        action: () => {
+          setAiGeneratorDirty({ isDirty: false, title: '', count: 0 });
+          onLogout();
+        }
+      });
+      return;
+    }
+    onLogout();
   };
 
   const renderContent = () => {
@@ -143,17 +179,17 @@ function TeacherDashboard({ user, onLogout }) {
       }
     }
     switch (activeMenu) {
-      case 'tongquan': return <OverviewSection teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} setActiveMenu={setActiveMenu} />;
+      case 'tongquan': return <OverviewSection teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} setActiveMenu={handleNavigate} />;
       case 'sinhvien': return <StudentsSection students={students} teachingAssignments={teachingAssignments} grades={grades} />;
       case 'quanlydiem': return <GradesSection grades={grades} teachingAssignments={teachingAssignments} teachingSchedule={teachingSchedule} students={students} user={user} onRefresh={fetchTeacherData} />;
       case 'diemdanh': return <AttendanceSection teachingSchedule={teachingSchedule} students={students} />;
       case 'lichgiangday': return <ScheduleSection teachingSchedule={teachingSchedule} teachingAssignments={teachingAssignments} user={user} />;
-      case 'hoso': return <TeacherProfileManagement user={user} onLogout={onLogout} profile={profile} loading={loadingProfile} />;
+      case 'hoso': return <TeacherProfileManagement user={user} onLogout={handleLogoutWithCheck} profile={profile} loading={loadingProfile} />;
       case 'thongbao': return <AnnouncementsSection announcements={announcements} user={user} onRefresh={fetchTeacherData} classes={teachingAssignments} />;
       case 'hotro': return <TeacherSupport user={user} profile={profile} />;
-      case 'nganhang': return <QuestionBankManagement targetSession={globalTargetSession} onClearTargetSession={() => setGlobalTargetSession(null)} />;
+      case 'nganhang': return <QuestionBankManagement targetSession={globalTargetSession} onClearTargetSession={() => setGlobalTargetSession(null)} onAiGeneratorDirtyChange={(isDirty, title, count) => setAiGeneratorDirty({ isDirty, title, count })} />;
       case 'thionline': return <ExamManagement />;
-      default: return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={setActiveMenu} />;
+      default: return <OverviewSection teachingAssignments={teachingAssignments} students={students} user={user} setActiveMenu={handleNavigate} />;
     }
   };
 
@@ -221,7 +257,7 @@ function TeacherDashboard({ user, onLogout }) {
               <p className="text-xs text-gray-300 truncate">Giảng viên - Khoa CNTT</p>
             </div>
           </div>
-          <button onClick={onLogout} className="p-2.5 rounded-xl text-[#6B7280] hover:bg-[#EF4444]/10 hover:text-[#EF4444] transition-all duration-200 ease-out flex-shrink-0" title="Đăng xuất">
+          <button onClick={handleLogoutWithCheck} className="p-2.5 rounded-xl text-[#6B7280] hover:bg-[#EF4444]/10 hover:text-[#EF4444] transition-all duration-200 ease-out flex-shrink-0" title="Đăng xuất">
             <LogOut className="w-5 h-5" />
           </button>
         </div>
@@ -361,7 +397,7 @@ function TeacherDashboard({ user, onLogout }) {
                         );
                       })}
                     </div>
-                    <button onClick={onLogout}
+                    <button onClick={handleLogoutWithCheck}
                       className="mt-3 w-full py-3 bg-[#EF4444]/10 text-[#EF4444] font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[#EF4444]/20 transition-colors">
                       <LogOut className="w-4 h-4" /> Đăng xuất
                     </button>
@@ -374,6 +410,10 @@ function TeacherDashboard({ user, onLogout }) {
         )}
 
       </div>
+
+      <ModalPortal>
+        <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
+      </ModalPortal>
     </div>
   );
 }

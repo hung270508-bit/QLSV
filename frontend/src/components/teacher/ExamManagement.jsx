@@ -398,15 +398,22 @@ function ExamManagement() {
         
         if (Object.keys(errors).length > 0) return;
         
-        try {
-            await axios.put(`${API_URL}/api/ai-exams/exams/${editExamData.id}`, editExamData);
-            showToast('Cập nhật kỳ thi thành công!');
-            setShowEditModal(false);
-            setEditExamData(null);
-            fetchExams();
-        } catch (error) {
-            showToast(error.response?.data?.message || 'Lỗi cập nhật kỳ thi', 'error');
-        }
+        openConfirmDialog(
+            'Xác nhận cập nhật kỳ thi',
+            `Bạn có chắc chắn muốn lưu các thay đổi cho kỳ thi "${editExamData.tieu_de}" không?`,
+            async () => {
+                closeConfirmDialog();
+                try {
+                    await axios.put(`${API_URL}/api/ai-exams/exams/${editExamData.id}`, editExamData);
+                    showToast('Cập nhật kỳ thi thành công!');
+                    setShowEditModal(false);
+                    setEditExamData(null);
+                    fetchExams();
+                } catch (error) {
+                    showToast(error.response?.data?.message || 'Lỗi cập nhật kỳ thi', 'error');
+                }
+            }
+        );
     };
 
     return (
