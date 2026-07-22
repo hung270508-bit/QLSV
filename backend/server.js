@@ -1864,12 +1864,24 @@ app.get('/api/enrollment/available/:mssv', async (req, res) => {
 // Lấy thông tin đợt đăng ký đang mở cho sinh viên
 app.get('/api/enrollment/active-phase/:mssv', async (req, res) => {
     try {
-        const [[phase]] = await db.promise().query(
+        await autoUpdatePhases();
+        const mssv = req.params.mssv;
+        const [[studentInfo]] = await db.promise().query(
+            `SELECT lh.NienKhoa FROM sinhvien s JOIN lophoc lh ON s.MaLop = lh.MaLop WHERE s.MSSV = ?`,
+            [mssv]
+        );
+        const nienKhoa = studentInfo ? studentInfo.NienKhoa : null;
+
+        const [phases] = await db.promise().query(
             `SELECT *, NgayTao AS NgayMo FROM dot_dangky 
              WHERE TrangThai = 'Mo' 
+             AND (NienKhoa = ? OR NienKhoa IS NULL OR NienKhoa = '')
              AND NOW() BETWEEN NgayTao AND NgayDong
-             ORDER BY NgayTao DESC LIMIT 1`
+             ORDER BY NgayTao DESC LIMIT 1`,
+            [nienKhoa]
         );
+
+        const phase = phases && phases.length > 0 ? phases[0] : null;
 
         if (phase) {
             res.json({ hasActivePhase: true, phase });
@@ -2281,34 +2293,36 @@ app.delete('/api/enrollment/phases/:id', async (req, res) => {
     const dbConn = await db.promise().getConnection();
     try {
         await dbConn.beginTransaction();
+        await dbConn.query('SET FOREIGN_KEY_CHECKS = 0');
 
-        // 1. Tìm và xóa các đợt đóng học phí (dot_dong_hoc_phi) liên quan đến đợt đăng ký này
-        const [tuitionPeriods] = await dbConn.execute(
-            'SELECT id FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?',
-            [maDot]
-        );
-
-        for (const tp of tuitionPeriods) {
-            const dotId = tp.id;
-            const [hpRows] = await dbConn.execute('SELECT id FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
-            for (const hp of hpRows) {
-                await dbConn.execute('DELETE FROM giao_dich_hoc_phi WHERE hoc_phi_id = ?', [hp.id]);
-                await dbConn.execute('DELETE FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hp.id]);
+        try {
+            const [tuitionPeriods] = await dbConn.execute(
+                'SELECT id FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?',
+                [maDot]
+            );
+            for (const tp of tuitionPeriods) {
+                const dotId = tp.id;
+                try {
+                    const [hpRows] = await dbConn.execute('SELECT id FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
+                    for (const hp of hpRows) {
+                        try { await dbConn.execute('DELETE FROM giao_dich_hoc_phi WHERE hoc_phi_id = ?', [hp.id]); } catch (_) {}
+                        try { await dbConn.execute('DELETE FROM hoc_phi_chi_tiet WHERE hoc_phi_id = ?', [hp.id]); } catch (_) {}
+                    }
+                    try { await dbConn.execute('DELETE FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]); } catch (_) {}
+                } catch (_) {}
             }
-            await dbConn.execute('DELETE FROM hoc_phi_v2 WHERE dot_id = ?', [dotId]);
-        }
-        await dbConn.execute('DELETE FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?', [maDot]);
+            try { await dbConn.execute('DELETE FROM dot_dong_hoc_phi WHERE ma_dot_dangky = ?', [maDot]); } catch (_) {}
+        } catch (_) {}
 
-        // 2. Xóa các đăng ký học phần thuộc đợt này
-        await dbConn.execute('DELETE FROM dangky_hocphan WHERE MaDot = ?', [maDot]);
+        try { await dbConn.execute('DELETE FROM dangky_hocphan WHERE MaDot = ?', [maDot]); } catch (_) {}
+        try { await dbConn.execute('DELETE FROM dot_dangky WHERE MaDot = ?', [maDot]); } catch (_) {}
 
-        // 3. Xóa đợt đăng ký trong dot_dangky
-        await dbConn.execute('DELETE FROM dot_dangky WHERE MaDot = ?', [maDot]);
-
+        await dbConn.query('SET FOREIGN_KEY_CHECKS = 1');
         await dbConn.commit();
         notifyPhaseChange();
-        res.json({ success: true, message: 'Đã xóa đợt đăng ký và các dữ liệu học phí liên quan thành công!' });
+        res.json({ success: true, message: 'Đã xóa đợt đăng ký thành công!' });
     } catch (err) {
+        try { await dbConn.query('SET FOREIGN_KEY_CHECKS = 1'); } catch (_) {}
         await dbConn.rollback();
         console.error("Lỗi khi xóa đợt đăng ký:", err);
         res.status(500).json({ message: 'Lỗi xóa đợt đăng ký', error: err.message });

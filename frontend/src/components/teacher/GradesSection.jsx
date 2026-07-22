@@ -241,6 +241,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
   const [activeConfigs, setActiveConfigs] = useState({});
   const [lockedConfigs, setLockedConfigs] = useState({});
   const [gradeLockedConfigs, setGradeLockedConfigs] = useState({});
+  const [sectionStudentsMap, setSectionStudentsMap] = useState({});
 
   const [showModal, setShowModal] = useState(false);
   const [editingGrade, setEditingGrade] = useState(null);
@@ -266,6 +267,16 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
 
       const savedGradeLock = localStorage.getItem(getGradeLockKey(ta.MaLopHocPhan));
       gradeLocks[ta.MaLopHocPhan] = savedGradeLock === 'true';
+
+      if (ta.MaLopHocPhan) {
+        axios.get(`${API_URL}/api/course-sections/${ta.MaLopHocPhan}/students`)
+          .then(res => {
+            if (Array.isArray(res.data)) {
+              setSectionStudentsMap(prev => ({ ...prev, [ta.MaLopHocPhan]: res.data }));
+            }
+          })
+          .catch(() => {});
+      }
     });
     setClassConfigs(configs);
     setActiveConfigs(active);
@@ -452,8 +463,15 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     const ta = (teachingAssignments || []).find(cs => cs.MaLopHocPhan === maLopHocPhan);
     const map = new Map();
 
+    const registered = sectionStudentsMap[maLopHocPhan] || [];
+    registered.forEach(s => {
+      map.set(s.MSSV, { ...s });
+    });
+
     if (ta && ta.MaLop) {
-      (students || []).filter(s => s.MaLop === ta.MaLop).forEach(s => map.set(s.MSSV, { ...s }));
+      (students || []).filter(s => s.MaLop === ta.MaLop).forEach(s => {
+        if (!map.has(s.MSSV)) map.set(s.MSSV, { ...s });
+      });
     }
 
     (grades || []).filter(g => g.MaLopHocPhan === maLopHocPhan).forEach(g => {
@@ -464,7 +482,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     });
 
     return Array.from(map.values()).sort((a, b) => a.MSSV.localeCompare(b.MSSV));
-  }, [teachingAssignments, students, grades]);
+  }, [teachingAssignments, students, grades, sectionStudentsMap]);
 
   // ĐÃ FIX: Biến hasPreview đúng tên
   const activeCfgForm = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
@@ -567,6 +585,14 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                           <AlertTriangle className="w-12 h-12 text-[#EF4444] mx-auto mb-3" />
                           <h4 className="text-[#991B1B] font-bold text-lg mb-1">Chưa có lịch giảng dạy</h4>
                           <p className="text-[#B91C1C] text-sm">Lớp học phần này chưa được xếp lịch. Vui lòng thiết lập lịch giảng dạy trước khi cấu hình và nhập điểm.</p>
+                        </div>
+                      ) : getStudentsForLHP(ta.MaLopHocPhan).length === 0 ? (
+                        <div className="p-8 text-center bg-slate-50 border-t border-slate-200">
+                          <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                          <h4 className="text-slate-800 font-bold text-lg mb-1">Lớp chưa có sinh viên đăng ký</h4>
+                          <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+                            Lớp học phần này hiện chưa có sinh viên nào đăng ký. Các thao tác cấu hình trọng số và quản lý điểm số chỉ có thể thực hiện khi lớp đã có danh sách sinh viên.
+                          </p>
                         </div>
                       ) : (
                         <>
@@ -709,11 +735,12 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
                       {(teachingAssignments || []).map(ta => {
                         const isLocked = lockedConfigs[ta.MaLopHocPhan];
                         const hasSched = (teachingSchedule || []).some(s => s.MaLopHocPhan === ta.MaLopHocPhan);
+                        const hasStuds = getStudentsForLHP(ta.MaLopHocPhan).length > 0;
                         return (
-                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked || !hasSched}>
-                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!isLocked ? '(Chưa chốt cấu hình)' : '')}
+                          <option key={ta.MaLopHocPhan} value={ta.MaLopHocPhan} disabled={!isLocked || !hasSched || !hasStuds}>
+                            {ta.TenMonHoc} — {ta.MaLopHocPhan} {!hasSched ? '(Chưa có lịch)' : (!hasStuds ? '(Chưa có sinh viên)' : (!isLocked ? '(Chưa chốt cấu hình)' : ''))}
                           </option>
-                        )
+                        );
                       })}
                     </select>
                     {formErrors.MaLopHocPhan && <p className="text-[#EF4444] text-xs mt-1.5 font-bold">{formErrors.MaLopHocPhan}</p>}

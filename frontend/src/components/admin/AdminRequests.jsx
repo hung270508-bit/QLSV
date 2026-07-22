@@ -136,19 +136,54 @@ function AdminRequests({ refreshBadge }) {
     setDeleteDialog({ show: true, requestId });
   };
 
-  const handleRestore = async (requestId) => {
-    try {
-      await axios.put(`${API_URL}/api/admin/support-requests/${requestId}/restore`);
-      setToast({ show: true, message: 'Khôi phục yêu cầu thành công!', type: 'success' });
-      fetchRequests();
-    } catch (error) {
-      setToast({ show: true, message: 'Lỗi khi khôi phục yêu cầu!', type: 'error' });
-    }
+  const handleRestore = (requestId) => {
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận khôi phục',
+      message: 'Bạn có chắc chắn muốn khôi phục yêu cầu này về danh sách chính không?',
+      onConfirm: async () => {
+        try {
+          await axios.put(`${API_URL}/api/admin/support-requests/${requestId}/restore`);
+          setToast({ show: true, message: 'Khôi phục yêu cầu thành công!', type: 'success' });
+          fetchRequests();
+        } catch (error) {
+          setToast({ show: true, message: 'Lỗi khi khôi phục yêu cầu!', type: 'error' });
+        } finally {
+          setConfirmDialog({ show: false, message: '', onConfirm: null, title: '' });
+        }
+      }
+    });
+  };
+
+  const handleBulkRestore = () => {
+    if (selectedRequests.size === 0) return;
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận khôi phục hàng loạt',
+      message: `Bạn có chắc chắn muốn khôi phục ${selectedRequests.size} yêu cầu đã chọn về danh sách chính không?`,
+      onConfirm: async () => {
+        try {
+          await Promise.all(
+            Array.from(selectedRequests).map(id =>
+              axios.put(`${API_URL}/api/admin/support-requests/${id}/restore`)
+            )
+          );
+          setToast({ show: true, message: `Đã khôi phục ${selectedRequests.size} yêu cầu thành công!`, type: 'success' });
+          setSelectedRequests(new Set());
+          fetchRequests();
+        } catch (error) {
+          setToast({ show: true, message: 'Lỗi khi khôi phục các yêu cầu đã chọn!', type: 'error' });
+        } finally {
+          setConfirmDialog({ show: false, message: '', onConfirm: null, title: '' });
+        }
+      }
+    });
   };
 
   const handleHardDelete = (requestId) => {
     setConfirmDialog({
       show: true,
+      title: 'Xác nhận xóa vĩnh viễn',
       message: 'Bạn có chắc chắn muốn xóa vĩnh viễn yêu cầu này không? Hành động này không thể hoàn tác.',
       onConfirm: async () => {
         try {
@@ -158,7 +193,7 @@ function AdminRequests({ refreshBadge }) {
         } catch (error) {
           setToast({ show: true, message: 'Lỗi khi xóa vĩnh viễn!', type: 'error' });
         } finally {
-          setConfirmDialog({ show: false, message: '', onConfirm: null });
+          setConfirmDialog({ show: false, message: '', onConfirm: null, title: '' });
         }
       }
     });
@@ -271,10 +306,10 @@ function AdminRequests({ refreshBadge }) {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, delay: 0.05 }}
-        className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap xl:flex-nowrap items-center justify-between gap-4"
+        className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4"
       >
-        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-          <div className="relative flex-1 min-w-[200px] xl:min-w-[280px]">
+        <div className="flex flex-wrap items-center gap-3 flex-1">
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               value={search}
@@ -283,12 +318,12 @@ function AdminRequests({ refreshBadge }) {
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-medium text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/50 transition-all outline-none"
             />
           </div>
-          <div className="h-8 w-px bg-slate-200 hidden md:block mx-2"></div>
+          <div className="h-8 w-px bg-slate-200 hidden md:block mx-1"></div>
           <select
             value={filterRole}
             onChange={e => setFilterRole(e.target.value)}
-            className="px-4 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-semibold text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/50 transition-all outline-none cursor-pointer appearance-none"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem', paddingRight: '2.5rem' }}
+            className="px-3.5 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-semibold text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/50 transition-all outline-none cursor-pointer appearance-none shrink-0"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem', paddingRight: '2.25rem' }}
           >
             <option value="All">Mọi đối tượng</option>
             <option value="SinhVien">Sinh viên</option>
@@ -297,8 +332,8 @@ function AdminRequests({ refreshBadge }) {
           <select
             value={filterTopic}
             onChange={e => setFilterTopic(e.target.value)}
-            className="px-4 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-semibold text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/50 transition-all outline-none cursor-pointer appearance-none"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem', paddingRight: '2.5rem' }}
+            className="px-3.5 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-semibold text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/50 transition-all outline-none cursor-pointer appearance-none shrink-0 max-w-[180px] truncate"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem', paddingRight: '2.25rem' }}
           >
             <option value="All">Mọi chủ đề</option>
             {topics.map(topic => (
@@ -308,8 +343,8 @@ function AdminRequests({ refreshBadge }) {
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="px-4 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-semibold text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/50 transition-all outline-none cursor-pointer appearance-none"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem', paddingRight: '2.5rem' }}
+            className="px-3.5 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-semibold text-slate-700 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100/50 transition-all outline-none cursor-pointer appearance-none shrink-0"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem', paddingRight: '2.25rem' }}
           >
             <option value="All">Mọi trạng thái</option>
             <option value="Chờ xử lý">Chờ xử lý</option>
@@ -318,21 +353,37 @@ function AdminRequests({ refreshBadge }) {
           </select>
         </div>
 
-        <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
+        <div className="flex items-center gap-2.5 justify-end shrink-0 whitespace-nowrap">
           {selectedRequests.size > 0 && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              onClick={() => setDeleteDialog({ show: true, requestId: 'bulk' })}
-              className="px-4 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" /> {isRecycleBinMode ? 'Xóa vĩnh viễn' : 'Xóa'} {selectedRequests.size}
-            </motion.button>
+            <>
+              {isRecycleBinMode && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={handleBulkRestore}
+                  className="px-3.5 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                >
+                  <RefreshCcw className="w-4 h-4" /> Khôi phục ({selectedRequests.size})
+                </motion.button>
+              )}
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={() => setDeleteDialog({ show: true, requestId: 'bulk' })}
+                className="px-3.5 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              >
+                <Trash2 className="w-4 h-4" /> {isRecycleBinMode ? 'Xóa vĩnh viễn' : 'Xóa'} ({selectedRequests.size})
+              </motion.button>
+            </>
           )}
           <button
-            onClick={() => setIsRecycleBinMode(!isRecycleBinMode)}
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2 border ${isRecycleBinMode ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-indigo-600'}`}
+            onClick={() => {
+              setIsRecycleBinMode(!isRecycleBinMode);
+              setSelectedRequests(new Set());
+            }}
+            className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-1.5 border whitespace-nowrap shrink-0 ${isRecycleBinMode ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-indigo-600'}`}
           >
             <Archive className={`w-4 h-4 ${isRecycleBinMode ? 'text-indigo-600' : ''}`} />
             {isRecycleBinMode ? 'Thoát Thùng rác' : 'Thùng rác'}
@@ -603,7 +654,7 @@ function AdminRequests({ refreshBadge }) {
 
                 {isViewOnly && selectedReq.TrangThai !== 'Chờ xử lý' && selectedReq.TrangThai !== 'Đang xử lý' && (
                   <div className="border-t border-slate-100 pt-5 space-y-4">
-                    <h4 className="font-bold text-slate-800 text-sm">Phản hồi từ Ban Quản lý</h4>
+                    <h4 className="font-bold text-slate-800 text-sm">Phản hồi từ Bạn</h4>
                     <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-50 space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-semibold text-slate-500">Trạng thái xử lý:</span>
@@ -707,9 +758,10 @@ function AdminRequests({ refreshBadge }) {
 
       <ConfirmDialog
         show={confirmDialog.show}
+        title={confirmDialog.title || "Xác nhận"}
         message={confirmDialog.message}
         onConfirm={confirmDialog.onConfirm}
-        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null })}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, title: '' })}
         requireCountdown={false}
       />
 

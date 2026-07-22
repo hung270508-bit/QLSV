@@ -349,10 +349,10 @@ function EnrollmentPhaseManagement() {
 
   const showToast = (message, type = 'warning') => setToast({ message, type });
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }, [toast]);
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 10000); return () => clearInterval(t); }, []);
 
   const fetchPhases = async () => {
-    try { setLoading(true); const r = await axios.get(`${API_URL}/api/enrollment/phases?_t=${Date.now()}`); setPhases(r.data || []); }
+    try { const r = await axios.get(`${API_URL}/api/enrollment/phases?_t=${Date.now()}`); setPhases(r.data || []); }
     catch (e) { console.error(e); } finally { setLoading(false); }
   };
   const fetchCourseSections = async () => {
@@ -368,17 +368,31 @@ function EnrollmentPhaseManagement() {
     fetchCourseSections(); 
     fetchStudents(); 
 
-    const eventSource = new EventSource(`${API_URL}/api/enrollment/phases/stream`);
-    eventSource.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === 'PHASE_CHANGED') {
-          axios.get(`${API_URL}/api/enrollment/phases`).then(r => setPhases(r.data || [])).catch(console.error);
+    let eventSource = null;
+    try {
+      eventSource = new EventSource(`${API_URL}/api/enrollment/phases/stream`);
+      eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === 'PHASE_CHANGED') {
+            fetchPhases();
+          }
+        } catch (e) {
+          console.error("SSE parse error", e);
         }
-      } catch (err) {}
-    };
+      };
+    } catch (e) {
+      console.error("SSE init error", e);
+    }
 
-    return () => eventSource.close();
+    const pollTimer = setInterval(() => {
+      fetchPhases();
+    }, 10000);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      clearInterval(pollTimer);
+    };
   }, []);
 
   // options
@@ -484,7 +498,6 @@ function EnrollmentPhaseManagement() {
     }
 
     if (errors.length > 0) {
-      showToast(errors[0], 'error');
       setAlertDialog({ title: 'Không thể lưu đợt đăng ký', message: errors[0] });
       return;
     }
@@ -508,7 +521,6 @@ function EnrollmentPhaseManagement() {
       closeForm(); fetchPhases();
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Không thể lưu đợt đăng ký';
-      showToast(errMsg, 'error');
       setAlertDialog({ title: 'Lỗi Lưu Dữ Liệu', message: errMsg });
     } finally { setConfirmDialog(null); }
   };
@@ -525,7 +537,6 @@ function EnrollmentPhaseManagement() {
       fetchPhases();
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Không thể đóng đợt đăng ký';
-      showToast(errMsg, 'error');
       setAlertDialog({ title: 'Lỗi Đóng Đợt', message: errMsg });
     } finally { setConfirmDialog(null); }
   };
@@ -535,7 +546,6 @@ function EnrollmentPhaseManagement() {
     const end = new Date(phase.NgayDong);
     
     if (end <= now) {
-      showToast('Không thể mở lại đợt đăng ký đã kết thúc trong quá khứ.', 'error');
       setAlertDialog({
         title: 'Không thể mở lại đợt đã kết thúc',
         message: `Đợt "${phase.TenDot}" có ngày kết thúc (${end.toLocaleString('vi-VN')}) nằm trong quá khứ. Vui lòng bấm vào nút Chỉnh sửa (hình cây bút) để gia hạn ngày đóng trước khi mở lại!`
@@ -545,7 +555,6 @@ function EnrollmentPhaseManagement() {
     
     const conflict = findConflictingOpenPhase(phase.NgayTao, end, phase.MaDot);
     if (conflict) {
-      showToast(`Thời gian bị chồng chéo với đợt "${conflict.TenDot}". Không thể mở nhiều đợt cùng lúc.`, 'warning');
       setAlertDialog({
         title: 'Trùng lặp thời gian mở đợt!',
         message: `Khung thời gian của đợt này bị chồng chéo với đợt "${conflict.TenDot}". Hệ thống không cho phép mở nhiều đợt có thời gian trùng nhau cho cùng học kỳ/niên khóa để tránh xung đột dữ liệu!`
@@ -566,7 +575,6 @@ function EnrollmentPhaseManagement() {
       fetchPhases();
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Không thể mở lại đợt đăng ký';
-      showToast(errMsg, 'error');
       setAlertDialog({ title: 'Lỗi Mở Đợt', message: errMsg });
     } finally { setConfirmDialog(null); }
   };
@@ -584,7 +592,6 @@ function EnrollmentPhaseManagement() {
       fetchPhases();
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Lỗi không xác định';
-      showToast(`Không thể xóa: ${errMsg}`, 'error');
       setAlertDialog({ title: 'Không thể xóa đợt đăng ký', message: errMsg });
     } finally { setConfirmDialog(null); }
   };
