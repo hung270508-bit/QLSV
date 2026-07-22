@@ -241,6 +241,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
   const [activeConfigs, setActiveConfigs] = useState({});
   const [lockedConfigs, setLockedConfigs] = useState({});
   const [gradeLockedConfigs, setGradeLockedConfigs] = useState({});
+  const [sectionStudentsMap, setSectionStudentsMap] = useState({});
 
   const [showModal, setShowModal] = useState(false);
   const [editingGrade, setEditingGrade] = useState(null);
@@ -266,6 +267,16 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
 
       const savedGradeLock = localStorage.getItem(getGradeLockKey(ta.MaLopHocPhan));
       gradeLocks[ta.MaLopHocPhan] = savedGradeLock === 'true';
+
+      if (ta.MaLopHocPhan) {
+        axios.get(`${API_URL}/api/course-sections/${ta.MaLopHocPhan}/students`)
+          .then(res => {
+            if (Array.isArray(res.data)) {
+              setSectionStudentsMap(prev => ({ ...prev, [ta.MaLopHocPhan]: res.data }));
+            }
+          })
+          .catch(() => {});
+      }
     });
     setClassConfigs(configs);
     setActiveConfigs(active);
@@ -452,8 +463,15 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     const ta = (teachingAssignments || []).find(cs => cs.MaLopHocPhan === maLopHocPhan);
     const map = new Map();
 
+    const registered = sectionStudentsMap[maLopHocPhan] || [];
+    registered.forEach(s => {
+      map.set(s.MSSV, { ...s });
+    });
+
     if (ta && ta.MaLop) {
-      (students || []).filter(s => s.MaLop === ta.MaLop).forEach(s => map.set(s.MSSV, { ...s }));
+      (students || []).filter(s => s.MaLop === ta.MaLop).forEach(s => {
+        if (!map.has(s.MSSV)) map.set(s.MSSV, { ...s });
+      });
     }
 
     (grades || []).filter(g => g.MaLopHocPhan === maLopHocPhan).forEach(g => {
@@ -464,7 +482,7 @@ function GradesSection({ grades, teachingAssignments, teachingSchedule, students
     });
 
     return Array.from(map.values()).sort((a, b) => a.MSSV.localeCompare(b.MSSV));
-  }, [teachingAssignments, students, grades]);
+  }, [teachingAssignments, students, grades, sectionStudentsMap]);
 
   // ĐÃ FIX: Biến hasPreview đúng tên
   const activeCfgForm = formData.MaLopHocPhan ? getActiveConfig(formData.MaLopHocPhan) : DEFAULT_COMPONENTS;
