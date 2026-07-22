@@ -183,6 +183,19 @@ const runGlobalAutoMigration = async () => {
                 `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan';`,
                 `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN ma_giao_dich VARCHAR(100) NULL;`,
 
+                // 4. Đồng bộ bảng mã Collation về utf8mb4_unicode_ci cho tất cả các bảng liên quan để tránh lỗi Illegal mix of collations trên MySQL 8 (Vercel)
+                `ALTER TABLE dot_dangky CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE dot_dong_hoc_phi CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE hoc_phi_v2 CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE hoc_phi_chi_tiet CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE giao_dich_hoc_phi CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE sinhvien CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE lophoc CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE khoa CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE lophocphan CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE dangky_hocphan CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+                `ALTER TABLE monhoc CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+
                 'SET FOREIGN_KEY_CHECKS = 1;'
             ];
 
@@ -4212,9 +4225,9 @@ app.get('/api/admin/tuitions', verifyToken, (req, res) => {
                 (SELECT gd.ghi_chu FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_ghi_chu,
                 (SELECT gd.thoi_gian_xac_nhan FROM giao_dich_hoc_phi gd WHERE gd.hoc_phi_id = hp.id ORDER BY gd.thoi_gian_tao DESC LIMIT 1) as gd_thoi_gian
                FROM hoc_phi_v2 hp
-               LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
-               LEFT JOIN lophoc l ON sv.MaLop = l.MaLop
-               LEFT JOIN khoa k ON l.MaKhoa = k.MaKhoa`;
+               LEFT JOIN sinhvien sv ON hp.mssv COLLATE utf8mb4_unicode_ci = sv.MSSV COLLATE utf8mb4_unicode_ci
+               LEFT JOIN lophoc l ON sv.MaLop COLLATE utf8mb4_unicode_ci = l.MaLop COLLATE utf8mb4_unicode_ci
+               LEFT JOIN khoa k ON l.MaKhoa COLLATE utf8mb4_unicode_ci = k.MaKhoa COLLATE utf8mb4_unicode_ci`;
     const params = [];
     const conditions = [];
     if (dot_id) { conditions.push('hp.dot_id = ?'); params.push(dot_id); }
@@ -4238,7 +4251,7 @@ app.get('/api/admin/tuitions/:id/detail', verifyToken, (req, res) => {
     db.query(
         `SELECT hp.*, sv.HoTen as ten_sinh_vien, d.ten_dot, d.ngay_dong, d.ngay_mo
          FROM hoc_phi_v2 hp
-         LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
+         LEFT JOIN sinhvien sv ON hp.mssv COLLATE utf8mb4_unicode_ci = sv.MSSV COLLATE utf8mb4_unicode_ci
          LEFT JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
          WHERE hp.id = ?`, [hocPhiId],
         (err, hpRows) => {
@@ -4304,9 +4317,9 @@ async function autoSyncStudentTuition(dbConn, hocPhiId, mssv, hocKy, donGiaTinCh
                 COALESCE(lhp.phi_tai_lieu, 0) AS PhiTaiLieu,
                 COALESCE(lhp.mien_hoc_phi, 0) AS MienHocPhi
          FROM dangky_hocphan dk
-         JOIN lophocphan lhp ON dk.MaLopHocPhan = lhp.MaLopHocPhan
-         JOIN monhoc m ON lhp.MaMonHoc = m.MaMonHoc
-         WHERE dk.MSSV = ? AND (dk.HocKy = ? OR lhp.HocKy = ?) AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối')`,
+         JOIN lophocphan lhp ON dk.MaLopHocPhan COLLATE utf8mb4_unicode_ci = lhp.MaLopHocPhan COLLATE utf8mb4_unicode_ci
+         JOIN monhoc m ON lhp.MaMonHoc COLLATE utf8mb4_unicode_ci = m.MaMonHoc COLLATE utf8mb4_unicode_ci
+         WHERE dk.MSSV COLLATE utf8mb4_unicode_ci = ? AND (dk.HocKy COLLATE utf8mb4_unicode_ci = ? OR lhp.HocKy COLLATE utf8mb4_unicode_ci = ?) AND dk.TrangThai NOT IN ('Da huy', 'Tu choi', 'Đã hủy', 'Từ chối')`,
         [mssv, hocKy, hocKy]
     );
 
@@ -4343,7 +4356,7 @@ app.get('/api/student/tuitions/me', verifyToken, async (req, res) => {
                 `SELECT hp.*, d.hoc_ky, d.don_gia_tin_chi
                  FROM hoc_phi_v2 hp
                  JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
-                 WHERE hp.mssv = ? AND hp.trang_thai != 'Đã đóng'`,
+                 WHERE hp.mssv COLLATE utf8mb4_unicode_ci = ? AND hp.trang_thai != 'Đã đóng'`,
                 [mssv]
             );
             for (const hp of hpRows) {
@@ -4354,8 +4367,8 @@ app.get('/api/student/tuitions/me', verifyToken, async (req, res) => {
                 `SELECT hp.*, d.ten_dot, d.ngay_mo, d.ngay_dong, d.trang_thai as dot_trang_thai, d.don_gia_tin_chi, sv.HoTen as ten_sinh_vien
                  FROM hoc_phi_v2 hp
                  JOIN dot_dong_hoc_phi d ON hp.dot_id = d.id
-                 LEFT JOIN sinhvien sv ON hp.mssv = sv.MSSV
-                 WHERE hp.mssv = ?
+                 LEFT JOIN sinhvien sv ON hp.mssv COLLATE utf8mb4_unicode_ci = sv.MSSV COLLATE utf8mb4_unicode_ci
+                 WHERE hp.mssv COLLATE utf8mb4_unicode_ci = ?
                  ORDER BY d.ngay_tao DESC`,
                 [mssv]
             );
