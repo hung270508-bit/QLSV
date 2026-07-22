@@ -34,9 +34,9 @@ function StudentCourseRegistration({ user }) {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const [availRes, myRes, activePhaseRes] = await Promise.all([
         axios.get(`${API_URL}/api/enrollment/available/${user?.username}`),
         axios.get(`${API_URL}/api/enrollment/my-courses/${user?.username}`),
@@ -49,14 +49,14 @@ function StudentCourseRegistration({ user }) {
       console.error(e);
       showToast('Lỗi tải dữ liệu. Vui lòng thử lại!', 'error');
     } finally { 
-      setLoading(false); 
+      if (isInitial) setLoading(false); 
     }
   }, [user?.username]);
 
   useEffect(() => {
     if (!user?.username) return;
 
-    fetchData();
+    fetchData(true);
 
     // 1. Lắng nghe sự kiện thời gian thực (SSE Stream) từ Admin khi Đợt đăng ký thay đổi
     let eventSource = null;
@@ -66,7 +66,7 @@ function StudentCourseRegistration({ user }) {
         try {
           const data = JSON.parse(e.data);
           if (data.type === 'PHASE_CHANGED') {
-            fetchData();
+            fetchData(false);
           }
         } catch {
           // Ignore JSON parse error
@@ -76,9 +76,9 @@ function StudentCourseRegistration({ user }) {
       // Ignore EventSource creation error
     }
 
-    // 2. Tự động đồng bộ định kỳ 10s dự phòng
+    // 2. Tự động đồng bộ định kỳ 10s dự phòng (nối tiếp ngầm không chớp trang)
     const pollTimer = setInterval(() => {
-      fetchData();
+      fetchData(false);
     }, 10000);
 
     return () => {
