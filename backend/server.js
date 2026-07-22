@@ -70,7 +70,7 @@ db.on('connection', function (connection) {
     connection.query("SET NAMES utf8mb4");
 });
 
-// Kiểm tra kết nối DB
+// Kiểm tra kết nối DB và tự động khởi tạo/cập nhật toàn bộ bảng & cột (Auto Migration cho Vercel & Production)
 db.getConnection((err, connection) => {
     if (err) {
         console.error('Lỗi kết nối MySQL: ' + err.stack);
@@ -78,29 +78,117 @@ db.getConnection((err, connection) => {
     }
     console.log('Đã kết nối thành công đến cơ sở dữ liệu MySQL.');
 
-    // Đã gỡ bỏ các đoạn code tự động CREATE/ALTER TABLE ở đây (Migration)
-    // để tối ưu hóa triệt để tốc độ khởi động (Cold Start) trên Vercel Serverless.
+    const queries = [
+        'SET FOREIGN_KEY_CHECKS = 0;',
+        
+        // 1. Tạo các bảng cốt lõi nếu chưa tồn tại
+        `CREATE TABLE IF NOT EXISTS dot_dangky (
+            MaDot INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            TenDot VARCHAR(255) NOT NULL,
+            MoTa TEXT,
+            HocKy VARCHAR(50) NOT NULL,
+            NamHoc VARCHAR(50),
+            NienKhoa VARCHAR(50) NOT NULL,
+            NgayTao DATETIME NOT NULL,
+            NgayDong DATETIME NOT NULL,
+            TrangThai VARCHAR(50) DEFAULT 'Mo'
+        );`,
+        `CREATE TABLE IF NOT EXISTS dot_dong_hoc_phi (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            ma_dot_dangky INT NOT NULL DEFAULT 0,
+            hoc_ky VARCHAR(50) NOT NULL DEFAULT '',
+            ten_dot VARCHAR(255) NOT NULL DEFAULT '',
+            ngay_mo DATETIME NOT NULL,
+            ngay_dong DATETIME NOT NULL,
+            trang_thai VARCHAR(50) DEFAULT 'chua_mo',
+            don_gia_tin_chi DECIMAL(15,0) NOT NULL DEFAULT 1150000,
+            tao_boi VARCHAR(50) NOT NULL DEFAULT 'admin',
+            ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP
+        );`,
+        `CREATE TABLE IF NOT EXISTS hoc_phi_v2 (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            mssv VARCHAR(50) NOT NULL,
+            dot_id INT NOT NULL,
+            so_tien DECIMAL(15,0) NOT NULL DEFAULT 0,
+            trang_thai VARCHAR(50) DEFAULT 'Chưa đóng',
+            ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_mssv_dot (mssv, dot_id)
+        );`,
+        `CREATE TABLE IF NOT EXISTS hoc_phi_chi_tiet (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            hoc_phi_id INT NOT NULL,
+            ma_lop_hoc_phan VARCHAR(50) NOT NULL DEFAULT '',
+            ten_mon_hoc VARCHAR(255) NOT NULL DEFAULT '',
+            so_tin_chi INT NOT NULL DEFAULT 0,
+            don_gia DECIMAL(15,0) NOT NULL DEFAULT 0,
+            thanh_tien DECIMAL(15,0) NOT NULL DEFAULT 0,
+            phi_tai_lieu DECIMAL(15,2) DEFAULT 0,
+            hoc_phi DECIMAL(15,2) DEFAULT 0,
+            mien_giam DECIMAL(15,2) DEFAULT 0
+        );`,
+        `CREATE TABLE IF NOT EXISTS giao_dich_hoc_phi (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            hoc_phi_id INT NOT NULL,
+            ma_giao_dich VARCHAR(100) NULL,
+            so_tien DECIMAL(15,0) NOT NULL DEFAULT 0,
+            noi_dung VARCHAR(255) NOT NULL DEFAULT '',
+            qr_url TEXT NULL,
+            trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan',
+            nguon_xac_nhan VARCHAR(50) NULL,
+            admin_username VARCHAR(50) NULL,
+            minh_chung_url VARCHAR(255) NULL,
+            ghi_chu TEXT NULL,
+            thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            thoi_gian_xac_nhan DATETIME NULL
+        );`,
 
-    connection.query('SET FOREIGN_KEY_CHECKS = 0;', (err) => {
-        connection.query("ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;", () => { });
-        connection.query("ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;", () => { });
-        connection.query("ALTER TABLE lophocphan ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE lophocphan ADD COLUMN mien_hoc_phi BOOLEAN DEFAULT FALSE;", () => { });
-        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.query("ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;", () => { });
-        connection.query("CREATE TABLE IF NOT EXISTS dot_dangky (MaDot INT NOT NULL AUTO_INCREMENT PRIMARY KEY, TenDot VARCHAR(255) NOT NULL, MoTa TEXT, HocKy VARCHAR(50) NOT NULL, NamHoc VARCHAR(50), NienKhoa VARCHAR(50) NOT NULL, NgayTao DATETIME NOT NULL, NgayDong DATETIME NOT NULL, TrangThai VARCHAR(50) DEFAULT 'Mo');", () => { });
-        connection.query("ALTER TABLE dot_dangky ADD COLUMN MoTa TEXT DEFAULT NULL;", () => { });
-        connection.query("ALTER TABLE dot_dangky ADD COLUMN NamHoc VARCHAR(50) DEFAULT NULL;", () => { });
-        connection.query("ALTER TABLE dot_dangky ADD COLUMN NienKhoa VARCHAR(50) DEFAULT NULL;", () => { });
-        connection.query("ALTER TABLE dot_dangky MODIFY COLUMN TrangThai VARCHAR(50) DEFAULT 'Mo';", () => { });
-        connection.query("ALTER TABLE hoc_phi_v2 MODIFY COLUMN trang_thai ENUM('Chưa đóng', 'Chờ duyệt', 'Đã đóng', 'Quá hạn') DEFAULT 'Chưa đóng';", () => { });
-        connection.query("ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN trang_thai ENUM('cho_thanh_toan', 'cho_duyet', 'thanh_cong', 'that_bai', 'het_han') DEFAULT 'cho_thanh_toan';", () => { });
-        connection.query("ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN nguon_xac_nhan ENUM('auto', 'manual', 'student_report', 'admin_check') DEFAULT NULL;", () => { });
-        connection.release();
-        if (err) console.error('Lỗi tắt kiểm tra khóa ngoại:', err);
-    });
+        // 2. Thêm cột mới nếu bảng đã tồn tại từ trước trên production (Auto Add Column)
+        `ALTER TABLE dot_dangky ADD COLUMN MoTa TEXT DEFAULT NULL;`,
+        `ALTER TABLE dot_dangky ADD COLUMN NamHoc VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE dot_dangky ADD COLUMN NienKhoa VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ma_dot_dangky INT NOT NULL DEFAULT 0;`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN hoc_ky VARCHAR(50) DEFAULT '';`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ten_dot VARCHAR(255) DEFAULT '';`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN don_gia_tin_chi DECIMAL(15,0) DEFAULT 1150000;`,
+        `ALTER TABLE dot_dong_hoc_phi ADD COLUMN tao_boi VARCHAR(50) DEFAULT 'admin';`,
+        `ALTER TABLE hoc_phi_v2 ADD COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+        `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE lophocphan ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+        `ALTER TABLE lophocphan ADD COLUMN mien_hoc_phi BOOLEAN DEFAULT FALSE;`,
+        `ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;`,
+        `ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;`,
+        `ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN nguon_xac_nhan VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN admin_username VARCHAR(50) DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN minh_chung_url VARCHAR(255) DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN ghi_chu TEXT DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN thoi_gian_xac_nhan DATETIME DEFAULT NULL;`,
+        `ALTER TABLE giao_dich_hoc_phi ADD COLUMN qr_url TEXT DEFAULT NULL;`,
+
+        // 3. Chuẩn hóa kiểu dữ liệu / MODIFY COLUMN để đảm bảo tương thích
+        `ALTER TABLE dot_dangky MODIFY COLUMN TrangThai VARCHAR(50) DEFAULT 'Mo';`,
+        `ALTER TABLE dot_dong_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'chua_mo';`,
+        `ALTER TABLE hoc_phi_v2 MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+        `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan';`,
+        `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN ma_giao_dich VARCHAR(100) NULL;`,
+
+        'SET FOREIGN_KEY_CHECKS = 1;'
+    ];
+
+    let idx = 0;
+    const runNext = () => {
+        if (idx >= queries.length) {
+            connection.release();
+            return;
+        }
+        connection.query(queries[idx++], (e) => {
+            // Bỏ qua lỗi cột đã tồn tại (ER_DUP_FIELDNAME) hoặc bảng đã tồn tại (ER_TABLE_EXISTS_ERROR)
+            runNext();
+        });
+    };
+    runNext();
 });
 
 // Email transporter configuration
@@ -3884,64 +3972,72 @@ app.use('/api/exam', onlineExamRoutes);
 
 // ==================== [MODULE: HỌC PHÍ + VIETQR] ====================
 
-// --- Tự động tạo bảng khi khởi động ---
-db.getConnection((err, conn) => {
-    if (err) return;
-    const createTables = [
-        `CREATE TABLE IF NOT EXISTS dot_dong_hoc_phi (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            ma_dot_dangky INT NOT NULL,
-            hoc_ky VARCHAR(20) NOT NULL,
-            ten_dot VARCHAR(200) NOT NULL,
-            ngay_mo DATETIME NOT NULL,
-            ngay_dong DATETIME NOT NULL,
-            trang_thai ENUM('chua_mo','dang_mo','da_dong') DEFAULT 'chua_mo',
-            don_gia_tin_chi DECIMAL(15,0) NOT NULL,
-            tao_boi VARCHAR(50) NOT NULL,
-            ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`,
-        `CREATE TABLE IF NOT EXISTS hoc_phi_v2 (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            mssv VARCHAR(20) NOT NULL,
-            dot_id INT NOT NULL,
-            so_tien DECIMAL(15,0) NOT NULL,
-            trang_thai ENUM('Chưa đóng','Đã đóng') DEFAULT 'Chưa đóng',
-            ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uq_mssv_dot (mssv, dot_id)
-        )`,
-        `CREATE TABLE IF NOT EXISTS hoc_phi_chi_tiet (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            hoc_phi_id INT NOT NULL,
-            ma_lop_hoc_phan VARCHAR(50) NOT NULL,
-            ten_mon_hoc VARCHAR(100) NOT NULL,
-            so_tin_chi INT NOT NULL,
-            don_gia DECIMAL(15,0) NOT NULL,
-            thanh_tien DECIMAL(15,0) NOT NULL,
-            FOREIGN KEY (hoc_phi_id) REFERENCES hoc_phi_v2(id) ON DELETE CASCADE
-        )`,
-        `CREATE TABLE IF NOT EXISTS giao_dich_hoc_phi (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            hoc_phi_id INT NOT NULL,
-            ma_giao_dich VARCHAR(80) UNIQUE NOT NULL,
-            so_tien DECIMAL(15,0) NOT NULL,
-            noi_dung VARCHAR(100) NOT NULL,
-            qr_url TEXT NULL,
-            trang_thai ENUM('cho_thanh_toan','thanh_cong','that_bai','het_han') DEFAULT 'cho_thanh_toan',
-            nguon_xac_nhan ENUM('auto','manual') NULL,
-            admin_username VARCHAR(50) NULL,
-            minh_chung_url VARCHAR(255) NULL,
-            ghi_chu TEXT NULL,
-            thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP,
-            thoi_gian_xac_nhan DATETIME NULL,
-            FOREIGN KEY (hoc_phi_id) REFERENCES hoc_phi_v2(id)
-        )`
-    ];
-    let idx = 0;
-    const runNext = () => {
-        if (idx >= createTables.length) { conn.release(); return; }
-        conn.query(createTables[idx++], (e) => { if (e && e.code !== 'ER_TABLE_EXISTS_ERROR') console.error('[HocPhi] Tạo bảng lỗi:', e.message); runNext(); });
-    };
-    runNext();
+// --- Tự động kiểm tra & migration DB khi khởi động/thực thi API học phí trên Vercel ---
+let isTuitionDbMigrated = false;
+let isMigratingTuitionDb = false;
+
+const ensureTuitionDbMigrated = async () => {
+    if (isTuitionDbMigrated) return;
+    if (isMigratingTuitionDb) {
+        for (let i = 0; i < 30 && isMigratingTuitionDb; i++) await new Promise(r => setTimeout(r, 100));
+        return;
+    }
+    isMigratingTuitionDb = true;
+    try {
+        const dbConn = await db.promise().getConnection();
+        const queries = [
+            'SET FOREIGN_KEY_CHECKS = 0;',
+            `CREATE TABLE IF NOT EXISTS dot_dangky (MaDot INT NOT NULL AUTO_INCREMENT PRIMARY KEY, TenDot VARCHAR(255) NOT NULL, MoTa TEXT, HocKy VARCHAR(50) NOT NULL, NamHoc VARCHAR(50), NienKhoa VARCHAR(50) NOT NULL, NgayTao DATETIME NOT NULL, NgayDong DATETIME NOT NULL, TrangThai VARCHAR(50) DEFAULT 'Mo');`,
+            `CREATE TABLE IF NOT EXISTS dot_dong_hoc_phi (id INT PRIMARY KEY AUTO_INCREMENT, ma_dot_dangky INT NOT NULL DEFAULT 0, hoc_ky VARCHAR(50) NOT NULL DEFAULT '', ten_dot VARCHAR(255) NOT NULL DEFAULT '', ngay_mo DATETIME NOT NULL, ngay_dong DATETIME NOT NULL, trang_thai VARCHAR(50) DEFAULT 'chua_mo', don_gia_tin_chi DECIMAL(15,0) NOT NULL DEFAULT 1150000, tao_boi VARCHAR(50) NOT NULL DEFAULT 'admin', ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP);`,
+            `CREATE TABLE IF NOT EXISTS hoc_phi_v2 (id INT PRIMARY KEY AUTO_INCREMENT, mssv VARCHAR(50) NOT NULL, dot_id INT NOT NULL, so_tien DECIMAL(15,0) NOT NULL DEFAULT 0, trang_thai VARCHAR(50) DEFAULT 'Chưa đóng', ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_mssv_dot (mssv, dot_id));`,
+            `CREATE TABLE IF NOT EXISTS hoc_phi_chi_tiet (id INT PRIMARY KEY AUTO_INCREMENT, hoc_phi_id INT NOT NULL, ma_lop_hoc_phan VARCHAR(50) NOT NULL DEFAULT '', ten_mon_hoc VARCHAR(255) NOT NULL DEFAULT '', so_tin_chi INT NOT NULL DEFAULT 0, don_gia DECIMAL(15,0) NOT NULL DEFAULT 0, thanh_tien DECIMAL(15,0) NOT NULL DEFAULT 0, phi_tai_lieu DECIMAL(15,2) DEFAULT 0, hoc_phi DECIMAL(15,2) DEFAULT 0, mien_giam DECIMAL(15,2) DEFAULT 0);`,
+            `CREATE TABLE IF NOT EXISTS giao_dich_hoc_phi (id INT PRIMARY KEY AUTO_INCREMENT, hoc_phi_id INT NOT NULL, ma_giao_dich VARCHAR(100) NULL, so_tien DECIMAL(15,0) NOT NULL DEFAULT 0, noi_dung VARCHAR(255) NOT NULL DEFAULT '', qr_url TEXT NULL, trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan', nguon_xac_nhan VARCHAR(50) NULL, admin_username VARCHAR(50) NULL, minh_chung_url VARCHAR(255) NULL, ghi_chu TEXT NULL, thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP, thoi_gian_xac_nhan DATETIME NULL);`,
+            `ALTER TABLE dot_dangky ADD COLUMN MoTa TEXT DEFAULT NULL;`,
+            `ALTER TABLE dot_dangky ADD COLUMN NamHoc VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE dot_dangky ADD COLUMN NienKhoa VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ma_dot_dangky INT NOT NULL DEFAULT 0;`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN hoc_ky VARCHAR(50) DEFAULT '';`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ten_dot VARCHAR(255) DEFAULT '';`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN don_gia_tin_chi DECIMAL(15,0) DEFAULT 1150000;`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN tao_boi VARCHAR(50) DEFAULT 'admin';`,
+            `ALTER TABLE hoc_phi_v2 ADD COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+            `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE lophocphan ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
+            `ALTER TABLE lophocphan ADD COLUMN mien_hoc_phi BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE khoa ADD COLUMN TinChiYeuCau INT DEFAULT 120;`,
+            `ALTER TABLE yeucau_hotro ADD COLUMN IsDeletedByAdmin TINYINT(1) DEFAULT 0;`,
+            `ALTER TABLE exams ADD COLUMN bank_id INT DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN nguon_xac_nhan VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN admin_username VARCHAR(50) DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN minh_chung_url VARCHAR(255) DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN ghi_chu TEXT DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN thoi_gian_xac_nhan DATETIME DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN qr_url TEXT DEFAULT NULL;`,
+            `ALTER TABLE dot_dangky MODIFY COLUMN TrangThai VARCHAR(50) DEFAULT 'Mo';`,
+            `ALTER TABLE dot_dong_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'chua_mo';`,
+            `ALTER TABLE hoc_phi_v2 MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+            `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN trang_thai VARCHAR(50) DEFAULT 'cho_thanh_toan';`,
+            `ALTER TABLE giao_dich_hoc_phi MODIFY COLUMN ma_giao_dich VARCHAR(100) NULL;`,
+            'SET FOREIGN_KEY_CHECKS = 1;'
+        ];
+        for (const q of queries) {
+            try { await dbConn.query(q); } catch (e) { /* Bỏ qua lỗi cột/bảng đã tồn tại */ }
+        }
+        dbConn.release();
+        isTuitionDbMigrated = true;
+    } catch (e) {
+        console.error('[HocPhi] Lỗi auto-migrate DB:', e.message);
+    } finally {
+        isMigratingTuitionDb = false;
+    }
+};
+
+// Middleware tự động kiểm tra DB trước khi thực thi các API học phí
+app.use(['/api/admin/tuition-periods', '/api/admin/tuitions', '/api/student/tuitions'], async (req, res, next) => {
+    await ensureTuitionDbMigrated();
+    next();
 });
 
 // Helper: slug nội dung không dấu
