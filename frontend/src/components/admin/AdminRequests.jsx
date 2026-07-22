@@ -654,7 +654,7 @@ function AdminRequests({ refreshBadge }) {
 
                 {isViewOnly && selectedReq.TrangThai !== 'Chờ xử lý' && selectedReq.TrangThai !== 'Đang xử lý' && (
                   <div className="border-t border-slate-100 pt-5 space-y-4">
-                    <h4 className="font-bold text-slate-800 text-sm">Phản hồi từ Ban Quản lý</h4>
+                    <h4 className="font-bold text-slate-800 text-sm">Phản hồi từ Bạn</h4>
                     <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-50 space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-semibold text-slate-500">Trạng thái xử lý:</span>
