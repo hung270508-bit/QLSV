@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarDays, Plus, Trash2, Pencil, CheckCircle2, AlertCircle,
   X, ChevronRight, Calendar, AlertTriangle, Search,
-  ToggleLeft, ToggleRight, Hourglass, TrendingUp, Clock
+  ToggleLeft, ToggleRight, Hourglass, TrendingUp, Clock, Sparkles,
+  Info, Eye, RefreshCcw, Layers, Lock
 } from 'lucide-react';
 
 const TEN_DOT_ALLOWED_REGEX = /^[\p{L}\p{N}\s\-_(),.]*$/u;
@@ -50,38 +51,67 @@ const toLocalISOString = (dateStr) => {
   return localTime.toISOString().slice(0, 16);
 };
 
-// ── sub-components ────────────────────────────────────────────────────────────
+// ── Toast Notification ────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
   const cfg = {
-    success: { bg: 'bg-[#10B981]', text: 'text-white', icon: <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" /> },
-    warning: { bg: 'bg-[#F59E0B]', text: 'text-white', icon: <AlertTriangle className="w-5 h-5 text-white flex-shrink-0" /> },
-    error: { bg: 'bg-[#EF4444]', text: 'text-white', icon: <AlertCircle className="w-5 h-5 text-white flex-shrink-0" /> },
-  }[toast.type] || {};
+    success: { bg: 'bg-emerald-600', text: 'text-white', icon: <CheckCircle2 className="w-5 h-5 text-white shrink-0" /> },
+    warning: { bg: 'bg-amber-500', text: 'text-white', icon: <AlertTriangle className="w-5 h-5 text-white shrink-0" /> },
+    error: { bg: 'bg-rose-600', text: 'text-white', icon: <AlertCircle className="w-5 h-5 text-white shrink-0" /> },
+  }[toast.type] || { bg: 'bg-slate-800', text: 'text-white', icon: <Info className="w-5 h-5 text-white shrink-0" /> };
+
   return (
-    <motion.div initial={{ opacity: 0, y: -24, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.95 }}
-      className={`flex items-center gap-3 rounded-xl shadow-xl px-5 py-3.5 max-w-sm w-full ${cfg.bg} ${cfg.text}`}>
+    <motion.div
+      initial={{ opacity: 0, y: -20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      className={`flex items-center gap-3 rounded-2xl shadow-2xl px-5 py-3.5 max-w-sm w-full border border-white/20 ${cfg.bg} ${cfg.text}`}
+    >
       {cfg.icon}
-      <p className={`flex-1 text-sm font-medium leading-relaxed`}>{toast.message}</p>
-      <button onClick={onClose} className="text-white/70 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+      <p className="flex-1 text-sm font-semibold leading-relaxed">{toast.message}</p>
+      <button onClick={onClose} className="p-1 text-white/70 hover:text-white rounded-lg transition-colors">
+        <X className="w-4 h-4" />
+      </button>
     </motion.div>
   );
 }
 
+// ── Confirm Modal ─────────────────────────────────────────────────────────────
 function ConfirmModal({ dialog, onClose }) {
   if (!dialog) return null;
+  const isDanger = dialog.variant === 'danger';
+  const isWarning = dialog.variant === 'warning';
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className={`px-6 py-4 ${dialog.variant === 'danger' ? 'bg-red-50 border-b border-red-100' : 'bg-slate-50 border-b border-slate-100'}`}>
-          <h3 className={`font-bold text-base ${dialog.variant === 'danger' ? 'text-red-800' : 'text-slate-800'}`}>{dialog.title}</h3>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden z-10 border border-slate-100"
+      >
+        <div className={`px-6 py-5 flex items-center gap-3 ${isDanger ? 'bg-rose-50 border-b border-rose-100' : isWarning ? 'bg-amber-50 border-b border-amber-100' : 'bg-slate-50 border-b border-slate-100'}`}>
+          <div className={`p-2.5 rounded-2xl ${isDanger ? 'bg-rose-100 text-rose-600' : isWarning ? 'bg-amber-100 text-amber-600' : 'bg-slate-200 text-slate-700'}`}>
+            {isDanger ? <AlertTriangle className="w-5 h-5" /> : isWarning ? <AlertCircle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
+          </div>
+          <h3 className={`font-bold text-base ${isDanger ? 'text-rose-900' : isWarning ? 'text-amber-900' : 'text-slate-800'}`}>
+            {dialog.title}
+          </h3>
         </div>
-        <div className="px-6 py-4">
-          <p className="text-sm text-slate-600 leading-relaxed">{dialog.message}</p>
+        <div className="p-6">
+          <p className="text-sm text-slate-600 font-medium leading-relaxed">{dialog.message}</p>
         </div>
-        <div className="px-6 pb-5 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Hủy</button>
-          <button onClick={dialog.onConfirm} className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors ${dialog.variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#152238] hover:bg-[#0f1a2b]'}`}>
+        <div className="px-6 pb-6 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={dialog.onConfirm}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition-all ${isDanger ? 'bg-rose-600 hover:bg-rose-700' : isWarning ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#152238] hover:bg-[#0f1a2b]'}`}
+          >
             {dialog.confirmLabel || 'Xác nhận'}
           </button>
         </div>
@@ -91,22 +121,33 @@ function ConfirmModal({ dialog, onClose }) {
   );
 }
 
+// ── Alert Dialog ──────────────────────────────────────────────────────────────
 function AlertDialog({ dialog, onClose }) {
   if (!dialog) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-amber-300">
-        <div className="px-6 py-4 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
-          <h3 className="font-bold text-base text-amber-900">{dialog.title || 'Thông báo hệ thống'}</h3>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden z-10 border border-amber-200"
+      >
+        <div className="px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white flex items-center gap-3">
+          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+            <AlertCircle className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-bold text-base">{dialog.title || 'Thông báo hệ thống'}</h3>
         </div>
-        <div className="px-6 py-4">
-          <p className="text-sm text-slate-700 leading-relaxed font-medium">{dialog.message}</p>
+        <div className="p-6">
+          <p className="text-sm text-slate-700 font-medium leading-relaxed">{dialog.message}</p>
         </div>
-        <div className="px-6 pb-5 flex justify-end">
-          <button onClick={onClose} className="rounded-xl bg-[#152238] hover:bg-[#0f1a2b] px-5 py-2 text-sm font-semibold text-white transition-colors">
-            Đóng thông báo
+        <div className="px-6 pb-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl bg-[#152238] hover:bg-[#0f1a2b] text-sm font-bold text-white shadow-md transition-colors"
+          >
+            Đã hiểu
           </button>
         </div>
       </motion.div>
@@ -119,135 +160,137 @@ function AlertDialog({ dialog, onClose }) {
 function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, hocKyOptions, nienKhoaOptions }) {
   if (!open) return null;
   const isEdit = !!editingPhase;
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
       <motion.div
-        initial={{ opacity: 0, scale: 0.97, y: 12 }}
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.97, y: 12 }}
-        transition={{ duration: 0.18 }}
-        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+        className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90vh]"
       >
-        {/* ── header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-[#152238]/10">
-              <CalendarDays className="w-4 h-4 text-[#152238]" />
+        {/* Header */}
+        <div className="bg-[#F4C542] px-6 py-5 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-[#152238]/10 rounded-2xl backdrop-blur-md">
+              <CalendarDays className="w-5 h-5 text-[#152238]" />
             </div>
-            <span className="font-bold text-slate-800 text-base">
-              {isEdit ? 'Chỉnh sửa đợt đăng ký' : 'Tạo đợt đăng ký mới'}
-            </span>
+            <div>
+              <h3 className="font-bold text-lg text-[#152238] leading-tight">{isEdit ? 'Chỉnh sửa đợt đăng ký' : 'Tạo đợt đăng ký mới'}</h3>
+              <p className="text-xs text-[#152238]/70 font-medium mt-0.5">Cấu hình thời gian và điều kiện áp dụng</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="p-2 bg-[#152238]/10 hover:bg-[#152238]/20 rounded-xl transition-colors text-[#152238]">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* ── body ── */}
-        <form onSubmit={onSubmit} className="px-6 py-5 space-y-4" noValidate>
-
-          {/* Info Alert Box */}
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 flex gap-2.5 text-xs text-slate-600">
-            <AlertCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+        {/* Body */}
+        <form onSubmit={onSubmit} className="p-6 overflow-y-auto space-y-4" noValidate>
+          {/* Rules Banner */}
+          <div className="rounded-2xl bg-amber-50/80 border border-amber-200/80 p-3.5 flex gap-3 text-xs text-amber-900">
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="font-semibold text-slate-700">Quy tắc xếp lịch & thời gian:</p>
-              <ul className="list-disc pl-4 space-y-0.5 text-slate-500">
-                <li>Không chọn ngày mở trong quá khứ hoặc trước quá 2 tuần.</li>
-                <li>Thời hạn đợt đăng ký tối đa 2 tuần kể từ thời điểm mở.</li>
-                <li>Không chồng chéo thời gian với đợt mở khác của cùng học kỳ & khóa.</li>
+              <p className="font-bold text-amber-950">Quy tắc thời gian & xếp đợt:</p>
+              <ul className="list-disc pl-4 space-y-0.5 font-medium text-amber-850">
+                <li>Không đặt thời gian mở trong quá khứ hoặc trước quá 2 tuần.</li>
+                <li>Thời hạn đợt đăng ký tối đa 2 tuần kể từ ngày mở.</li>
+                <li>Không chồng chéo khung giờ với đợt đang mở khác.</li>
               </ul>
             </div>
           </div>
 
           {/* Tên đợt */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Tên đợt <span className="text-red-500">*</span>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Tên đợt đăng ký <span className="text-rose-500">*</span>
             </label>
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 transition-colors focus:outline-none focus:border-[#F4C542] focus:ring-4 focus:ring-amber-500/10 bg-slate-50/50"
               placeholder="VD: Đợt 1 HK1 2024-2025"
               value={form.TenDot} minLength={3} maxLength={50}
               onChange={(e) => { const raw = e.target.value; const filtered = raw.replace(TEN_DOT_INVALID_CHARS_REGEX, ''); setForm({ ...form, TenDot: filtered }); }}
               required
             />
-            <p className="mt-1 text-xs text-slate-400">Cho phép: chữ, số, khoảng trắng, - _ ( ) , .</p>
+            <p className="mt-1 text-[11px] font-medium text-slate-400">Cho phép: chữ, số, khoảng trắng, - _ ( ) , .</p>
           </div>
 
           {/* Mô tả */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Mô tả</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Mô tả chi tiết</label>
             <textarea
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20 focus:border-[#152238]/40 resize-none"
-              placeholder="Mô tả ngắn về đợt đăng ký (không bắt buộc)…" rows={2}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 transition-colors focus:outline-none focus:border-[#F4C542] focus:ring-4 focus:ring-amber-500/10 bg-slate-50/50 resize-none"
+              placeholder="Ghi chú thêm về đợt đăng ký này..." rows={2}
               maxLength={1000}
               value={form.MoTa} onChange={(e) => setForm({ ...form, MoTa: e.target.value })}
             />
           </div>
 
-          {/* Học kỳ + Niên khóa — 2 cột */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Học kỳ & Niên khóa */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Học kỳ <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Học kỳ <span className="text-rose-500">*</span></label>
               {hocKyOptions.length > 0 ? (
                 <select
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-[#F4C542]"
                   value={form.HocKy} onChange={(e) => setForm({ ...form, HocKy: e.target.value })} required>
-                  <option value="" disabled>Chọn</option>
+                  <option value="" disabled>Chọn học kỳ</option>
                   {hocKyOptions.map(hk => <option key={hk} value={hk}>{hk}</option>)}
                 </select>
               ) : (
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-400" value="" readOnly disabled placeholder="Chưa có" />
+                <input className="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm bg-slate-100 font-semibold text-slate-400" value="" readOnly disabled placeholder="Chưa có" />
               )}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Niên khóa <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Niên khóa <span className="text-rose-500">*</span></label>
               {nienKhoaOptions.length > 0 ? (
                 <select
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-[#F4C542]"
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} required>
-                  <option value="" disabled>Chọn</option>
+                  <option value="" disabled>Chọn niên khóa</option>
                   {nienKhoaOptions.map(nk => <option key={nk} value={nk}>{nk}</option>)}
                 </select>
               ) : (
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="VD: 2022-2026"
+                <input className="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm font-semibold text-slate-800" placeholder="VD: 2022-2026"
                   value={form.NienKhoa} onChange={(e) => setForm({ ...form, NienKhoa: e.target.value })} />
               )}
             </div>
           </div>
 
-          {/* Thời gian mở + Thời gian đóng — 2 cột */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Ngày mở & Ngày đóng */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian mở <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Thời gian mở <span className="text-rose-500">*</span></label>
               <input type="datetime-local"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#F4C542] bg-slate-50/50"
                 value={form.NgayTao} onChange={(e) => setForm({ ...form, NgayTao: e.target.value })}
                 min={isEdit ? undefined : getMinDateTimeStr()}
                 required />
-              <p className="mt-1 text-xs text-slate-400">Lên lịch trước tối đa 2 tuần.</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-400">Trước tối đa 2 tuần.</p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Thời gian đóng <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Thời gian đóng <span className="text-rose-500">*</span></label>
               <input type="datetime-local"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#F4C542] bg-slate-50/50"
                 value={form.NgayDong} onChange={(e) => setForm({ ...form, NgayDong: e.target.value })}
                 min={form.NgayTao || getMinDateTimeStr()}
                 required />
-              <p className="mt-1 text-xs text-slate-400">Thời hạn mở tối đa 2 tuần.</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-400">Thời hạn tối đa 2 tuần.</p>
             </div>
           </div>
 
-          {/* ── footer buttons bên trong form ── */}
-          <div className="flex gap-3 pt-1">
+          {/* Buttons */}
+          <div className="flex gap-3 pt-3 shrink-0">
             <button type="button" onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-              Hủy
+              className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+              Hủy bỏ
             </button>
             <button type="submit"
-              className="flex-1 rounded-xl bg-[#152238] py-2.5 text-sm font-semibold text-white hover:bg-[#0f1a2b] transition-colors flex items-center justify-center gap-2">
+              className="flex-1 rounded-xl bg-[#F4C542] hover:bg-[#e4b532] py-3 text-sm font-bold text-[#152238] shadow-md transition-all flex items-center justify-center gap-2">
               <CheckCircle2 className="w-4 h-4" />
-              {isEdit ? 'Lưu thay đổi' : 'Tạo đợt'}
+              {isEdit ? 'Lưu thay đổi' : 'Tạo đợt ngay'}
             </button>
           </div>
         </form>
@@ -257,37 +300,70 @@ function PhaseFormModal({ open, onClose, editingPhase, form, setForm, onSubmit, 
   );
 }
 
+// ── PhaseViewModal ────────────────────────────────────────────────────────────
 function PhaseViewModal({ phase, onClose }) {
   if (!phase) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-[#152238]/10">
-              <CalendarDays className="w-4 h-4 text-[#152238]" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 12 }}
+        className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden z-10 flex flex-col"
+      >
+        <div className="bg-[#F4C542] px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-[#152238]/10 rounded-2xl backdrop-blur-md">
+              <Eye className="w-5 h-5 text-[#152238]" />
             </div>
-            <span className="font-bold text-slate-800 text-base">Thông tin đợt đăng ký</span>
+            <div>
+              <h3 className="font-bold text-lg text-[#152238] leading-tight">Chi tiết đợt đăng ký</h3>
+              <p className="text-xs text-[#152238]/70 font-medium">Thông tin cấu hình đợt đăng ký học phần</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="p-2 bg-[#152238]/10 hover:bg-[#152238]/20 rounded-xl transition-colors text-[#152238]">
+            <X className="w-5 h-5" />
           </button>
         </div>
+
         <div className="p-6 space-y-5">
-          <div><p className="text-xs text-slate-500 mb-1 font-medium">Tên đợt</p><p className="font-semibold text-slate-800">{phase.TenDot}</p></div>
-          {phase.MoTa && <div><p className="text-xs text-slate-500 mb-1 font-medium">Mô tả</p><p className="text-slate-700 text-sm whitespace-pre-wrap">{phase.MoTa}</p></div>}
-          <div className="grid grid-cols-2 gap-4">
-            <div><p className="text-xs text-slate-500 mb-1 font-medium">Học kỳ</p><p className="font-semibold text-slate-800">{phase.HocKy}</p></div>
-            <div><p className="text-xs text-slate-500 mb-1 font-medium">Niên khóa</p><p className="font-semibold text-slate-800">{phase.NienKhoa}</p></div>
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tên đợt đăng ký</p>
+            <p className="font-black text-slate-800 text-base">{phase.TenDot}</p>
+            {phase.MoTa && <p className="text-slate-600 text-sm mt-2 leading-relaxed">{phase.MoTa}</p>}
           </div>
+
           <div className="grid grid-cols-2 gap-4">
-            <div><p className="text-xs text-slate-500 mb-1 font-medium">Thời gian mở</p><p className="font-semibold text-slate-800">{fmtDateTime(phase.NgayTao)}</p></div>
-            <div><p className="text-xs text-slate-500 mb-1 font-medium">Thời gian đóng</p><p className="font-semibold text-slate-800">{fmtDateTime(phase.NgayDong)}</p></div>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Học kỳ</p>
+              <p className="font-bold text-slate-800">{phase.HocKy || '—'}</p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Niên khóa</p>
+              <p className="font-bold text-slate-800">{phase.NienKhoa || '—'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-amber-50/60 border border-amber-100 p-4 rounded-2xl">
+              <p className="text-xs text-amber-700 font-bold uppercase tracking-wider mb-1">Thời gian mở</p>
+              <p className="font-bold text-amber-950 text-sm">{fmtDateTime(phase.NgayTao)}</p>
+            </div>
+            <div className="bg-rose-50/60 border border-rose-100 p-4 rounded-2xl">
+              <p className="text-xs text-rose-700 font-bold uppercase tracking-wider mb-1">Thời gian đóng</p>
+              <p className="font-bold text-rose-950 text-sm">{fmtDateTime(phase.NgayDong)}</p>
+            </div>
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
-          <button onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Đóng</button>
+
+        <div className="px-6 pb-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-colors"
+          >
+            Đóng
+          </button>
         </div>
       </motion.div>
     </div>,
@@ -302,35 +378,35 @@ function StatusBadge({ phase, now }) {
     const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
     if (start && now < start) {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Chờ mở
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-bold text-blue-700 shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-blue-500" />Chờ mở
         </span>
       );
     }
     if (end && now > end) {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-semibold text-amber-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Hết hạn
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700 shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-amber-500" />Hết hạn
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Đang mở
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700 shadow-sm">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />Đang mở
       </span>
     );
   }
   if (phase.TrangThai === 'Dong') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Đã đóng
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
+        <span className="w-2 h-2 rounded-full bg-slate-400" />Đã đóng
       </span>
     );
   }
   return null;
 }
 
-// ── MAIN ──────────────────────────────────────────────────────────────────────
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 function EnrollmentPhaseManagement() {
   const [phases, setPhases] = useState([]);
   const [courseSections, setCourseSections] = useState([]);
@@ -400,6 +476,7 @@ function EnrollmentPhaseManagement() {
     const vals = [...new Set(courseSections.map(cs => cs.HocKy).filter(Boolean))];
     return vals.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }, [courseSections]);
+
   const nienKhoaOptions = useMemo(() => {
     const vals = [...new Set(students.map(sv => sv.NienKhoa).filter(Boolean))];
     return vals.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
@@ -418,7 +495,6 @@ function EnrollmentPhaseManagement() {
       if (p.TrangThai === 'Dong') return false;
       const pStart = new Date(p.NgayTao);
       const pEnd = new Date(p.NgayDong);
-      // Chồng chéo nếu: start < pEnd và pStart < end
       return start < pEnd && pStart < end;
     }) || null;
   };
@@ -620,12 +696,12 @@ function EnrollmentPhaseManagement() {
     });
   }, [phases, filterStatus, searchTerm, now]);
 
-  // ── render ────────────────────────────────────────────────────────────────
+  // ── RENDER UI ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 pb-8">
-      {/* Toast */}
+    <div className="space-y-6 pb-12 font-sans">
+      {/* Toast Notification Container */}
       {createPortal(
-        <div className="fixed top-4 right-4 z-[999999] flex flex-col gap-2 pointer-events-none">
+        <div className="fixed top-5 right-5 z-[999999] flex flex-col gap-2 pointer-events-none">
           <AnimatePresence>
             {toast && <div className="pointer-events-auto"><Toast toast={toast} onClose={() => setToast(null)} /></div>}
           </AnimatePresence>
@@ -633,13 +709,13 @@ function EnrollmentPhaseManagement() {
         document.body
       )}
 
-      {/* Confirm & Alert dialogs */}
+      {/* Confirm & Alert Dialogs */}
       <AnimatePresence>
         {confirmDialog && <ConfirmModal dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />}
         {alertDialog && <AlertDialog dialog={alertDialog} onClose={() => setAlertDialog(null)} />}
       </AnimatePresence>
 
-      {/* Form slide-over */}
+      {/* Form Modal */}
       <AnimatePresence>
         {formOpen && (
           <PhaseFormModal open={formOpen} onClose={closeForm} editingPhase={editingPhase}
@@ -648,66 +724,99 @@ function EnrollmentPhaseManagement() {
         )}
       </AnimatePresence>
 
-      {/* ── Page header ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#152238] to-[#1e3a5f] p-6 text-white shadow-lg">
-        <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_80%_50%,white_0%,transparent_60%)]" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20">
-              <CalendarDays className="w-7 h-7" />
+      {/* Hero Header Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-[2rem] bg-[#F4C542] p-8 shadow-xl"
+      >
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-white/40 backdrop-blur-md rounded-full text-xs font-bold text-[#152238] mb-3">
+              <Sparkles className="w-3.5 h-3.5" /> Trung tâm cấu hình đăng ký học phần
             </div>
-            <div>
-              <h2 className="text-2xl font-black tracking-tight">Quản lý đợt đăng ký học phần</h2>
-              <p className="text-sm text-white/70 mt-0.5">Thiết lập và theo dõi các đợt đăng ký theo học kỳ, năm học, niên khóa</p>
-            </div>
+            <h2 className="text-3xl font-black tracking-tight text-[#152238]">Quản lý đợt đăng ký</h2>
+            <p className="text-[#152238]/80 text-sm mt-1.5 font-medium max-w-xl leading-relaxed">
+              Thiết lập thời gian, mở/đóng đợt và phân luồng đăng ký học phần cho sinh viên theo từng học kỳ & khóa học.
+            </p>
           </div>
-          <button onClick={openCreateForm}
-            className="flex items-center gap-2 rounded-xl bg-[#F4C542] px-5 py-2.5 text-sm font-bold text-[#152238] hover:bg-[#e6b83a] transition-colors shadow-md flex-shrink-0 self-start sm:self-auto">
-            <Plus className="w-4 h-4" /> Tạo đợt mới
-          </button>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            onClick={openCreateForm}
+            className="flex items-center gap-2 bg-[#FFFFFF] hover:bg-white/90 text-[#152238] px-6 py-3.5 rounded-2xl shadow-lg font-extrabold text-sm transition-all shrink-0 self-start md:self-auto"
+          >
+            <Plus className="w-5 h-5" /> Tạo đợt đăng ký mới
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* ── Stats row ── */}
+      {/* Stats Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Tổng số đợt', value: stats.total, color: 'text-[#152238]', bg: 'bg-white', border: 'border-slate-200', icon: <TrendingUp className="w-5 h-5 text-[#152238]/40" /> },
-          { label: 'Đang mở', value: stats.active, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: <ToggleRight className="w-5 h-5 text-emerald-500" /> },
-          { label: 'Chờ', value: stats.cho, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: <Clock className="w-5 h-5 text-amber-500" /> },
-          { label: 'Đã đóng', value: stats.closed, color: 'text-slate-600', bg: 'bg-white', border: 'border-slate-200', icon: <ToggleLeft className="w-5 h-5 text-slate-400" /> },
-        ].map(s => (
-          <div key={s.label} className={`rounded-2xl border ${s.border} ${s.bg} p-5 flex items-center justify-between`}>
+          { label: 'Tổng số đợt', value: stats.total, color: 'text-[#152238]', bg: 'bg-white', border: 'border-slate-200/80', icon: <Layers className="w-5 h-5 text-[#152238]" /> },
+          { label: 'Đang mở', value: stats.active, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-200/80', icon: <ToggleRight className="w-5 h-5 text-emerald-500" /> },
+          { label: 'Chờ mở', value: stats.cho, color: 'text-blue-600', bg: 'bg-blue-50/50', border: 'border-blue-200/80', icon: <Clock className="w-5 h-5 text-blue-500" /> },
+          { label: 'Đã đóng', value: stats.closed, color: 'text-slate-500', bg: 'bg-slate-50/50', border: 'border-slate-200/80', icon: <ToggleLeft className="w-5 h-5 text-slate-400" /> },
+        ].map((s, idx) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            className={`rounded-2xl border ${s.border} ${s.bg} p-5 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow`}
+          >
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
-              <p className={`text-3xl font-black mt-1 ${s.color}`}>{s.value}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{s.label}</p>
+              <p className={`text-3xl font-black ${s.color}`}>{s.value}</p>
             </div>
-            <div className="p-2 rounded-xl bg-white/60">{s.icon}</div>
-          </div>
+            <div className="p-3 rounded-2xl bg-white shadow-sm border border-slate-100">{s.icon}</div>
+          </motion.div>
         ))}
       </div>
 
-      {/* ── Phase list ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* toolbar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-100">
-          <div>
-            <h3 className="font-bold text-slate-800">Danh sách đợt đăng ký</h3>
-            <p className="text-xs text-slate-500 mt-0.5">{filteredPhases.length} đợt{filterStatus !== 'all' || searchTerm ? ' (đã lọc)' : ''}</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {/* search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input className="pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-[#152238]/20"
-                placeholder="Tìm tên đợt, học kỳ, niên khóa…"
-                value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-              {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>}
+      {/* Data Table Section */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+        {/* Toolbar Header */}
+        <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-100">
+              <CalendarDays className="w-5 h-5 text-[#B45309]" />
             </div>
-            {/* filter */}
-            <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1">
-              {[['all', 'Tất cả'], ['Mo', 'Đang mở'], ['Cho', 'Chờ'], ['Dong', 'Đã đóng']].map(([val, label]) => (
-                <button key={val} onClick={() => setFilterStatus(val)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterStatus === val ? 'bg-[#152238] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+            <div>
+              <h3 className="font-bold text-slate-800 text-base">Danh sách các đợt đăng ký</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Hiển thị {filteredPhases.length} kết quả</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+            {/* Search Box */}
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#F4C542] focus:bg-white transition-colors"
+                placeholder="Tìm tên đợt, học kỳ, niên khóa..."
+                value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto justify-center">
+              {[
+                ['all', 'Tất cả'],
+                ['Mo', 'Đang mở'],
+                ['Cho', 'Chờ'],
+                ['Dong', 'Đã đóng']
+              ].map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setFilterStatus(val)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === val ? 'bg-[#152238] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                >
                   {label}
                 </button>
               ))}
@@ -715,25 +824,25 @@ function EnrollmentPhaseManagement() {
           </div>
         </div>
 
-        {/* table */}
+        {/* Table Content */}
         {loading ? (
-          <div className="p-12 text-center text-sm text-slate-500">Đang tải dữ liệu…</div>
+          <div className="p-16 text-center text-sm font-bold text-slate-400">Đang đồng bộ danh sách đợt đăng ký...</div>
         ) : filteredPhases.length === 0 ? (
-          <div className="p-12 text-center">
-            <CalendarDays className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-slate-500">Không tìm thấy đợt nào</p>
-            <p className="text-xs text-slate-400 mt-1">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+          <div className="p-16 text-center">
+            <CalendarDays className="w-14 h-14 text-slate-300 mx-auto mb-3" />
+            <h4 className="font-bold text-slate-700 text-base">Không tìm thấy đợt đăng ký nào</h4>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">Thử điều chỉnh từ khóa tìm kiếm hoặc chuyển qua trạng thái bộ lọc khác.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Đợt đăng ký</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Học kỳ / Niên khóa</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Thời gian</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Thao tác</th>
+                <tr className="bg-slate-50/80 border-b border-slate-100">
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Tên đợt đăng ký</th>
+                  <th className="px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider hidden md:table-cell">Học kỳ / Niên khóa</th>
+                  <th className="px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider hidden sm:table-cell">Thời gian mở & đóng</th>
+                  <th className="px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -743,76 +852,111 @@ function EnrollmentPhaseManagement() {
                     const end = phase.NgayDong ? new Date(phase.NgayDong) : null;
                     const isExpired = phase.TrangThai === 'Mo' && end && end < now;
                     const isActive = phase.TrangThai === 'Mo' && (!start || start <= now) && (!end || end >= now);
+
                     return (
-                    <motion.tr key={phase.MaDot} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      onClick={() => setViewingPhase(phase)}
-                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer">
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-slate-900">{phase.TenDot}</p>
-                        {(() => {
-                          if (phase.TrangThai !== 'Mo' || isExpired) return null;
-                          const isWaiting = start && start > now;
-                          const targetDate = isWaiting ? start : end;
-                          if (!targetDate) return null;
-                          const prefix = isWaiting ? 'Mở sau' : 'Còn';
-                          const colorClass = isWaiting ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200';
-                          return (
-                            <div className={`flex items-center gap-1.5 mt-1 text-[11px] font-semibold px-2 py-0.5 rounded border w-fit ${colorClass}`}>
-                              <Hourglass className="w-3 h-3" /> {prefix} {diffText(targetDate - now)}
-                            </div>
-                          );
-                        })()}
-                        {phase.MoTa && <p className="text-xs text-slate-400 mt-1 line-clamp-1">{phase.MoTa}</p>}
-                      </td>
-                      <td className="px-5 py-4 whitespace-nowrap hidden md:table-cell">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-slate-700">{phase.HocKy || '—'}</span>
-                          <span className="text-xs text-slate-400">{phase.NienKhoa || '—'}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 whitespace-nowrap hidden sm:table-cell">
-                        <div className="flex flex-col gap-0.5 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDateTime(phase.NgayTao)}</span>
-                          <span className="flex items-center gap-1 text-slate-400"><ChevronRight className="w-3 h-3" />{fmtDateTime(phase.NgayDong)}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4"><StatusBadge phase={phase} now={now} /></td>
-                      <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                          {phase.TrangThai !== 'Dong' && (
-                            <button onClick={() => openEditForm(phase)} title={isActive ? "Không thể sửa đợt đang mở" : "Chỉnh sửa"} disabled={isActive}
-                              className={`p-2 rounded-xl border transition-colors ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300'}`}>
-                              <Pencil className="w-3.5 h-3.5" />
+                      <motion.tr
+                        key={phase.MaDot}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                        onClick={() => setViewingPhase(phase)}
+                        className="hover:bg-amber-50/40 transition-colors group cursor-pointer"
+                      >
+                        {/* Tên đợt */}
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-slate-900 text-sm group-hover:text-amber-800 transition-colors">{phase.TenDot}</p>
+                          {(() => {
+                            if (phase.TrangThai !== 'Mo' || isExpired) return null;
+                            const isWaiting = start && start > now;
+                            const targetDate = isWaiting ? start : end;
+                            if (!targetDate) return null;
+                            const prefix = isWaiting ? 'Mở sau' : 'Còn lại';
+                            const colorClass = isWaiting ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-amber-700 bg-amber-50 border-amber-200';
+                            return (
+                              <div className={`inline-flex items-center gap-1.5 mt-1 text-[11px] font-bold px-2.5 py-0.5 rounded-md border ${colorClass}`}>
+                                <Hourglass className="w-3 h-3" /> {prefix} {diffText(targetDate - now)}
+                              </div>
+                            );
+                          })()}
+                          {phase.MoTa && <p className="text-xs text-slate-400 mt-1 line-clamp-1 font-medium">{phase.MoTa}</p>}
+                        </td>
+
+                        {/* Học kỳ / Niên khóa */}
+                        <td className="px-5 py-4 whitespace-nowrap hidden md:table-cell">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-800 text-xs sm:text-sm">{phase.HocKy || '—'}</span>
+                            <span className="text-xs font-semibold text-slate-400 mt-0.5">{phase.NienKhoa || '—'}</span>
+                          </div>
+                        </td>
+
+                        {/* Thời gian */}
+                        <td className="px-5 py-4 whitespace-nowrap hidden sm:table-cell">
+                          <div className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+                            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-amber-500" />{fmtDateTime(phase.NgayTao)}</span>
+                            <span className="flex items-center gap-1.5 text-slate-400"><ChevronRight className="w-3.5 h-3.5 text-slate-300" />{fmtDateTime(phase.NgayDong)}</span>
+                          </div>
+                        </td>
+
+                        {/* Trạng thái */}
+                        <td className="px-5 py-4">
+                          <StatusBadge phase={phase} now={now} />
+                        </td>
+
+                        {/* Thao tác */}
+                        <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                            {phase.TrangThai !== 'Dong' && (
+                              <button
+                                onClick={() => openEditForm(phase)}
+                                title={isActive ? "Không thể sửa đợt đang mở" : "Chỉnh sửa"}
+                                disabled={isActive}
+                                className={`p-2 rounded-xl border transition-all ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-sm'}`}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {phase.TrangThai === 'Mo' && (
+                              <button
+                                onClick={() => requestClose(phase)}
+                                className="px-3.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+                              >
+                                <Lock className="w-3 h-3" /> Đóng
+                              </button>
+                            )}
+
+                            {phase.TrangThai === 'Dong' && (
+                              <button
+                                onClick={() => requestOpen(phase)}
+                                title={end && end <= now ? "Không thể mở lại đợt đã kết thúc" : "Mở lại đợt"}
+                                disabled={end && end <= now}
+                                className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm flex items-center gap-1 ${end && end <= now ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100'}`}
+                              >
+                                <RefreshCcw className="w-3 h-3" /> Mở lại
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => requestDelete(phase)}
+                              title={isActive ? "Không thể xóa đợt đang mở" : "Xóa đợt"}
+                              disabled={isActive}
+                              className={`p-2 rounded-xl border transition-all ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 shadow-sm'}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                          {phase.TrangThai === 'Mo' && (
-                            <button onClick={() => requestClose(phase)}
-                              className="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold transition-colors">
-                              Đóng
-                            </button>
-                          )}
-                          {phase.TrangThai === 'Dong' && (
-                            <button onClick={() => requestOpen(phase)}
-                              title={end && end <= now ? "Không thể mở lại đợt đã kết thúc" : "Mở lại đợt"}
-                              disabled={end && end <= now}
-                              className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${end && end <= now ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
-                              Mở lại
-                            </button>
-                          )}
-                          <button onClick={() => requestDelete(phase)} title={isActive ? "Không thể xóa đợt đang mở" : "Xóa"} disabled={isActive}
-                            className={`p-2 rounded-xl border transition-colors ${isActive ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed' : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'}`}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  )})}
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
                 </AnimatePresence>
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
       <PhaseViewModal phase={viewingPhase} onClose={() => setViewingPhase(null)} />
     </div>
   );
