@@ -67,14 +67,19 @@ const Countdown = ({ ngay_dong }) => {
 };
 
 // ─── Modal Tạo đợt ────────────────────────────────────────────────────────────
-const CreatePeriodModal = ({ open, onClose, onSuccess }) => {
+const CreatePeriodModal = ({ open, onClose, onSuccess, periods = [] }) => {
   const [dotDangKyList, setDotDangKyList] = useState([]);
   const [form, setForm] = useState({ ma_dot_dangky: '', hoc_ky: '', ten_dot: '', ngay_mo: '', ngay_dong: '' });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    if (!open) { setErr(''); return; }
+    if (!open) {
+      setErr('');
+      return;
+    }
+    setForm({ ma_dot_dangky: '', hoc_ky: '', ten_dot: '', ngay_mo: '', ngay_dong: '' });
+    setErr('');
     api.get('/api/admin/dot-dangky').then(r => setDotDangKyList(r.data?.data || [])).catch(() => {});
   }, [open]);
 
@@ -95,6 +100,10 @@ const CreatePeriodModal = ({ open, onClose, onSuccess }) => {
 
   const handleHocKyChange = (e) => {
     const val = e.target.value;
+    if (periods.some(p => p.hoc_ky === val)) {
+      setErr(`Học kỳ "${val}" đã được mở đợt thu học phí trước đó!`);
+      return;
+    }
     const found = uniqueHocKyList.find(d => d.hoc_ky === val);
     setForm(f => ({
       ...f,
@@ -107,6 +116,10 @@ const CreatePeriodModal = ({ open, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.hoc_ky || !form.ten_dot || !form.ngay_mo || !form.ngay_dong) { setErr('Vui lòng điền đầy đủ thông tin!'); return; }
+    if (periods.some(p => p.hoc_ky === form.hoc_ky)) {
+      setErr(`Học kỳ "${form.hoc_ky}" đã được mở đợt thu học phí trước đó! Mỗi học kỳ chỉ được mở 1 đợt.`);
+      return;
+    }
     setLoading(true); setErr('');
     try {
       const res = await api.post('/api/admin/tuition-periods', { ...form, don_gia_tin_chi: 1150000 });
@@ -136,9 +149,14 @@ const CreatePeriodModal = ({ open, onClose, onSuccess }) => {
             <label className="block text-sm font-bold text-gray-700 mb-1.5">Chọn Học kỳ cần thu học phí <span className="text-rose-500">*</span></label>
             <select value={form.hoc_ky} onChange={handleHocKyChange} required className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#F4C542] font-semibold text-gray-800">
               <option value="">-- Chọn Học kỳ --</option>
-              {uniqueHocKyList.map(item => (
-                <option key={item.hoc_ky} value={item.hoc_ky}>{item.hoc_ky}</option>
-              ))}
+              {uniqueHocKyList.map(item => {
+                const isCreated = periods.some(p => p.hoc_ky === item.hoc_ky);
+                return (
+                  <option key={item.hoc_ky} value={item.hoc_ky} disabled={isCreated}>
+                    {item.hoc_ky} {isCreated ? '(Đã mở đợt học phí)' : ''}
+                  </option>
+                );
+              })}
             </select>
             <p className="text-xs text-gray-500 mt-1 font-medium">Hệ thống sẽ tự động tổng hợp toàn bộ sinh viên đã đăng ký của tất cả các khóa trong học kỳ này.</p>
           </div>
@@ -890,7 +908,7 @@ const TuitionManagement = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
       <Toast msg={toast.msg} type={toast.type} onClose={() => setToast({ msg: '', type: 'success' })} />
-      <CreatePeriodModal open={createOpen} onClose={() => setCreateOpen(false)} onSuccess={(msg) => { showToast(msg); fetchPeriods(); }} />
+      <CreatePeriodModal open={createOpen} onClose={() => setCreateOpen(false)} onSuccess={(msg) => { showToast(msg); fetchPeriods(); }} periods={periods} />
       <ConfirmManualModal open={confirmModal.open} hocPhi={confirmModal.hp} onClose={() => setConfirmModal({ open: false, hp: null })} onSuccess={(msg) => { showToast(msg); if (selectedPeriod) fetchTuitions(selectedPeriod.id); }} />
       <DetailModal open={detailModal.open} hocPhi={detailModal.hp} onClose={() => setDetailModal({ open: false, hp: null })} onApprove={handleApprovePayment} onReject={handleRejectPayment} />
       <ActionConfirmModal open={actionModal.open} type={actionModal.type} hocPhi={actionModal.hp} onClose={() => setActionModal({ open: false, type: '', hp: null })} onConfirm={(hpId) => actionModal.type === 'approve' ? executeApprovePayment(hpId) : executeRejectPayment(hpId)} />

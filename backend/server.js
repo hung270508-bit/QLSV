@@ -4000,7 +4000,11 @@ const ensureTuitionDbMigrated = async () => {
             `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ten_dot VARCHAR(255) DEFAULT '';`,
             `ALTER TABLE dot_dong_hoc_phi ADD COLUMN don_gia_tin_chi DECIMAL(15,0) DEFAULT 1150000;`,
             `ALTER TABLE dot_dong_hoc_phi ADD COLUMN tao_boi VARCHAR(50) DEFAULT 'admin';`,
+            `ALTER TABLE dot_dong_hoc_phi ADD COLUMN ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP;`,
+            `ALTER TABLE hoc_phi_v2 ADD COLUMN dot_id INT NOT NULL DEFAULT 0;`,
+            `ALTER TABLE hoc_phi_v2 ADD COLUMN so_tien DECIMAL(15,0) NOT NULL DEFAULT 0;`,
             `ALTER TABLE hoc_phi_v2 ADD COLUMN trang_thai VARCHAR(50) DEFAULT 'Chưa đóng';`,
+            `ALTER TABLE hoc_phi_v2 ADD COLUMN ngay_tinh DATETIME DEFAULT CURRENT_TIMESTAMP;`,
             `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN phi_tai_lieu DECIMAL(15,2) DEFAULT 0;`,
             `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN hoc_phi DECIMAL(15,2) DEFAULT 0;`,
             `ALTER TABLE hoc_phi_chi_tiet ADD COLUMN mien_giam DECIMAL(15,2) DEFAULT 0;`,
@@ -4013,6 +4017,7 @@ const ensureTuitionDbMigrated = async () => {
             `ALTER TABLE giao_dich_hoc_phi ADD COLUMN admin_username VARCHAR(50) DEFAULT NULL;`,
             `ALTER TABLE giao_dich_hoc_phi ADD COLUMN minh_chung_url VARCHAR(255) DEFAULT NULL;`,
             `ALTER TABLE giao_dich_hoc_phi ADD COLUMN ghi_chu TEXT DEFAULT NULL;`,
+            `ALTER TABLE giao_dich_hoc_phi ADD COLUMN thoi_gian_tao DATETIME DEFAULT CURRENT_TIMESTAMP;`,
             `ALTER TABLE giao_dich_hoc_phi ADD COLUMN thoi_gian_xac_nhan DATETIME DEFAULT NULL;`,
             `ALTER TABLE giao_dich_hoc_phi ADD COLUMN qr_url TEXT DEFAULT NULL;`,
             `ALTER TABLE dot_dangky MODIFY COLUMN TrangThai VARCHAR(50) DEFAULT 'Mo';`,
@@ -4087,6 +4092,13 @@ app.post('/api/admin/tuition-periods', verifyToken, async (req, res) => {
     }
     const dbConn = await db.promise().getConnection();
     try {
+        // Kiểm tra xem học kỳ này đã được tạo đợt thu học phí trước đó hay chưa
+        const [existPeriods] = await dbConn.execute('SELECT id, ten_dot FROM dot_dong_hoc_phi WHERE hoc_ky = ? LIMIT 1', [hoc_ky]);
+        if (existPeriods && existPeriods.length > 0) {
+            dbConn.release();
+            return res.status(400).json({ success: false, message: `Học kỳ "${hoc_ky}" đã được mở đợt thu học phí (${existPeriods[0].ten_dot}) trước đó! Mỗi học kỳ chỉ được mở 1 đợt.` });
+        }
+
         await dbConn.beginTransaction();
 
         // Tìm hoặc lấy ma_dot_dangky đại diện nếu không được truyền rõ ràng
