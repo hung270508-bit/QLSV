@@ -219,9 +219,9 @@ function StudentSupport({ user, profile }) {
     <div className="max-w-6xl mx-auto space-y-6">
       
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 rounded-3xl p-6 sm:p-8 text-[#152238] shadow-sm relative overflow-hidden">
+      <div className="bg-[#F4C542] rounded-3xl p-6 sm:p-8 text-[#152238] shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 rounded-full bg-white/20 blur-2xl pointer-events-none"></div>
-        <div className="absolute bottom-0 right-1/3 -mb-12 w-36 h-36 rounded-full bg-orange-300/30 blur-xl pointer-events-none"></div>
+        <div className="absolute bottom-0 right-1/3 -mb-12 w-36 h-36 rounded-full bg-amber-300/30 blur-xl pointer-events-none"></div>
         
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/40 backdrop-blur-md rounded-full text-xs font-bold text-[#152238] mb-3">
@@ -518,6 +518,14 @@ function StudentSupport({ user, profile }) {
                   <p><span className="text-slate-400">Biểu mẫu:</span> <strong className="text-slate-800">{submittedData.ChuDe}</strong></p>
                   <p><span className="text-slate-400">Thời gian:</span> <strong className="text-slate-800">{formatDateTime(submittedData.NgayGui)}</strong></p>
                   <p><span className="text-slate-400">Trạng thái:</span> <strong className="text-amber-600">{submittedData.TrangThai}</strong></p>
+                  {submittedData.NoiDung && (
+                    <div className="pt-2 border-t border-slate-200/60 mt-2">
+                      <span className="text-slate-400 block mb-1">Nội dung chi tiết:</span>
+                      <p className="bg-white p-3 rounded-lg border border-slate-200/80 text-slate-700 text-xs whitespace-pre-wrap leading-relaxed">
+                        {submittedData.NoiDung}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => setSubmittedData(null)} className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-sm">
                   ĐÓNG
